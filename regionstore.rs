@@ -12,14 +12,14 @@ use std::slice::Iter;
 
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.avec))
+        write!(f, "{}", tools::vec_string(&self.items))
     }
 }
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RegionStore {
     /// A vector of regions.
-    pub avec: Vec<SomeRegion>,
+    pub items: Vec<SomeRegion>,
 }
 
 impl PartialEq for RegionStore {
@@ -27,7 +27,7 @@ impl PartialEq for RegionStore {
         if self.len() != other.len() {
             return false;
         }
-        for regx in &self.avec {
+        for regx in &self.items {
             if !other.contains(regx) {
                 return false;
             }
@@ -39,72 +39,72 @@ impl Eq for RegionStore {}
 
 impl RegionStore {
     /// Return a new, RegionStore.
-    pub fn new(avec: Vec<SomeRegion>) -> Self {
-        debug_assert!(vec_same_num_bits(&avec));
+    pub fn new(items: Vec<SomeRegion>) -> Self {
+        debug_assert!(vec_same_num_bits(&items));
 
-        Self { avec }
+        Self { items }
     }
 
     /// Return a new RegionStore instance, empty, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
-            avec: Vec::<SomeRegion>::with_capacity(num),
+            items: Vec::<SomeRegion>::with_capacity(num),
         }
     }
 
     /// Return the number of regions.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.items.is_empty()
     }
 
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
+        !self.items.is_empty()
     }
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
         debug_assert!(self.is_empty() || val.num_bits() == self.num_bits().unwrap());
 
-        self.avec.push(val);
+        self.items.push(val);
     }
 
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRegion> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Return true if any region is a superset, or equal, to a region.
     pub fn any_superset_of(&self, reg: &SomeRegion) -> bool {
         debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
 
-        tools::vec_contains(&self.avec, SomeRegion::is_superset_of, reg)
+        tools::vec_contains(&self.items, SomeRegion::is_superset_of, reg)
     }
 
     /// Return true if any region is a subset, or equal, to a region.
     pub fn any_subset_of(&self, reg: &SomeRegion) -> bool {
         debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
 
-        tools::vec_contains(&self.avec, SomeRegion::is_subset_of, reg)
+        tools::vec_contains(&self.items, SomeRegion::is_subset_of, reg)
     }
 
     /// Return true if any region intersects a given region.
     pub fn any_intersection(&self, reg: &SomeRegion) -> bool {
         debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
 
-        tools::vec_contains(&self.avec, SomeRegion::intersects, reg)
+        tools::vec_contains(&self.items, SomeRegion::intersects, reg)
     }
 
     /// Return true if any region is a superset of a state.
     pub fn any_superset_of_state(&self, sta: &SomeState) -> bool {
         debug_assert!(self.is_empty() || sta.num_bits() == self.num_bits().unwrap());
 
-        tools::vec_contains(&self.avec, SomeRegion::is_superset_of, sta)
+        tools::vec_contains(&self.items, SomeRegion::is_superset_of, sta)
     }
 
     /// Return vector of regions that are a superset of a given item.
@@ -113,7 +113,7 @@ impl RegionStore {
 
         let mut ret_regs = Self::new(vec![]);
 
-        for regx in self.avec.iter() {
+        for regx in self.items.iter() {
             if regx.is_superset_of(itmx) {
                 ret_regs.push(regx.clone());
             }
@@ -128,7 +128,7 @@ impl RegionStore {
     pub fn contains(&self, reg: &SomeRegion) -> bool {
         debug_assert!(self.is_empty() || reg.num_bits() == self.num_bits().unwrap());
 
-        self.avec.contains(reg)
+        self.items.contains(reg)
     }
 
     /// Add a region, removing subset regions.
@@ -144,7 +144,7 @@ impl RegionStore {
         // Identify subsets.
         let mut rmvec = Vec::<usize>::new();
 
-        for (inx, regx) in self.avec.iter().enumerate() {
+        for (inx, regx) in self.items.iter().enumerate() {
             if regx.is_subset_of(&reg) {
                 rmvec.push(inx);
             }
@@ -152,17 +152,17 @@ impl RegionStore {
 
         // Remove identified regions, in descending index order.
         for inx in rmvec.iter().rev() {
-            tools::remove_unordered(&mut self.avec, *inx);
+            tools::remove_unordered(&mut self.items, *inx);
         }
 
-        self.avec.push(reg);
+        self.items.push(reg);
 
         true
     }
 
     /// Add a region, removing superset (and equal) regions.
     pub fn push_nosups(&mut self, reg: SomeRegion) -> bool {
-        debug_assert!(self.is_empty() || reg.num_bits() == self.avec[0].num_bits());
+        debug_assert!(self.is_empty() || reg.num_bits() == self.items[0].num_bits());
 
         // Check for subsets.
         if self.any_subset_of(&reg) {
@@ -173,7 +173,7 @@ impl RegionStore {
         // Identify supersets
         let mut rmvec = Vec::<usize>::new();
 
-        for (inx, regx) in self.avec.iter().enumerate() {
+        for (inx, regx) in self.items.iter().enumerate() {
             if regx.is_superset_of(&reg) {
                 rmvec.push(inx);
             }
@@ -181,21 +181,21 @@ impl RegionStore {
 
         // Remove identified regions, in reverse (highest index) order
         for inx in rmvec.iter().rev() {
-            tools::remove_unordered(&mut self.avec, *inx);
+            tools::remove_unordered(&mut self.items, *inx);
         }
 
-        self.avec.push(reg);
+        self.items.push(reg);
 
         true
     }
 
     /// Subtract a group/region/square/state from a RegionStore.
     pub fn subtract_item(&self, itmx: &impl AccessStates) -> Self {
-        debug_assert!(self.is_empty() || itmx.num_bits() == self.avec[0].num_bits());
+        debug_assert!(self.is_empty() || itmx.num_bits() == self.items[0].num_bits());
 
         let mut ret_str = Self::new(vec![]);
 
-        for regy in &self.avec {
+        for regy in &self.items {
             if itmx.intersects(regy) {
                 for regz in regy.subtract(itmx) {
                     ret_str.push_nosubs(regz);
@@ -225,14 +225,14 @@ impl RegionStore {
     /// Subtract a state from a RegionStore, with results being supersets of a second state.
     /// Assumes all regions are supersets of the second state before doing the subtraction.
     pub fn subtract_state_to_supersets_of(&self, substa: &SomeState, supsta: &SomeState) -> Self {
-        debug_assert!(self.is_empty() || substa.num_bits() == self.avec[0].num_bits());
-        debug_assert!(self.is_empty() || supsta.num_bits() == self.avec[0].num_bits());
+        debug_assert!(self.is_empty() || substa.num_bits() == self.items[0].num_bits());
+        debug_assert!(self.is_empty() || supsta.num_bits() == self.items[0].num_bits());
 
         assert!(self.any_superset_of_state(substa));
 
         let mut ret_str = Self::new(vec![]);
 
-        for regy in &self.avec {
+        for regy in &self.items {
             if regy.is_superset_of(substa) {
                 for regz in regy.subtract_state_to_supersets_of(substa, supsta) {
                     ret_str.push_nosubs(regz);
@@ -250,7 +250,7 @@ impl RegionStore {
         debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
 
         let mut ret = self.clone();
-        for regx in other.avec.iter() {
+        for regx in other.items.iter() {
             ret.push_nosubs(regx.clone());
         }
         ret
@@ -261,10 +261,10 @@ impl RegionStore {
         debug_assert!(
             self.is_empty()
                 || other.is_empty()
-                || self.avec[0].num_bits() == other.avec[0].num_bits()
+                || self.items[0].num_bits() == other.items[0].num_bits()
         );
 
-        self.avec.append(&mut other.avec);
+        self.items.append(&mut other.items);
     }
 
     /// Return the intersection of two RegionStores.
@@ -274,11 +274,11 @@ impl RegionStore {
         debug_assert!(
             self.is_empty()
                 || other.is_empty()
-                || self.avec[0].num_bits() == other.avec[0].num_bits()
+                || self.items[0].num_bits() == other.items[0].num_bits()
         );
 
         let mut ret = Self::new(vec![]);
-        for regx in self.avec.iter() {
+        for regx in self.items.iter() {
             for regy in other.iter() {
                 if let Some(regz) = regx.intersection(regy) {
                     ret.push_nosubs(regz);
@@ -385,7 +385,7 @@ impl RegionStore {
     /// Return the number of bits used in a RegionStore.
     pub fn num_bits(&self) -> Option<usize> {
         if self.is_not_empty() {
-            Some(self.avec[0].num_bits())
+            Some(self.items[0].num_bits())
         } else {
             None
         }
@@ -395,13 +395,13 @@ impl RegionStore {
 impl Index<usize> for RegionStore {
     type Output = SomeRegion;
     fn index(&self, i: usize) -> &SomeRegion {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
 impl IndexMut<usize> for RegionStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.avec[i]
+        &mut self.items[i]
     }
 }
 
@@ -411,8 +411,8 @@ impl StrLen for RegionStore {
         let mut rc_len = 2;
 
         if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].strlen();
-            rc_len += (self.avec.len() - 1) * 2;
+            rc_len += self.items.len() * self.items[0].strlen();
+            rc_len += (self.items.len() - 1) * 2;
         }
 
         rc_len

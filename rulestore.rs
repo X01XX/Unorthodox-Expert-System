@@ -21,12 +21,12 @@ use std::slice::Iter;
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuleStore {
-    avec: Vec<SomeRule>,
+    items: Vec<SomeRule>,
 }
 
 impl fmt::Display for RuleStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.avec))
+        write!(f, "{}", tools::vec_string(&self.items))
     }
 }
 
@@ -50,48 +50,33 @@ impl Eq for RuleStore {}
 
 impl RuleStore {
     /// Return a new, empty, RuleStore.
-    pub fn new(avec: Vec<SomeRule>) -> Self {
-        debug_assert!(vec_same_num_bits(&avec));
+    pub fn new(items: Vec<SomeRule>) -> Self {
+        debug_assert!(vec_same_num_bits(&items));
 
-        Self { avec }
-    }
-
-    /// Return if a square result rulestore is valid
-    pub fn is_valid(&self) -> bool {
-        if self.len() < 2 {
-            return true;
-        } // single rule is valid, or not
-
-        if self.len() > 2 {
-            return false;
-        }
-
-        // Length must be 2.  The two rules are different and the initial regions are the same.
-        self.avec[0] != self.avec[1]
-            && self.avec[0].initial_region() == self.avec[1].initial_region()
+        Self { items }
     }
 
     /// Return true if a RuleStore contains a rule.
     pub fn contains(&self, rul: &SomeRule) -> bool {
         debug_assert!(self.is_empty() || self[0].num_bits() == rul.num_bits());
 
-        self.avec.contains(rul)
+        self.items.contains(rul)
     }
 
     /// Return the length of a RuleStore.
     /// Should be 0, 1 or 2.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.items.is_empty()
     }
 
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
+        !self.items.is_empty()
     }
 
     /// Add a rule to a RuleStore.
@@ -104,10 +89,7 @@ impl RuleStore {
             true
         });
 
-        assert!(self.avec.len() < 2);
-
-        self.avec.push(val);
-        assert!(self.is_valid());
+        self.items.push(val);
     }
 
     /// Return the number of bits used in RuleStore items.
@@ -115,7 +97,7 @@ impl RuleStore {
         if self.is_empty() {
             return None;
         }
-        Some(self.avec[0].num_bits())
+        Some(self.items[0].num_bits())
     }
 
     /// Return true if one non-empty RuleStore is a subset of another non-empty.
@@ -222,15 +204,15 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let rulx = self.avec[0].union(&other.avec[0])?;
+            let rulx = self.items[0].union(&other.items[0])?;
             return Some(Self::new(vec![rulx]));
         }
 
         if self.len() == 2 {
             let mut ordera = true;
 
-            let rul0 = self.avec[0].union(&other.avec[0]);
-            let rul1 = self.avec[1].union(&other.avec[1]);
+            let rul0 = self.items[0].union(&other.items[0]);
+            let rul1 = self.items[1].union(&other.items[1]);
 
             if rul0.is_none() || rul1.is_none() {
                 ordera = false;
@@ -238,8 +220,8 @@ impl RuleStore {
 
             let mut orderb = true;
 
-            let rul2 = self.avec[0].union(&other.avec[1]);
-            let rul3 = self.avec[1].union(&other.avec[0]);
+            let rul2 = self.items[0].union(&other.items[1]);
+            let rul3 = self.items[1].union(&other.items[0]);
 
             if rul2.is_none() || rul3.is_none() {
                 orderb = false;
@@ -280,15 +262,15 @@ impl RuleStore {
         }
 
         if self.len() == 1 {
-            let rulx = self.avec[0].parsed_union(&other.avec[0])?;
+            let rulx = self.items[0].parsed_union(&other.items[0])?;
             return Some(Self::new(vec![rulx]));
         }
 
         if self.len() == 2 {
             let mut ordera = true;
 
-            let rul0 = self.avec[0].parsed_union(&other.avec[0]);
-            let rul1 = self.avec[1].parsed_union(&other.avec[1]);
+            let rul0 = self.items[0].parsed_union(&other.items[0]);
+            let rul1 = self.items[1].parsed_union(&other.items[1]);
 
             if let Some(ref rulx) = rul0 {
                 if let Some(ref ruly) = rul1 {
@@ -304,8 +286,8 @@ impl RuleStore {
 
             let mut orderb = true;
 
-            let rul2 = self.avec[0].parsed_union(&other.avec[1]);
-            let rul3 = self.avec[1].parsed_union(&other.avec[0]);
+            let rul2 = self.items[0].parsed_union(&other.items[1]);
+            let rul3 = self.items[1].parsed_union(&other.items[0]);
 
             if let Some(ref rulx) = rul2 {
                 if let Some(ref ruly) = rul3 {
@@ -390,7 +372,7 @@ impl RuleStore {
 
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRule> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Return the intersection of two RuleStores.
@@ -437,16 +419,16 @@ impl RuleStore {
 
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        assert!(self.is_not_empty());
+        debug_assert!(self.is_not_empty());
         debug_assert_eq!(self.num_bits().unwrap(), regx.num_bits());
         assert!(
             regx.intersects(&self.initial_region()),
             "{}",
             format!("{} does not intersect {}", regx, self.initial_region())
         );
-        let mut rcrs = Vec::<SomeRule>::with_capacity(self.avec.len());
+        let mut rcrs = Vec::<SomeRule>::with_capacity(self.items.len());
 
-        for rulx in self.avec.iter() {
+        for rulx in self.items.iter() {
             rcrs.push(rulx.restrict_initial_region(regx));
         }
 
@@ -455,22 +437,39 @@ impl RuleStore {
 
     /// Return the initial region of the first rule in the store.
     pub fn initial_region(&self) -> SomeRegion {
-        self.avec[0].initial_region()
+        debug_assert!(self.is_not_empty());
+
+        self.items[0].initial_region()
     }
 
     /// Return true if a RuleStore's rules causes predictable change.
     pub fn causes_predictable_change(&self) -> bool {
+        debug_assert!(self.is_not_empty());
+
         if self.len() > 1 {
             return true;
         }
         self[0].causes_predictable_change()
+    }
+
+    /// Return true if all rules in the RuleStore have the same initial region.
+    pub fn rules_initial_region_eq(&self, aregion: &SomeRegion) -> bool {
+        if self.len() < 2 {
+            return true;
+        }
+        for rulx in self.iter() {
+            if rulx.initial_region() != *aregion {
+                return false;
+            }
+        }
+        true
     }
 } // end impl RuleStore
 
 impl Index<usize> for RuleStore {
     type Output = SomeRule;
     fn index(&self, i: usize) -> &SomeRule {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
@@ -479,7 +478,7 @@ impl IntoIterator for RuleStore {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.avec.into_iter()
+        self.items.into_iter()
     }
 }
 

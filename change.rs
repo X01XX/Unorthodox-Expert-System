@@ -3,6 +3,7 @@
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
@@ -185,6 +186,15 @@ impl SomeChange {
         SomeChange {
             b01: self.b01.bitwise_and_not(&regx.low_state()),
             b10: self.b10.bitwise_and(&regx.high_state()),
+        }
+    }
+
+    /// Return a sample from a rule string.
+    /// Like "Xx/XX/01/10/00/11".
+    pub fn new_from_string(str: &str) -> Result<Self, String> {
+        match SomeRule::new_from_string(str) {
+            Ok(ruls) => Ok(ruls.to_change()),
+            Err(errstr) => Err(errstr),
         }
     }
 } // end impl SomeChange

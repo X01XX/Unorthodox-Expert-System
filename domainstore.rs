@@ -54,7 +54,7 @@ pub struct InxPlan {
 /// A vector of SomeDomain structs, and SomeDomain-specifc functions.
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
-    pub domains: Vec<SomeDomain>,
+    pub items: Vec<SomeDomain>,
 
     /// Domain displayed to user.
     pub current_domain: usize,
@@ -96,7 +96,7 @@ impl DomainStore {
     /// Return a new, empty, DomainStore struct.
     pub fn new() -> Self {
         Self {
-            domains: Vec::<SomeDomain>::new(),
+            items: Vec::<SomeDomain>::new(),
             current_domain: 0,
             boredom: 0,
             boredom_limit: 0,
@@ -126,7 +126,7 @@ impl DomainStore {
         }
 
         // Check length.
-        debug_assert!(selx.len() == self.domains.len());
+        debug_assert!(selx.len() == self.items.len());
 
         // Do not allow dups.
         if self.select.contains(&selx) {
@@ -135,7 +135,7 @@ impl DomainStore {
         }
 
         // Check that each select region matches the corresponding domain number bits.
-        for (sely, domx) in selx.regions.iter().zip(self.domains.iter()) {
+        for (sely, domx) in selx.regions.iter().zip(self.items.iter()) {
             if sely.num_bits() == domx.cur_state.num_bits() {
             } else {
                 return;
@@ -218,8 +218,8 @@ impl DomainStore {
     pub fn add_domain(&mut self, cur_state: SomeState) {
         debug_assert!(self.select.is_empty());
 
-        self.domains
-            .push(SomeDomain::new(self.domains.len(), cur_state));
+        self.items
+            .push(SomeDomain::new(self.items.len(), cur_state));
     }
 
     /// Get needs for each Domain.
@@ -233,7 +233,7 @@ impl DomainStore {
 
         // Get all needs.
         let mut vecx: Vec<NeedStore> = self
-            .domains
+            .items
             .par_iter_mut() // .par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|domx| domx.get_needs())
             .collect::<Vec<NeedStore>>();
@@ -285,17 +285,17 @@ impl DomainStore {
     /// Run a plan for a given Domain.
     /// Return true if the plan ran to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> Result<usize, String> {
-        self.domains[pln.dom_id].run_plan(pln, 0)
+        self.items[pln.dom_id].run_plan(pln, 0)
     }
 
     /// Take an action to satisfy a need,
     pub fn take_action_need(&mut self, nd_inx: usize) {
-        self.domains[self.needs[nd_inx].dom_id().unwrap()].take_action_need(&self.needs[nd_inx]);
+        self.items[self.needs[nd_inx].dom_id().unwrap()].take_action_need(&self.needs[nd_inx]);
     }
 
     /// Return a reference to the current state of a given Domain index
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        self.domains[dmxi].current_state()
+        self.items[dmxi].current_state()
     }
     /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
@@ -508,9 +508,7 @@ impl DomainStore {
             if dom_idx == dom_id {
                 regs.push(targ.clone());
             } else {
-                regs.push(SomeRegion::new(vec![self.domains[dom_idx]
-                    .cur_state
-                    .clone()]));
+                regs.push(SomeRegion::new(vec![self.items[dom_idx].cur_state.clone()]));
             }
         }
         regs
@@ -652,7 +650,7 @@ impl DomainStore {
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
         //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
-        self.domains[dom_id].make_plans2(from_region, goal_region, within)
+        self.items[dom_id].make_plans2(from_region, goal_region, within)
     }
 
     /// Choose a plan from a vector of PlanStare references, for vector of PlanStores.
@@ -765,14 +763,14 @@ impl DomainStore {
 
     /// Return the length, the number of domains.
     pub fn len(&self) -> usize {
-        self.domains.len()
+        self.items.len()
     }
 
     /// Return a vector of domain current state references, in domain number order.
     pub fn all_current_states(&self) -> StateStoreCorr {
         let mut all_states = StateStoreCorr::with_capacity(self.len());
 
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             all_states.push(domx.current_state().clone());
         }
 
@@ -783,7 +781,7 @@ impl DomainStore {
     pub fn all_current_regions(&self) -> RegionStoreCorr {
         let mut all_regions = RegionStoreCorr::with_capacity(self.len());
 
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             all_regions.push(SomeRegion::new(vec![domx.current_state().clone()]));
         }
 
@@ -885,7 +883,7 @@ impl DomainStore {
     /// Return a vector of aggregate change references, per domain.
     pub fn aggregate_changes(&self) -> Vec<&SomeChange> {
         let mut change_vec = Vec::<&SomeChange>::with_capacity(self.len());
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             if let Some(changes) = &domx.aggregate_changes() {
                 change_vec.push(changes);
             }
@@ -997,9 +995,9 @@ impl DomainStore {
 
         print!("\nCurrent Domain: {} of {}", dom_id, self.len(),);
 
-        println!("\nActs: {}", self.domains[dom_id].actions);
+        println!("\nActs: {}", self.items[dom_id].actions);
 
-        let cur_state = &self.domains[dom_id].current_state();
+        let cur_state = &self.items[dom_id].current_state();
 
         println!("\nDom: {dom_id} Current State: {cur_state}");
     }
@@ -1039,7 +1037,7 @@ impl DomainStore {
 
     /// Change the current display domain.
     pub fn change_domain(&mut self, dom_id: usize) {
-        assert!(dom_id < self.domains.len());
+        assert!(dom_id < self.items.len());
 
         self.current_domain = dom_id;
     }
@@ -1563,7 +1561,7 @@ impl DomainStore {
     fn formatted_string(&self) -> String {
         let mut rc_str = String::from("[");
 
-        for (inx, domx) in self.domains.iter().enumerate() {
+        for (inx, domx) in self.items.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
@@ -1577,7 +1575,7 @@ impl DomainStore {
     /// Return the total number of groups in all the domains.
     pub fn number_groups(&self) -> usize {
         let mut tot = 0;
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             tot += domx.number_groups();
         }
         tot
@@ -1586,7 +1584,7 @@ impl DomainStore {
     /// Return the total number of groups expected in all the domains.
     pub fn number_groups_expected(&self) -> usize {
         let mut tot = 0;
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             tot += domx.number_groups_expected();
         }
         tot
@@ -1636,7 +1634,7 @@ impl DomainStore {
     /// Return the maximum possible regions.
     pub fn maximum_regions(&self) -> RegionStoreCorr {
         let mut ret_regs = RegionStoreCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
-        for domx in self.domains.iter() {
+        for domx in self.items.iter() {
             ret_regs.push(SomeRegion::new(vec![
                 domx.cur_state.new_high(),
                 domx.cur_state.new_low(),
@@ -1649,13 +1647,13 @@ impl DomainStore {
 impl Index<usize> for DomainStore {
     type Output = SomeDomain;
     fn index(&self, i: usize) -> &SomeDomain {
-        &self.domains[i]
+        &self.items[i]
     }
 }
 
 impl IndexMut<usize> for DomainStore {
     fn index_mut(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.domains[i]
+        &mut self.items[i]
     }
 }
 
@@ -1670,7 +1668,7 @@ mod tests {
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StateStoreCorr) -> usize {
         select
-            .regionstores
+            .items
             .iter()
             .map(|regsx| usize::from(regsx.regions.is_superset_states(stas)))
             .sum()
@@ -2603,7 +2601,7 @@ mod tests {
 
         regstr1.push(neg_reg1.clone());
 
-        // Add select regionstores.
+        // Add selectregions.
         dmxs.add_select(SelectRegions::new(regstr1.clone(), -1));
 
         let mut regstr2 = RegionStoreCorr::with_capacity(1);

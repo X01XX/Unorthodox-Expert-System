@@ -927,8 +927,7 @@ mod tests {
         // All possible change pass-through conditions can be tested at once.
         let rul1 = SomeRule::new_from_string("01/01/01/10/10/10")?;
         let rul2 = SomeRule::new_from_string("11/X1/XX/00/X0/XX")?;
-        let msk1 = SomeMask::new_from_string("m0b111111")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        let chg1 = SomeChange::new_from_string("Xx/Xx/Xx/Xx/Xx/Xx")?;
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Change non pass-through conditions must be tested one-by-one.
@@ -936,24 +935,19 @@ mod tests {
         // Test 0->1 non pass-through conditions.
         let rul1 = SomeRule::new_from_string("01")?;
         let rul2 = SomeRule::new_from_string("10")?;
-        let msk1 = SomeMask::new_from_string("m0b1")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        let chg1 = SomeChange::new_from_string("Xx")?;
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("00")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("01")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X0")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("Xx")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Test 1->0 non pass-through conditions.
@@ -962,19 +956,15 @@ mod tests {
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("11")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("10")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X1")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("Xx")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         Ok(())
@@ -1267,8 +1257,7 @@ mod tests {
 
     #[test]
     fn mutually_exclusive() -> Result<(), String> {
-        let msk1 = SomeMask::new_from_string("0b10")?;
-        let chg1 = SomeChange::new(msk1.clone(), msk1.clone());
+        let chg1 = SomeChange::new_from_string("Xx/XX")?;
 
         let rul1 = SomeRule::new_from_string("01/01")?;
         let rul2 = SomeRule::new_from_string("11/10")?;

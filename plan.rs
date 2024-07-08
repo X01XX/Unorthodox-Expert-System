@@ -170,11 +170,18 @@ impl SomePlan {
     }
 
     /// Add a step to a SomePlan.
-    pub fn push(&mut self, stepx: SomeStep) {
+    pub fn push(&mut self, stepx: SomeStep) -> Result<(), String> {
         if self.is_not_empty() {
-            assert!(self.result_region() == &stepx.initial, "plan {self}");
+            if self.result_region() != &stepx.initial {
+                return Err(format!("plan {self} does not intersect step {stepx}"));
+            }
+            if self.any_initial_intersects(&stepx.result) {
+                return Err(format!("plan {self} step {stepx} circles back"));
+            }
         }
+
         self.steps.push(stepx);
+        Ok(())
     }
 
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
@@ -191,17 +198,21 @@ impl SomePlan {
         let regx = reg1.intersection(reg2)?;
 
         let mut steps1 = self.restrict_result_region(&regx)?;
+        //println!("steps1 {steps1}");
 
         let steps2 = other.restrict_initial_region(&regx)?;
+        //println!("steps2 {steps2}");
 
-        // Check for backtracking.
-        for stepx in other.iter() {
-            if self.contains_initial(&stepx.result) {
-                return None;
+        // Push each step to check each step for problems.
+        for stepx in steps2.steps.into_iter() {
+            match steps1.push(stepx) {
+                Ok(()) => continue,
+                Err(_errstr) => {
+                    //println!("    push failed {errstr}");
+                    return None;
+                }
             }
         }
-
-        steps1.append(steps2);
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
         Some(steps1)
@@ -292,9 +303,9 @@ impl SomePlan {
     }
 
     /// Return true if a plan contians an initial region.
-    fn contains_initial(&self, regx: &SomeRegion) -> bool {
+    fn any_initial_intersects(&self, regx: &SomeRegion) -> bool {
         for stepx in self.iter() {
-            if stepx.initial == *regx {
+            if stepx.initial.intersects(regx) {
                 return true;
             }
         }

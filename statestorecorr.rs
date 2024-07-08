@@ -15,7 +15,7 @@ use std::fmt;
 
 impl fmt::Display for StateStoreCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.avec))
+        write!(f, "{}", tools::vec_string(&self.items))
     }
 }
 
@@ -23,58 +23,58 @@ impl fmt::Display for StateStoreCorr {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct StateStoreCorr {
     /// A vector of states.
-    avec: Vec<SomeState>,
+    items: Vec<SomeState>,
 }
 
 impl StateStoreCorr {
     /// Return a new, empty, StateStoreCorr instance.
-    pub fn new(avec: Vec<SomeState>) -> Self {
-        Self { avec }
+    pub fn new(items: Vec<SomeState>) -> Self {
+        Self { items }
     }
 
     /// Return a new StateStoreCorr instance, empty, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
-            avec: Vec::<SomeState>::with_capacity(num),
+            items: Vec::<SomeState>::with_capacity(num),
         }
     }
 
     /// Return the number of states.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Add a state.
     pub fn push(&mut self, val: SomeState) {
-        self.avec.push(val);
+        self.items.push(val);
     }
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.items.is_empty()
     }
 
     /// Return an immuable iterator.
     pub fn iter(&self) -> Iter<SomeState> {
-        self.avec.iter()
+        self.items.iter()
     }
 } // end impl StateStoreCorr
 
 impl Index<usize> for StateStoreCorr {
     type Output = SomeState;
     fn index(&self, i: usize) -> &SomeState {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
 impl IndexMut<usize> for StateStoreCorr {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.avec[i]
+        &mut self.items[i]
     }
 }
 
 impl AvecRef for StateStoreCorr {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
-        &self.avec
+        &self.items
     }
 }

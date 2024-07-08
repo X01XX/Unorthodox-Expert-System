@@ -32,7 +32,7 @@ impl fmt::Display for ActionStore {
 /// A vector of SomeAction structs, and SomeAction-specific functions.
 pub struct ActionStore {
     /// A vector of SomeAction structs
-    pub avec: Vec<SomeAction>,
+    pub items: Vec<SomeAction>,
     /// A summary of all currently possible group-defined bit changes.
     /// This is used to limit needs under some circumstances.
     /// For example, a bit changes from zero to one, but no reverse change
@@ -42,27 +42,27 @@ pub struct ActionStore {
 
 impl ActionStore {
     /// Return a new, empty ActionStore.
-    pub fn new(avec: Vec<SomeAction>) -> Self {
+    pub fn new(items: Vec<SomeAction>) -> Self {
         ActionStore {
-            avec,
+            items,
             aggregate_changes: None,
         }
     }
 
     /// Return the length of an ActionStore.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Add a new action to the ActionStore.
     pub fn add_action(&mut self, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) {
-        self.avec
-            .push(SomeAction::new(self.avec.len(), dom_id, cur_state, rules));
+        self.items
+            .push(SomeAction::new(self.items.len(), dom_id, cur_state, rules));
     }
 
     /// Check limited flag due to new changes.
     pub fn check_limited(&mut self, max_reg: &SomeRegion) {
-        for actx in self.avec.iter_mut() {
+        for actx in self.items.iter_mut() {
             actx.check_limited(max_reg);
         }
     }
@@ -83,7 +83,7 @@ impl ActionStore {
 
         // Run a get_needs thread for each action
         let vecx: Vec<NeedStore> = self
-            .avec
+            .items
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
             .map(|actx| actx.get_needs(cur_state, dom_id, &max_reg))
             .collect::<Vec<NeedStore>>();
@@ -103,7 +103,7 @@ impl ActionStore {
     pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
         // Run a thread for each action
         let stps: Vec<StepStore> = self
-            .avec
+            .items
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
             .map(|actx| actx.get_steps(achange, within))
             .collect::<Vec<StepStore>>();
@@ -120,7 +120,7 @@ impl ActionStore {
 
     /// Return an iterator
     pub fn iter(&self) -> Iter<SomeAction> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Return the expected maximum reachable region, based on the current state
@@ -137,7 +137,7 @@ impl ActionStore {
     pub fn calc_aggregate_changes(&mut self) {
         // Check for any action agg_chgs_updated set to true.
         let mut no_recalc = true;
-        for actx in &self.avec {
+        for actx in &self.items {
             if actx.agg_chgs_updated() {
                 no_recalc = false;
                 break;
@@ -152,7 +152,7 @@ impl ActionStore {
         // Recalc ActionStore aggregate_changes.
         let mut new_chgs: Option<SomeChange> = None;
 
-        for actx in &self.avec {
+        for actx in &self.items {
             if let Some(act_changes) = actx.aggregate_changes() {
                 if let Some(tot_changes) = new_chgs {
                     new_chgs = Some(tot_changes.union(act_changes));
@@ -180,7 +180,7 @@ impl ActionStore {
         };
 
         // Reset agg_chgs_updated flags, as needed.
-        for actx in &mut self.avec {
+        for actx in &mut self.items {
             if actx.agg_chgs_updated() {
                 actx.reset_agg_chgs_updated();
             }
@@ -197,7 +197,7 @@ impl ActionStore {
     fn formatted_string(&self) -> String {
         let mut rc_str = String::new();
 
-        for actx in &self.avec {
+        for actx in &self.items {
             rc_str.push_str(&format!("\n  {}", &actx));
         }
 
@@ -207,7 +207,7 @@ impl ActionStore {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed, cur_state: &SomeState) -> SomeSample {
-        self.avec[ndx.act_id()].take_action_need(cur_state, ndx)
+        self.items[ndx.act_id()].take_action_need(cur_state, ndx)
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -217,31 +217,31 @@ impl ActionStore {
     /// e.g. ss  0  s0b1010  s0b1111
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
         //println!("max_reg {max_reg}");
-        self.avec[act_id].eval_sample_arbitrary(smpl);
+        self.items[act_id].eval_sample_arbitrary(smpl);
     }
 
     /// Take an action with the current state.
     /// Return a sample.
     pub fn take_action_step(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        self.avec[act_id].take_action_step(cur_state)
+        self.items[act_id].take_action_step(cur_state)
     }
 
     /// Take an action with the current state, store the sample.
     /// Return a sample.
     pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        self.avec[act_id].take_action_arbitrary(cur_state)
+        self.items[act_id].take_action_arbitrary(cur_state)
     }
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {
     type Output = SomeAction;
     fn index(&self, i: usize) -> &SomeAction {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
 impl IndexMut<usize> for ActionStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.avec[i]
+        &mut self.items[i]
     }
 }

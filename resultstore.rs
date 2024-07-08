@@ -91,7 +91,7 @@ use std::fmt;
 
 impl fmt::Display for ResultStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.astore))
+        write!(f, "{}", tools::vec_string(&self.items))
     }
 }
 
@@ -101,7 +101,7 @@ type Resultint = usize;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
-    astore: Vec<SomeState>,
+    items: Vec<SomeState>,
     /// Number results seen so far.
     num_results: Resultint,
 }
@@ -112,16 +112,16 @@ impl ResultStore {
         debug_assert!(st.len() == 1);
 
         let mut ret = Self {
-            astore: Vec::<SomeState>::with_capacity(MAX_RESULTS),
+            items: Vec::<SomeState>::with_capacity(MAX_RESULTS),
             num_results: st.len(),
         };
-        ret.astore.append(&mut st);
+        ret.items.append(&mut st);
         ret
     }
 
     /// Return the number of results in the store.
     pub fn len(&self) -> usize {
-        self.astore.len()
+        self.items.len()
     }
 
     /// Add a result to a circular buffer.
@@ -129,10 +129,10 @@ impl ResultStore {
     pub fn add_result(&mut self, st: SomeState) -> Pn {
         debug_assert_eq!(st.num_bits(), self.num_bits());
 
-        if self.astore.len() < MAX_RESULTS {
-            self.astore.push(st);
+        if self.items.len() < MAX_RESULTS {
+            self.items.push(st);
         } else {
-            self.astore[self.num_results % MAX_RESULTS] = st;
+            self.items[self.num_results % MAX_RESULTS] = st;
         }
 
         // Wrap around check.
@@ -147,17 +147,17 @@ impl ResultStore {
 
     /// Return the first result.
     pub fn first(&self) -> &SomeState {
-        &self.astore[0]
+        &self.items[0]
     }
 
     /// Return the second result.
     pub fn second(&self) -> &SomeState {
-        &self.astore[1]
+        &self.items[1]
     }
 
     /// Return the most recent result.
     pub fn most_recent_result(&self) -> &SomeState {
-        &self.astore[(self.num_results - 1) % MAX_RESULTS]
+        &self.items[(self.num_results - 1) % MAX_RESULTS]
     }
 
     /// Calculate the Pattern Number, after adding a result.
@@ -165,8 +165,8 @@ impl ResultStore {
     fn calc_pn(&self) -> Pn {
         // Check for Pn::One.
         let mut pn_one = true;
-        for inx in 1..self.astore.len() {
-            if self.astore[inx] != self.astore[0] {
+        for inx in 1..self.items.len() {
+            if self.items[inx] != self.items[0] {
                 pn_one = false;
             }
         }
@@ -175,11 +175,11 @@ impl ResultStore {
         }
 
         // Check for not Pn::Two
-        if self.astore.len() > 2 {
-            if self.astore[0] != self.astore[2] {
+        if self.items.len() > 2 {
+            if self.items[0] != self.items[2] {
                 return Pn::Unpredictable;
             }
-            if self.astore.len() > 3 && self.astore[1] != self.astore[3] {
+            if self.items.len() > 3 && self.items[1] != self.items[3] {
                 return Pn::Unpredictable;
             }
         }
@@ -194,7 +194,7 @@ impl ResultStore {
 
     /// Return the number of bits used by ResultStore items.
     pub fn num_bits(&self) -> usize {
-        self.astore[0].num_bits()
+        self.items[0].num_bits()
     }
 } // end impl ResultStore
 

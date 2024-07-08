@@ -58,17 +58,19 @@ impl SomeGroup {
         //   regionx
         //);
         debug_assert!(if let Some(rulstr) = &ruls {
-            rulstr.is_empty() || rulstr.num_bits().unwrap() == regionx.num_bits()
+            rulstr.is_not_empty()
+                && rulstr.len() < 3
+                && rulstr.num_bits().unwrap() == regionx.num_bits()
+                && rulstr.rules_initial_region_eq(&regionx)
         } else {
             true
         });
 
+        // Determine Pn.
         let mut pnx = Pn::One;
         if ruls.is_none() {
             pnx = Pn::Unpredictable;
         } else if let Some(xruls) = ruls.as_ref() {
-            assert!(!xruls.is_empty() && xruls.is_valid());
-            assert!(regionx == xruls.initial_region());
             if xruls.len() == 2 {
                 pnx = Pn::Two;
             }

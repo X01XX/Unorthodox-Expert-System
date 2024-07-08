@@ -33,27 +33,27 @@ impl fmt::Display for PlanStore {
 /// to reach a desired position, without a major mess-up inbetween.
 pub struct PlanStore {
     /// A vector of SomePlan instances.
-    pub avec: Vec<SomePlan>,
+    pub items: Vec<SomePlan>,
 }
 
 impl PlanStore {
     /// Return a new PlanStore instance.
     /// If more than one plan, plans will be run in order.
-    pub fn new(avec: Vec<SomePlan>) -> Self {
-        Self { avec }
+    pub fn new(items: Vec<SomePlan>) -> Self {
+        Self { items }
     }
 
     /// Return the length of the SomePlan vector.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Return true if the store does not contain at least one non-empty plan.
     pub fn is_empty(&self) -> bool {
-        if self.avec.is_empty() {
+        if self.items.is_empty() {
             return true;
         }
-        for planx in self.avec.iter() {
+        for planx in self.items.iter() {
             if planx.is_not_empty() {
                 return false;
             }
@@ -63,13 +63,13 @@ impl PlanStore {
 
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
+        !self.items.is_empty()
     }
 
     /// Return the index of the last plan with a given domain number.
     fn last_dom(&self, dom_id: usize) -> Option<usize> {
         let mut ret: Option<usize> = None;
-        for (inx, planx) in self.avec.iter().enumerate() {
+        for (inx, planx) in self.items.iter().enumerate() {
             if planx.dom_id == dom_id {
                 ret = Some(inx);
             }
@@ -79,8 +79,8 @@ impl PlanStore {
 
     /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
-        if !self.avec.contains(&planx) {
-            self.avec.push(planx);
+        if !self.items.contains(&planx) {
+            self.items.push(planx);
         }
     }
 
@@ -95,9 +95,9 @@ impl PlanStore {
         // Check if successive plans of the same domain can be combined.
         if !self.is_empty() {
             let inx = self.len() - 1;
-            if self.avec[inx].dom_id == planx.dom_id {
-                if let Some(plany) = self.avec[inx].link(&planx) {
-                    self.avec[inx] = plany;
+            if self.items[inx].dom_id == planx.dom_id {
+                if let Some(plany) = self.items[inx].link(&planx) {
+                    self.items[inx] = plany;
                     return true;
                 } else {
                     return false;
@@ -109,7 +109,7 @@ impl PlanStore {
         if let Some(inx) = self.last_dom(planx.dom_id) {
             if self[inx].result_region() == planx.initial_region() {
             } else if self[inx].result_region().intersects(planx.initial_region()) {
-                self.avec.push(
+                self.items.push(
                     planx
                         .restrict_initial_region(self[inx].result_region())
                         .unwrap(),
@@ -122,19 +122,19 @@ impl PlanStore {
             }
         }
 
-        self.avec.push(planx);
+        self.items.push(planx);
         //println!("new planstore {self}");
         true
     }
 
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomePlan> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Return a reference to the las plan.
     pub fn last(&self) -> Option<&SomePlan> {
-        self.avec.last()
+        self.items.last()
     }
 
     /// Return a more restricted display version of a PlanStore.
@@ -143,7 +143,7 @@ impl PlanStore {
 
         rc_str.push('(');
 
-        for (inx, planx) in self.avec.iter().enumerate() {
+        for (inx, planx) in self.items.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
@@ -157,7 +157,7 @@ impl PlanStore {
     /// Return the number of steps in the plans of the PlanStore.
     pub fn number_steps(&self) -> usize {
         let mut ret = 0;
-        for planx in &self.avec {
+        for planx in &self.items {
             ret += planx.len();
         }
         ret
@@ -169,23 +169,22 @@ impl PlanStore {
 
         let mut rc_str = String::with_capacity(self.strlen());
 
-        rc_str.push_str("\n(");
-
-        for planx in &self.avec {
+        rc_str.push('[');
+        for planx in &self.items {
             if flg == 1 {
                 rc_str.push_str(",\n ");
             }
             rc_str.push_str(&planx.to_string());
             flg = 1;
         }
-        rc_str.push(')');
+        rc_str.push(']');
 
         rc_str
     }
 
     /// Extend a StepStore by push_link another StepStore.
     pub fn append_link(&mut self, other: Self) -> bool {
-        for planx in other.avec {
+        for planx in other.items {
             if !self.push_link(planx) {
                 return false;
             }
@@ -195,7 +194,7 @@ impl PlanStore {
 
     /// Extend a StepStore by pushing another StepStore.
     pub fn append(&mut self, other: Self) {
-        for planx in other.avec {
+        for planx in other.items {
             self.push(planx);
         }
     }
@@ -215,7 +214,7 @@ impl PlanStore {
     /// Return number bits changed running plans in store.
     pub fn num_bits_changed(&self) -> usize {
         let mut ret_num = 0;
-        for planx in self.avec.iter() {
+        for planx in self.items.iter() {
             if planx.is_empty() {
                 continue;
             }
@@ -230,7 +229,7 @@ impl PlanStore {
     /// a domain.
     pub fn result_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
         let mut ret_regs = default.clone();
-        for planx in self.avec.iter() {
+        for planx in self.items.iter() {
             if planx.is_empty() {
                 continue;
             }
@@ -245,7 +244,7 @@ impl PlanStore {
     /// a domain.
     pub fn initial_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
         let mut ret_regs = default.clone();
-        for planx in self.avec.iter() {
+        for planx in self.items.iter() {
             if planx.is_empty() {
                 continue;
             }
@@ -257,7 +256,7 @@ impl PlanStore {
     /// Validate a PlanStore, given start and goal regions.
     pub fn validate(&self, start_regs: &RegionStoreCorr, goal_regs: &RegionStoreCorr) -> bool {
         let mut cur_regs = start_regs.clone();
-        for planx in self.avec.iter() {
+        for planx in self.items.iter() {
             if planx.is_empty() {
                 continue;
             }
@@ -292,7 +291,7 @@ impl PlanStore {
     pub fn link(&self, other: &Self) -> Option<Self> {
         let mut ret_plans = self.clone();
 
-        for planx in other.avec.iter() {
+        for planx in other.items.iter() {
             if planx.is_empty() {
                 continue;
             }
@@ -323,44 +322,42 @@ impl PlanStore {
 
     /// Return true if a PlanStore contains a plan.
     pub fn contains(&self, planx: &SomePlan) -> bool {
-        self.avec.contains(planx)
+        self.items.contains(planx)
     }
 
     /// Return a mutable iterator
     pub fn iter_mut(&mut self) -> IterMut<SomePlan> {
-        self.avec.iter_mut()
+        self.items.iter_mut()
     }
 
     /// Remove a plan from a PlanStore
     pub fn remove(&mut self, inx: usize) -> SomePlan {
-        assert!(inx < self.avec.len(), "Index out of bounds");
+        assert!(inx < self.items.len(), "Index out of bounds");
 
-        let last_inx = self.avec.len() - 1;
+        let last_inx = self.items.len() - 1;
 
         if inx == last_inx {
-            return self.avec.pop().unwrap();
+            return self.items.pop().unwrap();
         }
 
-        self.avec.swap(inx, last_inx);
-        self.avec.pop().unwrap()
+        self.items.swap(inx, last_inx);
+        self.items.pop().unwrap()
     }
 } // end impl PlanStore
 
 impl Index<usize> for PlanStore {
     type Output = SomePlan;
     fn index(&self, i: usize) -> &SomePlan {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for PlanStore {
     fn strlen(&self) -> usize {
-        let mut cnt = 2; // parens
-        for (inx, planx) in self.avec.iter().enumerate() {
-            if inx == 0 {
-                cnt += 1; // newline
-            } else {
+        let mut cnt = 2; // brackets.
+        for (inx, planx) in self.items.iter().enumerate() {
+            if inx > 0 {
                 cnt += 3; // comma newline space
             }
             cnt += planx.strlen();
@@ -374,7 +371,7 @@ impl IntoIterator for PlanStore {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.avec.into_iter()
+        self.items.into_iter()
     }
 }
 

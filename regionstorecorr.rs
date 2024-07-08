@@ -14,21 +14,21 @@ use std::slice::Iter;
 
 impl fmt::Display for RegionStoreCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.avec))
+        write!(f, "{}", tools::vec_string(&self.items))
     }
 }
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A vector of regions, corresponding to domains in a vector.
 pub struct RegionStoreCorr {
-    pub avec: Vec<SomeRegion>,
+    pub items: Vec<SomeRegion>,
 }
 
 impl PartialEq for RegionStoreCorr {
     fn eq(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
 
-        for (regx, regy) in self.avec.iter().zip(other.iter()) {
+        for (regx, regy) in self.items.iter().zip(other.iter()) {
             if regx != regy {
                 return false;
             }
@@ -40,40 +40,40 @@ impl Eq for RegionStoreCorr {}
 
 impl RegionStoreCorr {
     /// Return a new, RegionStoreCorr.
-    pub fn new(avec: Vec<SomeRegion>) -> Self {
-        Self { avec }
+    pub fn new(items: Vec<SomeRegion>) -> Self {
+        Self { items }
     }
 
     /// Return a new RegionStoreCorr instance, empty, with a specified capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
-            avec: Vec::<SomeRegion>::with_capacity(num),
+            items: Vec::<SomeRegion>::with_capacity(num),
         }
     }
 
     /// Return the number of regions.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.items.is_empty()
     }
 
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
+        !self.items.is_empty()
     }
 
     /// Add a region to the region vector.
     pub fn push(&mut self, val: SomeRegion) {
-        self.avec.push(val);
+        self.items.push(val);
     }
 
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRegion> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Return True if a RegionStoreCorr is a superset of all corresponding states in.
@@ -253,13 +253,13 @@ impl RegionStoreCorr {
 impl Index<usize> for RegionStoreCorr {
     type Output = SomeRegion;
     fn index(&self, i: usize) -> &SomeRegion {
-        &self.avec[i]
+        &self.items[i]
     }
 }
 
 impl IndexMut<usize> for RegionStoreCorr {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.avec[i]
+        &mut self.items[i]
     }
 }
 
@@ -269,8 +269,8 @@ impl StrLen for RegionStoreCorr {
         let mut rc_len = 2;
 
         if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].strlen();
-            rc_len += (self.avec.len() - 1) * 2;
+            rc_len += self.items.len() * self.items[0].strlen();
+            rc_len += (self.items.len() - 1) * 2;
         }
 
         rc_len
@@ -279,7 +279,7 @@ impl StrLen for RegionStoreCorr {
 
 impl AvecRef for RegionStoreCorr {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
-        &self.avec
+        &self.items
     }
 }
 

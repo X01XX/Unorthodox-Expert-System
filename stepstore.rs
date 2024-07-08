@@ -21,37 +21,37 @@ impl fmt::Display for StepStore {
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct StepStore {
     /// A vector for steps.
-    pub avec: Vec<SomeStep>,
+    pub items: Vec<SomeStep>,
 }
 
 impl StepStore {
     /// Return a new, empty, StepStore.
-    pub fn new(avec: Vec<SomeStep>) -> Self {
-        debug_assert!(vec_same_num_bits(&avec));
+    pub fn new(items: Vec<SomeStep>) -> Self {
+        debug_assert!(vec_same_num_bits(&items));
 
-        Self { avec }
+        Self { items }
     }
 
     /// Return a new, empty, StepStore, with an expected capacity.
     pub fn with_capacity(num: usize) -> Self {
         Self {
-            avec: Vec::<SomeStep>::with_capacity(num),
+            items: Vec::<SomeStep>::with_capacity(num),
         }
     }
 
     /// Return the number of steps in a StepStore.
     pub fn len(&self) -> usize {
-        self.avec.len()
+        self.items.len()
     }
 
     /// Return true if the store is empty.
     pub fn is_empty(&self) -> bool {
-        self.avec.is_empty()
+        self.items.is_empty()
     }
 
     /// Return true if the store is not empty.
     pub fn is_not_empty(&self) -> bool {
-        !self.avec.is_empty()
+        !self.items.is_empty()
     }
 
     /// Add a step to a StepStore.
@@ -62,24 +62,24 @@ impl StepStore {
             true
         });
 
-        self.avec.push(val);
+        self.items.push(val);
     }
 
     /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
         debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
 
-        self.avec.append(&mut other.avec);
+        self.items.append(&mut other.items);
     }
 
     /// Return an immutable iterator for a StepStore.
     pub fn iter(&self) -> Iter<SomeStep> {
-        self.avec.iter()
+        self.items.iter()
     }
 
     /// Reverse the order of steps in a StepStore.
     pub fn reverse_order(&mut self) {
-        self.avec.reverse();
+        self.items.reverse();
     }
 
     /// Return a string representing a StepStore.
@@ -88,7 +88,7 @@ impl StepStore {
         rc_str.push_str(prefix);
         rc_str.push('[');
 
-        for (inx, stpx) in self.avec.iter().enumerate() {
+        for (inx, stpx) in self.items.iter().enumerate() {
             if inx > 0 {
                 rc_str.push_str(", ");
             }
@@ -135,7 +135,7 @@ impl StepStore {
         }
 
         // Add step index numbers to the return vector.
-        for stepx in &self.avec {
+        for stepx in &self.items {
             let edge_mask = stepx.initial.edge_mask();
 
             // Check for matching b01 changes
@@ -168,7 +168,7 @@ impl StepStore {
 
         let tmp_mask = self[0].initial.first_state().to_mask().new_low();
         let mut schg = SomeChange::new(tmp_mask.clone(), tmp_mask);
-        for stpx in &self.avec {
+        for stpx in &self.items {
             schg = schg.union(&stpx.rule);
         }
 
@@ -229,7 +229,7 @@ impl StepStore {
         if self.is_empty() {
             return None;
         }
-        Some(self.avec[0].num_bits())
+        Some(self.items[0].num_bits())
     }
 } // end impl StepStore
 
@@ -320,7 +320,16 @@ fn step_vecs_sequence_blocks_changes(
 impl Index<usize> for StepStore {
     type Output = SomeStep;
     fn index(&self, i: usize) -> &SomeStep {
-        &self.avec[i]
+        &self.items[i]
+    }
+}
+
+impl IntoIterator for StepStore {
+    type Item = SomeStep;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
     }
 }
 
@@ -330,8 +339,8 @@ impl StrLen for StepStore {
         let mut rc_len = 2;
 
         if self.is_not_empty() {
-            rc_len += self.avec.len() * self.avec[0].strlen();
-            rc_len += (self.avec.len() - 1) * 2;
+            rc_len += self.items.len() * self.items[0].strlen();
+            rc_len += (self.items.len() - 1) * 2;
         }
 
         rc_len
