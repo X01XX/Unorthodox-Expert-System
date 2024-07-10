@@ -134,7 +134,7 @@ impl SelectRegionsStore {
     }
 
     /// Return a Vector of SelectRegions not supersets of a given RegionStoreCorr.
-    pub fn not_supersets_of(&self, regs: &RegionStoreCorr) -> Vec<&SelectRegions> {
+    pub fn _not_supersets_of(&self, regs: &RegionStoreCorr) -> Vec<&SelectRegions> {
         debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
 
         self.items
@@ -159,26 +159,14 @@ impl SelectRegionsStore {
     pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
         debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
 
-        let mut value: isize = 0;
+        let mut net_value: isize = 0;
+
         for regsx in self.items.iter() {
             if regsx.regions.is_superset_of(regs) {
-                value += regsx.value;
+                net_value += regsx.net_value;
             }
         }
-        value
-    }
-
-    /// Return the sum of values of negative SelectRegions that are superset of a given RegionStoreCorr.
-    pub fn rate_by_negative_regions(&self, regs: &RegionStoreCorr) -> isize {
-        debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
-
-        let mut value: isize = 0;
-        for regsx in self.items.iter() {
-            if regsx.value < 0 && regsx.regions.is_superset_of(regs) {
-                value += regsx.value;
-            }
-        }
-        value
+        net_value
     }
 
     /// Return true if any SelectRegion is a region superset of another..
@@ -206,13 +194,31 @@ impl SelectRegionsStore {
     }
 
     /// Return the intersection of a SelectRegionStore and a Selectregions instance.
-    pub fn intersection(&self, slrx: &SelectRegions) -> Option<Self> {
+    pub fn _intersection_item(&self, slrx: &SelectRegions) -> Option<Self> {
         debug_assert!(self.is_empty() || slrx.len() == self.items[0].len());
 
         let mut ret = Self::new(vec![]);
         for inx in 0..self.len() {
             if let Some(regs) = self[inx].intersection(slrx) {
                 ret.push_nosubs(regs);
+            }
+        }
+        if ret.is_empty() {
+            return None;
+        }
+        Some(ret)
+    }
+
+    /// Return the intersection of a SelectRegionStore and a Selectregions instance.
+    pub fn intersection(&self, other: &SelectRegionsStore) -> Option<Self> {
+        debug_assert!(self.is_empty());
+
+        let mut ret = Self::new(vec![]);
+        for inx in 0..(self.len() - 1) {
+            for iny in (inx + 1)..self.len() {
+                if let Some(regs) = self[inx].intersection(&other[iny]) {
+                    ret.push_nosubs(regs);
+                }
             }
         }
         if ret.is_empty() {
@@ -261,7 +267,7 @@ impl SelectRegionsStore {
         debug_assert!(self.is_empty() || slrx.len() == self.items[0].len());
 
         for regstrx in &self.items {
-            if regstrx.regions == slrx.regions {
+            if regstrx == slrx {
                 return true;
             }
         }
@@ -294,8 +300,8 @@ impl SelectRegionsStore {
                 if subtrahend.regions == regy.regions {
                     continue;
                 }
-                for regz in regy.regions.subtract(&subtrahend.regions) {
-                    ret_str.push_nosubs(SelectRegions::new(regz, regy.value));
+                for regsz in regy.subtract(subtrahend) {
+                    ret_str.push_nosubs(regsz);
                 }
             } else {
                 ret_str.push_nosubs(regy.clone());
@@ -341,13 +347,18 @@ impl SelectRegionsStore {
             for (inx, selx) in cur_remainders.iter().enumerate() {
                 // Init selx remainders store.
                 let mut remx = Self::new(vec![selx.clone()]);
+                //println!("subtracting ints from {selx}");
 
                 // Subtract anything that intersects selx.
                 for (iny, sely) in cur_remainders.iter().enumerate() {
                     if iny != inx && remx.any_intersection_of(sely) {
+                        //print!("    {remx} - {sely} = ");
                         remx = remx.subtract_selectregions(sely);
+                        //print!("{remx}");
+                        //println!(" ");
                     }
                 }
+                //println!("Remainders of {selx} are {remx}");
 
                 // Aggregate intersections is selx subtract remainders.
                 let ints = Self::new(vec![selx.clone()]).subtract(&remx);
@@ -369,10 +380,7 @@ impl SelectRegionsStore {
             for selz in cycle_remainders.into_iter() {
                 final_remainders.push_nosubs(selz);
             }
-            if cycle_ints.len() < 2 {
-                if cycle_ints.len() == 1 {
-                    final_remainders.push_nosubs(cycle_ints[0].clone());
-                }
+            if cycle_ints.is_empty() {
                 break;
             }
 
@@ -382,15 +390,45 @@ impl SelectRegionsStore {
 
         //println!("final remainders: {}", final_remainders);
         for selx in final_remainders.iter_mut() {
-            let mut val = 0;
+            let mut pos_value = 0;
+            let mut neg_value = 0;
             for sely in self.iter() {
                 if sely.is_superset_of(selx) {
-                    val += sely.value;
+                    pos_value += sely.pos_value;
+                    neg_value += sely.neg_value;
                 }
             }
-            selx.set_value(val);
+            selx.set_values(pos_value, neg_value);
         }
         final_remainders
+    }
+
+    /// Return a descending list of net values.
+    fn _net_value_list(&self) -> Vec<isize> {
+        let mut ret_vals = vec![];
+
+        for sely in self.iter() {
+            if !ret_vals.contains(&sely.net_value) {
+                ret_vals.push(sely.net_value);
+            }
+        }
+        ret_vals.sort();
+        ret_vals.reverse();
+        println!("net values {:?}", ret_vals);
+        ret_vals
+    }
+
+    /// Return the sum of values of negative SelectRegions that are superset of a given RegionStoreCorr.
+    pub fn rate_by_negative_regions(&self, regs: &RegionStoreCorr) -> isize {
+        debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
+
+        let mut value: isize = 0;
+        for regsx in self.items.iter() {
+            if regsx.net_value < 0 && regsx.regions.is_superset_of(regs) {
+                value += regsx.net_value;
+            }
+        }
+        value
     }
 } // End impl SelectRegionsStore
 
@@ -416,7 +454,7 @@ mod tests {
     use crate::region::SomeRegion;
 
     #[test]
-    fn split_by_intersections() -> Result<(), String> {
+    fn split_by_intersections1() -> Result<(), String> {
         // Try with empty RegionStore.
         let srs1 = SelectRegionsStore::new(vec![]);
 
@@ -428,18 +466,30 @@ mod tests {
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = SomeRegion::new_from_string("r0xx1").expect("SNH");
         let reg1b = SomeRegion::new_from_string("r1x1x").expect("SNH");
-        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a, reg1b]), 1);
+        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a, reg1b]), -1);
         srs1.push(regstr1);
 
         let reg2a = SomeRegion::new_from_string("r1x0x").expect("SNH");
-        let reg2b = SomeRegion::new_from_string("r0x0x").expect("SNH");
+        let reg2b = SomeRegion::new_from_string("rx1x1").expect("SNH");
         let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a, reg2b]), 2);
         srs1.push(regstr2);
 
         let frags = srs1.split_by_intersections();
-        println!("fragments of {srs1} is {frags}");
-        assert!(frags == srs1);
+        println!("Fragments of:");
+        for srsx in srs1.iter() {
+            println!("    {srsx}");
+        }
+        println!("Are:");
+        for srsx in frags.iter() {
+            println!("    {srsx}");
+        }
 
+        assert!(frags == srs1);
+        Ok(())
+    }
+
+    #[test]
+    fn split_by_intersections2() -> Result<(), String> {
         // Try one level of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = SomeRegion::new_from_string("r0x0x").expect("SNH");
@@ -470,6 +520,39 @@ mod tests {
         println!("dif {}", dif);
         assert!(dif.is_empty());
 
+        // Check fragment values.
+        for selx in frags.iter() {
+            let mut pos_val = 0;
+            let mut neg_val = 0;
+            // Gather values from start SelectRegionsStore.
+            for sely in srs1.iter() {
+                if selx.is_subset_of(sely) {
+                    pos_val += sely.pos_value;
+                    neg_val += sely.neg_value;
+                }
+            }
+            assert!(pos_val == selx.pos_value);
+            assert!(neg_val == selx.neg_value);
+            assert!(pos_val + neg_val == selx.net_value);
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        // Check each possible pair.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+                if frags[iny].is_superset_of(&frags[inx]) {
+                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn split_by_intersections3() -> Result<(), String> {
         // Try two levels of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = SomeRegion::new_from_string("r0x0x").expect("SNH");
@@ -502,11 +585,120 @@ mod tests {
         println!("dif {}", dif);
         assert!(dif.is_empty());
 
+        // Check fragment values.
+        for selx in frags.iter() {
+            let mut pos_val = 0;
+            let mut neg_val = 0;
+            // Gather values from start SelectRegionsStore.
+            for sely in srs1.iter() {
+                if selx.is_subset_of(sely) {
+                    pos_val += sely.pos_value;
+                    neg_val += sely.neg_value;
+                }
+            }
+            assert!(pos_val == selx.pos_value);
+            assert!(neg_val == selx.neg_value);
+            assert!(pos_val + neg_val == selx.net_value);
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        // Check each possible pair.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+                if frags[iny].is_superset_of(&frags[inx]) {
+                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
+                }
+            }
+        }
+
         Ok(())
     }
 
     #[test]
-    fn split_by_intersections2() -> Result<(), String> {
+    fn split_by_intersections4() -> Result<(), String> {
+        // Try one level of intersection, two region select regions..
+        let mut srs1 = SelectRegionsStore::new(vec![]);
+        let regstr1 = SelectRegions::new(
+            RegionStoreCorr::new(vec![
+                SomeRegion::new_from_string("r0xx1")?,
+                SomeRegion::new_from_string("r1x1x")?,
+            ]),
+            -1,
+        );
+        srs1.push(regstr1);
+
+        let regstr2 = SelectRegions::new(
+            RegionStoreCorr::new(vec![
+                SomeRegion::new_from_string("rxx0x")?,
+                SomeRegion::new_from_string("rx1x1")?,
+            ]),
+            2,
+        );
+        srs1.push(regstr2);
+
+        let regstr3 = SelectRegions::new(
+            RegionStoreCorr::new(vec![
+                SomeRegion::new_from_string("rxxxx")?,
+                SomeRegion::new_from_string("rxxxx")?,
+            ]),
+            0,
+        );
+        srs1.push(regstr3);
+
+        let frags = srs1.split_by_intersections();
+        println!("fragments of {srs1} are {frags} len {}", frags.len());
+        assert!(frags.len() == 20);
+
+        // Check for non-subset intersections.
+        for selx in frags.iter() {
+            for sely in srs1.iter() {
+                if selx.intersects(sely) && !selx.is_subset_of(sely) {
+                    return Err(format!("{selx} intersects {sely} ?"));
+                }
+            }
+        }
+
+        // Check fragments cover whole area.
+        let dif = srs1.subtract(&frags);
+        println!("dif {}", dif);
+        assert!(dif.is_empty());
+
+        // Check fragment values.
+        for selx in frags.iter() {
+            let mut pos_val = 0;
+            let mut neg_val = 0;
+            // Gather values from start SelectRegionsStore.
+            for sely in srs1.iter() {
+                if selx.is_subset_of(sely) {
+                    pos_val += sely.pos_value;
+                    neg_val += sely.neg_value;
+                }
+            }
+            assert!(pos_val == selx.pos_value);
+            assert!(neg_val == selx.neg_value);
+            assert!(pos_val + neg_val == selx.net_value);
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        // Check each possible pair.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+                if frags[iny].is_superset_of(&frags[inx]) {
+                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn split_by_intersections5() -> Result<(), String> {
         // Try three levels of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let reg1a = SomeRegion::new_from_string("r0xxx").expect("SNH");
@@ -514,7 +706,7 @@ mod tests {
         srs1.push(regstr1);
 
         let reg2a = SomeRegion::new_from_string("rxx1x").expect("SNH");
-        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), 4);
+        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), 3);
         srs1.push(regstr2);
 
         let reg3a = SomeRegion::new_from_string("rx1x1").expect("SNH");
@@ -525,56 +717,138 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 10);
 
+        // Check 3-level intersection.
         let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0x00").expect("SNH")]),
-            4,
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0111").expect("SNH")]),
+            9,
         );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r000x").expect("SNH")]),
-            4,
-        );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r1x10").expect("SNH")]),
-            4,
-        );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r101x").expect("SNH")]),
-            4,
-        );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r1101").expect("SNH")]),
-            2,
-        );
-        assert!(frags.contains(&selx));
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check 2-level intersection (1 of 4).
         let selx = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0101").expect("SNH")]),
             6,
         );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0x10").expect("SNH")]),
-            8,
-        );
-        assert!(frags.contains(&selx));
-        let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r001x").expect("SNH")]),
-            8,
-        );
-        assert!(frags.contains(&selx));
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check 2-level intersection (2 of 4).
         let selx = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("r1111").expect("SNH")]),
-            6,
+            5,
         );
-        assert!(frags.contains(&selx));
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check 2-level intersection (3 of 4).
         let selx = SelectRegions::new(
-            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0111").expect("SNH")]),
-            10,
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r001x").expect("SNH")]),
+            7,
         );
-        assert!(frags.contains(&selx));
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check 2-level intersection (4 of 4).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0x10").expect("SNH")]),
+            7,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check no intersection (1 of 5).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r1101").expect("SNH")]),
+            2,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check no intersection (2 of 5).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r000x").expect("SNH")]),
+            4,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check no intersection (3 of 5).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r0x00").expect("SNH")]),
+            4,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check no intersection (4 of 5).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r101x").expect("SNH")]),
+            3,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check no intersection (5 of 5).
+        let selx = SelectRegions::new(
+            RegionStoreCorr::new(vec![SomeRegion::new_from_string("r1x10").expect("SNH")]),
+            3,
+        );
+        if !frags.contains(&selx) {
+            return Err(format!("fragments {frags} does not contain {selx}"));
+        }
+
+        // Check for non-subset intersections.
+        for selx in frags.iter() {
+            for sely in srs1.iter() {
+                if selx.intersects(sely) && !selx.is_subset_of(sely) {
+                    return Err(format!("{selx} intersects {sely} ?"));
+                }
+            }
+        }
+
+        // Check fragments cover whole area.
+        let dif = srs1.subtract(&frags);
+        println!("dif {}", dif);
+        assert!(dif.is_empty());
+
+        // Check fragment values.
+        for selx in frags.iter() {
+            let mut pos_val = 0;
+            let mut neg_val = 0;
+            // Gather values from start SelectRegionsStore.
+            for sely in srs1.iter() {
+                if selx.is_subset_of(sely) {
+                    pos_val += sely.pos_value;
+                    neg_val += sely.neg_value;
+                }
+            }
+            assert!(pos_val == selx.pos_value);
+            assert!(neg_val == selx.neg_value);
+            assert!(pos_val + neg_val == selx.net_value);
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        // Check each possible pair.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+                if frags[iny].is_superset_of(&frags[inx]) {
+                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
+                }
+            }
+        }
 
         Ok(())
     }
@@ -584,14 +858,14 @@ mod tests {
         let mut srs1 = SelectRegionsStore::new(vec![]);
         let regstr1 = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("rxx0x").expect("SNH")]),
-            0,
+            1,
         );
         srs1.push(regstr1.clone());
 
         let mut srs2 = SelectRegionsStore::new(vec![]);
         let regstr2 = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("rx1x1").expect("SNH")]),
-            0,
+            2,
         );
         srs2.push(regstr2.clone());
 
@@ -605,23 +879,30 @@ mod tests {
             } else {
                 return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
             }
-            if srs3.contains(&SelectRegions::new(
+            let srsexp = SelectRegions::new(
                 RegionStoreCorr::new(vec![SomeRegion::new_from_string("rxx00").expect("SNH")]),
-                0,
-            )) {
+                1,
+            );
+            if srs3.contains(&srsexp) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "{srs1} - {regstr2} = {srs3} does not contain {srsexp}?"
+                ));
             }
-            if srs3.contains(&SelectRegions::new(
+
+            let srsexp = SelectRegions::new(
                 RegionStoreCorr::new(vec![SomeRegion::new_from_string("rx00x").expect("SNH")]),
-                0,
-            )) {
+                1,
+            );
+            if srs3.contains(&srsexp) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "{srs1} - {regstr2} = {srs3} does not contain {srsexp}?"
+                ));
             }
         }
 
-        // Try the reverse subtract_selectregions.
+        // Try the reverse subtract.
         let srs3 = srs2.subtract_selectregions(&regstr1);
         if srs3.is_empty() {
             return Err(format!("{} - {} = None ?", srs2, regstr1));
@@ -631,16 +912,19 @@ mod tests {
             } else {
                 return Err(format!("{} - {} = {} ?", srs2, regstr1, srs3));
             }
-            if srs3.contains(&SelectRegions::new(
+            let srsexp = SelectRegions::new(
                 RegionStoreCorr::new(vec![SomeRegion::new_from_string("rx111").expect("SNH")]),
-                0,
-            )) {
+                2,
+            );
+            if srs3.contains(&srsexp) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs2, regstr1, srs3));
+                return Err(format!(
+                    "{srs2} - {regstr1} = {srs3} does not contain {srsexp}?"
+                ));
             }
         }
 
-        // Try subtract_selectregions superset from subset.
+        // Try subtract non-intersecting selectregions.
         let mut srs3 = SelectRegionsStore::new(vec![]);
         let regstr3 = SelectRegions::new(
             RegionStoreCorr::new(vec![SomeRegion::new_from_string("rx101").expect("SNH")]),
@@ -654,6 +938,7 @@ mod tests {
             return Err(format!("{} - {} = {} ?", srs3, regstr1, srs4));
         }
 
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -665,7 +950,7 @@ mod tests {
                 SomeRegion::new_from_string("rxx0x").expect("SNH"),
                 SomeRegion::new_from_string("r01xx").expect("SNH"),
             ]),
-            0,
+            1,
         );
         srs1.push(regstr1.clone());
 
@@ -675,7 +960,7 @@ mod tests {
                 SomeRegion::new_from_string("rx1x1").expect("SNH"),
                 SomeRegion::new_from_string("rxx11").expect("SNH"),
             ]),
-            0,
+            2,
         );
         srs2.push(regstr2.clone());
 
@@ -695,12 +980,14 @@ mod tests {
                     SomeRegion::new_from_string("rxx00").expect("SNH"),
                     SomeRegion::new_from_string("r01xx").expect("SNH"),
                 ]),
-                0,
+                1,
             );
 
             if srs3.contains(&sr_tmp1) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "1 {srs1} - {regstr2} = {srs3} does not contain {sr_tmp1}?"
+                ));
             }
 
             let sr_tmp2 = SelectRegions::new(
@@ -708,12 +995,14 @@ mod tests {
                     SomeRegion::new_from_string("rx00x").expect("SNH"),
                     SomeRegion::new_from_string("r01xx").expect("SNH"),
                 ]),
-                0,
+                1,
             );
 
             if srs3.contains(&sr_tmp2) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "2 {srs1} - {regstr2} = {srs3} does not contain {sr_tmp2}?"
+                ));
             }
 
             let sr_tmp3 = SelectRegions::new(
@@ -721,12 +1010,14 @@ mod tests {
                     SomeRegion::new_from_string("rxx0x").expect("SNH"),
                     SomeRegion::new_from_string("r01x0").expect("SNH"),
                 ]),
-                0,
+                1,
             );
 
             if srs3.contains(&sr_tmp3) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "3 {srs1} - {regstr2} = {srs3} does not contain {sr_tmp3}?"
+                ));
             }
 
             let sr_tmp4 = SelectRegions::new(
@@ -734,15 +1025,44 @@ mod tests {
                     SomeRegion::new_from_string("rxx0x").expect("SNH"),
                     SomeRegion::new_from_string("r010x").expect("SNH"),
                 ]),
-                0,
+                1,
             );
 
             if srs3.contains(&sr_tmp4) {
             } else {
-                return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
+                return Err(format!(
+                    "4 {srs1} - {regstr2} = {srs3} does not contain {sr_tmp4}?"
+                ));
             }
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn net_value_list() -> Result<(), String> {
+        // Try three levels of intersection.
+        let mut srs1 = SelectRegionsStore::new(vec![]);
+        let reg1a = SomeRegion::new_from_string("r0xxx").expect("SNH");
+        let regstr1 = SelectRegions::new(RegionStoreCorr::new(vec![reg1a.clone()]), 1);
+        srs1.push(regstr1);
+
+        let reg2a = SomeRegion::new_from_string("rxx1x").expect("SNH");
+        let regstr2 = SelectRegions::new(RegionStoreCorr::new(vec![reg2a.clone()]), -1);
+        srs1.push(regstr2);
+
+        let reg3a = SomeRegion::new_from_string("rx1x1").expect("SNH");
+        let regstr3 = SelectRegions::new(RegionStoreCorr::new(vec![reg3a.clone()]), -2);
+        srs1.push(regstr3);
+
+        let frags = srs1.split_by_intersections();
+        println!("fragments of {srs1} are {frags} len {}", frags.len());
+        assert!(frags.len() == 10);
+
+        let net_vals = frags._net_value_list();
+        println!("net values {:?}", net_vals);
+
+        assert!(net_vals == [1, 0, -1, -2, -3]);
         Ok(())
     }
 }

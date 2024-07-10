@@ -245,35 +245,37 @@ impl SomeDomain {
                 }
                 AltRuleHint::AltRule { rule } => {
                     if rule.result_region().is_superset_of(&self.cur_state) {
-                        if let Some(planx) =
-                            self.make_plans(&SomeRegion::new(vec![prev_state.clone()]))
-                        {
-                            println!("Try action plan to return {}", planx[0]);
-                            match self.run_plan(&planx[0], 1) {
-                                Ok(num) => {
-                                    println!("Try action return worked.");
-                                    num_steps += num;
-
-                                    let asample =
-                                        self.actions.take_action_step(stpx.act_id, &self.cur_state);
-                                    num_steps += 1;
-
-                                    self.set_cur_state(asample.result.clone());
-
-                                    if stpx.result.is_superset_of(&self.cur_state) {
-                                        continue;
-                                    }
-                                    return Err("Action return/retry failed.".to_string());
-                                }
-                                Err(msg) => {
-                                    return Err(msg);
-                                }
-                            }
-                        } else {
-                            return Err(
-                                "No plan to return, and try again, found. Step failed".to_string()
-                            );
-                        }
+                        println!("Recalculate plan");
+                        return Err("Recalculate plan".to_string());
+                    //                        if let Some(planx) =
+                    //                            self.make_plans(&SomeRegion::new(vec![prev_state.clone()]))
+                    //                        {
+                    //                            println!("Try action plan to return {}", planx[0]);
+                    //                            match self.run_plan(&planx[0], 1) {
+                    //                                Ok(num) => {
+                    //                                    println!("Try action return worked.");
+                    //                                    num_steps += num;
+                    //
+                    //                                    let asample =
+                    //                                        self.actions.take_action_step(stpx.act_id, &self.cur_state);
+                    //                                    num_steps += 1;
+                    //
+                    //                                    self.set_cur_state(asample.result.clone());
+                    //
+                    //                                    if stpx.result.is_superset_of(&self.cur_state) {
+                    //                                        continue;
+                    //                                    }
+                    //                                    return Err("Action return/retry failed.".to_string());
+                    //                                }
+                    //                                Err(msg) => {
+                    //                                    return Err(msg);
+                    //                                }
+                    //                            }
+                    //                        } else {
+                    //                            return Err(
+                    //                                "No plan to return, and try again, found. Step failed".to_string()
+                    //                            );
+                    //                        }
                     } else {
                         return Err("Unexpected result, step failed".to_string());
                     }
@@ -663,23 +665,23 @@ impl SomeDomain {
             .link(&from_step_plan)
     }
 
-    /// Make a plan to change the current state to another region.
-    /// Since there are some random choices, it may be useful to try
-    /// running make_plan more than once.
-    pub fn make_plans(&self, goal_reg: &SomeRegion) -> Option<PlanStore> {
-        //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
-        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-
-        // Return no-op plan if the goal is already met.
-        if goal_reg.is_superset_of(&self.cur_state) {
-            //println!("no plan needed from {} to {} ?", self.cur_state, goal_reg);
-            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
-        }
-
-        let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
-
-        self.make_plans2(&cur_reg, goal_reg, None)
-    }
+    // Make a plan to change the current state to another region.
+    // Since there are some random choices, it may be useful to try
+    // running make_plan more than once.
+    //    pub fn _make_plans(&self, goal_reg: &SomeRegion) -> Option<PlanStore> {
+    //        //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
+    //        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+    //
+    //        // Return no-op plan if the goal is already met.
+    //        if goal_reg.is_superset_of(&self.cur_state) {
+    //            //println!("no plan needed from {} to {} ?", self.cur_state, goal_reg);
+    //            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
+    //        }
+    //
+    //        let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
+    //
+    //        self.make_plans2(&cur_reg, goal_reg, None)
+    //    }
 
     /// Make a plan to change from a region to another region.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
@@ -1049,10 +1051,10 @@ impl SomeDomain {
             poss_steps.sort_by(|(_, _, pri_a), (_, _, pri_b)| pri_b.partial_cmp(pri_a).unwrap());
         }
         //for (from_inx, to_inx, pri) in poss_steps.iter() {
-            //println!(
-            //    "  from_inx {from_inx} {} to_inx {to_inx} {} pri {pri}",
-           //     planx[*from_inx].initial, planx[*to_inx].result
-            //);
+        //println!(
+        //    "  from_inx {from_inx} {} to_inx {to_inx} {} pri {pri}",
+        //     planx[*from_inx].initial, planx[*to_inx].result
+        //);
         //}
 
         // Set var to detect a priority change.
@@ -1060,24 +1062,24 @@ impl SomeDomain {
         let mut last_pri = poss_steps[0].2;
 
         for (from_inx, to_inx, pri) in poss_steps.iter() {
-           // println!(
-           //     "\nprocess from_inx {from_inx} {} to_inx {to_inx} {} pri {pri}",
-           //     planx[*from_inx].initial, planx[*to_inx].result
-          //  );
+            // println!(
+            //     "\nprocess from_inx {from_inx} {} to_inx {to_inx} {} pri {pri}",
+            //     planx[*from_inx].initial, planx[*to_inx].result
+            //  );
             if *pri != last_pri {
                 if shortcuts.is_empty() {
                     last_pri = *pri;
                 } else {
-                   // println!("    shortcuts(1) {shortcuts}");
+                    // println!("    shortcuts(1) {shortcuts}");
                     return Some(shortcuts);
                 }
             }
             if let Some(plans2) =
                 self.make_plans3(&planx[*from_inx].initial, &planx[*to_inx].result, None)
             {
-               // println!(
-               //     "    plans found from {} to {}",
-               //     planx[*from_inx].initial, &planx[*to_inx].result
+                // println!(
+                //     "    plans found from {} to {}",
+                //     planx[*from_inx].initial, &planx[*to_inx].result
                 //);
                 //println!("    Plans found {plans2}");
                 for plany in plans2.iter() {
@@ -1156,7 +1158,7 @@ mod tests {
     // Test running a plan using an alt-rule (change) group.
     #[test]
     fn alt_rule1() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
+        // Create a domain that uses four bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
@@ -1165,26 +1167,46 @@ mod tests {
         ])];
         dm0.add_action(ruls0);
 
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "00/11/x0/x1",
-        )
-        .expect("SNH")])];
-        dm0.add_action(ruls1);
+        let sta_5 = SomeState::new_from_string("s0b0101")?;
 
-        dm0.cur_state = SomeState::new_from_string("s0b0101")?;
+        // Load samples for action 0, state 5.  The first change is chosen randomly from the rule options.
+        dm0.cur_state = sta_5.clone();
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+
+        dm0.cur_state = sta_5.clone();
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+
+        dm0.cur_state = sta_5.clone();
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+
+        dm0.cur_state = sta_5.clone();
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+
+        let rslt = if let Some(sqrx) = dm0.actions[0].squares.find(&sta_5) {
+            sqrx.most_recent_result().clone()
+        } else {
+            return Err("Square 5 not found".to_string());
+        };
+        println!("rslt1 {rslt}");
+
+        // Force current result to 0100, so next result will be 0111.
+        if rslt == SomeState::new_from_string("s0b0111")? {
+            dm0.cur_state = sta_5.clone();
+            dm0.take_action_arbitrary(0);
+        }
+
+        let rslt = if let Some(sqrx) = dm0.actions[0].squares.find(&sta_5) {
+            sqrx.most_recent_result().clone()
+        } else {
+            return Err("Square 5 not found".to_string());
+        };
+        println!("rslt2 {rslt}");
+
+        dm0.cur_state = sta_5.clone();
 
         println!("\ndm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
-
-        let mut num_steps1 = 0;
+        //assert!(1 == 2);
 
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
         if let Some(plans) = dm0.make_plans2(
@@ -1192,34 +1214,19 @@ mod tests {
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             None,
         ) {
-            //println!("plans {}", tools::vec_string(&plans));
+            println!("plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
-                Ok(num) => num_steps1 = num,
-                Err(msg) => return Err(msg),
+                Ok(_) => return Err("plan should have returned an error".to_string()),
+                Err(msg) => {
+                    if msg == "Recalculate plan" {
+                        return Ok(());
+                    } else {
+                        return Err(format!("Unexpected error {msg}"));
+                    }
+                }
             }
         }
-
-        // Reset current state to 5.
-        dm0.take_action_arbitrary(1);
-
-        let mut num_steps2 = 0;
-
-        // Redo plans, as step alt value may change due to previous running of a plan.
-        if let Some(plans) = dm0.make_plans2(
-            &SomeRegion::new_from_string("r0101").expect("SNH"),
-            &SomeRegion::new_from_string("r0100").expect("SNH"),
-            None,
-        ) {
-            match dm0.run_plan(&plans[0], 2) {
-                Ok(num) => num_steps2 = num,
-                Err(msg) => return Err(msg),
-            }
-        }
-
-        println!("num steps 1 {num_steps1} num steps 2 {num_steps2}");
-        assert!(num_steps1 == 3 || num_steps2 == 3);
-
-        Ok(())
+        Err("No plan found".to_string())
     }
 
     // Test running a plan using an alt-rule (no change) group.
@@ -1329,14 +1336,14 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        let cur_state = SomeState::new_from_string("s0b0111")?;
-        dm0.set_cur_state(cur_state);
-        let toreg = SomeRegion::new_from_string("r1000")?;
-
-        if dmxs[0].make_plans(&toreg).is_some() {
-        } else {
-            return Err(String::from("No plan found to r1000?"));
-        }
+        //        let cur_state = SomeState::new_from_string("s0b0111")?;
+        //        dm0.set_cur_state(cur_state);
+        //        let toreg = SomeRegion::new_from_string("r1000")?;
+        //
+        //        if dmxs[0].make_plans(&toreg).is_some() {
+        //        } else {
+        //            return Err(String::from("No plan found to r1000?"));
+        //        }
 
         Ok(())
     }
@@ -1379,15 +1386,15 @@ mod tests {
         // Get plan for 7 to C
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
-        let s7 = SomeState::new_from_string("s0x7")?;
-        dm0.set_cur_state(s7);
-        let toreg = SomeRegion::new_from_string("r1100")?;
-
-        if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
-            println!("plan: {}", plans);
-        } else {
-            return Err(String::from("No plan found s111 to r1100?"));
-        }
+        //        let s7 = SomeState::new_from_string("s0x7")?;
+        //        dm0.set_cur_state(s7);
+        //        let toreg = SomeRegion::new_from_string("r1100")?;
+        //
+        //        if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
+        //            println!("plan: {}", plans);
+        //        } else {
+        //            return Err(String::from("No plan found s111 to r1100?"));
+        //        }
 
         //assert!(1 == 2);
         Ok(())

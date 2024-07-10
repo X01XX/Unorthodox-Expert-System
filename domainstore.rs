@@ -76,6 +76,7 @@ pub struct DomainStore {
     pub select_positive: SelectRegionsStore,
     /// Negative region fragments, value regions.
     /// These tend to be places to avoid in planning a path to a goal.
+    pub times_visited: Vec<usize>,
     pub select_negative: SelectRegionsStore,
     /// Non-negative, may be, or overlap, positive, regions.
     pub select_non_negative: SelectRegionsStore,
@@ -109,6 +110,7 @@ impl DomainStore {
             cant_do: Vec::<usize>::new(),
             step_num: 0,
             max_pos_value: 0,
+            times_visited: vec![],
         }
     }
 
@@ -120,7 +122,7 @@ impl DomainStore {
     /// Duplicates are not allowed.
     pub fn add_select(&mut self, selx: SelectRegions) {
         // Require some aggregate value.
-        if selx.value == 0 {
+        if selx.net_value == 0 {
             println!("add_select: {} SR value zero, skipped.", selx);
             return;
         }
@@ -161,11 +163,11 @@ impl DomainStore {
         let fragments = self.select.split_by_intersections();
 
         for sely in fragments.into_iter() {
-            match sely.value.cmp(&0) {
+            match sely.net_value.cmp(&0) {
                 Ordering::Greater => {
                     //println!("  {} pos {} neg {} = {:+}", sely, sely.pos, sely.neg, sely.pos - sely.neg);
-                    if sely.value > self.max_pos_value {
-                        self.max_pos_value = sely.value;
+                    if sely.net_value > self.max_pos_value {
+                        self.max_pos_value = sely.net_value;
                     }
                     self.select_positive.push(sely);
                 }
@@ -211,6 +213,10 @@ impl DomainStore {
         }
         println!("  To seek when exiting a negative SR the current state is in.");
         println!("  Used to find a rule-path that crosses fewer negative SRs.");
+
+        for _ in 0..self.select_positive.len() {
+            self.times_visited.push(0);
+        }
     }
 
     /// Add a Domain struct to the store.
@@ -650,6 +656,14 @@ impl DomainStore {
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
         //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
+        let all_states = self.all_current_states();
+        let mut negative_regions = Vec::<&SelectRegions>::new();
+        for slrgx in self.select_negative.iter() {
+            if slrgx.is_superset_of_states(&all_states) {
+                negative_regions.push(slrgx);
+            }
+        }
+
         self.items[dom_id].make_plans2(from_region, goal_region, within)
     }
 
@@ -794,9 +808,9 @@ impl DomainStore {
         let all_states = self.all_current_states();
 
         // Get the select regions the current state is in.
-        for optregs in self.select_positive.iter_mut() {
+        for (inx, optregs) in self.select_positive.iter_mut().enumerate() {
             if optregs.regions.is_superset_states(&all_states) {
-                optregs.inc_times_visited();
+                self.times_visited[inx] += 1;
             }
         }
     }
@@ -814,7 +828,7 @@ impl DomainStore {
                 .is_superset_states(&self.all_current_states())
             {
                 ret = true;
-                boredom_limit += optregs.value;
+                boredom_limit += optregs.net_value;
             }
         }
         if boredom_limit > 0 {
@@ -896,48 +910,33 @@ impl DomainStore {
         //println!("domainstore: select_goal_needs");
         debug_assert!(self.len() == goal_regs.len());
 
-        // Get regions the current state is not in.
-        let mut notsups = self.select_positive.not_supersets_of(goal_regs);
+        // Load return vector.
+        let mut ret_str = NeedStore::new(vec![]);
 
-        // If the current state is not in at least one select region, return None.
-        if notsups.is_empty() {
+        // Get current states.
+        let all_states = self.all_current_states();
+
+        for (inx, psupx) in self.select_positive.iter().enumerate() {
+            if psupx.is_superset_of_states(&all_states) {
+                continue;
+            }
+            let adjust = (self.max_pos_value - psupx.net_value) + self.times_visited[inx] as isize;
+            let mut needx = SomeNeed::ToSelectRegion {
+                target_regions: (psupx.regions.clone()),
+                priority: adjust as usize,
+                times_visited: self.times_visited[inx],
+                value: psupx.net_value as usize,
+            };
+            needx.add_priority_base();
+            ret_str.push(needx);
+        }
+
+        // If no needs, return None.
+        if ret_str.is_empty() {
             //println!("ret 1");
             return None;
         }
 
-        // Remove negative, and zero, value regions.
-        let mut inxs = Vec::<usize>::with_capacity(notsups.len());
-        for (inx, nsupx) in notsups.iter().enumerate() {
-            if nsupx.value < 1 {
-                inxs.push(inx);
-            }
-        }
-        if inxs.len() > 1 {
-            inxs.reverse();
-        }
-        if inxs.is_empty() {
-        } else {
-            for iny in inxs.iter() {
-                tools::remove_unordered(&mut notsups, *iny);
-            }
-        }
-
-        // Load return vector.
-        let mut ret_str = NeedStore::with_capacity(notsups.len());
-
-        for nsupx in notsups.iter() {
-            if nsupx.value > 0 {
-                let adjust = (self.max_pos_value - nsupx.value) + nsupx.times_visited as isize;
-                let mut needx = SomeNeed::ToSelectRegion {
-                    target_regions: (nsupx.regions.clone()),
-                    priority: adjust as usize,
-                    times_visited: nsupx.times_visited,
-                    value: nsupx.value as usize,
-                };
-                needx.add_priority_base();
-                ret_str.push(needx);
-            }
-        }
         Some(ret_str)
     }
 
@@ -967,7 +966,7 @@ impl DomainStore {
         for selx in self.select.iter() {
             if selx.is_superset_of_states(&all_states) {
                 in_str += &format!("in {} ", selx);
-                if selx.value > 0 {
+                if selx.net_value > 0 {
                     in_pos = true;
                 } else {
                     in_neg = true;
@@ -1620,7 +1619,7 @@ impl DomainStore {
                 }
 
                 for sel_regx in self.select.iter() {
-                    if sel_regx.value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
+                    if sel_regx.net_value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
                         print!(" in {:+}", sel_regx);
                     }
                 }
