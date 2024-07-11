@@ -245,37 +245,8 @@ impl SomeDomain {
                 }
                 AltRuleHint::AltRule { rule } => {
                     if rule.result_region().is_superset_of(&self.cur_state) {
-                        println!("Recalculate plan");
+                        //println!("Recalculate plan");
                         return Err("Recalculate plan".to_string());
-                    //                        if let Some(planx) =
-                    //                            self.make_plans(&SomeRegion::new(vec![prev_state.clone()]))
-                    //                        {
-                    //                            println!("Try action plan to return {}", planx[0]);
-                    //                            match self.run_plan(&planx[0], 1) {
-                    //                                Ok(num) => {
-                    //                                    println!("Try action return worked.");
-                    //                                    num_steps += num;
-                    //
-                    //                                    let asample =
-                    //                                        self.actions.take_action_step(stpx.act_id, &self.cur_state);
-                    //                                    num_steps += 1;
-                    //
-                    //                                    self.set_cur_state(asample.result.clone());
-                    //
-                    //                                    if stpx.result.is_superset_of(&self.cur_state) {
-                    //                                        continue;
-                    //                                    }
-                    //                                    return Err("Action return/retry failed.".to_string());
-                    //                                }
-                    //                                Err(msg) => {
-                    //                                    return Err(msg);
-                    //                                }
-                    //                            }
-                    //                        } else {
-                    //                            return Err(
-                    //                                "No plan to return, and try again, found. Step failed".to_string()
-                    //                            );
-                    //                        }
                     } else {
                         return Err("Unexpected result, step failed".to_string());
                     }
