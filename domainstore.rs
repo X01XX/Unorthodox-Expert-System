@@ -955,7 +955,7 @@ impl DomainStore {
 
         for selx in self.select.iter() {
             if selx.net_value != 0 && selx.is_superset_of_states(&all_states) {
-                in_str += &format!("in {} ", selx);
+                in_str += &format!("in {}, {} ", selx.regions, selx.net_value);
                 if selx.net_value > 0 {
                     in_pos = true;
                 } else {
@@ -1622,7 +1622,7 @@ impl DomainStore {
 
                 for sel_regx in self.select.iter() {
                     if sel_regx.net_value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                        print!(" in {:+}", sel_regx);
+                        print!(" in {:+}, {}", sel_regx.regions, sel_regx.net_value);
                     }
                 }
 
