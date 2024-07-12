@@ -523,7 +523,7 @@ impl SomeRegion {
         self.states[0].num_bits()
     }
 
-    /// Return a bridge between two regions.
+    /// Return a bridge between two non-intersecting regions.
     pub fn bridge(&self, other: &Self) -> Option<Self> {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 

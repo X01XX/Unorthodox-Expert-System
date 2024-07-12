@@ -105,6 +105,38 @@ impl RegionStoreCorr {
         true
     }
 
+    /// Return true if RegionStoreCorr is adjacent to another.
+    pub fn is_adjacent(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+        debug_assert!(corresponding_num_bits(self, other));
+
+        self.distance(other) == 1
+    }
+
+    /// Return true if RegionStoreCorr is adjacent to another.
+    pub fn bridge(&self, other: &Self) -> Self {
+        debug_assert!(self.len() == other.len());
+        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.distance(other) == 1);
+
+        let mut ret_regs = Self::new(vec![]);
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            if x.is_adjacent(y) {
+                if let Some(xy) = x.bridge(y) {
+                    ret_regs.push(xy);
+                } else {
+                    panic!("SNH");
+                }
+            } else if let Some(xy) = x.intersection(y) {
+                ret_regs.push(xy);
+            } else {
+                panic!("SNH");
+            }
+        }
+        ret_regs
+    }
+
     /// Return True if a RegionStoreCorr is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
