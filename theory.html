@@ -347,9 +347,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    <p>
    <h3>Representing a region</h3>
    <p>
-   Here are two ways to represent a region, they can be used together.
+   Here are three ways to represent a region.
    <p>
-  1) A region can be represented in a computer is by using any two bit patterns.
+  1) A region can be represented by using any two bit patterns.
   A region can also be formed by one bit pattern, used twice.
    </p> 
    <p class="indent1">
@@ -443,8 +443,21 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    Two regions are equal if the two bit patterns forming them are equal.
    </p>
    <p class="indent1">
-   When calculating intersections and unions of the first type of region, the needed sampled states will often not be available, so I will use this representation.
+   I will use this representation.
    </p>
+   <p>
+    3) Another possible representation of a region is a list of one, or more, states.
+   </p>
+   <p class="indent1">
+   There is no duplication of a state for a one-state region, as in the above two regions.
+   </p>
+   <p class="indent1">
+   Regions containing more than one state will usually be defined by two states.
+   </p>
+   <p class="indent1">
+   It may sometimes be useful to use more than two states, where no state is between any other two states.  So (0001, 0111, 1101) is XXX1.
+   </p>
+
     <h4>An analogy to a crystal:</h4>
     <p class="indent1">
     Every non-X bit position of a region is one side of an "edge".  Each edge has a zero side and a one side.
@@ -1542,6 +1555,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
       <p>
        Note: I've tried to keep everything, above, general, without referencing this section, since there may be other ways to approach this.  Some things in this section will relate to/extend ideas in the previous sections.
       </p>
+      <p>
+      States can be defined as an array of unsigned integers. Unsigned integers have a defined size, so it is 
+      convenient to also specify the number of bits, in case you want to use a little less than is possible.
+      </p>
+      <p class="indent1">
+      To keep unused bits set to zero, instead of using a logical not operation, use an xor operation with the maximum value.
+      </p>
+      <p class="indent1">
+      Bit/Boolean arrays can be used, but performance may suffer for any but small numbers of bits.
+      </p>
     <p> 
  State-Change Rules attempt to make sense of how a state or region changes when an activity or action can be executed that may result in a state change.
  State-Change Rules are a working point-in-time understanding of logic based on a limited number of recent samples.
@@ -1791,6 +1814,10 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent2">
     The result can be checked for changes that are reversed and unwanted changes.  X bit positions in the goal region
     are "don't care" positions.
+    </p>
+    <p class="indent1">
+    Another way to look at it is, a needed change of 1&#129042 0 in one rule, must be 0&#129042 0 in the next.
+     A needed change of 0&#129042 1 in one rule, must be 1&#129042 1 in the next.
     </p>
    <p>
     <h3>Multiple State Samples</h3>
@@ -2474,7 +2501,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 05/17/2024</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/12/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
@@ -2494,9 +2521,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
   <p>The region XXXX has no edges, so all squares might be thought of as being in the middle, but then none are on the edge.</p>
 <p>It was shown in the first section that you cannot add a bit to a 2-bit axis to draw a larger K-Map.<p>
 
-  <p>A 6-bit K-Map can be imagined as a cube, 2 bits on a side, made up of four 4-bit K-maps. Beyond 6 bits, it is harder to imagine, at least for me.</p>
-
-  <p>You can add more bits, but the number of K-Maps goes up exponentially.</p>
+  <p>A 6-bit K-Map can be imagined as a cube, 2-bits per side, made up of four 4-bit K-maps. Each K-map has a 2-bit number, arranged in adjacent 1-bit difference order, like 00-01-11-10. Beyond 6 bits, it is harder to imagine, at least for me.</p>
 
 <h3>Possible regions</h3>
 
