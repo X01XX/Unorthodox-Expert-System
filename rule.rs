@@ -129,6 +129,16 @@ impl SomeRule {
                     b01.push('1');
                     b11.push('1');
                     b10.push('0');
+                } else if token == "1X" || token == "1x" {
+                    b00.push('0');
+                    b01.push('0');
+                    b11.push('1');
+                    b10.push('0');
+                } else if token == "0X" || token == "0x" {
+                    b00.push('1');
+                    b01.push('0');
+                    b11.push('0');
+                    b10.push('0');
                 } else {
                     return Err(format!(
                         "SomeRule::new_from_string: Unrecognized token {}",

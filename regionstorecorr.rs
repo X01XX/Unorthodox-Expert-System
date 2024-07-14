@@ -177,7 +177,7 @@ impl RegionStoreCorr {
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(stas.iter()) {
-            if x.intersects(y) {
+            if x.is_superset_of(y) {
             } else {
                 dist += x.distance(y);
             }

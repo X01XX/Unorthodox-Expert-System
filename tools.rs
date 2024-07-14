@@ -22,13 +22,13 @@ pub fn vec_contains_ref<T>(avec: &[&T], item: &T) -> bool {
 }
 
 /// Return a vector of references to items in a vector.
-pub fn ref_vec<T>(avec: &[T]) -> Vec<&T> {
-    let mut ref_vec = Vec::<&T>::with_capacity(avec.len());
-    for itemx in avec.iter() {
-        ref_vec.push(itemx);
-    }
-    ref_vec
-}
+//pub fn ref_vec<T>(avec: &[T]) -> Vec<&T> {
+//    let mut ref_vec = Vec::<&T>::with_capacity(avec.len());
+//    for itemx in avec.iter() {
+//        ref_vec.push(itemx);
+//    }
+//    ref_vec
+//}
 
 /// Remove an element from a vector, not caring about order, avoid the
 /// copying that the remove command does.
@@ -138,10 +138,7 @@ pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
     }
 
     rc_str.push(']');
-    //    if rc_str.len() != len {
-    //        println!("{}", rc_str);
-    //        panic!("ref len {} ne calc len {len}", rc_str.len());
-    //    }
+
     rc_str
 }
 

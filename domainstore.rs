@@ -671,7 +671,7 @@ impl DomainStore {
     /// Choose a plan from a vector of PlanStare references, for vector of PlanStores.
     /// Return index of plan chosen.
     pub fn choose_a_plan(&self, plans: &[PlanStore], start_regs: &RegionStoreCorr) -> usize {
-        self.choose_a_plan2(&tools::ref_vec(plans), start_regs)
+        self.choose_a_plan2(&(plans.iter().collect::<Vec<&PlanStore>>()), start_regs)
     }
 
     /// Choose a plan from a vector of PlanStore references, for vector of PlanStore references.
@@ -696,12 +696,11 @@ impl DomainStore {
         let max_rate = rates.iter().max().unwrap();
 
         // Find plans with the max rate.
-        let mut max_rate_plans = Vec::<usize>::new();
-        for (inx, rate) in rates.iter().enumerate() {
-            if rate == max_rate {
-                max_rate_plans.push(inx);
-            }
-        }
+        let max_rate_plans = rates
+            .iter()
+            .enumerate()
+            .filter_map(|(inx, rate)| if rate == max_rate { Some(inx) } else { None })
+            .collect::<Vec<usize>>();
 
         // No further choice to be made.
         if max_rate_plans.len() == 1 {
@@ -709,19 +708,25 @@ impl DomainStore {
         }
 
         // Gather length data.
-        let mut lengths = Vec::<usize>::with_capacity(max_rate_plans.len());
-        for inx in max_rate_plans.iter() {
-            lengths.push(plans[*inx].number_steps());
-        }
+        let lengths = max_rate_plans
+            .iter()
+            .map(|inx| plans[*inx].number_steps())
+            .collect::<Vec<usize>>();
+
         let min_len = lengths.iter().min().unwrap();
 
         // Find plans with the min length.
-        let mut min_len_plans = Vec::<usize>::new();
-        for (inx, lenx) in lengths.iter().enumerate() {
-            if lenx == min_len {
-                min_len_plans.push(max_rate_plans[inx]);
-            }
-        }
+        let min_len_plans = lengths
+            .iter()
+            .enumerate()
+            .filter_map(|(inx, lenx)| {
+                if lenx == min_len {
+                    Some(max_rate_plans[inx])
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<usize>>();
 
         // No further choice to be made.
         if min_len_plans.len() == 1 {
@@ -1081,6 +1086,25 @@ impl DomainStore {
         self.print_can_do();
     }
 
+    /// Return a vector of bridges between non-negative SRs and negative SRs of a limited net_value.
+    /// Really, to get away from immutible/mutible reference problems.
+    fn calc_bridges(&self, neg_limit_val: isize) -> Vec<RegionStoreCorr> {
+        //println!("bridges : neg_limit_val {neg_limit_val}");
+        let mut ret_regs = vec![];
+
+        for selx in self.select_negative.iter() {
+            if selx.net_value < neg_limit_val {
+                continue;
+            }
+            for sely in self.select_non_negative.iter() {
+                if sely.regions.is_adjacent(&selx.regions) {
+                    ret_regs.push(sely.regions.bridge(&selx.regions));
+                }
+            }
+        }
+        ret_regs
+    }
+
     /// Like Real Life, formulate a direct plan,
     /// notice there are some negative aspects,
     /// then try to form a plan that avoids the negative.
@@ -1120,57 +1144,48 @@ impl DomainStore {
                 neg_srs_vals.sort_by(|a, b| b.cmp(a));
             }
             //println!("Neg srs values {:?}", neg_srs_vals);
-            neg_srs_vals.pop(); // lose highest value negative.
+            neg_srs_vals.pop(); // Lose the highest value negative.
         }
 
-        let mut neg_srs_inx = 0;
+        let mut neg_srs_inx2: isize = -1;
 
         loop {
+            // Build initial SelectRegions vector.
+            let mut slrgs2 = Vec::<&RegionStoreCorr>::with_capacity(self.select_non_negative.len());
+            for selx in self.select_non_negative.iter() {
+                slrgs2.push(&selx.regions);
+            }
+            let brgs;
+
+            if neg_srs_inx2 == neg_srs_vals.len() as isize {
+                return None;
+            }
+
+            if neg_srs_inx2 > -1 {
+                let limit = neg_srs_vals[neg_srs_inx2 as usize];
+
+                for selx in self.select_negative.iter() {
+                    if selx.neg_value <= limit {
+                        slrgs2.push(&selx.regions);
+                    }
+                }
+                brgs = self.calc_bridges(limit);
+                for brgx in brgs.iter() {
+                    slrgs2.push(brgx);
+                }
+            }
+            neg_srs_inx2 += 1;
+
             let mut plans = (0..6)
                 .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
                 .filter_map(|_| {
-                    self.plan_using_least_negative_select_regions2(start_regs, goal_regs, &slrgs)
+                    self.plan_using_least_negative_select_regions2(start_regs, goal_regs, &slrgs2)
                 })
                 .collect::<Vec<PlanStore>>();
 
             if plans.is_empty() {
-                if !neg_srs_vals.is_empty() && neg_srs_inx < neg_srs_vals.len() {
-                    // Add next least negative fragments to traverse in finding a plan.
-                    let mut indxs = vec![];
-                    for (inx, selx) in self.select_negative.iter().enumerate() {
-                        if selx.neg_value == neg_srs_vals[neg_srs_inx] {
-                            //println!("Adding neg srs {}", selx);
-                            indxs.push(inx);
-                            slrgs.push(selx.regions.clone());
-                        }
-                    }
-                    //println!("Adding neg value {}", neg_srs_vals[neg_srs_inx]);
-                    for inx in indxs.iter() {
-                        let mut adjs = vec![];
-                        for (iny, selx) in slrgs.iter().enumerate() {
-                            if selx.is_adjacent(&self.select_negative[*inx].regions) {
-                                adjs.push(iny);
-                            }
-                        }
-                        for iny in adjs.iter() {
-                            let brg = slrgs[*iny].bridge(&self.select_negative[*inx].regions);
-                            slrgs.push(brg);
-                        }
-                        slrgs.push(self.select_negative[*inx].regions.clone());
-                    }
-
-                    neg_srs_inx += 1;
-                    continue;
-                }
-                return None;
+                continue;
             }
-
-            //if neg_srs_inx > 0 && !plans.is_empty() {
-            //println!("Adding neg value worked!");
-            //for plnx in plans.iter() {
-            //   println!("   {plnx}");
-            //}
-            //}
 
             // Find the highest rated plans.
             let mut max_rate = isize::MIN;
@@ -1223,7 +1238,7 @@ impl DomainStore {
         &self,
         start_regs: &RegionStoreCorr,
         goal_regs: &RegionStoreCorr,
-        select_regions: &[RegionStoreCorr],
+        select_regions: &[&RegionStoreCorr],
     ) -> Option<PlanStore> {
         //println!(
         //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}"
@@ -1467,7 +1482,7 @@ impl DomainStore {
         &'a self,
         cur_start: &'a RegionStoreCorr,
         cur_goal: &'a RegionStoreCorr,
-        select_regions: &'a [RegionStoreCorr],
+        select_regions: &'a [&RegionStoreCorr],
     ) -> Option<Vec<&RegionStoreCorr>> {
         // Init start intersections vector.
         let mut start_ints = Vec::<&RegionStoreCorr>::new();
@@ -2862,7 +2877,6 @@ mod tests {
         } else {
             return Err(format!("No plan found?"));
         }
-
         Ok(())
     }
 }

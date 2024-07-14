@@ -111,15 +111,19 @@ impl RegionStore {
     pub fn supersets_of(&self, itmx: &impl AccessStates) -> Self {
         debug_assert!(self.is_empty() || itmx.num_bits() == self.num_bits().unwrap());
 
-        let mut ret_regs = Self::new(vec![]);
+        let regs = self
+            .items
+            .iter()
+            .filter_map(|regx| {
+                if regx.is_superset_of(itmx) {
+                    Some(regx.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<SomeRegion>>();
 
-        for regx in self.items.iter() {
-            if regx.is_superset_of(itmx) {
-                ret_regs.push(regx.clone());
-            }
-        }
-
-        ret_regs
+        Self::new(regs)
     }
 
     /// Return true if a RegionStore contains a region.

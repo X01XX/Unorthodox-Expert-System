@@ -69,14 +69,22 @@ impl SelectRegionsStore {
         if self.any_supersets_of(&select) {
             return;
         }
-        // Identify subsets.
-        let mut del = Vec::<usize>::new();
-        for (inx, regstx) in self.items.iter().enumerate() {
-            if regstx.regions.is_subset_of(&select.regions) {
-                del.push(inx);
-            }
-        }
+        // Identify subsets by index.
+        let mut del = self
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(inx, regstx)| {
+                if regstx.regions.is_subset_of(&select.regions) {
+                    Some(inx)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<usize>>();
+
         // Remove subsets, highest indicies first.
+        del.sort();
         for inx in del.iter().rev() {
             tools::remove_unordered(&mut self.items, *inx);
         }
@@ -93,14 +101,22 @@ impl SelectRegionsStore {
         if self.any_subsets_of(&select) {
             return;
         }
-        // Identify supersets.
-        let mut del = Vec::<usize>::new();
-        for (inx, regstx) in self.items.iter().enumerate() {
-            if regstx.regions.is_superset_of(&select.regions) {
-                del.push(inx);
-            }
-        }
+        // Identify supersets by index.
+        let mut del = self
+            .items
+            .iter()
+            .enumerate()
+            .filter_map(|(inx, regstx)| {
+                if regstx.regions.is_superset_of(&select.regions) {
+                    Some(inx)
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<usize>>();
+
         // Remove subsets, highest indicies first.
+        del.sort();
         for inx in del.iter().rev() {
             tools::remove_unordered(&mut self.items, *inx);
         }
@@ -159,14 +175,16 @@ impl SelectRegionsStore {
     pub fn rate_regions(&self, regs: &RegionStoreCorr) -> isize {
         debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
 
-        let mut net_value: isize = 0;
-
-        for regsx in self.items.iter() {
-            if regsx.regions.is_superset_of(regs) {
-                net_value += regsx.net_value;
-            }
-        }
-        net_value
+        self.items
+            .iter()
+            .filter_map(|selx| {
+                if selx.regions.is_superset_of(regs) {
+                    Some(selx.net_value)
+                } else {
+                    None
+                }
+            })
+            .sum()
     }
 
     /// Return true if any SelectRegion is a region superset of another..

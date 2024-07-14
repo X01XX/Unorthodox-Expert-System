@@ -156,11 +156,7 @@ impl PlanStore {
 
     /// Return the number of steps in the plans of the PlanStore.
     pub fn number_steps(&self) -> usize {
-        let mut ret = 0;
-        for planx in &self.items {
-            ret += planx.len();
-        }
-        ret
+        self.items.iter().map(|planx| planx.len()).sum()
     }
 
     /// Return a String representation of a PlanStore.
@@ -213,14 +209,10 @@ impl PlanStore {
 
     /// Return number bits changed running plans in store.
     pub fn num_bits_changed(&self) -> usize {
-        let mut ret_num = 0;
-        for planx in self.items.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-            ret_num += planx.num_bits_changed();
-        }
-        ret_num
+        self.items
+            .iter()
+            .map(|planx| planx.num_bits_changed())
+            .sum()
     }
 
     /// Return the result regions of a Planstore.

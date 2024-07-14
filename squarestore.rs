@@ -91,14 +91,19 @@ impl SquareStore {
     pub fn memory_squares_in_reg(&self, aregion: &SomeRegion) -> Vec<&SomeSquare> {
         debug_assert!(aregion.num_bits() == self.num_bits);
 
-        let mut ret_sqrs = Vec::<&SomeSquare>::new();
+        //let mut ret_sqrs = Vec::<&SomeSquare>::new();
 
-        for sqrx in self.memory.iter() {
-            if aregion.is_superset_of(&sqrx.state) {
-                ret_sqrs.push(sqrx);
-            }
-        }
-        ret_sqrs
+        //for sqrx in self.memory.iter() {
+        //    if aregion.is_superset_of(&sqrx.state) {
+        //        ret_sqrs.push(sqrx);
+        //    }
+        //}
+        //ret_sqrs
+        //self.memory.iter().filter_map(|sqrx| if aregion.is_superset_of(&sqrx.state) { Some(sqrx) } else { None }).collect::<Vec<&SomeSquare>>()
+        self.memory
+            .iter()
+            .filter(|sqrx| aregion.is_superset_of(&sqrx.state))
+            .collect::<Vec<&SomeSquare>>()
     }
 
     /// Return an Option mutable reference for a square given a state,
