@@ -221,6 +221,7 @@ impl PlanStore {
     /// a domain.
     pub fn result_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
         let mut ret_regs = default.clone();
+
         for planx in self.items.iter() {
             if planx.is_empty() {
                 continue;

@@ -1201,7 +1201,9 @@ impl DomainStore {
                 }
             }
 
-            return Some(plans.swap_remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]));
+            let ret_path = plans.swap_remove(inxs[rand::thread_rng().gen_range(0..inxs.len())]);
+            //println!("plan_using_least_negative_select_regions: returning {ret_path}");
+            return Some(ret_path);
         }
     }
 
@@ -1241,7 +1243,7 @@ impl DomainStore {
         select_regions: &[&RegionStoreCorr],
     ) -> Option<PlanStore> {
         //println!(
-        //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs}"
+        //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
         //);
 
         // Check no plan needed.
@@ -1256,6 +1258,7 @@ impl DomainStore {
                     self.make_plans2(start_regs, &selx.intersection(goal_regs)?, Some(selx))
                 {
                     assert!(plans.validate(start_regs, goal_regs));
+                    //println!("plan_using_least_negative_select_regions2: returning (1) {plans}");
                     return Some(plans);
                 } else {
                     continue;
@@ -1282,6 +1285,7 @@ impl DomainStore {
 
             if plans.result_regions(start_regs).is_subset_of(goal_regs) {
                 assert!(plans.validate(start_regs, goal_regs));
+                //println!("plan_using_least_negative_select_regions2: returning (2) {plans}");
                 return Some(plans);
             }
 
@@ -1313,6 +1317,7 @@ impl DomainStore {
                     return None;
                 }
                 assert!(ret_plan_store.validate(start_regs, goal_regs));
+                //println!("plan_using_least_negative_select_regions2: returning (3) {ret_plan_store}");
                 return Some(ret_plan_store);
             }
 
@@ -1330,12 +1335,14 @@ impl DomainStore {
                     self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
                 {
                     assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                    //println!("plan_using_least_negative_select_regions2: returning (4) {ret_plan_store2}");
                     return Some(ret_plan_store2);
                 } else {
                     return None;
                 }
             }
             assert!(ret_plan_store.validate(start_regs, goal_regs));
+            //println!("plan_using_least_negative_select_regions2: returning (5) {ret_plan_store}");
             return Some(ret_plan_store);
         }
 
@@ -1352,6 +1359,7 @@ impl DomainStore {
 
                 if goal_regs.is_superset_of(&ret_plan_store_result_regions) {
                     assert!(ret_plan_store.validate(start_regs, goal_regs));
+                    //println!("plan_using_least_negative_select_regions2: returning (6) {ret_plan_store}");
                     return Some(ret_plan_store);
                 }
 
@@ -1363,6 +1371,7 @@ impl DomainStore {
                     self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
                 {
                     assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                    //println!("plan_using_least_negative_select_regions2: returning (7) {ret_plan_store2}");
                     return Some(ret_plan_store2);
                 }
                 //println!("plan_using_least_negative_select_regions2: returning (16): None");
@@ -1424,12 +1433,14 @@ impl DomainStore {
                 self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
             {
                 assert!(ret_plan_store2.validate(start_regs, goal_regs));
+                //println!("plan_using_least_negative_select_regions2: returning (8) {ret_plan_store2}");
                 return Some(ret_plan_store2);
             };
             return None;
         }
 
         assert!(ret_plan_store.validate(start_regs, goal_regs));
+        //println!("plan_using_least_negative_select_regions2: returning (9) {ret_plan_store}");
         Some(ret_plan_store)
     } // end plan_using_least_negative_select_regions2
 
@@ -1480,104 +1491,30 @@ impl DomainStore {
     /// given RegionStoreCorrs.
     fn plan_using_least_negative_select_regions3<'a>(
         &'a self,
-        cur_start: &'a RegionStoreCorr,
-        cur_goal: &'a RegionStoreCorr,
+        start_regs: &'a RegionStoreCorr,
+        goal_regs: &'a RegionStoreCorr,
         select_regions: &'a [&RegionStoreCorr],
     ) -> Option<Vec<&RegionStoreCorr>> {
+        //println!(
+        //    "plan_using_least_negative_select_regions3: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
+        //);
+        // Start a list with the start regions, and a list with the goal regions.
+        // Successively add intersections, of the last item of each list, to extend each list,
+        // until the the two lists intersect, or no more new intersections can extend the lists.
+        //
+        // Kind of like two random depth-first searches.
+
         // Init start intersections vector.
         let mut start_ints = Vec::<&RegionStoreCorr>::new();
-        start_ints.push(cur_start);
-
-        // Randomly pick non-negative SelectRegions, to find one that is a superset of cur_start.
-        let mut randpick = tools::RandomPick::new(select_regions.len());
-        while let Some(inx) = randpick.pick() {
-            let selx = &select_regions[inx];
-
-            if selx.is_superset_of(cur_start) {
-                start_ints.push(selx);
-                break;
-            }
-        }
-        if start_ints.len() == 1 {
-            return None;
-        }
+        start_ints.push(start_regs);
 
         // Init goal intersections vector.
         let mut goal_ints = Vec::<&RegionStoreCorr>::new();
-        goal_ints.push(cur_goal);
-
-        // Randomly pick non-negative SelectRegions, to find one that is a superset of cur_goal.
-        let mut randpick = tools::RandomPick::new(select_regions.len());
-        while let Some(inx) = randpick.pick() {
-            let selx = &select_regions[inx];
-
-            if selx.is_superset_of(cur_goal) {
-                goal_ints.push(selx);
-                break;
-            }
-        }
-        if goal_ints.len() == 1 {
-            return None;
-        }
+        goal_ints.push(goal_regs);
 
         // Build up start and goal vectors, until the is an intersection between them, or
         // no more intersections.
         loop {
-            // Check the last start_ints item against all goal_ints.
-            let start_last = start_ints.last()?;
-
-            // Keep track of goal items traversed, in case an intersection is found.
-            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
-
-            for regs_gx in goal_ints.iter() {
-                if regs_gx.intersects(start_last) {
-                } else {
-                    // If no intersection is found, the iter will exit, without returning a result.
-                    tmp_path.push(regs_gx);
-                    continue;
-                }
-                // Use current start_ints vector as the return vector.
-
-                // Avoid two consecutive, equal, RegionStoreCorrs.
-                if std::ptr::eq(*regs_gx, *start_last) {
-                } else {
-                    start_ints.push(regs_gx);
-                }
-                // Unwind successive goal path items.
-                for regs_tx in tmp_path.iter().rev() {
-                    start_ints.push(regs_tx);
-                }
-                //println!("path 1 {}", tools::vec_ref_string(&start_ints));
-                return Some(start_ints);
-            }
-
-            // Check the last goal_ints item against all start_ints.
-            let goal_last = goal_ints.last()?;
-
-            // Save RegionStoreCorrs traversed, to use if/when an intersection is found.
-            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
-
-            for regs_sx in start_ints.iter() {
-                if regs_sx.intersects(goal_last) {
-                } else {
-                    // If no intersection is found, the iter will exit, without returning a result.
-                    // tmp_path will be a waste.
-                    tmp_path.push(regs_sx);
-                    continue;
-                }
-                // Avoid two consecutive, equal, RegionStoreCorrs.
-                if std::ptr::eq(regs_sx, goal_last) {
-                } else {
-                    tmp_path.push(regs_sx);
-                }
-                // Unwind successive goal path RegionStoreCorrs.
-                for regs_gx in goal_ints.iter().rev() {
-                    tmp_path.push(regs_gx);
-                }
-                //println!("path 2 {}", tools::vec_ref_string(&tmp_path));
-                return Some(tmp_path);
-            }
-
             // Get next layer of intersections for start_ints.
             let mut start_added = false;
             let start_last = &start_ints.last()?;
@@ -1598,7 +1535,7 @@ impl DomainStore {
                 }
                 // Avoid the case of multiple RegionStoreCorrs intersecting the start RegionStoreCorr,
                 // one has already been chosen.
-                if selx.is_superset_of(cur_start) {
+                if start_ints.len() > 1 && selx.is_superset_of(start_regs) {
                     continue;
                 }
 
@@ -1627,7 +1564,7 @@ impl DomainStore {
                 }
                 // Avoid the case of multiple RegionStoreCorrs intersecting the goal RegionStoreCorr,
                 // one has already been chosen.
-                if selx.is_superset_of(cur_goal) {
+                if goal_ints.len() > 1 && selx.is_superset_of(goal_regs) {
                     continue;
                 }
 
@@ -1639,7 +1576,63 @@ impl DomainStore {
             // Check if done, with no result.
             if start_added || goal_added {
             } else {
+                //println!("plan_using_least_negative_select_regions3: returning (1) no new intersections found");
                 return None;
+            }
+
+            // Check the last start_ints item against all goal_ints.
+            let start_last = start_ints.last()?;
+
+            // Keep track of goal items traversed, in case an intersection is found.
+            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+
+            for regs_gx in goal_ints.iter() {
+                if regs_gx.intersects(start_last) {
+                } else {
+                    // If no intersection is found, the iter will exit, without returning a result.
+                    tmp_path.push(regs_gx);
+                    continue;
+                }
+                // Use current start_ints vector as the return vector.
+
+                // Avoid two consecutive, equal, RegionStoreCorrs.
+                if std::ptr::eq(*regs_gx, *start_last) {
+                } else {
+                    start_ints.push(regs_gx);
+                }
+                // Unwind successive goal path items.
+                for regs_tx in tmp_path.iter().rev() {
+                    start_ints.push(regs_tx);
+                }
+                //println!("plan_using_least_negative_select_regions3: reurning (1) {}", tools::vec_ref_string(&start_ints));
+                return Some(start_ints);
+            }
+
+            // Check the last goal_ints item against all start_ints.
+            let goal_last = goal_ints.last()?;
+
+            // Save RegionStoreCorrs traversed, to use if/when an intersection is found.
+            let mut tmp_path = Vec::<&RegionStoreCorr>::new();
+
+            for regs_sx in start_ints.iter() {
+                if regs_sx.intersects(goal_last) {
+                } else {
+                    // If no intersection is found, the iter will exit, without returning a result.
+                    // tmp_path will be a waste.
+                    tmp_path.push(regs_sx);
+                    continue;
+                }
+                // Avoid two consecutive, equal, RegionStoreCorrs.
+                if std::ptr::eq(regs_sx, goal_last) {
+                } else {
+                    tmp_path.push(regs_sx);
+                }
+                // Unwind successive goal path RegionStoreCorrs.
+                for regs_gx in goal_ints.iter().rev() {
+                    tmp_path.push(regs_gx);
+                }
+                //println!("plan_using_least_negative_select_regions3: returning (2) {}", tools::vec_ref_string(&tmp_path));
+                return Some(tmp_path);
             }
         } // end loop
     } // end plan_using_least_negative_select_regions3

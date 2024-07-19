@@ -366,15 +366,14 @@ impl SomeBits {
     pub fn b_and(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
-
-        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ints.push(x & y);
-        }
-
         Self {
             num_bits: self.num_bits,
-            ints,
+            ints: self
+                .ints
+                .iter()
+                .zip(other.ints.iter())
+                .map(|(x, y)| x & y)
+                .collect::<Vec<Bitint>>(),
         }
     }
 
@@ -385,15 +384,14 @@ impl SomeBits {
     pub fn b_and_not(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
-
-        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ints.push(x & !y);
-        }
-
         Self {
             num_bits: self.num_bits,
-            ints,
+            ints: self
+                .ints
+                .iter()
+                .zip(other.ints.iter())
+                .map(|(x, y)| x & !y)
+                .collect::<Vec<Bitint>>(),
         }
     }
 
@@ -401,15 +399,14 @@ impl SomeBits {
     pub fn b_or(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
-
-        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ints.push(x | y);
-        }
-
         Self {
             num_bits: self.num_bits,
-            ints,
+            ints: self
+                .ints
+                .iter()
+                .zip(other.ints.iter())
+                .map(|(x, y)| x | y)
+                .collect::<Vec<Bitint>>(),
         }
     }
 
@@ -417,15 +414,14 @@ impl SomeBits {
     pub fn b_xor(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits, other.num_bits);
 
-        let mut ints = Vec::<Bitint>::with_capacity(self.ints.len());
-
-        for (x, y) in self.ints.iter().zip(other.ints.iter()) {
-            ints.push(x ^ y);
-        }
-
         Self {
             num_bits: self.num_bits,
-            ints,
+            ints: self
+                .ints
+                .iter()
+                .zip(other.ints.iter())
+                .map(|(x, y)| x ^ y)
+                .collect::<Vec<Bitint>>(),
         }
     }
 
@@ -474,13 +470,7 @@ impl SomeBits {
 
     /// Return the number of bits set to one.
     pub fn num_one_bits(&self) -> usize {
-        let mut cnt = 0;
-
-        for intx in &self.ints {
-            cnt += intx.count_ones();
-        }
-
-        cnt as usize
+        self.ints.iter().map(|x| x.count_ones()).sum::<u32>() as usize
     }
 
     /// Return the number of bits that are different.
@@ -495,23 +485,7 @@ impl SomeBits {
     pub fn is_adjacent(&self, other: &Self) -> bool {
         debug_assert_eq!(self.num_bits, other.num_bits);
 
-        self.b_xor(other).just_one_bit()
-    }
-
-    /// Return true if only one bit is set to one.
-    pub fn just_one_bit(&self) -> bool {
-        let mut cnt = 0;
-
-        for intx in &self.ints {
-            if *intx == 0 {
-                continue;
-            }
-            cnt += intx.count_ones();
-            if cnt > 1 {
-                return false;
-            }
-        }
-        cnt == 1
+        self.b_xor(other).num_one_bits() == 1
     }
 
     /// Create a formatted string for an instance.
@@ -1091,27 +1065,6 @@ mod tests {
         let bitsy = SomeBits::new_from_string("0x11+0")?;
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_adjacent(&bitsy));
-
-        Ok(())
-    }
-
-    #[test]
-    fn just_one_bit() -> Result<(), String> {
-        let bitsx = SomeBits::new_from_string("0x00+0")?;
-        println!("bitsx: {bitsx}");
-        assert!(!bitsx.just_one_bit());
-
-        let bitsx = SomeBits::new_from_string("0b0+01")?;
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.just_one_bit());
-
-        let bitsx = SomeBits::new_from_string("0x01+0")?;
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.just_one_bit());
-
-        let bitsx = SomeBits::new_from_string("0b01+01")?;
-        println!("bitsx: {bitsx}");
-        assert!(!bitsx.just_one_bit());
 
         Ok(())
     }

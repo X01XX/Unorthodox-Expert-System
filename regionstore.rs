@@ -261,14 +261,16 @@ impl RegionStore {
     }
 
     /// Extend a NeedStore by emptying another NeedStore..
-    pub fn append(&mut self, mut other: Self) {
+    pub fn append_nosubs(&mut self, other: Self) {
         debug_assert!(
             self.is_empty()
                 || other.is_empty()
                 || self.items[0].num_bits() == other.items[0].num_bits()
         );
 
-        self.items.append(&mut other.items);
+        for regx in other.into_iter() {
+            self.push_nosubs(regx);
+        }
     }
 
     /// Return the intersection of two RegionStores.
@@ -329,12 +331,12 @@ impl RegionStore {
             } // next inx
 
             if next_ints.is_empty() {
-                remainder.append(tmp_ints);
+                remainder.append_nosubs(tmp_ints);
                 return remainder;
             }
 
             let remain2 = tmp_ints.subtract(&next_ints);
-            remainder.append(remain2);
+            remainder.append_nosubs(remain2);
             tmp_ints = next_ints;
         } // end loop
     }
@@ -406,6 +408,15 @@ impl Index<usize> for RegionStore {
 impl IndexMut<usize> for RegionStore {
     fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
         &mut self.items[i]
+    }
+}
+
+impl IntoIterator for RegionStore {
+    type Item = SomeRegion;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
     }
 }
 

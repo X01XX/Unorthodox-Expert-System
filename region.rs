@@ -248,7 +248,7 @@ impl SomeRegion {
     pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        self.diff_edge_mask(other).just_one_bit()
+        self.diff_edge_mask(other).num_one_bits() == 1
     }
 
     /// Return true if two regions intersect.

@@ -1,7 +1,6 @@
 //! The StateStore struct. A vector of SomeState structs.
 
 use crate::bits::vec_same_num_bits;
-use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::tools;
 
@@ -64,20 +63,6 @@ impl StateStore {
     /// Return the number of states.
     pub fn len(&self) -> usize {
         self.items.len()
-    }
-
-    /// Return states in a given region.
-    pub fn in_reg(&self, targ_reg: &SomeRegion) -> Self {
-        debug_assert!(self.is_empty() || targ_reg.num_bits() == self.items[0].num_bits());
-
-        let mut ret_stas = Self::new(vec![]);
-
-        for stax in self.items.iter() {
-            if targ_reg.is_subset_of(stax) {
-                ret_stas.push(stax.clone());
-            }
-        }
-        ret_stas
     }
 } // end impl StateStore
 

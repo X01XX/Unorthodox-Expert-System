@@ -122,17 +122,11 @@ impl SomeMask {
         self.bts.num_one_bits()
     }
 
-    /// Return true if only one bit is set to one.
-    pub fn just_one_bit(&self) -> bool {
-        self.bts.just_one_bit()
-    }
-
     /// Return a vector of one-bit masks.
     /// Could be called like MaskStore { avec: [a mask object].split() }
     pub fn split(&self) -> Vec<Self> {
-        let bitsx = self.bts.split();
-
-        bitsx
+        self.bts
+            .split()
             .iter()
             .map(|bitx| Self { bts: bitx.clone() })
             .collect()

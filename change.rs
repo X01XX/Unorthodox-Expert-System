@@ -71,20 +71,9 @@ impl SomeChange {
         }
     }
 
-    /// Return the logical bitwise not of a change
-    pub fn bitwise_not(&self) -> Self {
-        Self {
-            b01: self.b01.bitwise_not(),
-            b10: self.b10.bitwise_not(),
-        }
-    }
-
     /// Return true if no bits are set
     pub fn is_low(&self) -> bool {
-        if !self.b01.is_low() {
-            return false;
-        }
-        self.b10.is_low()
+        self.b01.is_low() && self.b10.is_low()
     }
 
     /// Return true if any bits are set
@@ -101,10 +90,7 @@ impl SomeChange {
     pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert_eq!(other.num_bits(), self.num_bits());
 
-        if self.b01.is_subset_ones_of(&other.b01) && self.b10.is_subset_ones_of(&other.b10) {
-            return true;
-        }
-        false
+        self.b01.is_subset_ones_of(&other.b01) && self.b10.is_subset_ones_of(&other.b10)
     }
 
     /// Return a string to represent a SomeChange instance.
@@ -152,16 +138,6 @@ impl SomeChange {
         SomeChange {
             b01: to.edge_ones_mask().bitwise_and_not(from),
             b10: to.edge_zeros_mask().bitwise_and(from),
-        }
-    }
-
-    /// Return the intersection of the invert of the argument.
-    pub fn bitwise_and_not(&self, other: &Self) -> Self {
-        debug_assert_eq!(other.num_bits(), self.num_bits());
-
-        SomeChange {
-            b01: self.b01.bitwise_and_not(&other.b01),
-            b10: self.b10.bitwise_and_not(&other.b10),
         }
     }
 
@@ -289,6 +265,95 @@ mod tests {
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
         assert!(sta2 == SomeState::new_from_string("s0b11+00")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn restrict_to() -> Result<(), String> {
+        let cng1 = SomeChange::new_from_string(
+            "X1/X1/X1_X0/X0/X0_Xx/Xx/Xx_XX/XX/XX_11/11_00/00_10/10_01/01",
+        )?;
+        let reg1 = SomeRegion::new_from_string("X10_X10_X10_X10_X1_X0_X1_X0")?;
+        let cng2 = cng1.restrict_to(&reg1);
+        println!("cng2 {cng2}");
+
+        let cng3 = SomeChange::new_from_string(
+            "X1/11/01_X0/10/00_Xx/10/01_XX/11/00_11/11_00/00_10/10_01/01",
+        )?;
+        println!("cng3 {cng3}");
+
+        assert!(cng2 == cng3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn is_subset_of() -> Result<(), String> {
+        let cng1 = SomeChange::new_from_string("X1/X0/XX/Xx_00/01/11/10")?;
+        println!("cng1 {cng1}");
+
+        let cng2 = SomeChange::new_from_string("11/X0/XX/01_00/01/11/10")?;
+        println!("cng2 {cng2}");
+
+        assert!(cng2.is_subset_of(&cng1));
+        assert!(!cng1.is_subset_of(&cng2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn difference() -> Result<(), String> {
+        let cng1 = SomeChange::new_from_string("X1/X0/XX/Xx_00/01/11/10")?;
+        println!("cng1 {cng1}");
+
+        let cng2 = SomeChange::new_from_string("11/X0/XX/01_00/01/11/10")?;
+        println!("cng2 {cng2}");
+
+        let cng3 = cng1.difference(&cng2);
+        println!("cng3 {cng3}");
+
+        let cng4 = SomeChange::new_from_string("01/00/00/10_00/00/11/11")?;
+        println!("cng4 {cng4}");
+
+        assert!(cng3 == cng4);
+
+        Ok(())
+    }
+
+    #[test]
+    fn new_region_to_region() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string("001_1xxx")?;
+        println!("reg1 {reg1}");
+        let reg2 = SomeRegion::new_from_string("011_001x")?;
+        println!("reg2 {reg2}");
+
+        let cng1 = SomeChange::new_region_to_region(&reg1, &reg2);
+        println!("cng1 {cng1}");
+
+        let cng2 = SomeChange::new_from_string("00/01/00_10/10/01/00")?;
+        println!("cng2 {cng2}");
+
+        assert!(cng1 == cng2);
+
+        Ok(())
+    }
+
+    #[test]
+    fn new_state_to_region() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string("01_0110")?;
+        println!("sta1 {sta1}");
+
+        let reg1 = SomeRegion::new_from_string("xx_1010")?;
+        println!("reg1 {reg1}");
+
+        let cng1 = SomeChange::new_state_to_region(&sta1, &reg1);
+        println!("cng1 {cng1}");
+
+        let cng2 = SomeChange::new_from_string("00/11_/01/10/11/00")?;
+        println!("cng2 {cng2}");
+
+        assert!(cng1 == cng2);
 
         Ok(())
     }

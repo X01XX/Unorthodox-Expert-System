@@ -132,10 +132,10 @@ impl SomeRule {
                 } else if token == "1X" || token == "1x" {
                     b00.push('0');
                     b01.push('0');
-                    b11.push('1');
+                    b11.push('1'); // Assume minimum change.
                     b10.push('0');
                 } else if token == "0X" || token == "0x" {
-                    b00.push('1');
+                    b00.push('1'); // Assume minimum change.
                     b01.push('0');
                     b11.push('0');
                     b10.push('0');
@@ -170,21 +170,22 @@ impl SomeRule {
     pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        let Some(tmprul) = self.intersection(other) else {
-            return false;
-        };
-
-        *self == tmprul
+        if let Some(tmprul) = self.intersection(other) {
+            *self == tmprul
+        } else {
+            false
+        }
     }
 
     /// Return true if a rule is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        let Some(tmprul) = self.intersection(other) else {
-            return false;
-        };
-        *other == tmprul
+        if let Some(tmprul) = self.intersection(other) {
+            *other == tmprul
+        } else {
+            false
+        }
     }
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)

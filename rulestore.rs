@@ -426,13 +426,13 @@ impl RuleStore {
             "{}",
             format!("{} does not intersect {}", regx, self.initial_region())
         );
-        let mut rcrs = Vec::<SomeRule>::with_capacity(self.items.len());
 
-        for rulx in self.items.iter() {
-            rcrs.push(rulx.restrict_initial_region(regx));
-        }
-
-        Self::new(rcrs)
+        Self::new(
+            self.items
+                .iter()
+                .map(|rulx| rulx.restrict_initial_region(regx))
+                .collect::<Vec<SomeRule>>(),
+        )
     }
 
     /// Return the initial region of the first rule in the store.
@@ -454,9 +454,8 @@ impl RuleStore {
 
     /// Return true if all rules in the RuleStore have the same initial region.
     pub fn rules_initial_region_eq(&self, aregion: &SomeRegion) -> bool {
-        if self.len() < 2 {
-            return true;
-        }
+        debug_assert!(self.is_not_empty());
+
         for rulx in self.iter() {
             if rulx.initial_region() != *aregion {
                 return false;
