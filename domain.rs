@@ -672,9 +672,10 @@ impl SomeDomain {
 
         if let Some(mut plans) = self.make_plans3(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {}", plans.len());
+
             let mut addplans = PlanStore::new(vec![]);
             for planx in plans.iter() {
-                if let Some(shortcuts) = self.shortcuts(planx) {
+                if let Some(shortcuts) = self.shortcuts(planx, within) {
                     // Check shortcuts.
                     //println!("Shortcuts for {planx} are {shortcuts}");
                     addplans.append(shortcuts);
@@ -948,28 +949,33 @@ impl SomeDomain {
     }
 
     /// Return a plan shortcut, or None.
-    fn shortcuts(&self, planx: &SomePlan) -> Option<PlanStore> {
+    fn shortcuts(&self, planx: &SomePlan, within: Option<&SomeRegion>) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
         //println!("shortcuts: plan {planx}");
-        self.shortcuts2(planx, 0)
+        self.shortcuts2(planx, 0, within)
     }
 
     /// Try to get multiple plan shortcuts.
     /// Return a plan shortcut, or None.
-    fn shortcuts2(&self, planx: &SomePlan, depth: usize) -> Option<PlanStore> {
+    fn shortcuts2(
+        &self,
+        planx: &SomePlan,
+        depth: usize,
+        within: Option<&SomeRegion>,
+    ) -> Option<PlanStore> {
         //println!("shortcuts2: plan {planx} depth {depth}");
         if depth > 5 {
             return None;
         }
-        if let Some(plany) = self.shortcuts3(planx) {
+        if let Some(plany) = self.shortcuts3(planx, within) {
             let mut inx = 0;
             if plany.len() > 1 {
                 inx = rand::thread_rng().gen_range(0..plany.len());
             }
             if plany[inx].len() < planx.len() {
-                return self.shortcuts2(&plany[inx], depth + 1);
+                return self.shortcuts2(&plany[inx], depth + 1, within);
             }
         }
         if depth == 0 {
@@ -980,7 +986,7 @@ impl SomeDomain {
     }
 
     /// Return one plan shortcut.
-    fn shortcuts3(&self, planx: &SomePlan) -> Option<PlanStore> {
+    fn shortcuts3(&self, planx: &SomePlan, within: Option<&SomeRegion>) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
@@ -1046,7 +1052,7 @@ impl SomeDomain {
                 }
             }
             if let Some(plans2) =
-                self.make_plans3(&planx[*from_inx].initial, &planx[*to_inx].result, None)
+                self.make_plans3(&planx[*from_inx].initial, &planx[*to_inx].result, within)
             {
                 // println!(
                 //     "    plans found from {} to {}",
@@ -1933,7 +1939,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
             assert!(shortcuts.len() == 1);
             let shrt = &shortcuts[0];
             println!("shrt {shrt}");
@@ -2063,7 +2069,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2182,7 +2188,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2335,7 +2341,7 @@ mod tests {
         );
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);

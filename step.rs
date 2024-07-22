@@ -92,6 +92,7 @@ impl SomeStep {
     }
 
     /// Return a new step, by taking a given step and restricting the initial region.
+    //pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self 
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         debug_assert_eq!(self.num_bits(), reg.num_bits());
         assert!(self.initial.intersects(reg));

@@ -29,7 +29,7 @@ use crate::statestore::StateStore;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::target::ATarget;
-use crate::tools::{self, not};
+use crate::tools;
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -507,21 +507,8 @@ impl SomeAction {
                         continue;
                     }
 
-                    // Calc pnc
-                    let sqrx = self
-                        .squares
-                        .find(group_region.first_state())
-                        .expect("Group region states should refer to existing squares");
-                    let pnc = if group_region.far_state() == *group_region.first_state() {
-                        sqrx.pnc
-                    } else if let Some(sqry) = self.squares.find(&group_region.far_state()) {
-                        sqrx.pnc && sqry.pnc
-                    } else {
-                        false
-                    };
-
                     self.groups.push_nosubs(
-                        SomeGroup::new(group_region.clone(), rules.clone(), pnc),
+                        SomeGroup::new(group_region.clone(), rules.clone()),
                         dom_id,
                         self.id,
                     );
@@ -666,8 +653,7 @@ impl SomeAction {
         }
 
         // Delete squares.
-        if to_del.is_empty() {
-        } else {
+        if to_del.is_not_empty() {
             println!(
                 "\nDom {} Act {} deleted unneeded squares: {}",
                 self.dom_id, self.id, to_del
@@ -712,11 +698,17 @@ impl SomeAction {
 
             // If this is a one-state group ..
             if grpx.one_state() {
+                if sqrx.pnc {
+                    grpx.set_pnc(self.dom_id, self.id);
+                }
                 continue;
             }
 
             if let Some(sqry) = self.squares.find(&grpx.region.far_state()) {
                 if sqry.pnc {
+                    if sqrx.pnc {
+                        grpx.set_pnc(self.dom_id, self.id);
+                    }
                     continue;
                 }
                 //println!("ConfirmGroup: (2) sqr {sqrx}");
@@ -775,7 +767,7 @@ impl SomeAction {
 
         // Reset limited indicator to recheck.
         for grpx in self.groups.iter_mut() {
-            if not(grpx.pnc) {
+            if !grpx.pnc {
                 continue;
             }
             if !grpx.limited {
@@ -805,7 +797,7 @@ impl SomeAction {
             for group_num in 0..self.groups.len() {
                 let regx = self.groups[group_num].region.clone();
 
-                if not(self.groups[group_num].pnc) {
+                if !self.groups[group_num].pnc {
                     continue;
                 }
 
@@ -2023,7 +2015,6 @@ impl SomeAction {
             ret_grps.push(SomeGroup::new(
                 SomeRegion::new(vec![sqrx.state.clone()]),
                 sqrx.rules.clone(),
-                sqrx.pnc,
             ));
         }
         ret_grps
@@ -2038,8 +2029,7 @@ impl SomeAction {
 
         if let Some((regy, rules)) = self.check_region_for_group(regx, sqrx.pn) {
             if regy.is_superset_of(&sqrx.state) {
-                let pnc = self.calc_region_pnc(&regy);
-                Some(SomeGroup::new(regy, rules, pnc))
+                Some(SomeGroup::new(regy, rules))
             } else {
                 None
             }
@@ -2047,19 +2037,6 @@ impl SomeAction {
             None
         }
     } // end validate_combination
-
-    /// Calculate a group region pnc value.
-    pub fn calc_region_pnc(&self, aregion: &SomeRegion) -> bool {
-        let sqrx = self.squares.find(aregion.first_state()).expect("SNH");
-        if !sqrx.pnc {
-            return false;
-        }
-        let farx = aregion.far_state();
-        if let Some(sqrf) = self.squares.find(&farx) {
-            return sqrf.pnc;
-        }
-        false
-    }
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
@@ -2089,7 +2066,7 @@ impl SomeAction {
                 }
             }
             SomeNeed::StateInRemainder { dom_id, .. } => {
-                if not(self.groups.any_superset_of(cur_state)) {
+                if !self.groups.any_superset_of(cur_state) {
                     let sqr1 = self.squares.find(cur_state).expect("SNH");
                     if sqr1.pnc {
                         self.check_remainder = true;
@@ -2097,7 +2074,6 @@ impl SomeAction {
                             SomeGroup::new(
                                 SomeRegion::new(vec![cur_state.clone()]),
                                 sqr1.rules.clone(),
-                                true,
                             ),
                             *dom_id,
                             self.id,

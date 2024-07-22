@@ -142,11 +142,6 @@ pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
     rc_str
 }
 
-/// Allow more obvious not operation than the exclamation point.
-pub fn not(val: bool) -> bool {
-    !val
-}
-
 /// Define the StrLen trait, so structs can return their expected string length for display.
 pub trait StrLen {
     fn strlen(&self) -> usize;

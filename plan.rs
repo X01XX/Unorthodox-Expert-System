@@ -97,7 +97,7 @@ impl SomePlan {
         self.shortcut = true;
     }
 
-    /// Return a plan after restricting the resilt region.
+    /// Return a plan after restricting the result region.
     pub fn restrict_result_region(&self, regx: &SomeRegion) -> Option<Self> {
         if self.is_empty() || !regx.intersects(self.result_region()) {
             return None;
@@ -271,7 +271,7 @@ impl SomePlan {
     }
 
     /// Return the result state of a plan that contains at least one step.
-    pub fn result_state(&self, astate: &SomeState) -> SomeState {
+    pub fn result_from_initial_state(&self, astate: &SomeState) -> SomeState {
         assert!(self.is_not_empty());
         let mut ret_state = astate.clone();
         for stepx in self.iter() {

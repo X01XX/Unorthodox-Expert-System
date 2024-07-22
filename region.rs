@@ -6,7 +6,7 @@
 use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools::{self, not, StrLen};
+use crate::tools::{self, StrLen};
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -422,7 +422,7 @@ impl SomeRegion {
         let mut ret_vec = Vec::<Self>::new();
 
         // If no intersection, return self.
-        if not(self.intersects(other)) {
+        if !self.intersects(other) {
             return vec![self.clone()];
         }
 
@@ -707,35 +707,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
+        let tmp_reg = SomeState::new(SomeBits::new(8)).to_region();
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(16))]);
+        let tmp_reg = SomeState::new(SomeBits::new(16)).to_region();
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(6))]);
+        let tmp_reg = SomeState::new(SomeBits::new(6)).to_region();
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(5))]);
+        let tmp_reg = SomeState::new(SomeBits::new(5)).to_region();
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
+        let tmp_reg = SomeState::new(SomeBits::new(4)).to_region();
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
