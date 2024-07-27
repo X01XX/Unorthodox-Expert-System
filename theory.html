@@ -2501,7 +2501,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 07/12/2024</p>
+   <p>Web page Started: 10/20/2010, last changed: 07/27/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
@@ -2841,8 +2841,20 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
     <p class="indent1">
     If there are intersections, they become the target set of the next cycle.
    </p>
+   <h3>Why does backward-chaining sometimes work, when forward-chaining does not?</h3>
     <p class="indent1">
+    Given the rules 00/XX/01/XX, and 01/XX/11/XX, trace a path from 0 to F, and 0 from F.
    </p>
+    <p class="indent2">
+    0&#129042;2&#129042;A (missing A&#129042;F).
+   </p>
+    <p class="indent2">
+    (missing 0&#129040;5) 5&#129040;7&#129040;F.
+   </p>
+    <p class="indent2">
+    If the rules for the change 0&#129040;5 are avalilable, and the rules for the change A&#129042;F are not available, backward-chaining will work, while forward-chaining will not.
+   </p>
+
    <h3>The six possible arrangements of a 3-bit Karnaugh Map axis</h3>
         <p class="indent1">
 	Below are the six ways. They are really circles, not lines.
