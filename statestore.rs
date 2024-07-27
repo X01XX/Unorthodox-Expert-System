@@ -1,4 +1,5 @@
 //! The StateStore struct. A vector of SomeState structs.
+//! Duplicates are suppressed.
 
 use crate::bits::vec_same_num_bits;
 use crate::state::SomeState;
@@ -28,14 +29,57 @@ impl StateStore {
     pub fn new(items: Vec<SomeState>) -> Self {
         debug_assert!(vec_same_num_bits(&items));
 
-        Self { items }
+        let mut ret = Self {
+            items: Vec::<SomeState>::with_capacity(items.len()),
+        };
+        for stax in items {
+            ret.push(stax);
+        }
+        ret
     }
 
     /// Add a state to a StateStore.
     pub fn push(&mut self, val: SomeState) {
         debug_assert!(self.is_empty() || val.num_bits() == self.items[0].num_bits());
 
-        self.items.push(val);
+        if !self.contains(&val) {
+            self.items.push(val);
+        }
+    }
+
+    /// Push a state if it is not between any pair of states already in the store.
+    pub fn push_no_between(&mut self, sta: SomeState) {
+        if self.len() < 2 {
+            self.push(sta);
+            return;
+        }
+        // Check if the new state is between any states.
+        for inx in 0..(self.len() - 1) {
+            for iny in (inx + 1)..self.len() {
+                if sta.is_between(&self[inx], &self[iny]) {
+                    return;
+                }
+            }
+        }
+        // Check if the new state causes other states to be between it and another state.
+        let mut remv = Vec::<usize>::new();
+        for (inx, stax) in self.items.iter().enumerate() {
+            for (iny, stay) in self.items.iter().enumerate().skip(1) {
+                if iny != inx && stay.is_between(&sta, stax) && !remv.contains(&iny) {
+                    remv.push(iny);
+                }
+            }
+        }
+        if remv.is_empty() {
+        } else {
+            // Sort idicies higher to lower, remove items.
+            remv.sort_by(|a, b| b.cmp(a));
+            for inx in remv.iter() {
+                tools::remove_unordered(&mut self.items, *inx);
+            }
+        }
+
+        self.push(sta);
     }
 
     /// Return true if the store is empty.
@@ -63,6 +107,15 @@ impl StateStore {
     /// Return the number of states.
     pub fn len(&self) -> usize {
         self.items.len()
+    }
+
+    /// Return a reference to the first state.
+    pub fn first(&self) -> Option<&SomeState> {
+        if self.items.is_empty() {
+            None
+        } else {
+            Some(&self.items[0])
+        }
     }
 } // end impl StateStore
 

@@ -333,10 +333,7 @@ impl GroupStore {
         if grp.region.states.len() > 1 {
             println!(
                 "\nDom {} Act {} Adding group {} from {}",
-                dom_id,
-                act_id,
-                grp,
-                tools::vec_string(&grp.region.states),
+                dom_id, act_id, grp, grp.region.states,
             );
         } else {
             println!("\nDom {} Act {} Adding group {}", dom_id, act_id, grp);

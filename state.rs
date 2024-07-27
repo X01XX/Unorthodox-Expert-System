@@ -15,8 +15,8 @@ use crate::bits::SomeBits;
 use crate::bits::{BitsRef, NumBits};
 use crate::mask::SomeMask;
 use crate::region::AccessStates;
-use crate::tools::StrLen;
 use crate::region::SomeRegion;
+use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;

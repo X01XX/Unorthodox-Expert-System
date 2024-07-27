@@ -2496,7 +2496,8 @@ mod tests {
                 if planx.is_empty() {
                     continue;
                 }
-                cur_states[planx.dom_id] = planx.result_from_initial_state(&cur_states[planx.dom_id]);
+                cur_states[planx.dom_id] =
+                    planx.result_from_initial_state(&cur_states[planx.dom_id]);
             }
             assert!(goal_regions.is_superset_states(&cur_states));
         } else {

@@ -6,7 +6,8 @@
 use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools::{self, StrLen};
+use crate::statestore::StateStore;
+use crate::tools::StrLen;
 
 extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
@@ -18,9 +19,9 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Debug, Clone)]
 /// SomeRegion struct.
 /// Vector for one, or more, states.
-/// If more than one state is used, the last state will be the farthest from the first state.
+/// There will be no duplicates, or anf states that are between any other states.
 pub struct SomeRegion {
-    pub states: Vec<SomeState>,
+    pub states: StateStore,
 }
 
 /// Implement the fmt::Display trait.
@@ -48,61 +49,20 @@ impl SomeRegion {
     /// For a group region, all states will correspond to a square that has been sampled.
     ///
     /// Duplicate, and unneeded states (states between two states), are removed.
-    pub fn new(mut states: Vec<SomeState>) -> Self {
+    pub fn new(states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
         debug_assert!(vec_same_num_bits(&states));
 
-        // Check for single-state region.
-        if states.len() == 1 {
-            return Self { states };
+        // Init store for states.
+        let mut store = StateStore::new(vec![]);
+
+        // Add states to store.
+        for stax in states {
+            store.push_no_between(stax);
         }
 
-        // Remove duplicate states, if any.
-        // Could be the result of intersecting something like 000X and 00X1 = 0001.
-        let mut remv = Vec::<usize>::new();
-        for (inx, stax) in states.iter().enumerate() {
-            for (iny, stay) in states.iter().enumerate().skip(inx + 1) {
-                if stax == stay && !remv.contains(&iny) {
-                    remv.push(iny);
-                }
-            }
-        }
-        if remv.is_empty() {
-        } else {
-            // Sort idicies higher to lower.
-            remv.sort_by(|a, b| b.cmp(a));
-            for inx in remv.iter() {
-                tools::remove_unordered(&mut states, *inx);
-            }
-        }
-
-        if states.len() < 3 {
-            return Self { states };
-        }
-
-        // Remove unneeded states, if any.
-        // If GT 2 states, it might remove all but two states.
-        remv = Vec::<usize>::new();
-        for (inx, stax) in states.iter().enumerate().skip(1) {
-            for (iny, stay) in states.iter().enumerate().skip(1) {
-                if iny == inx {
-                    continue;
-                }
-                if stay.is_between(&states[0], stax) && !remv.contains(&iny) {
-                    remv.push(iny);
-                }
-            }
-        }
-        if remv.is_empty() {
-        } else {
-            // Sort idicies higher to lower.
-            remv.sort_by(|a, b| b.cmp(a));
-            for inx in remv.iter() {
-                tools::remove_unordered(&mut states, *inx);
-            }
-        }
-
-        Self { states }
+        // Return new region.
+        Self { states: store }
     }
 
     /// Return a reference to the first state.
@@ -110,20 +70,9 @@ impl SomeRegion {
         &self.states[0]
     }
 
-    /// Return the far state.
+    /// Return the far state, from the current first state.
     pub fn far_state(&self) -> SomeState {
-        // Check for easy result.
-        if self.states.len() < 3 {
-            return self.states.last().expect("SNH").clone();
-        }
-
-        // Calculate a state far from the first state.
-        let mut dif = self.states[0].new_low().to_mask();
-        for stax in self.states.iter().skip(1) {
-            dif = dif.bitwise_or(&stax.bitwise_xor(&self.states[0]));
-        }
-
-        self.states[0].bitwise_xor(&dif)
+        self.states[0].bitwise_xor(&self.x_mask())
     }
 
     /// Return a Region from a string.
@@ -278,25 +227,22 @@ impl SomeRegion {
 
     /// Return a Mask of zero positions.
     pub fn edge_zeros_mask(&self) -> SomeMask {
-        self.first_state()
-            .bitwise_not()
-            .bitwise_and_not(&self.far_state())
-            .to_mask()
+        self.high_state().bitwise_not().to_mask()
     }
 
     /// Return a Mask of one positions.
     pub fn edge_ones_mask(&self) -> SomeMask {
-        self.first_state().bitwise_and(&self.far_state()).to_mask()
+        self.low_state().to_mask()
     }
 
     /// Return a mask of edge (non-X) bits.
     pub fn edge_mask(&self) -> SomeMask {
-        self.first_state().bitwise_eqv(&self.far_state())
+        self.high_state().bitwise_eqv(&self.low_state())
     }
 
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
-        self.first_state().bitwise_xor(&self.far_state()).to_mask()
+        self.high_state().bitwise_xor(&self.low_state()).to_mask()
     }
 
     /// Given a state in a region, return the far state in the region.
@@ -304,9 +250,7 @@ impl SomeRegion {
         debug_assert_eq!(self.num_bits(), sta.num_bits());
         assert!(self.is_superset_of(sta));
 
-        self.first_state()
-            .bitwise_xor(&self.far_state())
-            .bitwise_xor(sta)
+        sta.bitwise_xor(&self.x_mask())
     }
 
     /// Given a region, and a proper subset region, return the
@@ -319,8 +263,8 @@ impl SomeRegion {
         let cng_mask = self.x_mask().bitwise_xor(&other.x_mask());
 
         SomeRegion::new(vec![
-            other.first_state().bitwise_xor(&cng_mask),
-            other.far_state().bitwise_xor(&cng_mask),
+            other.high_state().bitwise_xor(&cng_mask),
+            other.low_state().bitwise_xor(&cng_mask),
         ])
     }
 
@@ -360,42 +304,50 @@ impl SomeRegion {
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        self.first_state().bitwise_or(&self.far_state())
+        let mut most_ones = self.states[0].new_low();
+        for stax in self.states.iter() {
+            most_ones = most_ones.bitwise_or(stax);
+        }
+        most_ones
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        self.first_state().bitwise_and(&self.far_state())
+        let mut least_ones = self.states[0].new_high();
+        for stax in self.states.iter() {
+            least_ones = least_ones.bitwise_and(stax);
+        }
+        least_ones
     }
 
     /// Return a region with masked X-bits set to zeros.
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let first_state = self.first_state().bitwise_and_not(msk);
-        let far_state = self.far_state().bitwise_and_not(msk);
+        let high_state = self.high_state().bitwise_and_not(msk);
+        let low_state = self.low_state().bitwise_and_not(msk);
 
-        Self::new(vec![first_state, far_state])
+        Self::new(vec![high_state, low_state])
     }
 
     /// Return a region with masked bit positions set to X.
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let first_state = self.first_state().bitwise_or(msk);
-        let far_state = self.far_state().bitwise_and(&msk.bitwise_not());
+        let high_state = self.high_state().bitwise_or(msk);
+        let low_state = self.low_state().bitwise_and(&msk.bitwise_not());
 
-        Self::new(vec![first_state, far_state])
+        Self::new(vec![high_state, low_state])
     }
 
     /// Return a region with masked X-bits set to ones.
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let first_state = self.first_state().bitwise_or(msk);
-        let far_state = self.far_state().bitwise_or(msk);
+        let high_state = self.high_state().bitwise_or(msk);
+        let low_state = self.low_state().bitwise_or(msk);
 
-        Self::new(vec![first_state, far_state])
+        Self::new(vec![high_state, low_state])
     }
 
     /// Return the distance from a region to a region/state.
@@ -825,7 +777,7 @@ mod tests {
             sta6.clone(),
         ]);
 
-        println!("reg5 is {}", reg5);
+        println!("reg5 is {} {}", reg5, reg5.states);
         assert!(reg5.states.len() == 3);
 
         println!("reg5 far_state = {}", reg5.far_state());
