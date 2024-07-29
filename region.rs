@@ -54,15 +54,12 @@ impl SomeRegion {
         debug_assert!(vec_same_num_bits(&states));
 
         // Init store for states.
-        let mut store = StateStore::new(vec![]);
-
-        // Add states to store.
-        for stax in states {
-            store.push_no_between(stax);
-        }
+        let store = StateStore::new(states);
 
         // Return new region.
-        Self { states: store }
+        Self {
+            states: store.minimize(),
+        }
     }
 
     /// Return a reference to the first state.
@@ -764,24 +761,23 @@ mod tests {
         println!("reg4 far_state = {}", reg4.far_state());
         assert!(reg4.far_state() == sta6);
 
-        // Three state region, five states given.
-        // State 1, between 0 and 5, will be deleted.
-        // State 2, between 6 and 0, will be deleted.
-        let sta0 = SomeState::new_from_string("s0b0000")?;
+        // Make a three state region.
+        // State 5, is between 1 and 7.
+        // State 7, is between 5 and 2.
+        // Only one of (5, 7) should be deleted.
         let sta5 = SomeState::new_from_string("s0b0101")?;
-        let reg5 = SomeRegion::new(vec![
-            sta0.clone(),
-            sta1.clone(),
-            sta2.clone(),
-            sta5.clone(),
-            sta6.clone(),
-        ]);
+        let sta7 = SomeState::new_from_string("s0b0111")?;
+        let reg5 = SomeRegion::new(vec![sta1.clone(), sta2.clone(), sta5.clone(), sta7.clone()]);
 
         println!("reg5 is {} {}", reg5, reg5.states);
         assert!(reg5.states.len() == 3);
 
-        println!("reg5 far_state = {}", reg5.far_state());
-        assert!(reg5.far_state() == sta7);
+        let reg5 = SomeRegion::new(vec![sta5.clone(), sta7.clone(), sta2.clone(), sta1.clone()]);
+
+        println!("reg5 is {} {}", reg5, reg5.states);
+        assert!(reg5.states.len() == 3);
+
+        //assert!(1 == 2);
 
         // Three state region, with duplicates.
         let reg6 = SomeRegion::new(vec![

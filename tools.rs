@@ -109,10 +109,7 @@ pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
     }
 
     rc_str.push(']');
-    //    if rc_str.len() != len {
-    //        println!("{}", rc_str);
-    //        panic!("len {} ne calc len {len}", rc_str.len());
-    //    }
+
     rc_str
 }
 
@@ -161,9 +158,94 @@ pub trait AvecRef {
     fn avec_ref(&self) -> &Vec<impl NumBits>;
 }
 
+/// Given a number of items, return any x number
+/// of unique combinations, where x >= 0 and <= number items,
+/// order does not matter.
+///
+/// The lists of integers can be used as indicies into a vector of items.
+///
+/// Call with num_items = Number of items in possible combinations.
+///           limit     = Maximum number of items to find combinations of.
+///
+/// Number lists returned = N! / ((N-x)! * x!)
+///
+/// e.g. any 3 of 4 items.
+///
+/// 4! / (4-3)! * 3! = 4! / 1!3! = 24 / 6 = 4
+///
+/// = ((0, 1, 2) (0, 1, 3) (0, 2, 3) (1, 2, 3))
+///
+/// ################################################################
+pub fn anyxofn(xitems: usize, nitems: usize) -> Vec<Vec<usize>> {
+    assert!(xitems <= nitems);
+
+    if xitems == 0 {
+        return Vec::<Vec<usize>>::new();
+    }
+
+    // Call anyxofn2 with a vector of possible numbers.
+    anyxofn2(
+        xitems,
+        &Vec::<usize>::new(),
+        &(0..nitems).collect::<Vec<usize>>(),
+    )
+}
+
+/// Continue making possible combinations.
+/// ######################################
+fn anyxofn2(xitems: usize, xlist: &[usize], nlist: &[usize]) -> Vec<Vec<usize>> {
+    let mut ret_vec = Vec::<Vec<usize>>::new();
+
+    if xitems < 1 || xitems > nlist.len() {
+        ret_vec.push(xlist.to_vec());
+        return ret_vec;
+    }
+
+    let numx = nlist.len() - xitems;
+
+    for x in 0..(numx + 1) {
+        let toright = &nlist[x + 1..].to_vec();
+
+        let listz = &mut xlist[0..].to_vec();
+
+        listz.push(nlist[x]);
+
+        let avec = anyxofn2(xitems - 1, listz, toright);
+
+        for avecx in avec.iter() {
+            ret_vec.push(avecx.clone());
+        }
+    }
+
+    ret_vec
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_anyxofn() -> Result<(), String> {
+        let options = anyxofn(3, 4);
+        println!("{:?}", options);
+        assert!(options.len() == 4);
+
+        assert!(options.contains(&vec![0, 1, 2]));
+        assert!(options.contains(&vec![0, 1, 3]));
+        assert!(options.contains(&vec![0, 2, 3]));
+        assert!(options.contains(&vec![1, 2, 3]));
+
+        let options = anyxofn(1, 4);
+        println!("{:?}", options);
+        assert!(options.len() == 4);
+        assert!(options.contains(&vec![0]));
+        assert!(options.contains(&vec![1]));
+        assert!(options.contains(&vec![2]));
+        assert!(options.contains(&vec![3]));
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn test_vec_contains() -> Result<(), String> {

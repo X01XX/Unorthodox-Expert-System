@@ -2,8 +2,9 @@
 //! Duplicates are suppressed.
 
 use crate::bits::vec_same_num_bits;
+use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools;
+use crate::tools::{self, anyxofn};
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -38,48 +39,59 @@ impl StateStore {
         ret
     }
 
+    /// Return a mask of aggregate differences between states.
+    fn x_mask(&self) -> SomeMask {
+        assert!(self.is_not_empty());
+
+        let mut xmask = self[0].to_mask().new_low();
+
+        for stax in self.items.iter().skip(1) {
+            xmask = xmask.bitwise_or(&stax.bitwise_xor(&self[0]));
+        }
+        xmask
+    }
+
+    /// Given a list of states, minimize the number of states needed io form a region.
+    pub fn minimize(&self) -> Self {
+        //println!("minimize {self}");
+        if self.len() < 3 {
+            return self.clone();
+        }
+
+        let target_x_mask = self.x_mask();
+        //println!("target x-mask {target_x_mask}");
+        for x in 2..self.len() {
+            let options = anyxofn(x, self.len());
+            //println!("options: {:?}", options);
+
+            for optx in options.iter() {
+                let mut xmask_tmp = self[optx[0]].to_mask().new_low();
+
+                for itmx in optx.iter().skip(1) {
+                    xmask_tmp = xmask_tmp.bitwise_or(&self[*itmx].bitwise_xor(&self[optx[0]]));
+                }
+                //println!("opt {:?} xmask_tmp {xmask_tmp}", optx);
+                if xmask_tmp == target_x_mask {
+                    let mut states = Vec::<SomeState>::with_capacity(x);
+                    for itmx in optx.iter() {
+                        states.push(self[*itmx].clone());
+                    }
+                    return StateStore { items: states };
+                }
+            }
+        }
+        // No lesser minimum found.
+        self.clone()
+    }
+
     /// Add a state to a StateStore.
+    /// Do not allow duplicates.
     pub fn push(&mut self, val: SomeState) {
         debug_assert!(self.is_empty() || val.num_bits() == self.items[0].num_bits());
 
         if !self.contains(&val) {
             self.items.push(val);
         }
-    }
-
-    /// Push a state if it is not between any pair of states already in the store.
-    pub fn push_no_between(&mut self, sta: SomeState) {
-        if self.len() < 2 {
-            self.push(sta);
-            return;
-        }
-        // Check if the new state is between any states.
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                if sta.is_between(&self[inx], &self[iny]) {
-                    return;
-                }
-            }
-        }
-        // Check if the new state causes other states to be between it and another state.
-        let mut remv = Vec::<usize>::new();
-        for (inx, stax) in self.items.iter().enumerate() {
-            for (iny, stay) in self.items.iter().enumerate().skip(1) {
-                if iny != inx && stay.is_between(&sta, stax) && !remv.contains(&iny) {
-                    remv.push(iny);
-                }
-            }
-        }
-        if remv.is_empty() {
-        } else {
-            // Sort idicies higher to lower, remove items.
-            remv.sort_by(|a, b| b.cmp(a));
-            for inx in remv.iter() {
-                tools::remove_unordered(&mut self.items, *inx);
-            }
-        }
-
-        self.push(sta);
     }
 
     /// Return true if the store is empty.
@@ -123,5 +135,46 @@ impl Index<usize> for StateStore {
     type Output = SomeState;
     fn index(&self, i: usize) -> &SomeState {
         &self.items[i]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn minimize() -> Result<(), String> {
+        let sta1 = SomeState::new_from_string("0b0001")?;
+        let sta2 = SomeState::new_from_string("0b0010")?;
+        let sta4 = SomeState::new_from_string("0b0100")?;
+        let sta5 = SomeState::new_from_string("0b0101")?;
+        let sta7 = SomeState::new_from_string("0b0111")?;
+
+        let store = StateStore {
+            items: vec![sta1.clone(), sta2.clone(), sta5.clone(), sta7.clone()],
+        };
+
+        let min_store = store.minimize();
+        println!("min_store {}", min_store);
+
+        assert!(min_store.len() == 2);
+        assert!(min_store.contains(&sta2));
+        assert!(min_store.contains(&sta5));
+
+        let store = StateStore {
+            items: vec![sta1.clone(), sta2.clone(), sta4.clone(), sta7.clone()],
+        };
+
+        let min_store = store.minimize();
+        println!("min_store {}", min_store);
+
+        assert!(min_store.len() == 3);
+        assert!(min_store.contains(&sta1));
+        assert!(min_store.contains(&sta2));
+        assert!(min_store.contains(&sta4));
+
+        //assert!(1 == 2);
+
+        Ok(())
     }
 }

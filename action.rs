@@ -2246,9 +2246,10 @@ impl SomeAction {
                 .sum();
 
             rc_str.push_str(&format!(
-                "{}{} num Sqrs: {} in1: {})",
+                "{}{} num Sqrs: {} Sqrs in: {} in1: {})",
                 fil,
                 grpx,
+                grpx.region.len(),
                 stas_in.len(),
                 cnt,
             ));
