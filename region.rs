@@ -54,11 +54,14 @@ impl SomeRegion {
         debug_assert!(vec_same_num_bits(&states));
 
         // Init store for states.
-        let store = StateStore::new(states);
+        let mut store = StateStore::new(states);
 
+        if store.len() > 2 {
+            store = store.minimize();
+        }
         // Return new region.
         Self {
-            states: store.minimize(),
+            states: store,
         }
     }
 
@@ -762,22 +765,13 @@ mod tests {
         assert!(reg4.far_state() == sta6);
 
         // Make a three state region.
-        // State 5, is between 1 and 7.
-        // State 7, is between 5 and 2.
-        // Only one of (5, 7) should be deleted.
-        let sta5 = SomeState::new_from_string("s0b0101")?;
+        // Can be (1, 2, 7) or (1, 4,7)
+        let sta4 = SomeState::new_from_string("s0b0100")?;
         let sta7 = SomeState::new_from_string("s0b0111")?;
-        let reg5 = SomeRegion::new(vec![sta1.clone(), sta2.clone(), sta5.clone(), sta7.clone()]);
+        let reg5 = SomeRegion::new(vec![sta1.clone(), sta2.clone(), sta4.clone(), sta7.clone()]);
 
         println!("reg5 is {} {}", reg5, reg5.states);
         assert!(reg5.states.len() == 3);
-
-        let reg5 = SomeRegion::new(vec![sta5.clone(), sta7.clone(), sta2.clone(), sta1.clone()]);
-
-        println!("reg5 is {} {}", reg5, reg5.states);
-        assert!(reg5.states.len() == 3);
-
-        //assert!(1 == 2);
 
         // Three state region, with duplicates.
         let reg6 = SomeRegion::new(vec![

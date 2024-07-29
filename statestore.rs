@@ -65,8 +65,8 @@ impl StateStore {
             //println!("options: {:?}", options);
 
             for optx in options.iter() {
+                // Calc x-mask for option.
                 let mut xmask_tmp = self[optx[0]].to_mask().new_low();
-
                 for itmx in optx.iter().skip(1) {
                     xmask_tmp = xmask_tmp.bitwise_or(&self[*itmx].bitwise_xor(&self[optx[0]]));
                 }
