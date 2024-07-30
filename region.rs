@@ -48,20 +48,17 @@ impl SomeRegion {
     ///
     /// For a group region, all states will correspond to a square that has been sampled.
     ///
-    /// Duplicate, and unneeded states (states between two states), are removed.
+    /// Duplicate states are deleted by creating a StateStore from the states.
+    ///
+    /// If more than two states are used, they should be a minimum combination, as generated
+    /// in action::check_region_for_group.
     pub fn new(states: Vec<SomeState>) -> Self {
         assert!(!states.is_empty());
         debug_assert!(vec_same_num_bits(&states));
 
-        // Init store for states.
-        let mut store = StateStore::new(states);
-
-        if store.len() > 2 {
-            store = store.minimize();
-        }
         // Return new region.
         Self {
-            states: store,
+            states: StateStore::new(states),
         }
     }
 
@@ -723,11 +720,11 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        // Single state region.
+        // Single state region
 
         let sta1 = SomeState::new_from_string("s0b0001")?;
 
-        let reg1 = SomeRegion::new(vec![sta1.clone(), sta1.clone()]);
+        let reg1 = SomeRegion::new(vec![sta1.clone()]);
         println!("reg1 is {}", reg1);
         assert!(reg1.states.len() == 1);
         assert!(reg1.far_state() == sta1);
@@ -738,57 +735,12 @@ mod tests {
         let reg2 = SomeRegion::new(vec![sta1.clone(), sta7.clone()]);
         println!("reg2 is {}", reg2);
         assert!(reg2.states.len() == 2);
-        assert!(reg2.far_state() == sta7);
 
         // Three state region.
         let sta2 = SomeState::new_from_string("s0b0010")?;
         let reg3 = SomeRegion::new(vec![sta1.clone(), sta7.clone(), sta2.clone()]);
         println!("reg3 is {}", reg3);
-
-        println!("reg3 first_state = {}", reg3.first_state());
-        assert!(reg3.first_state() == &sta1);
-
-        let sta6 = SomeState::new_from_string("s0b0110")?;
-        println!("reg3 far_state = {}", reg3.far_state());
-        assert!(reg3.far_state() == sta6);
-
-        // Three states, only two needed due to far state being in the list.
-        let sta2 = SomeState::new_from_string("s0b0010")?;
-        let reg4 = SomeRegion::new(vec![sta1.clone(), sta6.clone(), sta2.clone()]);
-        println!("reg4 is {}", reg4);
-        assert!(reg4.states.len() == 2);
-
-        println!("reg4 first_state = {}", reg4.first_state());
-        assert!(reg4.first_state() == &sta1);
-
-        println!("reg4 far_state = {}", reg4.far_state());
-        assert!(reg4.far_state() == sta6);
-
-        // Make a three state region.
-        // Can be (1, 2, 7) or (1, 4,7)
-        let sta4 = SomeState::new_from_string("s0b0100")?;
-        let sta7 = SomeState::new_from_string("s0b0111")?;
-        let reg5 = SomeRegion::new(vec![sta1.clone(), sta2.clone(), sta4.clone(), sta7.clone()]);
-
-        println!("reg5 is {} {}", reg5, reg5.states);
-        assert!(reg5.states.len() == 3);
-
-        // Three state region, with duplicates.
-        let reg6 = SomeRegion::new(vec![
-            sta1.clone(),
-            sta1.clone(),
-            sta7.clone(),
-            sta2.clone(),
-            sta7.clone(),
-        ]);
-        println!("reg6 is {}", reg6);
-        assert!(reg6.states.len() == 3);
-
-        println!("reg6 first_state = {}", reg6.first_state());
-        assert!(reg6.first_state() == &sta1);
-
-        println!("reg6 far_state = {}", reg6.far_state());
-        assert!(reg6.far_state() == sta6);
+        assert!(reg3.states.len() == 3);
 
         Ok(())
     }

@@ -162,10 +162,8 @@ pub trait AvecRef {
 /// of unique combinations, where x >= 0 and <= number items,
 /// order does not matter.
 ///
-/// The lists of integers can be used as indicies into a vector of items.
-///
 /// Call with num_items = Number of items in possible combinations.
-///           limit     = Maximum number of items to find combinations of.
+///           items     = Items references to find combinations of.
 ///
 /// Number lists returned = N! / ((N-x)! * x!)
 ///
@@ -173,32 +171,27 @@ pub trait AvecRef {
 ///
 /// 4! / (4-3)! * 3! = 4! / 1!3! = 24 / 6 = 4
 ///
-/// = ((0, 1, 2) (0, 1, 3) (0, 2, 3) (1, 2, 3))
+/// = ((&0, &1, &2) (&0, &1, &3) (&0, &2, &3) (&1, &2, &3))
 ///
 /// ################################################################
-pub fn anyxofn(xitems: usize, nitems: usize) -> Vec<Vec<usize>> {
-    assert!(xitems <= nitems);
+pub fn anyxofn<'a, T>(xitems: usize, nitems: &'a [&T]) -> Vec<Vec<&'a T>> {
+    assert!(xitems <= nitems.len());
 
     if xitems == 0 {
-        return Vec::<Vec<usize>>::new();
+        return vec![];
     }
 
-    // Call anyxofn2 with a vector of possible numbers.
-    anyxofn2(
-        xitems,
-        &Vec::<usize>::new(),
-        &(0..nitems).collect::<Vec<usize>>(),
-    )
+    // Call anyxofn2 with a vector of possible items.
+    anyxofn2(xitems, &[], nitems)
 }
 
 /// Continue making possible combinations.
 /// ######################################
-fn anyxofn2(xitems: usize, xlist: &[usize], nlist: &[usize]) -> Vec<Vec<usize>> {
-    let mut ret_vec = Vec::<Vec<usize>>::new();
+fn anyxofn2<'a, T>(xitems: usize, xlist: &[&'a T], nlist: &[&'a T]) -> Vec<Vec<&'a T>> {
+    let mut ret_vec = Vec::<Vec<&T>>::new();
 
     if xitems < 1 || xitems > nlist.len() {
-        ret_vec.push(xlist.to_vec());
-        return ret_vec;
+        return vec![xlist.to_vec()];
     }
 
     let numx = nlist.len() - xitems;
@@ -206,42 +199,67 @@ fn anyxofn2(xitems: usize, xlist: &[usize], nlist: &[usize]) -> Vec<Vec<usize>> 
     for x in 0..(numx + 1) {
         let toright = &nlist[x + 1..].to_vec();
 
-        let listz = &mut xlist[0..].to_vec();
+        let mut listz = xlist.to_vec();
 
         listz.push(nlist[x]);
 
-        let avec = anyxofn2(xitems - 1, listz, toright);
+        let avec = anyxofn2(xitems - 1, &listz, toright);
 
-        for avecx in avec.iter() {
-            ret_vec.push(avecx.clone());
+        for avecx in avec {
+            ret_vec.push(avecx);
         }
     }
 
     ret_vec
 }
 
+// Return a vector of references, from a given vector.
+#[allow(dead_code)]
+pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
+    let mut ret = Vec::<&T>::with_capacity(avec.len());
+
+    for x in avec.iter() {
+        ret.push(x);
+    }
+    ret
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::state::SomeState;
 
     #[test]
     fn test_anyxofn() -> Result<(), String> {
-        let options = anyxofn(3, 4);
+        let vals = vec![0, 1, 2, 3];
+        let vals_refs = vec_refs(&vals);
+        let options = anyxofn(3, &vals_refs);
         println!("{:?}", options);
         assert!(options.len() == 4);
 
-        assert!(options.contains(&vec![0, 1, 2]));
-        assert!(options.contains(&vec![0, 1, 3]));
-        assert!(options.contains(&vec![0, 2, 3]));
-        assert!(options.contains(&vec![1, 2, 3]));
+        assert!(options.contains(&vec![&0, &1, &2]));
+        assert!(options.contains(&vec![&0, &1, &3]));
+        assert!(options.contains(&vec![&0, &2, &3]));
+        assert!(options.contains(&vec![&1, &2, &3]));
 
-        let options = anyxofn(1, 4);
+        let options = anyxofn(1, &vals_refs);
         println!("{:?}", options);
         assert!(options.len() == 4);
-        assert!(options.contains(&vec![0]));
-        assert!(options.contains(&vec![1]));
-        assert!(options.contains(&vec![2]));
-        assert!(options.contains(&vec![3]));
+        assert!(options.contains(&vec![&0]));
+        assert!(options.contains(&vec![&1]));
+        assert!(options.contains(&vec![&2]));
+        assert!(options.contains(&vec![&3]));
+
+        let sta1 = SomeState::new_from_string("0x1")?;
+        let sta2 = SomeState::new_from_string("0x2")?;
+        let sta4 = SomeState::new_from_string("0x4")?;
+        let sta7 = SomeState::new_from_string("0x7")?;
+
+        let vals = vec![&sta1, &sta2, &sta4, &sta7];
+        let options: Vec<Vec<&SomeState>> = anyxofn(2, &vals);
+        for optx in options.iter() {
+            println!("{}", vec_ref_string(&optx));
+        }
 
         //assert!(1 == 2);
         Ok(())

@@ -4,7 +4,7 @@
 use crate::bits::vec_same_num_bits;
 use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools::{self, anyxofn};
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -40,7 +40,7 @@ impl StateStore {
     }
 
     /// Return a mask of aggregate differences between states.
-    fn x_mask(&self) -> SomeMask {
+    fn _x_mask(&self) -> SomeMask {
         assert!(self.is_not_empty());
 
         let mut xmask = self[0].to_mask().new_low();
@@ -49,39 +49,6 @@ impl StateStore {
             xmask = xmask.bitwise_or(&stax.bitwise_xor(&self[0]));
         }
         xmask
-    }
-
-    /// Given a list of states, minimize the number of states needed io form a region.
-    pub fn minimize(&self) -> Self {
-        //println!("minimize {self}");
-        if self.len() < 3 {
-            return self.clone();
-        }
-
-        let target_x_mask = self.x_mask();
-        //println!("target x-mask {target_x_mask}");
-        for x in 2..self.len() {
-            let options = anyxofn(x, self.len());
-            //println!("options: {:?}", options);
-
-            for optx in options.iter() {
-                // Calc x-mask for option.
-                let mut xmask_tmp = self[optx[0]].to_mask().new_low();
-                for itmx in optx.iter().skip(1) {
-                    xmask_tmp = xmask_tmp.bitwise_or(&self[*itmx].bitwise_xor(&self[optx[0]]));
-                }
-                //println!("opt {:?} xmask_tmp {xmask_tmp}", optx);
-                if xmask_tmp == target_x_mask {
-                    let mut states = Vec::<SomeState>::with_capacity(x);
-                    for itmx in optx.iter() {
-                        states.push(self[*itmx].clone());
-                    }
-                    return StateStore { items: states };
-                }
-            }
-        }
-        // No lesser minimum found.
-        self.clone()
     }
 
     /// Add a state to a StateStore.
@@ -143,37 +110,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn minimize() -> Result<(), String> {
+    fn new() -> Result<(), String> {
         let sta1 = SomeState::new_from_string("0b0001")?;
+        let sta1a = SomeState::new_from_string("0b0001")?;
+
         let sta2 = SomeState::new_from_string("0b0010")?;
-        let sta4 = SomeState::new_from_string("0b0100")?;
-        let sta5 = SomeState::new_from_string("0b0101")?;
-        let sta7 = SomeState::new_from_string("0b0111")?;
 
-        let store = StateStore {
-            items: vec![sta1.clone(), sta2.clone(), sta5.clone(), sta7.clone()],
-        };
+        // Create a one-state store.
+        let store = StateStore::new(vec![sta1.clone()]);
+        println!("store {store}");
+        assert!(store.len() == 1);
 
-        let min_store = store.minimize();
-        println!("min_store {}", min_store);
+        // Create a one-state store, deleting dupliactes.
+        let store = StateStore::new(vec![sta1.clone(), sta1a.clone()]);
+        println!("store {store}");
+        assert!(store.len() == 1);
 
-        assert!(min_store.len() == 2);
-        assert!(min_store.contains(&sta2));
-        assert!(min_store.contains(&sta5));
+        // Create a two-state store.
+        let store = StateStore::new(vec![sta1.clone(), sta2.clone()]);
+        println!("store {store}");
+        assert!(store.len() == 2);
 
-        let store = StateStore {
-            items: vec![sta1.clone(), sta2.clone(), sta4.clone(), sta7.clone()],
-        };
-
-        let min_store = store.minimize();
-        println!("min_store {}", min_store);
-
-        assert!(min_store.len() == 3);
-        assert!(min_store.contains(&sta1));
-        assert!(min_store.contains(&sta2));
-        assert!(min_store.contains(&sta4));
-
-        //assert!(1 == 2);
+        // Create a two-state store, deleting duplicates.
+        let store = StateStore::new(vec![sta1.clone(), sta2.clone(), sta1a.clone()]);
+        println!("store {store}");
+        assert!(store.len() == 2);
 
         Ok(())
     }
