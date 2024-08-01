@@ -201,8 +201,8 @@ impl SomeMask {
     }
 
     /// Return a SomeMask instance from a SomeState instance.
-    pub fn to_state(&self) -> SomeState {
-        SomeState::new(self.bts.clone())
+    pub fn convert_to_state(self) -> SomeState {
+        SomeState::new(self.bts)
     }
 
     /// Return the number of bits used in a mask.

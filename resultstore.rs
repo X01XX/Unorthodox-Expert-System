@@ -196,6 +196,11 @@ impl ResultStore {
     pub fn num_bits(&self) -> usize {
         self.items[0].num_bits()
     }
+
+    /// Increment the number of results.
+    pub fn inc_num_results(&mut self) {
+        self.num_results += 1;
+    }
 } // end impl ResultStore
 
 #[cfg(test)]

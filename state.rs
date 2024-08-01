@@ -15,7 +15,6 @@ use crate::bits::SomeBits;
 use crate::bits::{BitsRef, NumBits};
 use crate::mask::SomeMask;
 use crate::region::AccessStates;
-use crate::region::SomeRegion;
 use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
@@ -153,13 +152,8 @@ impl SomeState {
     }
 
     /// Return a SomeMask instance from a SomeState instance.
-    pub fn to_mask(&self) -> SomeMask {
-        SomeMask::new(self.bts.clone())
-    }
-
-    /// Return a region made from a state.
-    pub fn to_region(&self) -> SomeRegion {
-        SomeRegion::new(vec![self.clone()])
+    pub fn convert_to_mask(self) -> SomeMask {
+        SomeMask::new(self.bts)
     }
 
     /// Return true if a state is between two given states, exclusive.
@@ -222,10 +216,10 @@ impl AccessStates for SomeState {
         self
     }
     fn x_mask(&self) -> SomeMask {
-        self.new_low().to_mask()
+        self.new_low().convert_to_mask()
     }
     fn edge_mask(&self) -> SomeMask {
-        self.new_high().to_mask()
+        self.new_high().convert_to_mask()
     }
     fn high_state(&self) -> SomeState {
         self.clone()

@@ -52,10 +52,10 @@ impl SomeRule {
                 .initial
                 .bitwise_not()
                 .bitwise_and_not(&smpl.result)
-                .to_mask(),
-            b01: smpl.result.bitwise_and_not(&smpl.initial).to_mask(),
-            b11: smpl.initial.bitwise_and(&smpl.result).to_mask(),
-            b10: smpl.initial.bitwise_and_not(&smpl.result).to_mask(),
+                .convert_to_mask(),
+            b01: smpl.result.bitwise_and_not(&smpl.initial).convert_to_mask(),
+            b11: smpl.initial.bitwise_and(&smpl.result).convert_to_mask(),
+            b10: smpl.initial.bitwise_and_not(&smpl.result).convert_to_mask(),
         }
     }
 
@@ -274,16 +274,24 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = self.b11.bitwise_or(&self.b10).to_state();
-        let st_low = self.b00.bitwise_or(&self.b01).bitwise_not().to_state();
+        let st_high = self.b11.bitwise_or(&self.b10).convert_to_state();
+        let st_low = self
+            .b00
+            .bitwise_or(&self.b01)
+            .bitwise_not()
+            .convert_to_state();
 
         SomeRegion::new(vec![st_high, st_low])
     }
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = self.b11.bitwise_or(&self.b01).to_state();
-        let st_low = self.b00.bitwise_or(&self.b10).bitwise_not().to_state();
+        let st_high = self.b11.bitwise_or(&self.b01).convert_to_state();
+        let st_low = self
+            .b00
+            .bitwise_or(&self.b10)
+            .bitwise_not()
+            .convert_to_state();
 
         // Change X->x positions to indicate a change, instead of appearing as X->X.
         let x_xnot_mask = self.b01.bitwise_and(&self.b10);
@@ -329,8 +337,8 @@ impl SomeRule {
         let init_reg = self.initial_region();
 
         if let Some(reg_int) = regx.intersection(&init_reg) {
-            let zeros = reg_int.low_state().bitwise_not().to_mask();
-            let ones = reg_int.high_state().to_mask();
+            let zeros = reg_int.low_state().bitwise_not().convert_to_mask();
+            let ones = reg_int.high_state().convert_to_mask();
 
             Self {
                 b00: self.b00.bitwise_and(&zeros),
@@ -354,8 +362,8 @@ impl SomeRule {
         let rslt_reg = self.result_region();
 
         if let Some(reg_int) = regx.intersection(&rslt_reg) {
-            let zeros = reg_int.low_state().bitwise_not().to_mask();
-            let ones = reg_int.high_state().to_mask();
+            let zeros = reg_int.low_state().bitwise_not().convert_to_mask();
+            let ones = reg_int.high_state().convert_to_mask();
 
             Self {
                 b00: self.b00.bitwise_and(&zeros),

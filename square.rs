@@ -103,6 +103,12 @@ impl SomeSquare {
         if self.num_results() > 100 {
             panic!("Square: {self}, too many results {}?", self.num_results());
         }
+        // Check if the sample does not need to be stored.
+        if self.pn == Pn::One && self.num_results() > 3 && asample.result == *self.results.first() {
+            self.results.inc_num_results();
+            return false;
+        }
+
         self.pn = self.results.add_result(asample.result.clone());
         self.pnc = self.calc_pnc();
 
@@ -288,10 +294,10 @@ impl AccessStates for SomeSquare {
         &self.state
     }
     fn x_mask(&self) -> SomeMask {
-        self.state.new_low().to_mask()
+        self.state.new_low().convert_to_mask()
     }
     fn edge_mask(&self) -> SomeMask {
-        self.state.new_high().to_mask()
+        self.state.new_high().convert_to_mask()
     }
     fn high_state(&self) -> SomeState {
         self.state.clone()
@@ -362,6 +368,7 @@ mod tests {
         assert!(sqrx.pnc);
 
         // Sixth result, same as the second most recent, square becomes Pn::Two.
+        println!("sqrx {sqrx}");
         let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0100")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Two);

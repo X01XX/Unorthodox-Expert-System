@@ -194,7 +194,7 @@ impl SomeBits {
             // Check for integer separator.
             if chr == "+" {
                 if cur_bits == 0 {
-                    return Err("SomeBits::new_from_string: + char on integer boundary".to_string());
+                    continue;
                 } else {
                     num_ints += 1;
                     cur_bits = 0;

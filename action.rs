@@ -1416,7 +1416,7 @@ impl SomeAction {
 
                 for optx in options {
                     // Calc x-mask for option.
-                    let mut xmask_tmp = optx[0].state.to_mask().new_low();
+                    let mut xmask_tmp = optx[0].state.new_low().convert_to_mask();
                     for sqrx in optx.iter().skip(1) {
                         xmask_tmp = xmask_tmp.bitwise_or(&sqrx.state.bitwise_xor(&optx[0].state));
                     }

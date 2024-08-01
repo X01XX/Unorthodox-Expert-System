@@ -224,12 +224,12 @@ impl SomeRegion {
 
     /// Return a Mask of zero positions.
     pub fn edge_zeros_mask(&self) -> SomeMask {
-        self.high_state().bitwise_not().to_mask()
+        self.high_state().bitwise_not().convert_to_mask()
     }
 
     /// Return a Mask of one positions.
     pub fn edge_ones_mask(&self) -> SomeMask {
-        self.low_state().to_mask()
+        self.low_state().convert_to_mask()
     }
 
     /// Return a mask of edge (non-X) bits.
@@ -239,7 +239,9 @@ impl SomeRegion {
 
     /// Return mask of x positions.
     pub fn x_mask(&self) -> SomeMask {
-        self.high_state().bitwise_xor(&self.low_state()).to_mask()
+        self.high_state()
+            .bitwise_xor(&self.low_state())
+            .convert_to_mask()
     }
 
     /// Given a state in a region, return the far state in the region.
@@ -656,35 +658,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_reg = SomeState::new(SomeBits::new(8)).to_region();
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeState::new(SomeBits::new(16)).to_region();
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(16))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeState::new(SomeBits::new(6)).to_region();
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(6))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeState::new(SomeBits::new(5)).to_region();
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(5))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeState::new(SomeBits::new(4)).to_region();
+        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();

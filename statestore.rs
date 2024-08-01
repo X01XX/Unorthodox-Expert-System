@@ -43,7 +43,7 @@ impl StateStore {
     fn _x_mask(&self) -> SomeMask {
         assert!(self.is_not_empty());
 
-        let mut xmask = self[0].to_mask().new_low();
+        let mut xmask = self[0].new_low().convert_to_mask();
 
         for stax in self.items.iter().skip(1) {
             xmask = xmask.bitwise_or(&stax.bitwise_xor(&self[0]));
