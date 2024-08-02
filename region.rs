@@ -128,8 +128,7 @@ impl SomeRegion {
             } else if chr == "_" {
                 continue;
             } else if chr == "+" {
-                b_high.push('+');
-                b_low.push('+');
+                continue; // A region copied from the console might end with a +
             } else {
                 return Err(format!(
                     "Did not understand the string {str}, invalid character?"
@@ -571,19 +570,19 @@ mod tests {
 
     #[test]
     fn state_far_from() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("X10+X01X")?;
-        let sta1 = SomeState::new_from_string("110+1010")?;
+        let reg1 = SomeRegion::new_from_string("X10X01X")?;
+        let sta1 = SomeState::new_from_string("1101010")?;
         let sta2 = reg1.state_far_from(&sta1);
         println!("reg {reg1} state far from {sta1} is {sta2}");
 
-        assert!(sta2 == SomeState::new_from_string("010+0011")?);
+        assert!(sta2 == SomeState::new_from_string("0100011")?);
 
         Ok(())
     }
 
     #[test]
     fn num_edges() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("X10+X01X")?;
+        let reg1 = SomeRegion::new_from_string("X10X01X")?;
         let num_e = reg1.num_edges();
         println!("reg {reg1} num edges {num_e}");
 
@@ -594,27 +593,27 @@ mod tests {
 
     #[test]
     fn set_to_x() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("XX0+101X")?;
-        let msk1 = SomeMask::new_from_string("0b111+1000")?;
+        let reg1 = SomeRegion::new_from_string("XX0101X")?;
+        let msk1 = SomeMask::new_from_string("0b1111000")?;
 
         let reg2 = reg1.set_to_x(&msk1);
         println!("reg1 {reg1} set to x {msk1} is {reg2}");
 
-        assert!(reg2 == SomeRegion::new_from_string("XXX+X01X")?);
+        assert!(reg2 == SomeRegion::new_from_string("XXXX01X")?);
 
         Ok(())
     }
 
     #[test]
     fn translate_to() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("XX0+101X")?;
-        let reg2 = SomeRegion::new_from_string("10X+X10X")?;
+        let reg1 = SomeRegion::new_from_string("XX0101X")?;
+        let reg2 = SomeRegion::new_from_string("10XX10X")?;
         println!("reg1 {reg1}");
         println!("reg2 {reg2}");
 
         let reg3 = reg1.translate_to(&reg2);
         println!("reg3 {reg3}");
-        if reg3 != SomeRegion::new_from_string("r100+110X")? {
+        if reg3 != SomeRegion::new_from_string("r100110X")? {
             return Err(format!("{reg3} ??"));
         }
         Ok(())

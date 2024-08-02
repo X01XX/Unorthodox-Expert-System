@@ -164,6 +164,7 @@ fn run_with_file(file_path: &str) {
 
 /// Run until no more needs can be done, then take user input.
 fn run_to_end(dmxs: &mut DomainStore) {
+    let start = Instant::now();
     loop {
         // Generate needs, get can_do and cant_do need vectors.
         dmxs.generate_and_display_needs();
@@ -175,6 +176,8 @@ fn run_to_end(dmxs: &mut DomainStore) {
 
         do_any_need(dmxs);
     } // end loop
+    let duration = start.elapsed().as_secs();
+    println!("Time elapsed: {:?} seconds", duration);
 
     do_session(dmxs);
 }
@@ -258,8 +261,8 @@ fn domainstore_init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
-    dmxs.add_domain(SomeState::new(SomeBits::new(5)).new_random());
-    dmxs.add_domain(SomeState::new(SomeBits::new(16)).new_random());
+    dmxs.add_domain(SomeState::new(SomeBits::new(5).new_random()));
+    dmxs.add_domain(SomeState::new(SomeBits::new(16).new_random()));
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![

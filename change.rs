@@ -255,16 +255,16 @@ mod tests {
         // Create a domain that uses one integer for bits.
 
         let wanted_changes = SomeChange::new(
-            SomeMask::new_from_string("m0b11+00")?,
-            SomeMask::new_from_string("m0b00+11")?,
+            SomeMask::new_from_string("m0b1100")?,
+            SomeMask::new_from_string("m0b0011")?,
         );
         println!("wanted_changes    {wanted_changes}");
 
-        let sta1 = SomeState::new_from_string("s0b00+11")?;
+        let sta1 = SomeState::new_from_string("s0b0011")?;
         let sta2 = wanted_changes.apply_changes(&sta1);
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
-        assert!(sta2 == SomeState::new_from_string("s0b11+00")?);
+        assert!(sta2 == SomeState::new_from_string("s0b1100")?);
 
         Ok(())
     }

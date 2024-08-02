@@ -78,13 +78,6 @@ impl SomeState {
         }
     } // end new_from_string
 
-    /// Return a random state value.
-    pub fn new_random(&self) -> Self {
-        Self {
-            bts: self.bts.new_random(),
-        }
-    }
-
     /// Return a new state, all zeros.
     pub fn new_low(&self) -> Self {
         Self::new(self.bts.new_low())
@@ -273,7 +266,7 @@ mod tests {
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new_from_string("0+0")?);
+        let tmp_sta = SomeState::new(SomeBits::new_from_string("0")?);
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
@@ -306,13 +299,13 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("s0b10+10")?;
-        let sta2 = SomeState::new_from_string("s0b10+10")?;
+        let sta1 = SomeState::new_from_string("s0b1010")?;
+        let sta2 = SomeState::new_from_string("s0b1010")?;
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
         assert!(sta1 == sta2);
 
-        let sta3 = SomeState::new_from_string("s0b10+01")?;
+        let sta3 = SomeState::new_from_string("s0b1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
 
