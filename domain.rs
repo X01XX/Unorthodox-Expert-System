@@ -317,19 +317,10 @@ impl SomeDomain {
         }
 
         // Calc wanted, and unwanted, changes.
-        let wanted_changes = SomeChange::new_region_to_region(from_reg, goal_reg);
+        let wanted_changes = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
 
-        // For 0->0, the change 0->1 is not wanted.
-        // For 1->1, the change 1->0 is not wanted.
-        // Any change is Ok for X bit positions in the goal.
-        let not_wanted_changes = SomeChange::new(
-            from_reg
-                .edge_zeros_mask()
-                .bitwise_and(&goal_reg.edge_zeros_mask()),
-            from_reg
-                .edge_ones_mask()
-                .bitwise_and(&goal_reg.edge_ones_mask()),
-        );
+        let not_wanted_changes =
+            SomeChange::region_to_region_not_wanted_changes(from_reg, goal_reg);
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
@@ -539,7 +530,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
+        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
 
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
@@ -656,7 +647,7 @@ impl SomeDomain {
 
     /// Make a plan to change from a region to another region.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
-    pub fn make_plans2(
+    pub fn make_plans(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
@@ -670,7 +661,7 @@ impl SomeDomain {
             true
         });
 
-        if let Some(mut plans) = self.make_plans3(from_reg, goal_reg, within) {
+        if let Some(mut plans) = self.make_plans2(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {}", plans.len());
 
             let mut addplans = PlanStore::new(vec![]);
@@ -692,7 +683,7 @@ impl SomeDomain {
 
     /// Make a plan to change from a region to another region.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
-    pub fn make_plans3(
+    pub fn make_plans2(
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
@@ -712,7 +703,7 @@ impl SomeDomain {
         }
 
         // Figure the required change.
-        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
+        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();
@@ -790,7 +781,7 @@ impl SomeDomain {
         }
 
         // Figure the required change.
-        let required_change = SomeChange::new_region_to_region(from_reg, goal_reg);
+        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();
@@ -1052,7 +1043,7 @@ impl SomeDomain {
                 }
             }
             if let Some(plans2) =
-                self.make_plans3(&planx[*from_inx].initial, &planx[*to_inx].result, within)
+                self.make_plans2(&planx[*from_inx].initial, &planx[*to_inx].result, within)
             {
                 // println!(
                 //     "    plans found from {} to {}",
@@ -1144,7 +1135,7 @@ mod tests {
         ])];
         dm0.add_action(ruls0);
 
-        let sta_5 = SomeState::new_from_string("s0b0101")?;
+        let sta_5 = SomeState::new_from_string("0b0101")?;
 
         // Load samples for action 0, state 5.  The first change is chosen randomly from the rule options.
         dm0.cur_state = sta_5.clone();
@@ -1167,7 +1158,7 @@ mod tests {
         println!("rslt1 {rslt}");
 
         // Force current result to 0100, so next result will be 0111.
-        if rslt == SomeState::new_from_string("s0b0111")? {
+        if rslt == SomeState::new_from_string("0b0111")? {
             dm0.cur_state = sta_5.clone();
             dm0.take_action_arbitrary(0);
         }
@@ -1186,7 +1177,7 @@ mod tests {
         //assert!(1 == 2);
 
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
-        if let Some(plans) = dm0.make_plans2(
+        if let Some(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0101").expect("SNH"),
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             None,
@@ -1224,7 +1215,7 @@ mod tests {
         .expect("SNH")])];
         dm0.add_action(ruls1);
 
-        dm0.cur_state = SomeState::new_from_string("s0b0101")?;
+        dm0.cur_state = SomeState::new_from_string("0b0101")?;
         dm0.take_action_arbitrary(0);
         dm0.take_action_arbitrary(1);
         dm0.take_action_arbitrary(0);
@@ -1240,7 +1231,7 @@ mod tests {
         let mut num_steps1 = 0;
 
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
-        if let Some(plans) = dm0.make_plans2(
+        if let Some(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0101").expect("SNH"),
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             None,
@@ -1264,7 +1255,7 @@ mod tests {
         let mut num_steps2 = 0;
 
         // Redo plans, as step alt value may change due to previous running of a plan.
-        if let Some(plans) = dm0.make_plans2(
+        if let Some(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0101").expect("SNH"),
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             None,
@@ -1290,7 +1281,7 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let dm0 = &mut dmxs[0];
 
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
@@ -1313,7 +1304,7 @@ mod tests {
         dm0.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        //        let cur_state = SomeState::new_from_string("s0b0111")?;
+        //        let cur_state = SomeState::new_from_string("0b0111")?;
         //        dm0.set_cur_state(cur_state);
         //        let toreg = SomeRegion::new_from_string("r1000")?;
         //
@@ -1334,7 +1325,7 @@ mod tests {
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let dm0 = &mut dmxs[0];
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
         dm0.add_action(vec![]);
@@ -1363,7 +1354,7 @@ mod tests {
         // Get plan for 7 to C
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
-        //        let s7 = SomeState::new_from_string("s0x7")?;
+        //        let s7 = SomeState::new_from_string("0x7")?;
         //        dm0.set_cur_state(s7);
         //        let toreg = SomeRegion::new_from_string("r1100")?;
         //
@@ -1382,7 +1373,7 @@ mod tests {
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
@@ -1394,7 +1385,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0001")?
+                state: &SomeState::new_from_string("0b0001")?
             }
         ));
 
@@ -1427,7 +1418,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0000")?
+                state: &SomeState::new_from_string("0b0000")?
             }
         ));
 
@@ -1439,7 +1430,7 @@ mod tests {
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
@@ -1451,7 +1442,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0001")?
+                state: &SomeState::new_from_string("0b0001")?
             }
         ));
 
@@ -1481,14 +1472,14 @@ mod tests {
             &nds2,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0001")?
+                state: &SomeState::new_from_string("0b0001")?
             }
         ));
         assert!(contains_similar_need(
             &nds2,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0010")?
+                state: &SomeState::new_from_string("0b0010")?
             }
         ));
 
@@ -1503,7 +1494,7 @@ mod tests {
             &nds3,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::new_from_string("s0001")?
+                state: &SomeState::new_from_string("0b0001")?
             }
         ));
 
@@ -1530,7 +1521,7 @@ mod tests {
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         // Create group for region XX0X.
@@ -1563,7 +1554,7 @@ mod tests {
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
@@ -1596,7 +1587,7 @@ mod tests {
 
         println!("anchor is {}", anchor_sta);
 
-        if *anchor_sta == SomeState::new_from_string("s0b1001")? {
+        if *anchor_sta == SomeState::new_from_string("0b1001")? {
             // limiting square for anchor 9 is B.
             dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1011->0b1011")?);
             dm0.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1011->0b1011")?);
@@ -1637,7 +1628,7 @@ mod tests {
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
@@ -1690,7 +1681,7 @@ mod tests {
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0001")?;
         dm0.add_action(vec![]);
 
         let rx1x1 = SomeRegion::new_from_string("rx1x1")?;
@@ -1731,7 +1722,7 @@ mod tests {
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(16)));
-        dm0.cur_state = SomeState::new_from_string("s0b0000000000000001")?;
+        dm0.cur_state = SomeState::new_from_string("0b0000000000000001")?;
         dm0.add_action(vec![]);
 
         // Create group for region XXX1010X101010XX.
@@ -1767,7 +1758,7 @@ mod tests {
 
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("0b0011")?;
         dm0.add_action(vec![]); // Act 0
 
         // Start groups.
@@ -1802,14 +1793,14 @@ mod tests {
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::new_from_string("s1110")?
+                    state: &SomeState::new_from_string("0b1110")?
                 }
             ));
             assert!(contains_similar_need(
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::new_from_string("s0111")?
+                    state: &SomeState::new_from_string("0b0111")?
                 }
             ));
         } else {
@@ -1850,7 +1841,7 @@ mod tests {
     fn shortcuts3() -> Result<(), String> {
         // Create a domain that uses 4 bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
@@ -1881,8 +1872,8 @@ mod tests {
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
-        let sta_0 = SomeState::new_from_string("s0000")?;
-        let sta_f = SomeState::new_from_string("s1111")?;
+        let sta_0 = SomeState::new_from_string("0b0000")?;
+        let sta_f = SomeState::new_from_string("0b1111")?;
 
         // Set up groups for action 0.
         dm0.set_cur_state(sta_0.clone());
@@ -1956,7 +1947,7 @@ mod tests {
     fn shortcuts5() -> Result<(), String> {
         // Create a domain that uses 4 bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
@@ -1987,8 +1978,8 @@ mod tests {
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
-        let sta_0 = SomeState::new_from_string("s0000")?;
-        let sta_f = SomeState::new_from_string("s1111")?;
+        let sta_0 = SomeState::new_from_string("0b0000")?;
+        let sta_f = SomeState::new_from_string("0b1111")?;
 
         // Set up groups for action 0.
         dm0.set_cur_state(sta_0.clone());
@@ -2091,7 +2082,7 @@ mod tests {
     fn shortcuts6() -> Result<(), String> {
         // Create a domain that uses 4 bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
@@ -2122,8 +2113,8 @@ mod tests {
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
-        let sta_0 = SomeState::new_from_string("s0000")?;
-        let sta_f = SomeState::new_from_string("s1111")?;
+        let sta_0 = SomeState::new_from_string("0b0000")?;
+        let sta_f = SomeState::new_from_string("0b1111")?;
 
         // Set up groups for action 0.
         dm0.set_cur_state(sta_0.clone());
@@ -2209,7 +2200,7 @@ mod tests {
     fn shortcuts7() -> Result<(), String> {
         // Create a domain that uses 4 bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
-        dm0.cur_state = SomeState::new_from_string("s0b0011")?;
+        dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
@@ -2240,8 +2231,8 @@ mod tests {
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
-        let sta_0 = SomeState::new_from_string("s0000")?;
-        let sta_f = SomeState::new_from_string("s1111")?;
+        let sta_0 = SomeState::new_from_string("0b0000")?;
+        let sta_f = SomeState::new_from_string("0b1111")?;
 
         // Set up groups for action 0.
         dm0.set_cur_state(sta_0.clone());

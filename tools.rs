@@ -230,10 +230,10 @@ mod tests {
     use crate::state::SomeState;
 
     #[test]
-    fn test_anyxofn() -> Result<(), String> {
+    fn anyxofn() -> Result<(), String> {
         let vals = vec![0, 1, 2, 3];
         let vals_refs = vec_refs(&vals);
-        let options = anyxofn(3, &vals_refs);
+        let options = super::anyxofn(3, &vals_refs);
         println!("{:?}", options);
         assert!(options.len() == 4);
 
@@ -242,7 +242,7 @@ mod tests {
         assert!(options.contains(&vec![&0, &2, &3]));
         assert!(options.contains(&vec![&1, &2, &3]));
 
-        let options = anyxofn(1, &vals_refs);
+        let options = super::anyxofn(1, &vals_refs);
         println!("{:?}", options);
         assert!(options.len() == 4);
         assert!(options.contains(&vec![&0]));
@@ -256,29 +256,35 @@ mod tests {
         let sta7 = SomeState::new_from_string("0x7")?;
 
         let vals = vec![&sta1, &sta2, &sta4, &sta7];
-        let options: Vec<Vec<&SomeState>> = anyxofn(2, &vals);
+        let options: Vec<Vec<&SomeState>> = super::anyxofn(2, &vals);
         for optx in options.iter() {
             println!("{}", vec_ref_string(&optx));
         }
+        assert!(options.len() == 6);
+        assert!(options.contains(&vec![&sta1, &sta2]));
+        assert!(options.contains(&vec![&sta1, &sta4]));
+        assert!(options.contains(&vec![&sta1, &sta7]));
+        assert!(options.contains(&vec![&sta2, &sta4]));
+        assert!(options.contains(&vec![&sta2, &sta7]));
+        assert!(options.contains(&vec![&sta4, &sta7]));
 
-        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
-    fn test_vec_contains() -> Result<(), String> {
+    fn vec_contains() -> Result<(), String> {
         let vecx: Vec<usize> = vec![1, 2, 3, 4];
         println!("vecx: {:?}", vecx);
-        assert_eq!(vec_contains(&vecx, |a, b| a == b, &2), true);
-        assert_eq!(vec_contains(&vecx, |a, b| a == b, &5), false);
+        assert_eq!(super::vec_contains(&vecx, |a, b| a == b, &2), true);
+        assert_eq!(super::vec_contains(&vecx, |a, b| a == b, &5), false);
 
         let vecx: Vec<&str> = vec!["A", "B", "C", "D"];
         println!("vecx: {:?}", vecx);
-        assert_eq!(vec_contains(&vecx, |a, b| a == b, &"B"), true);
-        assert_eq!(vec_contains(&vecx, |a, b| a == b, &"E"), false);
+        assert_eq!(super::vec_contains(&vecx, |a, b| a == b, &"B"), true);
+        assert_eq!(super::vec_contains(&vecx, |a, b| a == b, &"E"), false);
 
         assert_eq!(
-            vec_contains(&Vec::<&str>::new(), |a, b| a == b, &"E"),
+            super::vec_contains(&Vec::<&str>::new(), |a, b| a == b, &"E"),
             false
         );
         Ok(())

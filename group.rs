@@ -376,8 +376,8 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, Some(rules));
 
-        let initial = SomeState::new_from_string("s0b1100")?;
-        let result = SomeState::new_from_string("s0b0100")?;
+        let initial = SomeState::new_from_string("0b1100")?;
+        let result = SomeState::new_from_string("0b0100")?;
 
         if !grpx.check_sample(&SomeSample::new(initial, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
@@ -395,12 +395,12 @@ mod tests {
         let mut grpx = SomeGroup::new(regx, Some(rules)); // Pn::One
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b1100")?,
+            SomeState::new_from_string("0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("s0b0101")?,
+            SomeState::new_from_string("0b0101")?,
         )); // Pn::Two, pnc == false.
 
         if grpx.check_square(&sqrx) {
@@ -418,17 +418,17 @@ mod tests {
         let mut grpx = SomeGroup::new(regx, Some(rules)); // Pn::Two
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b1100")?,
+            SomeState::new_from_string("0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
         if grpx.check_square(&sqrx) {
@@ -443,8 +443,8 @@ mod tests {
         let mut grpx = SomeGroup::new(regx, rules);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b1100")?,
+            SomeState::new_from_string("0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -459,8 +459,8 @@ mod tests {
         let mut grpx = SomeGroup::new(regx, Some(rules));
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0100")?,
+            SomeState::new_from_string("0b1100")?,
+            SomeState::new_from_string("0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -468,8 +468,8 @@ mod tests {
         }
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("s0b1100")?,
-            SomeState::new_from_string("s0b0101")?,
+            SomeState::new_from_string("0b1100")?,
+            SomeState::new_from_string("0b0101")?,
         ));
 
         if grpx.check_square(&sqrx) {

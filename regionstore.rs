@@ -635,8 +635,8 @@ mod tests {
         // Intersections, 0x01, 01x1.
         // Intersections of intersections, 0101.
 
-        assert!(regstr.any_superset_of_state(&SomeState::new_from_string("s0b0111")?));
-        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string("s0b1011")?));
+        assert!(regstr.any_superset_of_state(&SomeState::new_from_string("0b0111")?));
+        assert!(!regstr.any_superset_of_state(&SomeState::new_from_string("0b1011")?));
         Ok(())
     }
 
@@ -692,21 +692,21 @@ mod tests {
     #[test]
     fn two_dissimilar_pairs() -> Result<(), String> {
         let max_reg = SomeRegion::new(vec![
-            SomeState::new_from_string("s0b1111")?,
-            SomeState::new_from_string("s0b0000")?,
+            SomeState::new_from_string("0b1111")?,
+            SomeState::new_from_string("0b0000")?,
         ]);
 
         let rslt = RegionStore::new(vec![max_reg.clone()]);
 
-        let state_6 = SomeState::new_from_string("s0b0110")?;
-        let state_a = SomeState::new_from_string("s0b1010")?;
+        let state_6 = SomeState::new_from_string("0b0110")?;
+        let state_a = SomeState::new_from_string("0b1010")?;
 
         let not_state_6 = RegionStore::new(max_reg.subtract(&state_6));
         let not_state_a = RegionStore::new(max_reg.subtract(&state_a));
         let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
 
-        let state_4 = SomeState::new_from_string("s0b0100")?;
-        let state_d = SomeState::new_from_string("s0b1101")?;
+        let state_4 = SomeState::new_from_string("0b0100")?;
+        let state_d = SomeState::new_from_string("0b1101")?;
 
         let not_state_4 = RegionStore::new(max_reg.subtract(&state_4));
         let not_state_d = RegionStore::new(max_reg.subtract(&state_d));

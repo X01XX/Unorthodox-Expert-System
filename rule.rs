@@ -400,35 +400,54 @@ impl SomeRule {
                 continue;
             }
 
-            let b00 = c00 == "1";
-            let b01 = c01 == "1";
-            let b11 = c11 == "1";
-            let b10 = c10 == "1";
+            // Change bit positions into a number, 0 to 15.
+            let mut msk = 0;
 
-            if b00 && !b01 && b11 && !b10 {
-                strrc.push_str("XX/");
-            } else if b00 && !b01 && !b11 && b10 {
-                strrc.push_str("X0/");
-            } else if !b00 && b01 && b11 && !b10 {
-                strrc.push_str("X1/");
-            } else if !b00 && b01 && !b11 && b10 {
-                strrc.push_str("Xx/");
-            } else if b00 && !b01 && !b11 && !b10 {
+            if c00 == "1" {
+                msk += 1;
+            }
+            if c01 == "1" {
+                msk += 2;
+            }
+            if c11 == "1" {
+                msk += 4;
+            }
+            if c10 == "1" {
+                msk += 8;
+            }
+
+            if msk == 0 {
+                strrc.push_str("../"); // Will fail is_valid_intersection.
+            } else if msk == 1 {
                 strrc.push_str("00/");
-            } else if !b00 && !b01 && b11 && !b10 {
-                strrc.push_str("11/");
-            } else if !b00 && !b01 && !b11 && b10 {
-                strrc.push_str("10/");
-            } else if !b00 && b01 && !b11 && !b10 {
+            } else if msk == 2 {
                 strrc.push_str("01/");
-            } else if b00 && b01 && !b11 && !b10 {
-                strrc.push_str("0X/");
-            } else if !b00 && !b01 && b11 && b10 {
-                strrc.push_str("1X/");
-            } else if !b00 && !b01 && !b11 && !b10 {
-                strrc.push_str("dc/");
-            } else {
-                strrc.push_str("**");
+            } else if msk == 3 {
+                strrc.push_str("0X?/"); // Will fail is_valid_union.
+            } else if msk == 4 {
+                strrc.push_str("11/");
+            } else if msk == 5 {
+                strrc.push_str("XX/");
+            } else if msk == 6 {
+                strrc.push_str("X1/");
+            } else if msk == 7 {
+                strrc.push_str("11,0X?/"); // Will fail is_valid_union, parsed_union can remove 0X.
+            } else if msk == 8 {
+                strrc.push_str("10/");
+            } else if msk == 9 {
+                strrc.push_str("X0/");
+            } else if msk == 10 {
+                strrc.push_str("Xx/");
+            } else if msk == 11 {
+                strrc.push_str("10,0X?/"); // Will fail is_valid_union, parsed_union can remove 0X.
+            } else if msk == 12 {
+                strrc.push_str("1X?/"); // Will fail is_valid_union.
+            } else if msk == 13 {
+                strrc.push_str("00,1X?/"); // Will fail is_valid_union, parsed_union can remove 1X.
+            } else if msk == 14 {
+                strrc.push_str("01,1X?/"); // Will fail is_valid_union, parsed_union can remove  1X.
+            } else if msk == 15 {
+                strrc.push_str("0X?,1X?/"); // Will fail is_valid_union.
             }
         } // next i
 
@@ -819,14 +838,14 @@ mod tests {
     }
 
     #[test]
-    fn test_new() -> Result<(), String> {
+    fn new() -> Result<(), String> {
         let rule_from_sample = SomeRule::new(&SomeSample::new_from_string("0b0101->0b0011")?); //(
 
         let rule_from_masks = SomeRule {
             b00: SomeMask::new_from_string("0x7")?.bitwise_not(),
-            b01: SomeMask::new_from_string("m0b0010")?,
-            b11: SomeMask::new_from_string("m0b0001")?,
-            b10: SomeMask::new_from_string("m0b0100")?,
+            b01: SomeMask::new_from_string("0b0010")?,
+            b11: SomeMask::new_from_string("0b0001")?,
+            b10: SomeMask::new_from_string("0b0100")?,
         };
 
         let rule_from_string = SomeRule::new_from_string("00/10/01/11")?;
@@ -997,8 +1016,8 @@ mod tests {
         // Change depends  X->0 to X->0.
         let rul1 = SomeRule::new_from_string("X1/X1/X0/X0")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("m0b1000")?,
-            SomeMask::new_from_string("m0b0010")?,
+            SomeMask::new_from_string("0b1000")?,
+            SomeMask::new_from_string("0b0010")?,
         );
 
         let rul2 = rul1.restrict_for_changes(&chg1, None);
@@ -1061,8 +1080,8 @@ mod tests {
         // Detect X-x excursion.
         let rul1 = SomeRule::new_from_string("01/Xx")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("m0b10")?,
-            SomeMask::new_from_string("m0b00")?,
+            SomeMask::new_from_string("0b10")?,
+            SomeMask::new_from_string("0b00")?,
         );
 
         let within = SomeRegion::new_from_string("rx1")?;
@@ -1100,12 +1119,12 @@ mod tests {
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
         let rul1 = SomeRule::new_from_string("Xx/XX/x1/x0/xx/xx")?;
-        let sta1 = SomeState::new_from_string("s0b000110")?;
+        let sta1 = SomeState::new_from_string("0b000110")?;
 
         let sta2 = rul1.result_from_initial_state(&sta1);
         println!("rul1: {rul1} sta1: {sta1} sta2: {sta2}");
 
-        assert!(sta2 == SomeState::new_from_string("s0b101010")?);
+        assert!(sta2 == SomeState::new_from_string("0b101010")?);
 
         Ok(())
     }

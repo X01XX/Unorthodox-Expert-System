@@ -271,12 +271,12 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let msk1 = SomeMask::new_from_string("m0b1010")?;
-        let msk2 = SomeMask::new_from_string("m0b1010")?;
+        let msk1 = SomeMask::new_from_string("0b1010")?;
+        let msk2 = SomeMask::new_from_string("0b1010")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = SomeMask::new_from_string("m0b1001")?;
+        let msk3 = SomeMask::new_from_string("0b1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 

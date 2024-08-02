@@ -2330,7 +2330,7 @@ mod tests {
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Put in two incompatible one-result squares, but both subset of the
@@ -2361,7 +2361,7 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Eval sample that other samples will be incompatible with.
@@ -2400,7 +2400,7 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         let max_reg = SomeRegion::new_from_string("rXXXX")?;
@@ -2412,7 +2412,7 @@ mod tests {
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up 2-result square s1.
-        let s1 = SomeState::new_from_string("s0b0001")?;
+        let s1 = SomeState::new_from_string("0b0001")?;
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
@@ -2432,7 +2432,7 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
@@ -2459,7 +2459,7 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
@@ -2498,7 +2498,7 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("s0b0000")?;
+        let sx = SomeState::new_from_string("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.

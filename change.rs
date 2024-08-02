@@ -112,7 +112,7 @@ impl SomeChange {
     }
 
     /// Return a change for translating from a region to another region.
-    pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
+    pub fn region_to_region_required_changes(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
         let from_x = from.x_mask();
@@ -128,6 +128,29 @@ impl SomeChange {
         SomeChange {
             b01: from_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
             b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
+        }
+    }
+
+    /// Return changes not wanted in translating from a region to another region.
+    /// For 0->0, and X->0, the change 0->1 is not wanted.
+    /// For 1->1, and X->1, the change 1->0 is not wanted.
+    pub fn region_to_region_not_wanted_changes(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
+
+        let fx_msk = from.x_mask();
+
+        let to_zeros = to.edge_zeros_mask();
+
+        let b00 = from.edge_zeros_mask().bitwise_and(&to_zeros);
+        let bx0 = fx_msk.bitwise_and(&to_zeros);
+
+        let to_ones = to.edge_ones_mask();
+
+        let b11 = from.edge_ones_mask().bitwise_and(&to_ones);
+        let bx1 = fx_msk.bitwise_and(&to_ones);
+
+        SomeChange {
+            b01: b00.bitwise_or(&bx0),
+            b10: b11.bitwise_or(&bx1),
         }
     }
 
@@ -207,16 +230,16 @@ mod tests {
         // Create a mask that uses one integer for bits.
 
         let cng1 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1010")?,
-            b10: SomeMask::new_from_string("m0b1010")?,
+            b01: SomeMask::new_from_string("0b1010")?,
+            b10: SomeMask::new_from_string("0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1001")?,
-            b10: SomeMask::new_from_string("m0b0110")?,
+            b01: SomeMask::new_from_string("0b1001")?,
+            b10: SomeMask::new_from_string("0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1000")?,
-            b10: SomeMask::new_from_string("m0b0010")?,
+            b01: SomeMask::new_from_string("0b1000")?,
+            b10: SomeMask::new_from_string("0b0010")?,
         };
         let cng4 = cng1.intersection(&cng2);
         println!("cng4 {cng4}");
@@ -231,16 +254,16 @@ mod tests {
         // Create a mask that uses one integer for bits.
 
         let cng1 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1010")?,
-            b10: SomeMask::new_from_string("m0b1010")?,
+            b01: SomeMask::new_from_string("0b1010")?,
+            b10: SomeMask::new_from_string("0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1001")?,
-            b10: SomeMask::new_from_string("m0b0110")?,
+            b01: SomeMask::new_from_string("0b1001")?,
+            b10: SomeMask::new_from_string("0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: SomeMask::new_from_string("m0b1011")?,
-            b10: SomeMask::new_from_string("m0b1110")?,
+            b01: SomeMask::new_from_string("0b1011")?,
+            b10: SomeMask::new_from_string("0b1110")?,
         };
         let cng4 = cng1.union(&cng2);
         println!("cng4 {cng4}");
@@ -255,16 +278,16 @@ mod tests {
         // Create a domain that uses one integer for bits.
 
         let wanted_changes = SomeChange::new(
-            SomeMask::new_from_string("m0b1100")?,
-            SomeMask::new_from_string("m0b0011")?,
+            SomeMask::new_from_string("0b1100")?,
+            SomeMask::new_from_string("0b0011")?,
         );
         println!("wanted_changes    {wanted_changes}");
 
-        let sta1 = SomeState::new_from_string("s0b0011")?;
+        let sta1 = SomeState::new_from_string("0b0011")?;
         let sta2 = wanted_changes.apply_changes(&sta1);
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
-        assert!(sta2 == SomeState::new_from_string("s0b1100")?);
+        assert!(sta2 == SomeState::new_from_string("0b1100")?);
 
         Ok(())
     }
@@ -322,13 +345,13 @@ mod tests {
     }
 
     #[test]
-    fn new_region_to_region() -> Result<(), String> {
+    fn region_to_region_required_changes() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string("001_1xxx")?;
         println!("reg1 {reg1}");
         let reg2 = SomeRegion::new_from_string("011_001x")?;
         println!("reg2 {reg2}");
 
-        let cng1 = SomeChange::new_region_to_region(&reg1, &reg2);
+        let cng1 = SomeChange::region_to_region_required_changes(&reg1, &reg2);
         println!("cng1 {cng1}");
 
         let cng2 = SomeChange::new_from_string("00/01/00_10/10/01/00")?;
@@ -340,8 +363,26 @@ mod tests {
     }
 
     #[test]
+    fn region_to_region_not_wanted_changes() -> Result<(), String> {
+        let reg1 = SomeRegion::new_from_string("001_1xxx")?;
+        println!("reg1 {reg1}");
+        let reg2 = SomeRegion::new_from_string("011_001x")?;
+        println!("reg2 {reg2}");
+
+        let cng1 = SomeChange::region_to_region_not_wanted_changes(&reg1, &reg2);
+        println!("cng1 {cng1}");
+
+        let cng2 = SomeChange::new_from_string("01/00/10_00/01/10/00")?;
+        println!("cng2 {cng2}");
+
+        assert!(cng1 == cng2);
+
+        Ok(())
+    }
+
+    #[test]
     fn new_state_to_region() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("01_0110")?;
+        let sta1 = SomeState::new_from_string("0b01_0110")?;
         println!("sta1 {sta1}");
 
         let reg1 = SomeRegion::new_from_string("xx_1010")?;

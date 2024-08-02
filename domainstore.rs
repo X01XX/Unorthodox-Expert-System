@@ -665,7 +665,7 @@ impl DomainStore {
     ) -> Option<PlanStore> {
         //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
 
-        self.items[dom_id].make_plans2(from_region, goal_region, within)
+        self.items[dom_id].make_plans(from_region, goal_region, within)
     }
 
     /// Choose a plan from a vector of PlanStare references, for vector of PlanStores.
@@ -1870,7 +1870,7 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
         let domx = &mut dmxs[0];
 
-        let sf = SomeState::new_from_string("s0b1111")?;
+        let sf = SomeState::new_from_string("0b1111")?;
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
@@ -1907,7 +1907,7 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x1")?;
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -1949,7 +1949,7 @@ mod tests {
         // Set up action to change the second bit.
         domx.add_action(vec![]);
 
-        let sd = SomeState::new_from_string("s0b1101")?;
+        let sd = SomeState::new_from_string("0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
@@ -1976,7 +1976,7 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x1")?;
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -2019,7 +2019,7 @@ mod tests {
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let sd = SomeState::new_from_string("s0b1101")?;
+        let sd = SomeState::new_from_string("0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
@@ -2056,7 +2056,7 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x1")?;
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -2095,7 +2095,7 @@ mod tests {
         // Set up action to change the second bit.
         domx.add_action(vec![]);
 
-        let sd = SomeState::new_from_string("s0b1101")?;
+        let sd = SomeState::new_from_string("0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
@@ -2122,7 +2122,7 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x1")?;
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -2158,7 +2158,7 @@ mod tests {
         // Set up action to change the second bit.
         domx.add_action(vec![]);
 
-        let sd = SomeState::new_from_string("s0b1101")?;
+        let sd = SomeState::new_from_string("0b1101")?;
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
@@ -2180,7 +2180,7 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x1")?;
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -2212,11 +2212,11 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new(16)));
 
         // Set state for domain 0, using 1 integer for bits.
-        let init_first_state = SomeState::new_from_string("s0x12")?;
+        let init_first_state = SomeState::new_from_string("0x12")?;
         dmxs[0].set_cur_state(init_first_state.clone());
 
         // Set state for domain 1, using 2 integers for bits.
-        let init_state2 = SomeState::new_from_string("s0xabcd")?;
+        let init_state2 = SomeState::new_from_string("0xabcd")?;
         dmxs[1].set_cur_state(init_state2.clone());
 
         let all_states = dmxs.all_current_states();
@@ -2274,10 +2274,10 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
-        let s0 = SomeState::new_from_string("s0b0000")?;
+        let s0 = SomeState::new_from_string("0b0000")?;
         dmxs[0].set_cur_state(s0.clone());
 
-        let sd = SomeState::new_from_string("s0b1101")?;
+        let sd = SomeState::new_from_string("0b1101")?;
 
         let start_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![s0.clone()])]);
         let goal_region = RegionStoreCorr::new(vec![SomeRegion::new(vec![sd.clone()])]);
@@ -2367,14 +2367,14 @@ mod tests {
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s0 = SomeState::new_from_string("s0x0")?;
+        let s0 = SomeState::new_from_string("0x0")?;
         dmxs[0].set_cur_state(s0.clone());
 
-        let s1 = SomeState::new_from_string("s0x1")?;
+        let s1 = SomeState::new_from_string("0x1")?;
         dmxs[1].set_cur_state(s1.clone());
 
-        let sf = SomeState::new_from_string("s0xf")?;
-        let se = SomeState::new_from_string("s0xe")?;
+        let sf = SomeState::new_from_string("0xf")?;
+        let se = SomeState::new_from_string("0xe")?;
 
         let start_region = RegionStoreCorr::new(vec![
             SomeRegion::new(vec![s0.clone()]),
@@ -2461,10 +2461,10 @@ mod tests {
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s5 = SomeState::new_from_string("s0b0101")?;
+        let s5 = SomeState::new_from_string("0b0101")?;
         dmxs[0].set_cur_state(s5.clone());
 
-        let s7 = SomeState::new_from_string("s0b0111")?;
+        let s7 = SomeState::new_from_string("0b0111")?;
         dmxs[1].set_cur_state(s7.clone());
 
         let start_regions = RegionStoreCorr::new(vec![
@@ -2472,7 +2472,7 @@ mod tests {
             SomeRegion::new(vec![s7.clone()]),
         ]);
 
-        let s9 = SomeState::new_from_string("s0b1001")?;
+        let s9 = SomeState::new_from_string("0b1001")?;
 
         let goal_regions = RegionStoreCorr::new(vec![
             SomeRegion::new(vec![s9.clone()]),
@@ -2562,10 +2562,10 @@ mod tests {
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s5 = SomeState::new_from_string("s0b0101")?;
+        let s5 = SomeState::new_from_string("0b0101")?;
         dmxs[0].set_cur_state(s5.clone());
 
-        let s7 = SomeState::new_from_string("s0b0111")?;
+        let s7 = SomeState::new_from_string("0b0111")?;
         dmxs[1].set_cur_state(s7.clone());
 
         let start_regions = RegionStoreCorr::new(vec![
@@ -2573,7 +2573,7 @@ mod tests {
             SomeRegion::new(vec![s7.clone()]),
         ]);
 
-        let s9 = SomeState::new_from_string("s0b1001")?;
+        let s9 = SomeState::new_from_string("0b1001")?;
 
         let goal_regions = RegionStoreCorr::new(vec![
             SomeRegion::new(vec![s9.clone()]),
@@ -2635,11 +2635,11 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x12")?;
+        let first_state = SomeState::new_from_string("0x12")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
-        let state2 = SomeState::new_from_string("s0xabcd")?;
+        let state2 = SomeState::new_from_string("0xabcd")?;
         dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
@@ -2659,11 +2659,11 @@ mod tests {
         }
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("s0x05")?;
+        let first_state = SomeState::new_from_string("0x05")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
-        let state2 = SomeState::new_from_string("s0xa28d")?;
+        let state2 = SomeState::new_from_string("0xa28d")?;
         dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
@@ -2711,7 +2711,7 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr2.clone(), -1));
 
         // Set state for domain 0, using 1 integer for bits.
-        let first_state = SomeState::new_from_string("s0xd")?;
+        let first_state = SomeState::new_from_string("0xd")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Finish select regions setup.
@@ -2848,12 +2848,12 @@ mod tests {
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s3 = SomeState::new_from_string("s0b0011")?;
+        let s3 = SomeState::new_from_string("0b0011")?;
         dmxs[0].set_cur_state(s3.clone());
 
         let start_regions = RegionStoreCorr::new(vec![SomeRegion::new(vec![s3.clone()])]);
 
-        let sf = SomeState::new_from_string("s0b1111")?;
+        let sf = SomeState::new_from_string("0b1111")?;
 
         let goal_regions = RegionStoreCorr::new(vec![SomeRegion::new(vec![sf.clone()])]);
 

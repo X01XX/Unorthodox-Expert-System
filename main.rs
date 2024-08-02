@@ -177,7 +177,11 @@ fn run_to_end(dmxs: &mut DomainStore) {
         do_any_need(dmxs);
     } // end loop
     let duration = start.elapsed().as_secs();
-    println!("Time elapsed: {:?} seconds", duration);
+    println!(
+        "Steps: {} Time elapsed: {:?} seconds",
+        dmxs.step_num - 1,
+        duration
+    );
 
     do_session(dmxs);
 }
