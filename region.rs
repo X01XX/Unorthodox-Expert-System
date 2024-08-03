@@ -251,11 +251,19 @@ impl SomeRegion {
         self.high_state().bitwise_eqv(&self.low_state())
     }
 
-    /// Return mask of x positions.
+    /// Return mask of x bit positions.
     pub fn x_mask(&self) -> SomeMask {
-        self.high_state()
-            .bitwise_xor(&self.low_state())
-            .convert_to_mask()
+        if self.states.len() == 1 {
+            self.states[0].new_low().convert_to_mask()
+        } else if self.states.len() == 2 {
+            self.states[0]
+                .bitwise_xor(&self.states[1])
+                .convert_to_mask()
+        } else {
+            self.high_state()
+                .bitwise_xor(&self.low_state())
+                .convert_to_mask()
+        }
     }
 
     /// Given a state in a region, return the far state in the region.
@@ -317,20 +325,32 @@ impl SomeRegion {
 
     /// Return the highest state in the region
     pub fn high_state(&self) -> SomeState {
-        let mut most_ones = self.states[0].new_low();
-        for stax in self.states.iter() {
-            most_ones = most_ones.bitwise_or(stax);
+        if self.states.len() == 1 {
+            self.states[0].clone()
+        } else if self.states.len() == 2 {
+            self.states[0].bitwise_or(&self.states[1])
+        } else {
+            let mut most_ones = self.states[0].new_low();
+            for stax in self.states.iter() {
+                most_ones = most_ones.bitwise_or(stax);
+            }
+            most_ones
         }
-        most_ones
     }
 
     /// Return lowest state in the region
     pub fn low_state(&self) -> SomeState {
-        let mut least_ones = self.states[0].new_high();
-        for stax in self.states.iter() {
-            least_ones = least_ones.bitwise_and(stax);
+        if self.states.len() == 1 {
+            self.states[0].clone()
+        } else if self.states.len() == 2 {
+            self.states[0].bitwise_and(&self.states[1])
+        } else {
+            let mut least_ones = self.states[0].new_high();
+            for stax in self.states.iter() {
+                least_ones = least_ones.bitwise_and(stax);
+            }
+            least_ones
         }
-        least_ones
     }
 
     /// Return a region with masked X-bits set to zeros.
@@ -809,7 +829,7 @@ mod tests {
         } else {
             return Err("Failed to interpret 0b0001".to_string());
         }
-        
+
         if let Ok(regx) = SomeRegion::new_from_string("0x0001") {
             println!("regx {regx}");
             assert!(regx.num_bits() == 16);

@@ -135,7 +135,6 @@ impl SomeChange {
     /// For 0->0, and X->0, the change 0->1 is not wanted.
     /// For 1->1, and X->1, the change 1->0 is not wanted.
     pub fn region_to_region_not_wanted_changes(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
-
         let fx_msk = from.x_mask();
 
         let to_zeros = to.edge_zeros_mask();
