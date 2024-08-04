@@ -67,9 +67,17 @@ impl SomeRegion {
         &self.states[0]
     }
 
-    /// Return the far state, from the current first state.
+    /// Return the state, farthest from the current first state.
+    /// Most regions will be two-state, and so have a first and second state.
+    /// Non-two state regions are also handeled.
     pub fn far_state(&self) -> SomeState {
-        self.states[0].bitwise_xor(&self.x_mask())
+        if self.states.len() == 1 {
+            self.states[0].clone()
+        } else if self.states.len() == 2 {
+            self.states[1].clone()
+        } else {
+            self.states[0].bitwise_xor(&self.x_mask()) // The reason a state is returned, intead of a reference.
+        }
     }
 
     /// Return a Region from a string.
@@ -267,7 +275,7 @@ impl SomeRegion {
     }
 
     /// Given a state in a region, return the far state in the region.
-    pub fn state_far_from(&self, sta: &SomeState) -> SomeState {
+    pub fn far_from(&self, sta: &SomeState) -> SomeState {
         debug_assert_eq!(self.num_bits(), sta.num_bits());
         assert!(self.is_superset_of(sta));
 
@@ -275,8 +283,8 @@ impl SomeRegion {
     }
 
     /// Given a region, and a proper subset region, return the
-    /// far region within the superset region.
-    pub fn far_reg(&self, other: &Self) -> Self {
+    /// region within the superset region farthest from the subset region.
+    pub fn far_from_reg(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
         assert!(self.is_superset_of(other));
         assert!(self != other);
@@ -607,7 +615,7 @@ mod tests {
     fn state_far_from() -> Result<(), String> {
         let reg1 = SomeRegion::new_from_string("X10X01X")?;
         let sta1 = SomeState::new_from_string("0b1101010")?;
-        let sta2 = reg1.state_far_from(&sta1);
+        let sta2 = reg1.far_from(&sta1);
         println!("reg {reg1} state far from {sta1} is {sta2}");
 
         assert!(sta2 == SomeState::new_from_string("0b0100011")?);
@@ -816,7 +824,7 @@ mod tests {
             let first_state_str =
                 "0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
             let first_state = SomeState::new_from_string(&first_state_str)?;
-            let far_state = reg_instance.state_far_from(&first_state);
+            let far_state = reg_instance.far_from(&first_state);
             println!("{} should equal {first_state}", reg_instance.first_state());
             assert!(reg_instance.first_state() == &first_state);
             println!("{} should equal {first_state}", reg_instance.far_state());
@@ -949,7 +957,7 @@ mod tests {
     fn far_state() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string("r0000XXX1")?;
         let state0 = SomeState::new_from_string("0b00001011")?;
-        let far_state = reg0.state_far_from(&state0);
+        let far_state = reg0.far_from(&state0);
         println!("far state is {far_state}");
         assert!(far_state == SomeState::new_from_string("0b00000101")?);
         Ok(())
@@ -959,7 +967,7 @@ mod tests {
     fn far_reg() -> Result<(), String> {
         let reg0 = SomeRegion::new_from_string("rXXX01")?;
         let reg1 = SomeRegion::new_from_string("r01X01")?;
-        let far_reg = reg0.far_reg(&reg1);
+        let far_reg = reg0.far_from_reg(&reg1);
         println!("far_reg is {far_reg}");
         assert!(far_reg == SomeRegion::new_from_string("r10X01")?);
         Ok(())

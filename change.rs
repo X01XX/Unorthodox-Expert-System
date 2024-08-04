@@ -83,6 +83,8 @@ impl SomeChange {
 
     /// Return the number of changes in a SomeChange instance.
     pub fn number_changes(&self) -> usize {
+        debug_assert!(self.b01.bitwise_and(&self.b10).is_low());
+
         self.b01.num_one_bits() + self.b10.num_one_bits()
     }
 

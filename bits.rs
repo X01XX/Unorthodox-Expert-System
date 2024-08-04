@@ -42,7 +42,7 @@ pub struct SomeBits {
 }
 
 impl SomeBits {
-    /// Return a new-low SomeBits instance, given the number of integers.
+    /// Return a new-low SomeBits instance, given the number of bits.
     pub fn new(num_bits: usize) -> Self {
         assert!(num_bits > 0);
 
@@ -63,12 +63,12 @@ impl SomeBits {
             }) as usize
     }
 
-    /// Create a SomeBits instance with integer(s) set to zero.
+    /// Create a SomeBits instance, from another, to conserve the number bits, with all bits set to zero.
     pub fn new_low(&self) -> Self {
         SomeBits::new(self.num_bits as usize)
     }
 
-    /// Create a SomeBits instance with integer(s) set to one.
+    /// Create a SomeBits instance, from another, to conserve the number bits, with all bits set to one.
     pub fn new_high(&self) -> Self {
         let mut ints = vec![Bitint::MAX; self.ints.len()];
 
@@ -85,7 +85,7 @@ impl SomeBits {
         }
     }
 
-    /// Return a new bits instance, with a random value.
+    /// Return a new bits instance, from another, to conserve the number bits, with a random value.
     pub fn new_random(&self) -> Self {
         let mut ints = vec![0; self.ints.len()];
 
@@ -110,7 +110,7 @@ impl SomeBits {
     /// All bits needed must be specified.
     /// Underscore character is ignored.
     /// A prefix, 0b or 0x, may be provided.
-    /// Base 2 is assumed, unless a "0x" prefix is given, or a digit 2-F is used.
+    /// Base 2 is assumed, unless a "0x" prefix is given, or a hexadecimal digit, 2..F, is used.
     ///
     /// if let Ok(bts) = SomeBits::new_from_string("0b0101")) {
     ///    println!("bts {}", &bts);
@@ -123,10 +123,7 @@ impl SomeBits {
     /// Using multiple integers to represent a SomeBits struct could allow for
     /// a number that is too big for the standard methods of converting a string to an integer.
     ///
-    /// A "_" character is ignored.
-    ///
-    /// A "+" character, ahead of at least one digit, will fill the current integer with the digits.
-    /// This is primarily used for Somebits testing, but can be used in region, mask, state strings.
+    /// A "_" character can be used as a visual separator, and is ignored.
     pub fn new_from_string(str: &str) -> Result<Self, String> {
         // println!("SomeBits::new_from_string: {str}");
         // Calc base.
@@ -174,8 +171,7 @@ impl SomeBits {
         }
 
         // Count the number of bits and integers.
-        let mut num_ints = 0;
-        let mut cur_bits: usize = 0;
+        let mut num_bits: usize = 0;
         for (inx, chr) in str.graphemes(true).rev().enumerate() {
             if base_specified && inx == (str.len() - 2) && chr == "b"
                 || chr == "B"
@@ -190,45 +186,25 @@ impl SomeBits {
                 continue;
             }
 
-            // Check for integer separator.
-            if chr == "+" {
-                if cur_bits == 0 {
-                    continue;
-                } else {
-                    num_ints += 1;
-                    cur_bits = 0;
-                    continue;
-                }
-            }
-
             if base == 2 {
-                cur_bits += 1;
+                num_bits += 1;
             } else {
-                cur_bits += 4;
-            }
-
-            if cur_bits == Bitint::BITS as usize {
-                num_ints += 1;
-                cur_bits = 0;
+                num_bits += 4;
             }
         }
-        if cur_bits > 0 {
-            num_ints += 1;
-        }
 
-        if num_ints == 0 {
+        if num_bits == 0 {
             return Err(format!(
                 "SomeBits::new_from_string: String {str}, no digits?"
             ));
         }
 
-        let mut ints = Vec::<Bitint>::with_capacity(num_ints);
+        let mut ints = Vec::<Bitint>::with_capacity(Self::number_bits_to_ints(num_bits));
 
         // Fill int vec.
         let mut num_bits: usize = 0;
         let mut cur_bits: usize = 0;
         let mut cur_val = 0;
-        let mut last_chr: Option<&str> = None;
 
         for (inx, chr) in str.graphemes(true).rev().enumerate() {
             if base_specified && inx == (str.len() - 2) && chr == "b"
@@ -238,34 +214,6 @@ impl SomeBits {
             {
                 break;
             }
-
-            // Check for integer separator.
-            if chr == "+" {
-                if cur_bits > 0 {
-                    while cur_bits < Bitint::BITS as usize {
-                        if let Ok(digit) = Bitint::from_str_radix(last_chr.unwrap(), base) {
-                            if base == 2 {
-                                cur_val += digit << cur_bits;
-                                cur_bits += 1;
-                            } else {
-                                cur_val += digit << cur_bits;
-                                cur_bits += 4;
-                            }
-                        } else {
-                            return Err(format!(
-                                "SomeBits::new_from_string: String {str}, invalid character {chr}?"
-                            ));
-                        }
-                    }
-                    ints.push(cur_val);
-                    cur_val = 0;
-                    cur_bits = 0;
-                    num_bits += Bitint::BITS as usize;
-                }
-                continue;
-            }
-
-            last_chr = Some(chr);
 
             // Check for visual separator.
             if chr == "_" {
@@ -345,7 +293,7 @@ impl SomeBits {
     /// Return true if a bit is one at a given position number.
     /// Match the intuition of a hexadecimal representation.
     /// Like 0xffffe. The least significant bit, in this case its equal 0, is bit number zero.
-    /// A minor difficulty is that the most significant integer, in the vector of integers, is index zero.
+    /// The least significant vector index, 0, is the most significant part of the number.
     pub fn is_bit_set(&self, bit_num: usize) -> bool {
         assert!(bit_num < self.num_bits as usize);
 
@@ -504,7 +452,7 @@ impl SomeBits {
         astr
     }
 
-    /// Return true if a bits instance is between two others.
+    /// Return true if a bits instance is between, exclusive, two others.
     pub fn is_between(&self, bts1: &SomeBits, bts2: &SomeBits) -> bool {
         debug_assert_eq!(self.num_bits, bts1.num_bits);
         debug_assert_eq!(self.num_bits, bts2.num_bits);
@@ -570,7 +518,9 @@ mod tests {
     use crate::tools;
 
     /// Build a new bits instance, given number bits and integer value vector.
-    /// The length of the vector must be the minimun needed to cover the given number of bits.  
+    /// The length of the vector must be the minimum needed to cover the given number of bits.
+    ///
+    /// Used to force the creation of multi-integer SomeBits instances, when BitInt may be u8, u16, u32, u64 or u128.
     fn build(num_bits: usize, ints: Vec<Bitint>) -> SomeBits {
         // Verify length of integer vector.
         let num_ints = SomeBits::number_bits_to_ints(num_bits);
@@ -756,14 +706,14 @@ mod tests {
         // Test no binary characters.
         if let Ok(bits3) = SomeBits::new_from_string("0b") {
             return Err(format!(
-                "SomeBits::new_from_string: binary characters detected? {bits3}"
+                "SomeBits::new_from_string: no digits not detected? {bits3}"
             ));
         }
 
         // Test no characters.
         if let Ok(bits3) = SomeBits::new_from_string("") {
             return Err(format!(
-                "SomeBits::new_from_string: characters detected? {bits3}"
+                "SomeBits::new_from_string: no digits not detected? {bits3}"
             ));
         }
 
@@ -829,6 +779,7 @@ mod tests {
         let mut bitsz = bitsx.b_not();
         println!("bitsz: {bitsz}");
         assert!(bitsz.is_high());
+        assert!(bitsz == build(Bitint::BITS as usize + 2, vec![0x3, Bitint::MAX as Bitint]));
 
         bitsx = tmp_bts.new_high();
         bitsz = bitsx.b_not();
@@ -980,13 +931,18 @@ mod tests {
 
     #[test]
     fn is_high() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 1, vec![0, 0xf]);
+        let bitsx = build(Bitint::BITS as usize + 1, vec![0, Bitint::MAX as Bitint]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bits_low = SomeBits::new(Bitint::BITS as usize + 1);
-        let bitsx = bits_low.b_not();
+        let bitsx = build(
+            Bitint::BITS as usize + 1,
+            vec![1, (Bitint::MAX as Bitint) - 1],
+        );
+        println!("bitsx: {bitsx}");
+        assert!(!bitsx.is_high());
 
+        let bitsx = build(Bitint::BITS as usize + 1, vec![1, Bitint::MAX as Bitint]);
         println!("bitsx2: {bitsx}");
         assert!(bitsx.is_high());
 
@@ -995,19 +951,15 @@ mod tests {
 
     #[test]
     fn is_low() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0xa5, 0]);
+        let bitsx = build(Bitint::BITS as usize + 1, vec![0x1, 0]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = bitsx.new_low();
-        println!("bitsx: {bitsx}");
-        assert!(bitsx.is_low());
-
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0x20, 0]);
+        let bitsx = build(Bitint::BITS as usize + 1, vec![0, 0x1]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = bitsx.new_low();
+        let bitsx = build(Bitint::BITS as usize + 1, vec![0, 0]);
         println!("bitsx: {bitsx}");
         assert!(bitsx.is_low());
 
@@ -1016,13 +968,16 @@ mod tests {
 
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0x55, 0x5]);
+        let bitsx = build(Bitint::BITS as usize * 2, vec![0, 0]);
         println!("bitsx: {bitsx} num 1 {}", bitsx.num_one_bits());
-        assert!(bitsx.num_one_bits() == 6);
+        assert!(bitsx.num_one_bits() == 0);
 
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0xaa, 0x1]);
+        let bitsx = build(
+            Bitint::BITS as usize * 2,
+            vec![Bitint::MAX << 1, Bitint::MAX >> 1],
+        );
         println!("bitsx: {bitsx} num 1 {}", bitsx.num_one_bits());
-        assert!(bitsx.num_one_bits() == 5);
+        assert!(bitsx.num_one_bits() == ((Bitint::BITS * 2) - 2) as usize);
 
         Ok(())
     }

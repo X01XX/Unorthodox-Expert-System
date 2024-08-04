@@ -2,7 +2,6 @@
 //! Duplicates are suppressed.
 
 use crate::bits::vec_same_num_bits;
-use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::tools;
 
@@ -37,18 +36,6 @@ impl StateStore {
             ret.push(stax);
         }
         ret
-    }
-
-    /// Return a mask of aggregate differences between states.
-    fn _x_mask(&self) -> SomeMask {
-        assert!(self.is_not_empty());
-
-        let mut xmask = self[0].new_low().convert_to_mask();
-
-        for stax in self.items.iter().skip(1) {
-            xmask = xmask.bitwise_or(&stax.bitwise_xor(&self[0]));
-        }
-        xmask
     }
 
     /// Add a state to a StateStore.

@@ -161,7 +161,7 @@ impl SomeState {
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        other.edge_mask().bitwise_xor(self)
+        other.edge_mask().bitwise_and(&self.bitwise_xor(other.first_state()))
     }
 
     /// Return the number of bits used to describe a state.

@@ -40,14 +40,14 @@ impl SomeMask {
         Self { bts }
     }
 
-    /// Return a new SomeMask instance, all zeros, given the number of integers to use in the SomeBits instance.
+    /// Return a new SomeMask instance, all zeros, the same number of bits as self.
     pub fn new_low(&self) -> Self {
         Self {
             bts: self.bts.new_low(),
         }
     }
 
-    /// Return a new SomeMask instance, all ones, given the number of integers to use in the SomeBits instance.
+    /// Return a new SomeMask instance, all ones, the sawe number of bits as self.
     pub fn new_high(&self) -> Self {
         Self {
             bts: self.bts.new_high(),
@@ -127,8 +127,8 @@ impl SomeMask {
     pub fn split(&self) -> Vec<Self> {
         self.bts
             .split()
-            .iter()
-            .map(|bitx| Self { bts: bitx.clone() })
+            .into_iter()
+            .map(|bitx| Self { bts: bitx })
             .collect()
     }
 

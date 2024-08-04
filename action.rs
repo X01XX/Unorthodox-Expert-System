@@ -628,7 +628,7 @@ impl SomeAction {
                         if stay == keyx {
                             continue 'next_sqr;
                         }
-                        if *keyx == grpx.region.state_far_from(stay) {
+                        if *keyx == grpx.region.far_from(stay) {
                             continue 'next_sqr;
                         }
                         if keyx.is_adjacent(stay) {
@@ -1214,7 +1214,7 @@ impl SomeAction {
             return None;
         }
 
-        let sta_far = regx.state_far_from(anchor_sta);
+        let sta_far = regx.far_from(anchor_sta);
 
         if let Some(sqrf) = self.squares.find(&sta_far) {
             if sqrf.pnc {
@@ -1611,7 +1611,7 @@ impl SomeAction {
             let ok_reg = rulsxy.initial_region();
 
             // To test all bits that may be a problem.
-            let far_reg = reg_int.far_reg(&ok_reg);
+            let far_reg = reg_int.far_from_reg(&ok_reg);
 
             //println!(
             //    "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
