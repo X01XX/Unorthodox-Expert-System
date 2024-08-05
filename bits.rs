@@ -145,9 +145,7 @@ impl SomeBits {
                 }
             }
         } else {
-            return Err(format!(
-                "SomeBits::new_from_string: String {str}, no valid character?"
-            ));
+            return Err("SomeBits::new_from_string: Empty string?".to_string());
         }
 
         // Check base-unspecified string for a base 16 digit.
@@ -160,7 +158,7 @@ impl SomeBits {
 
                 let Ok(digit) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid character {chr}?"
+                        "SomeBits::new_from_string: String {str}, invalid digit {chr}?"
                     ));
                 };
                 if digit > 1 {
@@ -195,7 +193,7 @@ impl SomeBits {
 
         if num_bits == 0 {
             return Err(format!(
-                "SomeBits::new_from_string: String {str}, no digits?"
+                "SomeBits::new_from_string: String {str}, no valid digits?"
             ));
         }
 
@@ -221,25 +219,29 @@ impl SomeBits {
             }
 
             // Get character value.
-            if let Ok(digit) = Bitint::from_str_radix(chr, base) {
-                if base == 2 {
+            if base == 2 {
+                if let Ok(digit) = Bitint::from_str_radix(chr, 2) {
                     cur_val += digit << cur_bits;
                     cur_bits += 1;
                 } else {
-                    cur_val += digit << cur_bits;
-                    cur_bits += 4;
+                    return Err(format!(
+                        "SomeBits::new_from_string: String {str}, invalid binary digit {chr}?"
+                    ));
                 }
-
-                if cur_bits == Bitint::BITS as usize {
-                    ints.push(cur_val);
-                    cur_val = 0;
-                    cur_bits = 0;
-                    num_bits += Bitint::BITS as usize;
-                }
+            } else if let Ok(digit) = Bitint::from_str_radix(chr, 16) {
+                cur_val += digit << cur_bits;
+                cur_bits += 4;
             } else {
                 return Err(format!(
-                    "SomeBits::new_from_string: String {str}, invalid character {chr}?"
+                    "SomeBits::new_from_string: String {str}, invalid hexadecimal digit {chr}?"
                 ));
+            }
+
+            if cur_bits == Bitint::BITS as usize {
+                ints.push(cur_val);
+                cur_val = 0;
+                cur_bits = 0;
+                num_bits += Bitint::BITS as usize;
             }
         }
         if cur_bits > 0 {
@@ -517,11 +519,11 @@ mod tests {
     use super::*;
     use crate::tools;
 
-    /// Build a new bits instance, given number bits and integer value vector.
+    /// Build a new bits instance, given number bits and integer vector.
     /// The length of the vector must be the minimum needed to cover the given number of bits.
     ///
-    /// Used to force the creation of multi-integer SomeBits instances, when BitInt may be u8, u16, u32, u64 or u128.
-    fn build(num_bits: usize, ints: Vec<Bitint>) -> SomeBits {
+    /// Used to force the creation of multi-integer SomeBits instances, given that BitInt may be u8, u16, u32, u64.
+    fn build_from_vec(num_bits: usize, ints: Vec<Bitint>) -> SomeBits {
         // Verify length of integer vector.
         let num_ints = SomeBits::number_bits_to_ints(num_bits);
         assert!(num_ints == ints.len());
@@ -540,6 +542,29 @@ mod tests {
         }
     }
 
+    /// Build a new bits instance, given number bits and integer value.
+    /// The number must be less than 2 ^ number bits.
+    ///
+    /// Used to create SomeBits instances that have the correct number of integers, given that BitInt may be u8, u16, u32, u64.
+    fn build_from_num(num_bits: usize, mut num: usize) -> SomeBits {
+        assert!(num < (2_u32.pow(num_bits as u32)) as usize);
+
+        let num_ints = SomeBits::number_bits_to_ints(num_bits);
+
+        let mut ints = vec![0 as Bitint; num_ints];
+
+        for inx in (0..num_ints).rev() {
+            let cur_int = num & Bitint::MAX as usize;
+            ints[inx] = cur_int as Bitint;
+            num >>= Bitint::BITS;
+        }
+
+        SomeBits {
+            num_bits: num_bits as Bitint,
+            ints: ints,
+        }
+    }
+
     #[test]
     fn eq() -> Result<(), String> {
         let bits1 = SomeBits::new_from_string("0x5")?;
@@ -548,15 +573,15 @@ mod tests {
         println!("bits2 {bits2}");
         assert!(bits1 == bits2);
 
-        let bits1 = build(Bitint::BITS as usize * 2, vec![5, 1]);
+        let bits1 = build_from_vec(Bitint::BITS as usize * 2, vec![5, 1]);
         println!("bits1 {bits1}");
-        let bits2 = build(Bitint::BITS as usize * 2, vec![5, 1]);
+        let bits2 = build_from_vec(Bitint::BITS as usize * 2, vec![5, 1]);
         println!("bits2 {bits2}");
         assert!(bits1 == bits2);
 
-        let bits1 = build(Bitint::BITS as usize + 3, vec![5, 1]);
+        let bits1 = build_from_vec(Bitint::BITS as usize + 3, vec![5, 1]);
         println!("bits1 {bits1}");
-        let bits2 = build(Bitint::BITS as usize + 3, vec![4, 1]);
+        let bits2 = build_from_vec(Bitint::BITS as usize + 3, vec![4, 1]);
         println!("bits2 {bits2}");
         assert!(bits1 != bits2);
 
@@ -576,7 +601,7 @@ mod tests {
         assert!(high.ints[0] == 255);
 
         // Test new_high with multi-int bits, given that the definition of Bitint may change.
-        let ur_bits = build(Bitint::BITS as usize + 2, vec![0, 0]);
+        let ur_bits = build_from_vec(Bitint::BITS as usize + 2, vec![0, 0]);
 
         let high = ur_bits.new_high();
         println!("high two ints {high}");
@@ -631,7 +656,7 @@ mod tests {
         assert!(len == calc_len);
 
         // Test strlen with multi-int bits, given that the definition of Bitint may change.
-        let tmp_bts = build(Bitint::BITS as usize + 2, vec![0, 0]);
+        let tmp_bts = build_from_vec(Bitint::BITS as usize + 2, vec![0, 0]);
         let strrep = format!("{tmp_bts}");
         let len = strrep.len();
         let calc_len = tmp_bts.strlen();
@@ -663,58 +688,129 @@ mod tests {
 
     #[test]
     fn new_from_string() -> Result<(), String> {
-        // Test no base, hexadecimal digits.
-        if let Ok(bits3) = SomeBits::new_from_string("1102") {
-            if bits3.num_bits != 16 {
+        // Test empty string.
+        match SomeBits::new_from_string("") {
+            Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Did not translate 1102?"
+                    "SomeBits::new_from_string: Returned region {regx}?"
                 ));
             }
-        } else {
-            return Err(format!(
-                "SomeBits::new_from_string: Did not translate 1102?"
-            ));
+            Err(error) => {
+                if error == "SomeBits::new_from_string: Empty string?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        // Test invalid digit.
+        match SomeBits::new_from_string("01z") {
+            Ok(regx) => {
+                return Err(format!(
+                    "SomeBits::new_from_string: Returned region {regx}?"
+                ));
+            }
+            Err(error) => {
+                if error == "SomeBits::new_from_string: String 01z, invalid digit z?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        // Test no valid digits.
+        match SomeBits::new_from_string("__") {
+            Ok(regx) => {
+                return Err(format!(
+                    "SomeBits::new_from_string: Returned region {regx}?"
+                ));
+            }
+            Err(error) => {
+                if error == "SomeBits::new_from_string: String __, no valid digits?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        // Test invalid binary digit.
+        match SomeBits::new_from_string("0b012") {
+            Ok(regx) => {
+                return Err(format!(
+                    "SomeBits::new_from_string: Returned region {regx}?"
+                ));
+            }
+            Err(error) => {
+                if error == "SomeBits::new_from_string: String 0b012, invalid binary digit 2?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        // Test invalid hexadecimal digit.
+        match SomeBits::new_from_string("0x012g") {
+            Ok(regx) => {
+                return Err(format!(
+                    "SomeBits::new_from_string: Returned region {regx}?"
+                ));
+            }
+            Err(error) => {
+                if error == "SomeBits::new_from_string: String 0x012g, invalid hexadecimal digit g?"
+                {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        // Test no base, hexadecimal digits.
+        match SomeBits::new_from_string("1102") {
+            Ok(regx) => {
+                assert!(regx.num_bits == 16);
+                assert!(regx == build_from_num(16, 0x1102));
+            }
+            Err(error) => {
+                return Err(error);
+            }
         }
 
         // Test no base, binary digits.
-        if let Ok(bits3) = SomeBits::new_from_string("1101") {
-            if bits3.num_bits != 4 {
-                return Err(format!(
-                    "SomeBits::new_from_string: Did not translate 1101?"
-                ));
+        match SomeBits::new_from_string("1101") {
+            Ok(regx) => {
+                assert!(regx.num_bits == 4);
+                assert!(regx == build_from_num(4, 0b1101));
             }
-        } else {
-            return Err(format!(
-                "SomeBits::new_from_string: Did not translate 1101?"
-            ));
+            Err(error) => {
+                return Err(error);
+            }
         }
 
-        // Test invalid binary character.
-        if let Ok(_bits3) = SomeBits::new_from_string("0b10102") {
-            return Err(format!(
-                "SomeBits::new_from_string: bad binary character not detected?"
-            ));
+        // Test hexadecimal base.
+        match SomeBits::new_from_string("0x1102") {
+            Ok(regx) => {
+                assert!(regx.num_bits == 16);
+                assert!(regx == build_from_num(16, 0x1102));
+            }
+            Err(error) => {
+                return Err(error);
+            }
         }
 
-        // Test invalid hexadecimal character.
-        if let Ok(_bits3) = SomeBits::new_from_string("0x5g") {
-            return Err(format!(
-                "SomeBits::new_from_string: bad  hexadecimal character not detected?"
-            ));
-        }
-
-        // Test no binary characters.
-        if let Ok(bits3) = SomeBits::new_from_string("0b") {
-            return Err(format!(
-                "SomeBits::new_from_string: no digits not detected? {bits3}"
-            ));
-        }
-
-        // Test no characters.
-        if let Ok(bits3) = SomeBits::new_from_string("") {
-            return Err(format!(
-                "SomeBits::new_from_string: no digits not detected? {bits3}"
-            ));
+        // Test binary base.
+        match SomeBits::new_from_string("0b1101") {
+            Ok(regx) => {
+                assert!(regx.num_bits == 4);
+                assert!(regx == build_from_num(4, 0b1101));
+            }
+            Err(error) => {
+                return Err(error);
+            }
         }
 
         Ok(())
@@ -723,15 +819,15 @@ mod tests {
     #[test]
     fn b_eqv() -> Result<(), String> {
         // let tmp_bts = SomeBits::new(16);
-        let b1 = build(Bitint::BITS as usize + 8, vec![0x55, 5]);
+        let b1 = build_from_vec(Bitint::BITS as usize + 8, vec![0x55, 5]);
         println!("b1: {b1}");
-        let b2 = build(Bitint::BITS as usize + 8, vec![0xa6, 5]);
+        let b2 = build_from_vec(Bitint::BITS as usize + 8, vec![0xa6, 5]);
         println!("b2: {b2}");
         let b3 = b1
             .b_eqv(&b2)
-            .b_and(&build(Bitint::BITS as usize + 8, vec![0x0f, 0xff]));
+            .b_and(&build_from_vec(Bitint::BITS as usize + 8, vec![0x0f, 0xff]));
         println!("b3: {b3}");
-        let b4 = build(Bitint::BITS as usize + 8, vec![0x0c, 0xff]);
+        let b4 = build_from_vec(Bitint::BITS as usize + 8, vec![0x0c, 0xff]);
         println!("b4: {b4}");
 
         assert_eq!(b3, b4);
@@ -779,7 +875,9 @@ mod tests {
         let mut bitsz = bitsx.b_not();
         println!("bitsz: {bitsz}");
         assert!(bitsz.is_high());
-        assert!(bitsz == build(Bitint::BITS as usize + 2, vec![0x3, Bitint::MAX as Bitint]));
+        assert!(
+            bitsz == build_from_vec(Bitint::BITS as usize + 2, vec![0x3, Bitint::MAX as Bitint])
+        );
 
         bitsx = tmp_bts.new_high();
         bitsz = bitsx.b_not();
@@ -897,13 +995,14 @@ mod tests {
         println!("dist: {dist}");
         assert!(dist == 0);
 
-        let dist = build(Bitint::BITS as usize + 3, vec![5, 5])
+        let dist = build_from_vec(Bitint::BITS as usize + 3, vec![5, 5])
             .distance(&SomeBits::new(Bitint::BITS as usize + 3));
         println!("dist: {dist}");
         assert!(dist == 4);
 
-        let dist = build(Bitint::BITS as usize + 8, vec![0b10101010, 0b01010])
-            .distance(&build(Bitint::BITS as usize + 8, vec![0b10, 0b010]));
+        let dist = build_from_vec(Bitint::BITS as usize + 8, vec![0b10101010, 0b01010]).distance(
+            &build_from_vec(Bitint::BITS as usize + 8, vec![0b10, 0b010]),
+        );
 
         println!("dist: {dist}");
         assert!(dist == 4);
@@ -913,7 +1012,7 @@ mod tests {
 
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 4, vec![10, 10]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 4, vec![10, 10]);
 
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_bit_set(0));
@@ -931,18 +1030,18 @@ mod tests {
 
     #[test]
     fn is_high() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 1, vec![0, Bitint::MAX as Bitint]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 1, vec![0, Bitint::MAX as Bitint]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bitsx = build(
+        let bitsx = build_from_vec(
             Bitint::BITS as usize + 1,
             vec![1, (Bitint::MAX as Bitint) - 1],
         );
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bitsx = build(Bitint::BITS as usize + 1, vec![1, Bitint::MAX as Bitint]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 1, vec![1, Bitint::MAX as Bitint]);
         println!("bitsx2: {bitsx}");
         assert!(bitsx.is_high());
 
@@ -951,15 +1050,15 @@ mod tests {
 
     #[test]
     fn is_low() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 1, vec![0x1, 0]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 1, vec![0x1, 0]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = build(Bitint::BITS as usize + 1, vec![0, 0x1]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 1, vec![0, 0x1]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = build(Bitint::BITS as usize + 1, vec![0, 0]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 1, vec![0, 0]);
         println!("bitsx: {bitsx}");
         assert!(bitsx.is_low());
 
@@ -968,11 +1067,11 @@ mod tests {
 
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize * 2, vec![0, 0]);
+        let bitsx = build_from_vec(Bitint::BITS as usize * 2, vec![0, 0]);
         println!("bitsx: {bitsx} num 1 {}", bitsx.num_one_bits());
         assert!(bitsx.num_one_bits() == 0);
 
-        let bitsx = build(
+        let bitsx = build_from_vec(
             Bitint::BITS as usize * 2,
             vec![Bitint::MAX << 1, Bitint::MAX >> 1],
         );
@@ -984,17 +1083,17 @@ mod tests {
 
     #[test]
     fn split() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0x50, 0x5]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 8, vec![0x50, 0x5]);
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.split();
         println!("split bits: {}", tools::vec_string(&avec));
 
         assert!(avec.len() == 4);
-        assert!(avec.contains(&build(Bitint::BITS as usize + 8, vec![0x40, 0])));
-        assert!(avec.contains(&build(Bitint::BITS as usize + 8, vec![0x10, 0])));
-        assert!(avec.contains(&build(Bitint::BITS as usize + 8, vec![0, 0x4])));
-        assert!(avec.contains(&build(Bitint::BITS as usize + 8, vec![0, 1])));
+        assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0x40, 0])));
+        assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0x10, 0])));
+        assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0, 0x4])));
+        assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0, 1])));
 
         let bitsx = SomeBits::new_from_string("0x010")?;
         println!("bitsx: {bitsx}");
@@ -1017,13 +1116,13 @@ mod tests {
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        let bitsx = build(Bitint::BITS as usize + 8, vec![0, 0]);
-        let bitsy = build(Bitint::BITS as usize + 8, vec![1, 1]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 8, vec![0, 0]);
+        let bitsy = build_from_vec(Bitint::BITS as usize + 8, vec![1, 1]);
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(!bitsx.is_adjacent(&bitsy));
 
-        let bitsx = build(Bitint::BITS as usize + 4, vec![1, 1]);
-        let bitsy = build(Bitint::BITS as usize + 4, vec![3, 1]);
+        let bitsx = build_from_vec(Bitint::BITS as usize + 4, vec![1, 1]);
+        let bitsy = build_from_vec(Bitint::BITS as usize + 4, vec![3, 1]);
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_adjacent(&bitsy));
 
@@ -1032,9 +1131,9 @@ mod tests {
 
     #[test]
     fn is_between() -> Result<(), String> {
-        let bts2 = build(Bitint::BITS as usize + 8, vec![0, 0x10]);
-        let bts3 = build(Bitint::BITS as usize + 8, vec![0, 0x11]);
-        let bts5 = build(Bitint::BITS as usize + 8, vec![1, 1]);
+        let bts2 = build_from_vec(Bitint::BITS as usize + 8, vec![0, 0x10]);
+        let bts3 = build_from_vec(Bitint::BITS as usize + 8, vec![0, 0x11]);
+        let bts5 = build_from_vec(Bitint::BITS as usize + 8, vec![1, 1]);
         assert!(bts3.is_between(&bts2, &bts5));
         assert!(!bts5.is_between(&bts2, &bts3));
         Ok(())

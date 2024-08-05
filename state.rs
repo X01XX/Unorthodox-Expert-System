@@ -72,9 +72,7 @@ impl SomeState {
                 }
             }
         } else {
-            Err(format!(
-                "SomeState::new_from_string: String {str}, no valid character?"
-            ))
+            Err("SomeState::new_from_string: Empty string?".to_string())
         }
     } // end new_from_string
 
@@ -161,7 +159,9 @@ impl SomeState {
     fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        other.edge_mask().bitwise_and(&self.bitwise_xor(other.first_state()))
+        other
+            .edge_mask()
+            .bitwise_and(&self.bitwise_xor(other.first_state()))
     }
 
     /// Return the number of bits used to describe a state.

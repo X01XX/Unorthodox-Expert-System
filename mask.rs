@@ -82,9 +82,7 @@ impl SomeMask {
                 }
             }
         } else {
-            Err(format!(
-                "SomeMask::new_from_string: String {str}, no valid character?"
-            ))
+            Err("SomeMask::new_from_string: Empty string?".to_string())
         }
     } // end new_from_string
 

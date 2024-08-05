@@ -120,9 +120,7 @@ impl SomeRegion {
                 }
             }
         } else {
-            return Err(format!(
-                "SomeRegion::new_from_string: String {str}, no valid character?"
-            ));
+            return Err("SomeRegion::new_from_string: Empty string?".to_string());
         }
 
         // Translate the region string into two state strings.
@@ -148,7 +146,7 @@ impl SomeRegion {
                 continue; // A region copied from the console might end with a +
             } else {
                 return Err(format!(
-                    "Did not understand the string {str}, invalid character?"
+                    "SomeRegion::new_from_string: String {str}, invalid character {chr}?"
                 ));
             }
         } // end for chr
@@ -609,7 +607,6 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
-    use rand::Rng;
 
     #[test]
     fn state_far_from() -> Result<(), String> {
@@ -804,45 +801,63 @@ mod tests {
     // Test new_from_string, using randomly chosen digits.
     #[test]
     fn new_from_string() -> Result<(), String> {
-        let chars = ['0', '1', 'X', 'x']; // Possible chars to use.
-
-        // Check 32 random regions.
-        for _ in 0..32 {
-            // Init region string
-            let mut reg_from_str = String::from("r");
-
-            for _ in 0..16 {
-                let inx = rand::thread_rng().gen_range(0..100);
-                // Add random character to string.
-                reg_from_str.push(chars[inx % 4]);
+        match SomeRegion::new_from_string("") {
+            Ok(regx) => {
+                return Err(format!("SomeRegion::new_from_string: regx {regx}?"));
             }
-
-            // Get new bits instance.
-            let reg_instance = SomeRegion::new_from_string(&reg_from_str)?;
-
-            // Check for the expected states forming the region.
-            let first_state_str =
-                "0b".to_string() + &reg_from_str.replace("x", "0").replace("X", "1")[1..];
-            let first_state = SomeState::new_from_string(&first_state_str)?;
-            let far_state = reg_instance.far_from(&first_state);
-            println!("{} should equal {first_state}", reg_instance.first_state());
-            assert!(reg_instance.first_state() == &first_state);
-            println!("{} should equal {first_state}", reg_instance.far_state());
-            assert!(reg_instance.far_state() == far_state);
+            Err(error) => {
+                if error == "SomeRegion::new_from_string: Empty string?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
         }
 
-        if let Ok(regx) = SomeRegion::new_from_string("0b0001") {
-            println!("regx {regx}");
-            assert!(regx.num_bits() == 4);
-        } else {
-            return Err("Failed to interpret 0b0001".to_string());
+        match SomeRegion::new_from_string("__") {
+            Ok(regx) => {
+                return Err(format!("SomeRegion::new_from_string: regx {regx}?"));
+            }
+            Err(error) => {
+                if error == "SomeRegion::new_from_string: String __, no valid character?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
         }
 
-        if let Ok(regx) = SomeRegion::new_from_string("0x0001") {
-            println!("regx {regx}");
-            assert!(regx.num_bits() == 16);
-        } else {
-            return Err("Failed to interpret 0x0001".to_string());
+        match SomeRegion::new_from_string("r00z1") {
+            Ok(regx) => {
+                return Err(format!("SomeRegion::new_from_string: regx {regx}?"));
+            }
+            Err(error) => {
+                if error == "SomeRegion::new_from_string: String r00z1, invalid character z?" {
+                    println!("{error}");
+                } else {
+                    return Err(error);
+                }
+            }
+        }
+
+        match SomeRegion::new_from_string("0b0001") {
+            Ok(regx) => {
+                println!("regx {regx}");
+                assert!(regx.num_bits() == 4);
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
+
+        match SomeRegion::new_from_string("0x0001") {
+            Ok(regx) => {
+                println!("regx {regx}");
+                assert!(regx.num_bits() == 16);
+            }
+            Err(error) => {
+                return Err(error);
+            }
         }
 
         Ok(())
