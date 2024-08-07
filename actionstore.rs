@@ -100,7 +100,7 @@ impl ActionStore {
 
     /// Return steps that make at least one needed bit change.
     /// Optional region reference indicating the steps must remain within the given region.
-    pub fn get_steps(&self, achange: &SomeChange, within: Option<&SomeRegion>) -> StepStore {
+    pub fn get_steps(&self, achange: &SomeChange, within: &SomeRegion) -> StepStore {
         // Run a thread for each action
         let stps: Vec<StepStore> = self
             .items

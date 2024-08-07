@@ -299,6 +299,8 @@ impl SomeGroup {
     }
 
     /// Return true if a group's rules cause predictable change.
+    /// Pn::Unpredictable groups will return false.
+    /// Some Pn::One groups can cause no change.
     pub fn causes_predictable_change(&self) -> bool {
         match &self.rules {
             Some(rules) => rules.causes_predictable_change(),

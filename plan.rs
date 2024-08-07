@@ -345,7 +345,7 @@ mod tests {
     #[test]
     fn strlen() -> Result<(), String> {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b1111")?); //(tmp_sta.clone(), tmp_stb.clone()));
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
         println!("tmp_pln {tmp_pln}");
@@ -357,7 +357,7 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b1111->0b0011")?); //(tmp_stb.clone(), tmp_st3.clone()));
-        let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
+        let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let mut tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);
         tmp_pln.set_shortcut();
@@ -387,13 +387,11 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg1, &reg2),
             AltRuleHint::NoAlt {},
-            1,
         );
         let step2 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg2, &reg3),
             AltRuleHint::NoAlt {},
-            2,
         );
         let stp_str1 = SomePlan::new(0, vec![step1, step2]);
 
@@ -401,13 +399,11 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg4, &reg5),
             AltRuleHint::NoAlt {},
-            4,
         );
         let step5 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg5, &reg6),
             AltRuleHint::NoAlt {},
-            5,
         );
         let stp_str2 = SomePlan::new(0, vec![step4, step5]);
 

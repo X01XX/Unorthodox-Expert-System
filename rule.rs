@@ -12,7 +12,7 @@
 use crate::bits::NumBits;
 use crate::change::{AccessChanges, SomeChange};
 use crate::mask::SomeMask;
-use crate::region::SomeRegion;
+use crate::region::{AccessStates, SomeRegion};
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::tools::StrLen;
@@ -331,12 +331,12 @@ impl SomeRule {
     /// Restrict the initial region to an intersection of the
     /// given region.  Assuming the region given is not a superset
     /// this will also change the result region.
-    pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
-        debug_assert_eq!(self.num_bits(), regx.num_bits());
+    pub fn restrict_initial_region(&self, other: &impl AccessStates) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let init_reg = self.initial_region();
 
-        if let Some(reg_int) = regx.intersection(&init_reg) {
+        if let Some(reg_int) = init_reg.intersection(other) {
             let zeros = reg_int.low_state().bitwise_not().convert_to_mask();
             let ones = reg_int.high_state().convert_to_mask();
 
@@ -347,7 +347,7 @@ impl SomeRule {
                 b10: self.b10.bitwise_and(&ones),
             }
         } else {
-            panic!("{regx} does not intersect rule initial region {init_reg}");
+            panic!("other does not intersect rule initial region {init_reg}");
         }
     }
 
@@ -470,23 +470,8 @@ impl SomeRule {
     /// For a change not sought:
     /// X->1 is changed to 1->1.
     /// X->0 is changed to 0->0.
-    ///
-    /// For a restriction on the region the rule should stay within:
-    /// X->X may remain the same, or be changed to 1->1 or 0->0.
-    /// X->x may remain the same, or it will be an excursion outside the desired region.
-    /// A 0 edge for X->x, or 0->1 will result in a 0->1 excursion.
-    /// A 1 edge for X->x, or 1->0 will result in a 1->0 excursion.
-    pub fn restrict_for_changes(
-        &self,
-        change_needed: &SomeChange,
-        within: Option<&SomeRegion>,
-    ) -> Vec<SomeRule> {
+    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Vec<SomeRule> {
         debug_assert_eq!(self.num_bits(), change_needed.num_bits());
-        debug_assert!(if let Some(regx) = within {
-            self.num_bits() == regx.num_bits()
-        } else {
-            true
-        });
 
         // Restrict change to what applies to the rule.
         let net_change_needed = change_needed.restrict_to(&self.initial_region());
@@ -500,19 +485,8 @@ impl SomeRule {
         // Init return RuleStore.
         let mut ret_rules = Vec::<SomeRule>::new();
 
-        // Restrict the rule, if needed.
-        let mut s_rule = self.clone();
-
-        if let Some(restrict) = within {
-            if s_rule.initial_region().intersects(restrict) {
-                s_rule = s_rule.restrict_initial_region(restrict);
-            } else {
-                return ret_rules;
-            }
-        }
-
         // Get rule initial region.
-        let init_reg = s_rule.initial_region();
+        let init_reg = self.initial_region();
         let init_reg_zeros = init_reg.edge_zeros_mask();
         let init_reg_ones = init_reg.edge_ones_mask();
         let init_reg_xs = init_reg.x_mask();
@@ -523,19 +497,19 @@ impl SomeRule {
 
             for m01x in change_bits.iter() {
                 // Check if the rule applies to the needed change.
-                if m01x.bitwise_and(&s_rule.b01).is_low() {
+                if m01x.bitwise_and(&self.b01).is_low() {
                     continue;
                 }
 
                 // Restrict (if needed) and store rule.
                 if m01x.bitwise_and(&init_reg_zeros).is_not_low() {
-                    if ret_rules.contains(&s_rule) {
+                    if ret_rules.contains(self) {
                     } else {
-                        ret_rules.push(s_rule.clone());
+                        ret_rules.push(self.clone());
                     }
                 } else if m01x.bitwise_and(&init_reg_xs).is_not_low() {
                     let ireg = init_reg.set_to_zeros(m01x);
-                    let ruley = s_rule.restrict_initial_region(&ireg);
+                    let ruley = self.restrict_initial_region(&ireg);
                     ret_rules.push(ruley);
                 }
             }
@@ -547,19 +521,19 @@ impl SomeRule {
 
             for m10x in change_bits.iter() {
                 // Check if the rule applies to the needed change.
-                if m10x.bitwise_and(&s_rule.b10).is_low() {
+                if m10x.bitwise_and(&self.b10).is_low() {
                     continue;
                 }
 
                 // Restrict (if needed) and store rule.
                 if m10x.bitwise_and(&init_reg_ones).is_not_low() {
-                    if ret_rules.contains(&s_rule) {
+                    if ret_rules.contains(self) {
                     } else {
-                        ret_rules.push(s_rule.clone());
+                        ret_rules.push(self.clone());
                     }
                 } else if m10x.bitwise_and(&init_reg_xs).is_not_low() {
                     let ireg = init_reg.set_to_ones(m10x);
-                    let ruley = s_rule.restrict_initial_region(&ireg);
+                    let ruley = self.restrict_initial_region(&ireg);
                     ret_rules.push(ruley);
                 }
             }
@@ -1020,7 +994,7 @@ mod tests {
             SomeMask::new_from_string("0b0010")?,
         );
 
-        let rul2 = rul1.restrict_for_changes(&chg1, None);
+        let rul2 = rul1.restrict_for_changes(&chg1);
         if rul2.is_empty() {
             panic!("rul2 restriction should succeed");
         };
@@ -1035,24 +1009,6 @@ mod tests {
                     && rul2[0] == SomeRule::new_from_string("X1/X1/10/X0")?)
         );
 
-        // Change X->X to 0->0 by within restriction.
-        // Change X->X to 1->1 by within restriction.
-        // Leave one X->X unaffected.
-        let rul1 = SomeRule::new_from_string("01/XX/XX/XX")?;
-        let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b1000")?,
-            SomeMask::new_from_string("0b0000")?,
-        );
-        let within = SomeRegion::new_from_string("rxx01")?;
-
-        let rul3 = rul1.restrict_for_changes(&chg1, Some(&within));
-        if rul3.is_empty() {
-            panic!("rul3 restriction should succeed");
-        };
-        println!("rul3 {}", tools::vec_string(&rul3));
-
-        assert!(rul3[0] == SomeRule::new_from_string("01/XX/00/11")?);
-
         // Change X->x to 1->0.
         // Change X->x to 0->1.
         // Leave one X->x unaffected.
@@ -1062,7 +1018,7 @@ mod tests {
             SomeMask::new_from_string("0b0100")?,
         );
 
-        let rul4 = rul1.restrict_for_changes(&chg1, None);
+        let rul4 = rul1.restrict_for_changes(&chg1);
         if rul4.is_empty() {
             panic!("rul4 restriction should succeed");
         };
@@ -1076,20 +1032,6 @@ mod tests {
                 || (rul4[1] == SomeRule::new_from_string("00/Xx/01/Xx")?
                     && rul4[0] == SomeRule::new_from_string("00/10/Xx/Xx")?)
         );
-
-        // Detect X-x excursion.
-        let rul1 = SomeRule::new_from_string("01/Xx")?;
-        let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b10")?,
-            SomeMask::new_from_string("0b00")?,
-        );
-
-        let within = SomeRegion::new_from_string("rx1")?;
-
-        let ruls5 = rul1.restrict_for_changes(&chg1, Some(&within));
-
-        assert!(ruls5.len() == 1);
-        assert!(ruls5[0] == SomeRule::new_from_string("01/10")?);
 
         Ok(())
     }

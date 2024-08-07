@@ -653,6 +653,11 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
+        //if let Some(in_reg) = within {
+        //    println!("domain::make_plans: from {from_reg} goal {goal_reg} within {in_reg}");
+        //} else {
+        //    println!("domain::make_plans: from {from_reg} goal {goal_reg}");
+        //}
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(if let Some(reg) = within {
@@ -689,7 +694,7 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
-        //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
+        //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(if let Some(reg) = within {
@@ -701,7 +706,6 @@ impl SomeDomain {
         if goal_reg.is_superset_of(from_reg) {
             return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
-
         // Figure the required change.
         let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
 
@@ -737,8 +741,7 @@ impl SomeDomain {
         if plans.is_empty() {
             return None;
         }
-
-        //println!("dom {} make_plans2 returns {}", self.num, tools::vec_string(&plans));
+        //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
         Some(PlanStore::new(plans).delete_duplicates())
     } // end make_plans2
 
@@ -832,7 +835,11 @@ impl SomeDomain {
         // Check if changes are possible.
 
         // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str: StepStore = self.actions.get_steps(required_change, within);
+        let steps_str: StepStore = if let Some(regx) = within {
+            self.actions.get_steps(required_change, regx)
+        } else {
+            self.actions.get_steps(required_change, &self.max_region())
+        };
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let Some(can_change) = steps_str.aggregate_changes() else {
@@ -846,6 +853,11 @@ impl SomeDomain {
         }
 
         steps_str
+    }
+
+    /// Return the maximum possiblo region for a domain.
+    fn max_region(&self) -> SomeRegion {
+        SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
     }
 
     /// Return the current maximum region that can be reached from the current state.
@@ -1157,8 +1169,8 @@ mod tests {
         };
         println!("rslt1 {rslt}");
 
-        // Force current result to 0100, so next result will be 0111.
-        if rslt == SomeState::new_from_string("0b0111")? {
+        // Force current result to 0111, so next result will be 0100.
+        if rslt == SomeState::new_from_string("0b0100")? {
             dm0.cur_state = sta_5.clone();
             dm0.take_action_arbitrary(0);
         }
@@ -1174,7 +1186,6 @@ mod tests {
 
         println!("\ndm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
-        //assert!(1 == 2);
 
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
         if let Some(plans) = dm0.make_plans(
@@ -1184,14 +1195,14 @@ mod tests {
         ) {
             println!("plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
-                Ok(_) => return Err("plan should have returned an error".to_string()),
-                Err(msg) => {
-                    if msg == "Recalculate plan" {
+                Ok(num) => {
+                    if num == 1 {
                         return Ok(());
                     } else {
-                        return Err(format!("Unexpected error {msg}"));
+                        return Err(format!("{num} steps?"));
                     }
                 }
+                Err(msg) => return Err(msg),
             }
         }
         Err("No plan found".to_string())
@@ -1199,77 +1210,48 @@ mod tests {
 
     // Test running a plan using an alt-rule (no change) group.
     #[test]
-    fn alt_rule2() -> Result<(), String> {
+    fn within1() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
-            SomeRule::new_from_string("00/11/00/10").expect("SNH"),
-            SomeRule::new_from_string("00/11/00/11").expect("SNH"),
-        ])];
-        dm0.add_action(ruls0);
-
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "00/11/x0/x1",
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "00/XX/01/XX",
         )
         .expect("SNH")])];
-        dm0.add_action(ruls1);
+        dm0.add_action(ruls0);
 
-        dm0.cur_state = SomeState::new_from_string("0b0101")?;
+        // Form first group.
+        dm0.cur_state = SomeState::new_from_string("0b0101")?; // -> 0111
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
+
+        dm0.cur_state = SomeState::new_from_string("0b0000")?; // -> 0010
         dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
-        dm0.take_action_arbitrary(0);
-        dm0.take_action_arbitrary(1);
 
         println!("\n(1) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
 
-        let mut num_steps1 = 0;
-
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
+        dm0.cur_state = SomeState::new_from_string("0b0001")?; // -> 0011
+
         if let Some(plans) = dm0.make_plans(
-            &SomeRegion::new_from_string("r0101").expect("SNH"),
-            &SomeRegion::new_from_string("r0100").expect("SNH"),
-            None,
+            &SomeRegion::new_from_string("r0001").expect("SNH"),
+            &SomeRegion::new_from_string("r0011").expect("SNH"),
+            Some(&SomeRegion::new_from_string("r00XX")?),
         ) {
-            //println!("plans {}", tools::vec_string(&plans));
+            println!("plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
-                Ok(num) => num_steps1 = num,
+                Ok(num) => {
+                    if num == 1 {
+                        return Ok(());
+                    } else {
+                        return Err(format!("{num} steps?"));
+                    }
+                }
                 Err(msg) => return Err(msg),
             }
         }
 
-        println!("\n(2) dm0: cur_state {}", dm0.cur_state);
-        println!("Acts: {}\n", dm0.actions);
-
-        // Reset current state to 5.
-        dm0.take_action_arbitrary(1);
-
-        println!("\n(3) dm0: cur_state {}", dm0.cur_state);
-        println!("Acts: {}\n", dm0.actions);
-
-        let mut num_steps2 = 0;
-
-        // Redo plans, as step alt value may change due to previous running of a plan.
-        if let Some(plans) = dm0.make_plans(
-            &SomeRegion::new_from_string("r0101").expect("SNH"),
-            &SomeRegion::new_from_string("r0100").expect("SNH"),
-            None,
-        ) {
-            match dm0.run_plan(&plans[0], 2) {
-                Ok(num) => num_steps2 = num,
-                Err(msg) => return Err(msg),
-            }
-        }
-
-        println!("num steps 1 {num_steps1} num steps 2 {num_steps2}");
-        assert!(num_steps1 == 2 || num_steps2 == 2);
-
-        Ok(())
+        Err("No plan found".to_string())
     }
 
     // Test a simple four-step plan to change the domain current state
@@ -1910,21 +1892,18 @@ mod tests {
             2,
             SomeRule::new_region_to_region(&reg_0, &reg_4),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step2 = SomeStep::new(
             3,
             SomeRule::new_region_to_region(&reg_4, &reg_c),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step3 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_c, &reg_8),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3]);
@@ -2019,42 +1998,36 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg_4, &reg_5),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step2 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_5, &reg_7),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step3 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg_7, &reg_6),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step4 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_6, &reg_2),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step5 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg_2, &reg_3),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step6 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_3, &reg_b),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
@@ -2152,28 +2125,24 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg_b, &reg_f),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step2 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_f, &reg_e),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step3 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg_e, &reg_6),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step4 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_6, &reg_7),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4]);
@@ -2274,56 +2243,48 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg_0, &reg_1),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step2 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_1, &reg_3),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step3 = SomeStep::new(
             0,
             SomeRule::new_region_to_region(&reg_3, &reg_2),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step4 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_2, &reg_6),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step5 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_6, &reg_7),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step6 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_7, &reg_5),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step7 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_5, &reg_d),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step8 = SomeStep::new(
             2,
             SomeRule::new_region_to_region(&reg_d, &reg_f),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln1 = SomePlan::new(

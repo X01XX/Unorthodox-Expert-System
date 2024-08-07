@@ -378,7 +378,7 @@ mod tests {
     #[test]
     fn strlen() -> Result<(), String> {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
 
@@ -411,14 +411,12 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg_b, &reg_f),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step2 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_f, &reg_e),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln1 = SomePlan::new(0, vec![step1, step2]);
@@ -427,14 +425,12 @@ mod tests {
             0,
             SomeRule::new_region_to_region(&reg_b, &reg_f),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let step4 = SomeStep::new(
             1,
             SomeRule::new_region_to_region(&reg_f, &reg_e),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         let pln2 = SomePlan::new(0, vec![step3, step4]);

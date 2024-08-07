@@ -70,7 +70,7 @@ impl Eq for SomeStep {}
 
 impl SomeStep {
     /// Return a new Step struct instance.
-    pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint, group_inx: usize) -> Self {
+    pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint) -> Self {
         debug_assert!(match &alt_rule {
             AltRuleHint::NoAlt {} => true,
             AltRuleHint::AltNoChange {} => true,
@@ -87,7 +87,7 @@ impl SomeStep {
             result,
             rule,
             alt_rule,
-            group_inx,
+            group_inx: 0,
         }
     }
 
@@ -168,6 +168,11 @@ impl SomeStep {
     pub fn num_bits(&self) -> usize {
         self.initial.num_bits()
     }
+
+    /// Set the group index.
+    pub fn set_group_inx(&mut self, inx: usize) {
+        self.group_inx = inx;
+    }
 } // end impl SomeStep
 
 /// Implement the trait StrLen for SomeStep.
@@ -201,7 +206,7 @@ mod tests {
     #[test]
     fn strlen() -> Result<(), String> {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0010")?); //(tmp_sta.clone(), tmp_sta2.clone()));
-        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {}, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {});
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -209,7 +214,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::AltNoChange {}, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::AltNoChange {});
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -218,7 +223,7 @@ mod tests {
         assert!(len == calc_len);
 
         let tmp_alt = SomeRule::new(&SomeSample::new_from_string("0b0010->0b0000")?); //(tmp_sta2.clone(), tmp_sta));
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt }, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt });
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();

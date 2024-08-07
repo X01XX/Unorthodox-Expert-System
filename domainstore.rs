@@ -1762,37 +1762,31 @@ mod tests {
             0,
             SomeRule::new(&SomeSample::new_from_string("0b0010->0b0111")?),
             AltRuleHint::NoAlt {},
-            0,
         );
         let stp7f = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new_from_string("0b0111->0b1111")?),
             AltRuleHint::NoAlt {},
-            0,
         );
         let stp29 = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new_from_string("0b0010->0b1001")?),
             AltRuleHint::NoAlt {},
-            0,
         );
         let stp2b = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new_from_string("0b0010->0b1011")?),
             AltRuleHint::NoAlt {},
-            0,
         );
         let stp9b = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new_from_string("0b1001->0b1011")?),
             AltRuleHint::NoAlt {},
-            0,
         );
         let stpbf = SomeStep::new(
             0,
             SomeRule::new(&SomeSample::new_from_string("0b1011->0b1111")?),
             AltRuleHint::NoAlt {},
-            0,
         );
 
         // Init DomainStore. Domain.
@@ -1864,7 +1858,7 @@ mod tests {
 
     #[test]
     /// Test case where positive regions the start and goal are in, intersect.
-    fn avoidance1() -> Result<(), String> {
+    fn avoidance1x() -> Result<(), String> {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));

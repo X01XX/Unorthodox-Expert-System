@@ -9,7 +9,7 @@ use crate::tools::{self, StrLen};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 impl fmt::Display for StepStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,6 +77,11 @@ impl StepStore {
         self.items.iter()
     }
 
+    /// Return an immutable iterator for a StepStore.
+    pub fn iter_mut(&mut self) -> IterMut<SomeStep> {
+        self.items.iter_mut()
+    }
+
     /// Reverse the order of steps in a StepStore.
     pub fn reverse_order(&mut self) {
         self.items.reverse();
@@ -102,6 +107,7 @@ impl StepStore {
     /// Given a number of steps, and a required change, return a vector of vectors
     /// where the sub-vectors indicate a single bit change that is required.
     pub fn split_steps_by_bit_change(&self, required_change: &SomeChange) -> Vec<Vec<&SomeStep>> {
+        //println!("stepstore::split_steps_by_bit_change: steps {self} change {required_change}");
         debug_assert!(if let Some(num_bits) = self.num_bits() {
             num_bits == required_change.num_bits()
         } else {
@@ -190,6 +196,7 @@ impl StepStore {
         &self,
         required_change: &SomeChange,
     ) -> Option<Vec<Vec<&SomeStep>>> {
+        //println!("StepStore::get_steps_by_bit_change: steps {self} change {required_change}");
         debug_assert!(if let Some(num_bits) = self.num_bits() {
             num_bits == required_change.num_bits()
         } else {
@@ -205,7 +212,6 @@ impl StepStore {
         // Check if any pair of single-bit change, all steps in vectors, are mutually exclusive.
         // So one change can be made, but not the other.
         if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
-            //println!("get_steps_by_bit_change: mutually exclusive change rules found");
             return None;
         }
 
@@ -254,6 +260,7 @@ fn all_mutually_exclusive_changes(
     vec_y: &[&SomeStep],
     wanted: &SomeChange,
 ) -> bool {
+    debug_assert!(!vec_x.is_empty() && !vec_y.is_empty());
     for refx in vec_x.iter() {
         for refy in vec_y.iter() {
             if refx.mutually_exclusive(refy, wanted) {
@@ -357,7 +364,7 @@ mod tests {
     #[test]
     fn strlen() -> Result<(), String> {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?);
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {}, 0);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);
 
