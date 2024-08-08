@@ -1815,7 +1815,10 @@ impl SomeAction {
 
         let rul0_result = rules2[0].result_region();
 
-        let sqrs_in = self.squares.squares_in_reg(&rule_initial_reg);
+        let mut sqrs_in: Vec<&SomeSquare> = self.squares.squares_in_reg(&rule_initial_reg);
+        let mut memory_sqrs_in = self.squares.memory_squares_in_reg(&rule_initial_reg);
+        sqrs_in.append(&mut memory_sqrs_in);
+
         //println!("{} squares in {rule_initial_reg}", sqrs_in.len());
 
         for sqrx in sqrs_in.iter() {
@@ -1847,7 +1850,6 @@ impl SomeAction {
         // println!("regs left {regs}");
         // Process regions not predicted from squares.
         for regx in regs.iter() {
-
             let ruls0 = rules2[0].restrict_initial_region(regx);
             let ruls1 = rules2[1].restrict_initial_region(regx);
 
@@ -1887,7 +1889,7 @@ impl SomeAction {
         achange: &SomeChange,
         within: &SomeRegion,
     ) -> StepStore {
-       // println!("action::get_steps_from_two_rules: rule {rulex} alt {rule_alt} change {achange} within {within}");
+        // println!("action::get_steps_from_two_rules: rule {rulex} alt {rule_alt} change {achange} within {within}");
         debug_assert!(rulex.initial_region() == rule_alt.initial_region());
 
         let mut stps = StepStore::new(vec![]);

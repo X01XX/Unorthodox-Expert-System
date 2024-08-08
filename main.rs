@@ -176,9 +176,9 @@ fn run_to_end(dmxs: &mut DomainStore) {
 
         do_any_need(dmxs);
     } // end loop
-    let duration = start.elapsed().as_secs();
+    let duration = start.elapsed();
     println!(
-        "Steps: {} Time elapsed: {:?} seconds",
+        "Steps: {} Time elapsed: {:.2?} seconds",
         dmxs.step_num - 1,
         duration
     );
@@ -193,7 +193,6 @@ fn run_number_times(num_runs: usize) -> usize {
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
     let mut steps_vec = Vec::<usize>::with_capacity(num_runs);
-    let num_groups_unexpected = 0;
     let mut num_groups_off = 0;
 
     while runs_left > 0 {
@@ -204,12 +203,12 @@ fn run_number_times(num_runs: usize) -> usize {
             Ok((steps, groups, expected)) => {
                 if groups == expected {
                     let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?}");
+                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}");
                     duration_vec.push(duration);
                     steps_vec.push(steps);
                 } else {
                     let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:?} groups: {groups:?}");
+                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}");
 
                     if groups != expected {
                         num_groups_off += 1
@@ -255,8 +254,8 @@ fn run_number_times(num_runs: usize) -> usize {
     let average_time = duration_total / duration_vec.len() as u32;
     let average_steps = steps_total / steps_vec.len();
 
-    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.3?}, high: {:.3?}, low: {:.3?} Number Groups unexpected: {:3.3?} Number with unsatisfied needs {} Num groups off {}",
-         num_runs, average_steps, steps_high, steps_low, average_time, duration_high, duration_low, num_groups_unexpected, cant_do, num_groups_off);
+    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
+         num_runs, average_steps, steps_high, steps_low, average_time, duration_high, duration_low, cant_do, num_groups_off);
     cant_do
 }
 
