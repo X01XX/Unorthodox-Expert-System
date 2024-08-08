@@ -35,7 +35,7 @@ A final, exact, understanding is NOT the goal, just as there is a lot that I do 
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
 64-bit state, it would not be practical to take every sample.
 
-A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain state can have an arbitrary number of bits, greater than 0. When a goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
+A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain can use a state with an arbitrary number of bits, greater than 0. When a goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
 
 Sets of domain regions that are considered negative, or positive, can be added.  They can overlap, like a situation IRL that has positive and negative aspects. When making plans, the program will try to avoid traversing negative region sets.  If the current states are in a negative region set, the program will try to exit it. After needs for improving rules are met, the program will visit net-positive region sets, in a cycle. At some level are we following something like: food -> shelter -> rest -> food? If something happens to change the current states to a non-net-positive region set, the program will run rules to put them back into a net-positive region set.
 
