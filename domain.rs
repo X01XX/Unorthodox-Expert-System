@@ -317,10 +317,16 @@ impl SomeDomain {
         }
 
         // Calc wanted, and unwanted, changes.
-        let wanted_changes = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
+        let needed_rule = SomeRule::new_region_to_region(from_reg, goal_reg);
 
-        let not_wanted_changes =
-            SomeChange::region_to_region_not_wanted_changes(from_reg, goal_reg);
+        let wanted_changes = needed_rule.to_change();
+
+        let goal_edge_mask = goal_reg.edge_mask();
+
+        let not_wanted_changes = SomeChange::new(
+            needed_rule.b00.bitwise_and(&goal_edge_mask),
+            needed_rule.b11.bitwise_and(&goal_edge_mask),
+        );
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
@@ -530,7 +536,7 @@ impl SomeDomain {
             return None;
         }
 
-        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
+        let required_change = SomeRule::new_region_to_region(from_reg, goal_reg).to_change();
 
         let steps_str = self.get_steps(&required_change, None);
         if steps_str.is_empty() {
@@ -707,7 +713,7 @@ impl SomeDomain {
             return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
         // Figure the required change.
-        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
+        let required_change = SomeRule::new_region_to_region(from_reg, goal_reg).to_change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();
@@ -784,7 +790,7 @@ impl SomeDomain {
         }
 
         // Figure the required change.
-        let required_change = SomeChange::region_to_region_required_changes(from_reg, goal_reg);
+        let required_change = SomeRule::new_region_to_region(from_reg, goal_reg).to_change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 4 * required_change.number_changes();

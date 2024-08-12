@@ -113,48 +113,6 @@ impl SomeChange {
         strrc
     }
 
-    /// Return a change for translating from a region to another region.
-    pub fn region_to_region_required_changes(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
-        debug_assert_eq!(from.num_bits(), to.num_bits());
-
-        let from_x = from.x_mask();
-        let from_1 = from.edge_ones_mask();
-        let from_0 = from.edge_zeros_mask();
-
-        let to_1 = to.edge_ones_mask();
-        let to_0 = to.edge_zeros_mask();
-
-        let x_to_0 = from_x.bitwise_and(&to_0);
-        let x_to_1 = from_x.bitwise_and(&to_1);
-
-        SomeChange {
-            b01: from_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
-            b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
-        }
-    }
-
-    /// Return changes not wanted in translating from a region to another region.
-    /// For 0->0, and X->0, the change 0->1 is not wanted.
-    /// For 1->1, and X->1, the change 1->0 is not wanted.
-    pub fn region_to_region_not_wanted_changes(from: &SomeRegion, to: &SomeRegion) -> SomeChange {
-        let fx_msk = from.x_mask();
-
-        let to_zeros = to.edge_zeros_mask();
-
-        let b00 = from.edge_zeros_mask().bitwise_and(&to_zeros);
-        let bx0 = fx_msk.bitwise_and(&to_zeros);
-
-        let to_ones = to.edge_ones_mask();
-
-        let b11 = from.edge_ones_mask().bitwise_and(&to_ones);
-        let bx1 = fx_msk.bitwise_and(&to_ones);
-
-        SomeChange {
-            b01: b00.bitwise_or(&bx0),
-            b10: b11.bitwise_or(&bx1),
-        }
-    }
-
     /// Return a change for translating from a state to a region.
     pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
         debug_assert_eq!(from.num_bits(), to.num_bits());
@@ -341,42 +299,6 @@ mod tests {
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
-
-        Ok(())
-    }
-
-    #[test]
-    fn region_to_region_required_changes() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("001_1xxx")?;
-        println!("reg1 {reg1}");
-        let reg2 = SomeRegion::new_from_string("011_001x")?;
-        println!("reg2 {reg2}");
-
-        let cng1 = SomeChange::region_to_region_required_changes(&reg1, &reg2);
-        println!("cng1 {cng1}");
-
-        let cng2 = SomeChange::new_from_string("00/01/00_10/10/01/00")?;
-        println!("cng2 {cng2}");
-
-        assert!(cng1 == cng2);
-
-        Ok(())
-    }
-
-    #[test]
-    fn region_to_region_not_wanted_changes() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("001_1xxx")?;
-        println!("reg1 {reg1}");
-        let reg2 = SomeRegion::new_from_string("011_001x")?;
-        println!("reg2 {reg2}");
-
-        let cng1 = SomeChange::region_to_region_not_wanted_changes(&reg1, &reg2);
-        println!("cng1 {cng1}");
-
-        let cng2 = SomeChange::new_from_string("01/00/10_00/01/10/00")?;
-        println!("cng2 {cng2}");
-
-        assert!(cng1 == cng2);
 
         Ok(())
     }
