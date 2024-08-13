@@ -556,7 +556,7 @@ impl SomeRule {
         self.sequence_blocks_changes(other, wanted) && other.sequence_blocks_changes(self, wanted)
     }
 
-    /// Return true if running a rule after another blocks all wanted changes in the first rule.
+    /// Return true if all wanted changes in rule are blocked by running a second rule.
     ///
     /// The result region of the first rule may not intersect the initial region of the second rule.
     ///
@@ -564,30 +564,32 @@ impl SomeRule {
     ///    A wanted 0->1 change in first rule should correspond to a 1->1 in the second rule.
     ///    A wanted 1->0 change in first rule should correspond to a 0->0 in the second rule.
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // println!("sequence_blocks_change: {} to {} change wanted {}", self.formatted_string(), other.formatted_string(), wanted.formatted_string());
+        // println!("sequence_reverses_change: {} to {} change wanted {}", self.formatted_string(), other.formatted_string(), wanted.formatted_string());
         debug_assert!(self.num_bits() == other.num_bits());
         debug_assert!(self.num_bits() == wanted.num_bits());
-
         debug_assert!(wanted.is_not_low());
 
+        // Get a mask of wanted 0->1 changes in target rule.
         let msk01 = self.b01.bitwise_and(&wanted.b01);
 
-        let msk01_11 = msk01.bitwise_and(&other.b11); // Matches 1->1, X->1 and X->X.
-
-        if msk01_11.is_not_low() {
-            return false;
-        }
-
+        // Get a mask of wanted 1->0 changes in target rule.
         let msk10 = self.b10.bitwise_and(&wanted.b10);
-
-        let msk10_00 = msk10.bitwise_and(&other.b00); // Matches 0->0, X->0 and X->X.
-
-        if msk10_00.is_not_low() {
-            return false;
-        }
 
         debug_assert!(msk01.is_not_low() || msk10.is_not_low()); // Target rule must have at least one wanted change.
 
+        // Combine rules, to take into account the possibility that changes may be implied
+        // in moving from the result region of the target rule to the initial region of the second rule.
+        let rule2 = self.combine_sequence(other);
+        //format!("rule2 {rule2}");
+
+        // Check if any 0->1 changes passed through.
+        if rule2.b01.bitwise_and(&msk01).is_not_low() {
+            return false;
+        }
+        // Check if any 1->0 changes passed through.
+        if rule2.b10.bitwise_and(&msk10).is_not_low() {
+            return false;
+        }
         true
     }
 
@@ -679,10 +681,28 @@ impl SomeRule {
         !(self.b10.is_low() && self.b01.is_low())
     }
 
+    /// Combine two rules into a single, aggregate, rule.
+    pub fn combine_sequence(&self, other: &Self) -> Self {
+        debug_assert_eq!(self.num_bits(), other.num_bits());
+
+        // Check if one rule naturally leads to the next.
+        if self.result_region().intersects(&other.initial_region()) {
+            return self.combine_sequence2(other);
+        }
+
+        // Get a rule that will connect the twe rules.
+        let rule_between =
+            Self::new_region_to_region(&self.result_region(), &other.initial_region());
+
+        // Combine the three rules.
+        self.combine_sequence2(&rule_between)
+            .combine_sequence2(other)
+    }
+
     /// Combine two rules.
     /// The result region of the first rule must intersect the initial region of the second rule.
     /// Changes in the first rule may be reversed in the second rule.
-    pub fn combine_pair_sequence(&self, other: &Self) -> Self {
+    fn combine_sequence2(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         assert!(self.result_region().intersects(&other.initial_region()));
@@ -939,7 +959,7 @@ mod tests {
         // All possible change pass-through conditions can be tested at once.
         let rul1 = SomeRule::new_from_string("01/01/01/10/10/10")?;
         let rul2 = SomeRule::new_from_string("11/X1/XX/00/X0/XX")?;
-        let chg1 = SomeChange::new_from_string("Xx/Xx/Xx/Xx/Xx/Xx")?;
+        let chg1 = SomeChange::new_from_string("01/01/01/10/10/10")?;
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Change non pass-through conditions must be tested one-by-one.
@@ -947,14 +967,11 @@ mod tests {
         // Test 0->1 non pass-through conditions.
         let rul1 = SomeRule::new_from_string("01")?;
         let rul2 = SomeRule::new_from_string("10")?;
-        let chg1 = SomeChange::new_from_string("Xx")?;
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
-
-        let rul2 = SomeRule::new_from_string("00")?;
+        let chg1 = SomeChange::new_from_string("01")?;
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("01")?;
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X0")?;
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
@@ -965,13 +982,11 @@ mod tests {
         // Test 1->0 non pass-through conditions.
         let rul1 = SomeRule::new_from_string("10")?;
         let rul2 = SomeRule::new_from_string("01")?;
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
-
-        let rul2 = SomeRule::new_from_string("11")?;
+        let chg1 = SomeChange::new_from_string("10")?;
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("10")?;
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X1")?;
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
@@ -1099,11 +1114,11 @@ mod tests {
     }
 
     #[test]
-    fn combine_pair_sequence() -> Result<(), String> {
+    fn combine_sequence() -> Result<(), String> {
         // Test 0->0
         let rul1 = SomeRule::new_from_string("00/00/00/00/00/00")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("00/01/00/01/00/01")?;
@@ -1112,7 +1127,7 @@ mod tests {
         // Test 0->1
         let rul1 = SomeRule::new_from_string("01/01/01/01/01/01")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("01/00/00/01/01/00")?;
@@ -1121,7 +1136,7 @@ mod tests {
         // Test 1->1
         let rul1 = SomeRule::new_from_string("11/11/11/11/11/11")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/10/11/11/10")?;
@@ -1130,7 +1145,7 @@ mod tests {
         // Test 1->0
         let rul1 = SomeRule::new_from_string("10/10/10/10/10/10")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("10/11/10/11/10/11")?;
@@ -1139,7 +1154,7 @@ mod tests {
         // Test X->0
         let rul1 = SomeRule::new_from_string("X0/X0/X0/X0/X0/X0")?;
         let rul2 = SomeRule::new_from_string("00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("X0/X1/X0/X1/X0/X1")?;
@@ -1148,7 +1163,7 @@ mod tests {
         // Test X->1
         let rul1 = SomeRule::new_from_string("X1/X1/X1/X1/X1/X1")?;
         let rul2 = SomeRule::new_from_string("11/10/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("X1/X0/X0/X1/X1/X0")?;
@@ -1157,7 +1172,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1166,7 +1181,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1175,7 +1190,7 @@ mod tests {
         // Test X->X
         let rul1 = SomeRule::new_from_string("XX/XX/XX/XX/XX/XX/XX/XX")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
@@ -1184,7 +1199,7 @@ mod tests {
         // Test X->x
         let rul1 = SomeRule::new_from_string("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
         let rul2 = SomeRule::new_from_string("11/10/00/01/X0/X1/XX/Xx")?;
-        let rul3 = rul1.combine_pair_sequence(&rul2);
+        let rul3 = rul1.combine_sequence(&rul2);
         println!("rul3 {}", rul3.formatted_string());
 
         let rul4 = SomeRule::new_from_string("01/00/10/11/X0/X1/Xx/XX")?;

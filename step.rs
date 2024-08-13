@@ -92,7 +92,6 @@ impl SomeStep {
     }
 
     /// Return a new step, by taking a given step and restricting the initial region.
-    //pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         debug_assert_eq!(self.num_bits(), reg.num_bits());
         assert!(self.initial.intersects(reg));
@@ -150,6 +149,7 @@ impl SomeStep {
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 
+    /// Return true if all wanted changes in a step are reversed by a second step.
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
         debug_assert_eq!(self.num_bits(), wanted.num_bits());

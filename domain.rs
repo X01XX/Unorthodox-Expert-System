@@ -360,7 +360,7 @@ impl SomeDomain {
                 for (iny, stepx) in steps_by_change_vov[inx].iter().enumerate() {
                     let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-                    let rulx = rule_to.combine_pair_sequence(&stepx.rule);
+                    let rulx = rule_to.combine_sequence(&stepx.rule);
 
                     let step_num_unwanted_changes =
                         not_wanted_changes.intersection(&rulx).number_changes();
@@ -397,7 +397,7 @@ impl SomeDomain {
 
                 let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-                let rulx = rule_to.combine_pair_sequence(&stepx.rule);
+                let rulx = rule_to.combine_sequence(&stepx.rule);
 
                 println!(
                     "    wanted changes {} unwanted_changes {}",
@@ -430,7 +430,7 @@ impl SomeDomain {
                         )
                     } else {
                         let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
-                        let rulx = rule_to.combine_pair_sequence(&stepx.rule);
+                        let rulx = rule_to.combine_sequence(&stepx.rule);
                         (
                             wanted_changes.intersection(&rulx).number_changes(),
                             not_wanted_changes.intersection(&rulx).number_changes(),
@@ -501,7 +501,7 @@ impl SomeDomain {
 
             let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
 
-            let rulx = rule_to.combine_pair_sequence(&stepx.rule);
+            let rulx = rule_to.combine_sequence(&stepx.rule);
 
             println!(
                 "    wanted changes {} unwanted_changes {}",
