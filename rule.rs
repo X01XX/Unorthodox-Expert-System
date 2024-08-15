@@ -598,16 +598,11 @@ impl SomeRule {
         SomeChange::new(self.b01.clone(), self.b10.clone())
     }
 
-    /// Return a rule for translating from a region to another region.
-    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
-    /// 0->0 instead of 0->X), the second region.
-    /// The minimum changes are sought, so X->x-not becomes X->X.
-    /// It can be thought that:
-    /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
-    /// or if in the other change may be unwanted.
-    /// For X->0, the change is optional, a 0 input will be no change.
-    /// For X->1, the change is optional, a 1 input will be no change.
-    /// Anything -> X, is a don't care.
+    /// Return a minimum change rule for translating from a region to an intersection of another region.
+    /// 0->1 and 1->0 changes are required.
+    /// X->0, 0->X, becomes 0->0.
+    /// X->1, 1->X, becomes 1->1.
+    /// X->X becomes (1->1, 0->0).
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
@@ -631,13 +626,13 @@ impl SomeRule {
                 .bitwise_or(&x_to_0)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&zero_to_x),
-            b01: from_0.bitwise_and(&to_1).bitwise_or(&x_to_1),
+            b01: from_0.bitwise_and(&to_1),
             b11: from_1
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&one_to_x),
-            b10: from_1.bitwise_and(&to_0).bitwise_or(&x_to_0),
+            b10: from_1.bitwise_and(&to_0),
         }
     }
 
@@ -1228,7 +1223,7 @@ mod tests {
         let reg2 = SomeRegion::new_from_string("r01X")?;
         let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        let rul2 = SomeRule::new_from_string("X0/X1/XX")?;
+        let rul2 = SomeRule::new_from_string("00/11/XX")?;
         assert!(rul1 == rul2);
 
         // Test proper subset region.
@@ -1241,10 +1236,10 @@ mod tests {
 
         // Test intersecting regions.
         let reg1 = SomeRegion::new_from_string("r010x")?;
-        let reg2 = SomeRegion::new_from_string("rx1x1")?;
+        let reg2 = SomeRegion::new_from_string("rx1x0")?;
         let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        let rul2 = SomeRule::new_from_string("00/11/00/X1")?;
+        let rul2 = SomeRule::new_from_string("00/11/00/00")?;
         assert!(rul1 == rul2);
 
         Ok(())
