@@ -15,7 +15,7 @@ impl fmt::Display for SomeStep {
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
 pub enum AltRuleHint {
     NoAlt {},
     AltNoChange {},
@@ -61,6 +61,12 @@ impl PartialEq for SomeStep {
             return false;
         }
         if self.result != other.result {
+            return false;
+        }
+        if self.group_inx != other.group_inx {
+            return false;
+        }
+        if self.alt_rule != other.alt_rule {
             return false;
         }
         true

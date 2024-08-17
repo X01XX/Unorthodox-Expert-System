@@ -1786,16 +1786,14 @@ impl SomeAction {
             // Check that rule result is entirely in the within region.
             if within.is_superset_of(&rules2[0].result_region()) {
                 if achange.intersection(&rules2[0]).is_not_low() {
-                    let ruls = rules[0].restrict_for_changes(achange);
-                    for rulx in ruls {
+                    if let Some(rulx) = rules[0].restrict_for_changes(achange) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
             } else if rules2[0].result_region().intersects(within) {
                 let rulx = rules2[0].restrict_result_region(within);
                 if achange.intersection(&rulx).is_not_low() {
-                    let ruls = rulx.restrict_for_changes(achange);
-                    for rulx in ruls {
+                    if let Some(rulx) = rulx.restrict_for_changes(achange) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1896,8 +1894,7 @@ impl SomeAction {
 
         if within.is_superset_of(&rulex.result_region()) {
             if achange.intersection(rulex).is_not_low() {
-                let ruls = rulex.restrict_for_changes(achange);
-                for rulx in ruls {
+                if let Some(rulx) = rulex.restrict_for_changes(achange) {
                     let rula = rule_alt.restrict_initial_region(&rulx.initial_region());
 
                     if rula.causes_predictable_change() {
@@ -1915,18 +1912,17 @@ impl SomeAction {
             let rulx = rulex.restrict_result_region(within);
 
             if achange.intersection(&rulx).is_not_low() {
-                let ruls = rulx.restrict_for_changes(achange);
-                for rulz in ruls {
-                    let rula = rule_alt.restrict_initial_region(&rulz.initial_region());
+                if let Some(rulx) = rulx.restrict_for_changes(achange) {
+                    let rula = rule_alt.restrict_initial_region(&rulx.initial_region());
 
                     if rula.causes_predictable_change() {
                         stps.push(SomeStep::new(
                             self.id,
-                            rulz,
+                            rulx,
                             AltRuleHint::AltRule { rule: rula },
                         ));
                     } else {
-                        stps.push(SomeStep::new(self.id, rulz, AltRuleHint::AltNoChange {}));
+                        stps.push(SomeStep::new(self.id, rulx, AltRuleHint::AltNoChange {}));
                     }
                 }
             }

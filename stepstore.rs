@@ -207,6 +207,12 @@ impl StepStore {
         let mut steps_by_change_vov: Vec<Vec<&SomeStep>> =
             self.split_steps_by_bit_change(required_change);
 
+        for avec in steps_by_change_vov.iter() {
+            if avec.is_empty() {
+                return None;
+            }
+        }
+
         // These may be low-level rules, but at least they have some sense of where they are going!
 
         // Check if any pair of single-bit change, all steps in vectors, are mutually exclusive.

@@ -460,86 +460,115 @@ impl SomeRule {
     ///
     /// The change argument contains masks of changes (b01, b10) that are sought.
     ///
-    /// For changes that are sought, for bit positions that are X->1, X->0, or X->x,
-    /// the X value can be changed to focus on the desired change.
-    ///
-    /// X->1 is 1->1 and 0->1, the X can be changed to 0.
-    /// X->0 is 0->0 and 1->0, the X can be changed to 1.
-    /// X->x is 1->0 and 0->1, the X can be changed to 1 or 0, depending on the change sought.
-    ///
-    /// For a change not sought:
-    /// X->1 is changed to 1->1.
-    /// X->0 is changed to 0->0.
-    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Vec<SomeRule> {
+    /// For rule bit positions that are X->x, X->0 or X->1,
+    /// the X value can be changed to focus on the desired change,
+    /// or to mask out an unwanted change.
+    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Option<SomeRule> {
         debug_assert_eq!(self.num_bits(), change_needed.num_bits());
+        debug_assert!(change_needed.is_not_low()); // Some change is required.
+        debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low()); // Changes should not cancel.
 
-        // Restrict change to what applies to the rule.
-        let net_change_needed = change_needed.restrict_to(&self.initial_region());
+        // Check if any rule changes are needed.
+        if self.b01.bitwise_and(&change_needed.b01).is_low()
+            && self.b10.bitwise_and(&change_needed.b10).is_low()
+        {
+            return None;
+        }
 
-        debug_assert!(net_change_needed.is_not_low()); // Some change is required.
-        debug_assert!(net_change_needed
-            .b01
-            .bitwise_and(&net_change_needed.b10)
-            .is_low()); // Changes should not cancel.
+        let mut rule_tmp = self.clone();
 
-        // Init return RuleStore.
-        let mut ret_rules = Vec::<SomeRule>::new();
+        // Get rule initial region X->1.
+        let x1_msk = rule_tmp
+            .initial_region()
+            .x_mask()
+            .bitwise_and(&rule_tmp.result_region().edge_ones_mask());
 
-        // Get rule initial region.
-        let init_reg = self.initial_region();
-        let init_reg_zeros = init_reg.edge_zeros_mask();
-        let init_reg_ones = init_reg.edge_ones_mask();
-        let init_reg_xs = init_reg.x_mask();
+        // Get rule initial region X->0.
+        let x0_msk = rule_tmp
+            .initial_region()
+            .x_mask()
+            .bitwise_and(&rule_tmp.result_region().edge_zeros_mask());
 
-        if net_change_needed.b01.is_not_low() {
-            // Process individual 0->1 changes needed.
-            let change_bits = net_change_needed.b01.split();
+        // Mask out unneeded 0->1 changes in X->1 bit positions.
+        {
+            // Get mask of unneeded changes in X->1 bit positions.
+            let not_01 = rule_tmp
+                .b01
+                .bitwise_and(&change_needed.b01.bitwise_not())
+                .bitwise_and(&x1_msk);
 
-            for m01x in change_bits.iter() {
-                // Check if the rule applies to the needed change.
-                if m01x.bitwise_and(&self.b01).is_low() {
-                    continue;
-                }
-
-                // Restrict (if needed) and store rule.
-                if m01x.bitwise_and(&init_reg_zeros).is_not_low() {
-                    if ret_rules.contains(self) {
-                    } else {
-                        ret_rules.push(self.clone());
-                    }
-                } else if m01x.bitwise_and(&init_reg_xs).is_not_low() {
-                    let ireg = init_reg.set_to_zeros(m01x);
-                    let ruley = self.restrict_initial_region(&ireg);
-                    ret_rules.push(ruley);
-                }
+            // Change selected X->1 bit positions to 1->1.
+            if not_01.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_zeros(&not_01);
             }
         }
 
-        if net_change_needed.b10.is_not_low() {
-            // Process individual 1->0 changes needed.
-            let change_bits = net_change_needed.b10.split();
+        // Mask out unneeded 1->0 changes in X->0 bit positions.
+        {
+            // Get mask of unneeded changes in X->0 bit positions.
+            let not_10 = rule_tmp
+                .b10
+                .bitwise_and(&change_needed.b10.bitwise_not())
+                .bitwise_and(&x0_msk);
 
-            for m10x in change_bits.iter() {
-                // Check if the rule applies to the needed change.
-                if m10x.bitwise_and(&self.b10).is_low() {
-                    continue;
-                }
-
-                // Restrict (if needed) and store rule.
-                if m10x.bitwise_and(&init_reg_ones).is_not_low() {
-                    if ret_rules.contains(self) {
-                    } else {
-                        ret_rules.push(self.clone());
-                    }
-                } else if m10x.bitwise_and(&init_reg_xs).is_not_low() {
-                    let ireg = init_reg.set_to_ones(m10x);
-                    let ruley = self.restrict_initial_region(&ireg);
-                    ret_rules.push(ruley);
-                }
+            // Change selected X->0 bit positions to 0->0.
+            if not_10.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_ones(&not_10);
             }
         }
 
-        ret_rules
+        // Get rule X->x mask.
+        let x_not_x = rule_tmp.b01.bitwise_and(&rule_tmp.b10);
+
+        // Mask out unneeded 1->0 changes in X->x bit positions.
+        if change_needed.b01.is_not_low() {
+            let not_10 = change_needed.b01.bitwise_and(&x_not_x);
+
+            // Change selected X->x bit positions to 0->1.
+            if not_10.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_ones(&not_10);
+            }
+        }
+
+        // Mask out unneeded 0->1 changes in X->x bit positions.
+        if change_needed.b10.is_not_low() {
+            let not_01 = change_needed.b10.bitwise_and(&x_not_x);
+
+            // Change selected X->x bit positions to 1->0.
+            if not_01.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_zeros(&not_01);
+            }
+        }
+
+        // Mask out unneeded 1->1 changes in X->1 bit positions.
+        {
+            // Get mask of needed changes in X->1 bit positions.
+            let need_01 = rule_tmp
+                .b01
+                .bitwise_and(&change_needed.b01)
+                .bitwise_and(&x1_msk);
+
+            // Change selected X->1 bit positions to 0->1.
+            if need_01.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_ones(&need_01);
+            }
+        }
+
+        // Mask out unneeded 0->0 changes in X->0 bit positions.
+        {
+            // Get mask of needed changes in X->0 bit positions.
+            let need_10 = rule_tmp
+                .b10
+                .bitwise_and(&change_needed.b10)
+                .bitwise_and(&x0_msk);
+
+            // Change selected X->0 bit positions to 1->0.
+            if need_10.is_not_low() {
+                rule_tmp = rule_tmp.mask_out_zeros(&need_10);
+            }
+        }
+
+        Some(rule_tmp)
     }
 
     /// Return true if two rules are mutually exclusive.
@@ -726,6 +755,32 @@ impl SomeRule {
     pub fn num_bits(&self) -> usize {
         self.b00.num_bits()
     }
+
+    /// Return a rule with selected 1 bit positions masked off.
+    fn mask_out_ones(&self, msk_out: &SomeMask) -> Self {
+        let msk_in = msk_out.bitwise_not();
+        let ret = Self {
+            b00: self.b00.clone(),
+            b01: self.b01.clone(),
+            b11: self.b11.bitwise_and(&msk_in),
+            b10: self.b10.bitwise_and(&msk_in),
+        };
+        assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
+        ret
+    }
+
+    /// Return a rule with selected 0 bit positions masked off.
+    fn mask_out_zeros(&self, msk_out: &SomeMask) -> Self {
+        let msk_in = msk_out.bitwise_not();
+        let ret = Self {
+            b00: self.b00.bitwise_and(&msk_in),
+            b01: self.b01.bitwise_and(&msk_in),
+            b11: self.b11.clone(),
+            b10: self.b10.clone(),
+        };
+        assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
+        ret
+    }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
@@ -762,7 +817,6 @@ impl NumBits for SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tools;
 
     #[test]
     fn parsed_union() -> Result<(), String> {
@@ -994,54 +1048,19 @@ mod tests {
 
     #[test]
     fn restrict_for_changes() -> Result<(), String> {
-        // Change wanted   X->1 to 0->1.
-        // Change depends  X->1 to X->1.
-        // Change wanted   X->0 to 1->0.
-        // Change depends  X->0 to X->0.
-        let rul1 = SomeRule::new_from_string("X1/X1/X0/X0")?;
+        // Change X->x to 0->1 for bit 3, 1->0 for bit 2.
+        let rul1 = SomeRule::new_from_string("Xx/Xx/X0/X0")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b1000")?,
-            SomeMask::new_from_string("0b0010")?,
-        );
-
-        let rul2 = rul1.restrict_for_changes(&chg1);
-        if rul2.is_empty() {
-            panic!("rul2 restriction should succeed");
-        };
-        println!("rul2 {}", tools::vec_string(&rul2));
-
-        assert!(rul2.len() == 2);
-
-        assert!(
-            (rul2[0] == SomeRule::new_from_string("01/X1/X0/X0")?
-                && rul2[1] == SomeRule::new_from_string("X1/X1/10/X0")?)
-                || (rul2[1] == SomeRule::new_from_string("01/X1/X0/X0")?
-                    && rul2[0] == SomeRule::new_from_string("X1/X1/10/X0")?)
-        );
-
-        // Change X->x to 1->0.
-        // Change X->x to 0->1.
-        // Leave one X->x unaffected.
-        let rul1 = SomeRule::new_from_string("00/Xx/Xx/Xx")?;
-        let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b0010")?,
+            SomeMask::new_from_string("0b1011")?,
             SomeMask::new_from_string("0b0100")?,
         );
 
-        let rul4 = rul1.restrict_for_changes(&chg1);
-        if rul4.is_empty() {
-            panic!("rul4 restriction should succeed");
-        };
-        println!("rul4 {}", tools::vec_string(&rul4));
-
-        assert!(rul4.len() == 2);
-
-        assert!(
-            (rul4[0] == SomeRule::new_from_string("00/Xx/01/Xx")?
-                && rul4[1] == SomeRule::new_from_string("00/10/Xx/Xx")?)
-                || (rul4[1] == SomeRule::new_from_string("00/Xx/01/Xx")?
-                    && rul4[0] == SomeRule::new_from_string("00/10/Xx/Xx")?)
-        );
+        if let Some(rul2) = rul1.restrict_for_changes(&chg1) {
+            println!("rul2 {}", rul2);
+            assert!(rul2 == SomeRule::new_from_string("01/10/00/00")?);
+        } else {
+            panic!("rul2 restriction should succeed");
+        }
 
         Ok(())
     }
