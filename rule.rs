@@ -1048,16 +1048,22 @@ mod tests {
 
     #[test]
     fn restrict_for_changes() -> Result<(), String> {
-        // Change X->x to 0->1 for bit 3, 1->0 for bit 2.
-        let rul1 = SomeRule::new_from_string("Xx/Xx/X0/X0")?;
+        // Bits 9 - 6, leave alone, no change is possible.
+        // Change X->x to 0->1 for bit 5, isolating a wanted change.
+        //        X->x to 1->0 for bit 4, isolating a wanted change.
+        //        X->0 to 1->0 for bit 3, isolating a wanted change.
+        //        X->1 to 0->1 for bit 2, isolating a wanted change.
+        //        X->0 to 0->0 for bit 1, Removing an unwanted change.
+        //        X->1 to 1->1 for bit 0, Removing an unwanted change.
+        let rul1 = SomeRule::new_from_string("00/01_11/10/Xx/Xx_X0/X1/X0/X1")?;
         let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b1011")?,
-            SomeMask::new_from_string("0b0100")?,
+            SomeMask::new_from_string("0b00_0010_0100")?,
+            SomeMask::new_from_string("0b00_0001_1000")?,
         );
 
         if let Some(rul2) = rul1.restrict_for_changes(&chg1) {
             println!("rul2 {}", rul2);
-            assert!(rul2 == SomeRule::new_from_string("01/10/00/00")?);
+            assert!(rul2 == SomeRule::new_from_string("00/01_11/10/01/10_10/01/00/11")?);
         } else {
             panic!("rul2 restriction should succeed");
         }
