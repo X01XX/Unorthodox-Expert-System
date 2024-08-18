@@ -473,14 +473,34 @@ impl SomeAction {
 
             // Edit out subset/eq group adds.
             let mut new_grp_regs = RegionStore::new(vec![]);
-            for ndx in nds.iter_mut() {
+            for ndx in nds.iter() {
                 match ndx {
                     SomeNeed::AddGroup { group_region, .. } => {
                         new_grp_regs.push_nosubs(group_region.clone())
                     }
                     _ => continue,
                 };
-            } // Next ndx
+            } // next ndx
+
+            let mut remvec = vec![];
+            for (inx, ndx) in nds.iter().enumerate() {
+                match ndx {
+                    SomeNeed::AddGroup { group_region, .. } => {
+                        if self.groups.any_superset_of(group_region)
+                            || !new_grp_regs.contains(group_region)
+                        {
+                            remvec.push(inx);
+                        }
+                    }
+                    _ => continue,
+                };
+            } // next ndx
+
+            // Remove unneeded AddGroups, highest index first.
+            remvec.reverse();
+            for inx in remvec {
+                nds.remove(inx);
+            }
 
             // Process housekeeping needs.
             for ndx in nds.iter_mut() {
@@ -489,25 +509,6 @@ impl SomeAction {
                     rules,
                 } = ndx
                 {
-                    if !new_grp_regs.contains(group_region) {
-                        continue;
-                    }
-
-                    // Check for supersets
-                    if self.groups.any_superset_of(group_region) {
-                        if self.groups.find(group_region).is_some() {
-                        } else {
-                            println!(
-                                "\nDom {} Act {} **** Supersets found for new group {} in {}",
-                                dom_id,
-                                self.id,
-                                &group_region,
-                                tools::vec_ref_string(&self.groups.supersets_of(group_region))
-                            );
-                        }
-                        continue;
-                    }
-
                     self.groups.push_nosubs(
                         SomeGroup::new(group_region.clone(), rules.clone()),
                         dom_id,

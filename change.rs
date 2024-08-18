@@ -140,7 +140,7 @@ impl SomeChange {
     }
 
     /// Restrict a change to a given region.
-    pub fn restrict_to(&self, regx: &SomeRegion) -> Self {
+    pub fn _restrict_to(&self, regx: &SomeRegion) -> Self {
         SomeChange {
             b01: self.b01.bitwise_and_not(&regx.low_state()),
             b10: self.b10.bitwise_and(&regx.high_state()),
@@ -247,25 +247,6 @@ mod tests {
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
         assert!(sta2 == SomeState::new_from_string("0b1100")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn restrict_to() -> Result<(), String> {
-        let cng1 = SomeChange::new_from_string(
-            "X1/X1/X1_X0/X0/X0_Xx/Xx/Xx_XX/XX/XX_11/11_00/00_10/10_01/01",
-        )?;
-        let reg1 = SomeRegion::new_from_string("X10_X10_X10_X10_X1_X0_X1_X0")?;
-        let cng2 = cng1.restrict_to(&reg1);
-        println!("cng2 {cng2}");
-
-        let cng3 = SomeChange::new_from_string(
-            "X1/11/01_X0/10/00_Xx/10/01_XX/11/00_11/11_00/00_10/10_01/01",
-        )?;
-        println!("cng3 {cng3}");
-
-        assert!(cng2 == cng3);
 
         Ok(())
     }

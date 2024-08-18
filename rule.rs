@@ -494,7 +494,7 @@ impl SomeRule {
             // Get mask of unneeded changes in X->1 bit positions.
             let not_01 = rule_tmp
                 .b01
-                .bitwise_and(&change_needed.b01.bitwise_not())
+                .bitwise_and_not(&change_needed.b01)
                 .bitwise_and(&x1_msk);
 
             // Change selected X->1 bit positions to 1->1.
@@ -508,7 +508,7 @@ impl SomeRule {
             // Get mask of unneeded changes in X->0 bit positions.
             let not_10 = rule_tmp
                 .b10
-                .bitwise_and(&change_needed.b10.bitwise_not())
+                .bitwise_and_not(&change_needed.b10)
                 .bitwise_and(&x0_msk);
 
             // Change selected X->0 bit positions to 0->0.

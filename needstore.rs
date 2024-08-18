@@ -102,6 +102,11 @@ impl NeedStore {
         }
         false
     }
+
+    /// Remove a need by index.
+    pub fn remove(&mut self, inx: usize) {
+        self.items.remove(inx);
+    }
 } // end impl NeedStore
 
 impl Index<usize> for NeedStore {

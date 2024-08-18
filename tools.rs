@@ -21,15 +21,6 @@ pub fn vec_contains_ref<T>(avec: &[&T], item: &T) -> bool {
     false
 }
 
-/// Return a vector of references to items in a vector.
-//pub fn ref_vec<T>(avec: &[T]) -> Vec<&T> {
-//    let mut ref_vec = Vec::<&T>::with_capacity(avec.len());
-//    for itemx in avec.iter() {
-//        ref_vec.push(itemx);
-//    }
-//    ref_vec
-//}
-
 /// Remove an element from a vector, not caring about order, avoid the
 /// copying that the remove command does.
 /// If iterating over a vector, accumulating a vector of indices to remove,
@@ -213,9 +204,8 @@ fn anyxofn2<'a, T>(xitems: usize, xlist: &[&'a T], nlist: &[&'a T]) -> Vec<Vec<&
     ret_vec
 }
 
-// Return a vector of references, from a given vector.
-#[allow(dead_code)]
-pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
+/// Return a vector of references, from a given vector.
+pub fn _vec_refs<T>(avec: &[T]) -> Vec<&T> {
     let mut ret = Vec::<&T>::with_capacity(avec.len());
 
     for x in avec.iter() {
@@ -231,9 +221,8 @@ mod tests {
 
     #[test]
     fn anyxofn() -> Result<(), String> {
-        let vals = vec![0, 1, 2, 3];
-        let vals_refs = vec_refs(&vals);
-        let options = super::anyxofn(3, &vals_refs);
+        let vals = vec![&0, &1, &2, &3];
+        let options = super::anyxofn(3, &vals);
         println!("{:?}", options);
         assert!(options.len() == 4);
 
@@ -242,7 +231,7 @@ mod tests {
         assert!(options.contains(&vec![&0, &2, &3]));
         assert!(options.contains(&vec![&1, &2, &3]));
 
-        let options = super::anyxofn(1, &vals_refs);
+        let options = super::anyxofn(1, &vals);
         println!("{:?}", options);
         assert!(options.len() == 4);
         assert!(options.contains(&vec![&0]));
