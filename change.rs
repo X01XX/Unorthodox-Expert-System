@@ -137,14 +137,6 @@ impl SomeChange {
         self.b01.num_bits()
     }
 
-    /// Restrict a change to a given region.
-    pub fn _restrict_to(&self, regx: &SomeRegion) -> Self {
-        SomeChange {
-            b01: self.b01.bitwise_and_not(&regx.low_state()),
-            b10: self.b10.bitwise_and(&regx.high_state()),
-        }
-    }
-
     /// Return a sample from a rule string.
     /// Like "Xx/XX/01/10/00/11".
     pub fn new_from_string(str: &str) -> Result<Self, String> {

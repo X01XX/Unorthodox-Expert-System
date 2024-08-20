@@ -423,7 +423,7 @@ impl SomeRule {
             } else if msk == 2 {
                 strrc.push_str("01/");
             } else if msk == 3 {
-                strrc.push_str("0X?/"); // Will fail is_valid_union.
+                strrc.push_str("0X/"); // Will fail is_valid_union.
             } else if msk == 4 {
                 strrc.push_str("11/");
             } else if msk == 5 {
@@ -441,7 +441,7 @@ impl SomeRule {
             } else if msk == 11 {
                 strrc.push_str("10,0X?/"); // Will fail is_valid_union, parsed_union can remove 0X.
             } else if msk == 12 {
-                strrc.push_str("1X?/"); // Will fail is_valid_union.
+                strrc.push_str("1X/"); // Will fail is_valid_union.
             } else if msk == 13 {
                 strrc.push_str("00,1X?/"); // Will fail is_valid_union, parsed_union can remove 1X.
             } else if msk == 14 {
@@ -466,73 +466,28 @@ impl SomeRule {
     pub fn restrict_for_changes(&self, rule_to_goal: &SomeRule) -> Option<SomeRule> {
         debug_assert_eq!(self.num_bits(), rule_to_goal.num_bits());
 
-        let changes_to_goal = rule_to_goal.wanted_changes();
-        let unwanted_changes = rule_to_goal.unwanted_changes();
+        let wanted_changes = rule_to_goal.wanted_changes();
 
-        debug_assert!(changes_to_goal
+        debug_assert!(wanted_changes
             .b01
-            .bitwise_and(&changes_to_goal.b10)
-            .is_low()); // Changes should not cancel.
-        debug_assert!(changes_to_goal
-            .b01
-            .bitwise_or(&changes_to_goal.b10)
+            .bitwise_or(&wanted_changes.b10)
             .is_not_low()); // Some changes are needed.
 
         // Check if any rule changes are needed.
-        if self.b01.bitwise_and(&changes_to_goal.b01).is_low()
-            && self.b10.bitwise_and(&changes_to_goal.b10).is_low()
+        if self.b01.bitwise_and(&wanted_changes.b01).is_low()
+            && self.b10.bitwise_and(&wanted_changes.b10).is_low()
         {
             return None;
         }
 
         let mut rule_tmp = self.clone();
 
-        // Get rule initial region X->1.
-        let x1_msk = rule_tmp
-            .initial_region()
-            .x_mask()
-            .bitwise_and(&rule_tmp.result_region().edge_ones_mask());
-
-        // Get rule initial region X->0.
-        let x0_msk = rule_tmp
-            .initial_region()
-            .x_mask()
-            .bitwise_and(&rule_tmp.result_region().edge_zeros_mask());
-
-        // Mask out unneeded 0->1 changes in X->1 bit positions.
-        {
-            // Get mask of unneeded changes in X->1 bit positions.
-            let not_01 = rule_tmp
-                .b01
-                .bitwise_and(&unwanted_changes.b01)
-                .bitwise_and(&x1_msk);
-
-            // Change selected X->1 bit positions to 1->1.
-            if not_01.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_zeros(&not_01);
-            }
-        }
-
-        // Mask out unneeded 1->0 changes in X->0 bit positions.
-        {
-            // Get mask of unneeded changes in X->0 bit positions.
-            let not_10 = rule_tmp
-                .b10
-                .bitwise_and(&unwanted_changes.b10)
-                .bitwise_and(&x0_msk);
-
-            // Change selected X->0 bit positions to 0->0.
-            if not_10.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_ones(&not_10);
-            }
-        }
-
         // Get rule X->x mask.
         let x_not_x = rule_tmp.b01.bitwise_and(&rule_tmp.b10);
 
         // Mask out unneeded 1->0 changes in X->x bit positions.
-        if changes_to_goal.b01.is_not_low() {
-            let not_10 = changes_to_goal.b01.bitwise_and(&x_not_x);
+        {
+            let not_10 = wanted_changes.b01.bitwise_and(&x_not_x);
 
             // Change selected X->x bit positions to 0->1.
             if not_10.is_not_low() {
@@ -541,40 +496,12 @@ impl SomeRule {
         }
 
         // Mask out unneeded 0->1 changes in X->x bit positions.
-        if changes_to_goal.b10.is_not_low() {
-            let not_01 = changes_to_goal.b10.bitwise_and(&x_not_x);
+        {
+            let not_01 = wanted_changes.b10.bitwise_and(&x_not_x);
 
             // Change selected X->x bit positions to 1->0.
             if not_01.is_not_low() {
                 rule_tmp = rule_tmp.mask_out_zeros(&not_01);
-            }
-        }
-
-        // Mask out unneeded 1->1 changes in X->1 bit positions.
-        {
-            // Get mask of needed changes in X->1 bit positions.
-            let need_01 = rule_tmp
-                .b01
-                .bitwise_and(&changes_to_goal.b01)
-                .bitwise_and(&x1_msk);
-
-            // Change selected X->1 bit positions to 0->1.
-            if need_01.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_ones(&need_01);
-            }
-        }
-
-        // Mask out unneeded 0->0 changes in X->0 bit positions.
-        {
-            // Get mask of needed changes in X->0 bit positions.
-            let need_10 = rule_tmp
-                .b10
-                .bitwise_and(&changes_to_goal.b10)
-                .bitwise_and(&x0_msk);
-
-            // Change selected X->0 bit positions to 1->0.
-            if need_10.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_zeros(&need_10);
             }
         }
 
@@ -801,21 +728,15 @@ impl SomeRule {
         ret
     }
 
-    /// Return a mask of "change don't care" bit positions.
-    fn change_dont_care_mask(&self) -> SomeMask {
-        self.initial_region()
-            .edge_mask()
-            .bitwise_and(&self.result_region().x_mask())
-    }
-
     /// Return a mask of "change care" bit positions.
     fn change_care_mask(&self) -> SomeMask {
-        self.change_dont_care_mask().bitwise_not()
+        self.result_region().edge_mask()
     }
 
     /// Return a change containing wanted changes to achieve the rule goal.
     pub fn wanted_changes(&self) -> SomeChange {
-        self.to_change().bitwise_and(&self.change_care_mask())
+        self.to_change()
+            .bitwise_and(&self.change_care_mask())
     }
 
     /// Return a change containing unwanted changes to achieve the rule goal.
@@ -824,9 +745,12 @@ impl SomeRule {
     /// An unwanted change of 0->1 in a bit position becomes
     /// wanted 1->0 change in the next step, canceling the unwanted change.
     pub fn unwanted_changes(&self) -> SomeChange {
-        self.wanted_changes()
-            .invert()
-            .bitwise_and(&self.change_care_mask())
+        let care_mask = self.change_care_mask();
+
+        let b00 = self.b00.bitwise_and(&care_mask);
+        let b11 = self.b11.bitwise_and(&care_mask);
+
+        SomeChange::new(b00, b11)
     }
 } // end impl SomeRule
 
@@ -1095,27 +1019,22 @@ mod tests {
 
     #[test]
     fn restrict_for_changes() -> Result<(), String> {
-        // Bits 9 - 7, leave alone, don't care about change.
-        // Bit 6, no change possible.
-        // Change X->x to 0->1 for bit 5, care bit 1, isolating a wanted change.
-        //        X->x to 1->0 for bit 4, care bit 1, isolating a wanted change.
-        //        X->0 to 1->0 for bit 3, care bit 1, isolating a wanted change.
-        //        X->1 to 0->1 for bit 2, care bit 1, isolating a wanted change.
-        //        X->0 to 0->0 for bit 1, care bit 1, Removing an unwanted change.
-        //        X->1 to 1->1 for bit 0, care bit 1, Removing an unwanted change.
-        // Care mask bit 0 means the corresponding goal bit is X, so a change does not matter.
-        let rul1 = SomeRule::new_from_string("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1")?;
+        let rul1 = SomeRule::new_from_string("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1/X0/X1")?;
 
         let rule_to_goal = SomeRule::new_region_to_region(
-            &SomeRegion::new_from_string("10_0001_1000")?,
-            &SomeRegion::new_from_string("XX_X010_0100")?,
+            &SomeRegion::new_from_string("10_0001_100011")?,
+            &SomeRegion::new_from_string("XX_X010_010011")?,
         );
 
         println!("rule_to_goal {rule_to_goal}");
+        println!("rul1         {rul1}");
+
+        let rul3 = SomeRule::new_from_string("X0/X1/Xx/10_01/10/X0/X1_X0/X1/X0/X1")?;
 
         if let Some(rul2) = rul1.restrict_for_changes(&rule_to_goal) {
-            println!("rul2 {}", rul2);
-            assert!(rul2 == SomeRule::new_from_string("X0/X1_Xx/10/01/10_10/01/00/11")?);
+            println!("rul2         {rul2}");
+            println!("rul3         {rul3}");
+            assert!(rul2 == rul3);
         } else {
             panic!("rul2 restriction should succeed");
         }
@@ -1342,6 +1261,50 @@ mod tests {
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
         println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(rslt);
+
+        Ok(())
+    }
+
+    #[test]
+    fn change_care_mask() -> Result<(), String> {
+        let rul1 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("0010_01XX")?,
+            &SomeRegion::new_from_string("1001_XXXX")?,
+        );
+        let msk = rul1.change_care_mask();
+        println!("care {msk}");
+
+        assert!(msk == SomeMask::new_from_string("1111_0000")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn wanted_changes() -> Result<(), String> {
+        let rul1 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("XX_0101_01XX")?,
+            &SomeRegion::new_from_string("01_0110_XXXX")?,
+        );
+        let cng = rul1.wanted_changes();
+        println!("wanted {cng}");
+
+        assert!(cng.b01 == SomeMask::new_from_string("01_0010_0000")?);
+        assert!(cng.b10 == SomeMask::new_from_string("10_0001_0000")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn unwanted_changes() -> Result<(), String> {
+        let rul1 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("XX_0101_01XX")?,
+            &SomeRegion::new_from_string("01_0110_XXXX")?,
+        );
+        let cng = rul1.unwanted_changes();
+        println!("unwanted {cng}");
+
+        assert!(cng.b01 == SomeMask::new_from_string("10_1000_0000")?);
+        assert!(cng.b10 == SomeMask::new_from_string("01_0100_0000")?);
 
         Ok(())
     }
