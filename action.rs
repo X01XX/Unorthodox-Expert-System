@@ -1715,12 +1715,14 @@ impl SomeAction {
     ///
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
-    pub fn get_steps(&self, achange: &SomeChange, within: &SomeRegion) -> StepStore {
+    pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
         //println!("Action::get_steps: for change {achange} within {within}");
-        debug_assert_eq!(achange.num_bits(), self.num_bits);
+        debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits);
         debug_assert!(within.num_bits() == self.num_bits);
 
-        debug_assert!(achange.b01.bitwise_and(&achange.b10).is_low()); // No X->x change wanted.
+        let change_to_goal = rule_to_goal.wanted_changes();
+
+        debug_assert!(change_to_goal.b01.bitwise_and(&change_to_goal.b10).is_low()); // No X->x change wanted.
 
         let mut stps = StepStore::new(vec![]);
 
@@ -1734,7 +1736,7 @@ impl SomeAction {
                 // Check if group rules cause at least one change that is needed.
                 let mut skip = true;
                 for rulx in rules.iter() {
-                    if achange.intersection(rulx).is_not_low() {
+                    if change_to_goal.intersection(rulx).is_not_low() {
                         skip = false;
                         break;
                     }
@@ -1745,7 +1747,7 @@ impl SomeAction {
                 }
 
                 // Process possible rule(s)
-                let mut stpsx = self.get_steps_from_rulestore(rules, achange, within);
+                let mut stpsx = self.get_steps_from_rulestore(rules, rule_to_goal, within);
 
                 // Set group num for later need priority, lower number is higher priority.
                 for stpx in stpsx.iter_mut() {
@@ -1764,11 +1766,13 @@ impl SomeAction {
     fn get_steps_from_rulestore(
         &self,
         rules: &RuleStore,
-        achange: &SomeChange,
+        rule_to_goal: &SomeRule,
         within: &SomeRegion,
     ) -> StepStore {
         // println!("action::get_steps_from_rulestore: rules {rules} change {achange} within {within}");
         let mut stps = StepStore::new(vec![]);
+
+        let change_to_goal = rule_to_goal.wanted_changes();
 
         // Check that rules apply to within region.
         let initial_region = rules.initial_region();
@@ -1786,15 +1790,15 @@ impl SomeAction {
         if rules2.len() == 1 {
             // Check that rule result is entirely in the within region.
             if within.is_superset_of(&rules2[0].result_region()) {
-                if achange.intersection(&rules2[0]).is_not_low() {
-                    if let Some(rulx) = rules[0].restrict_for_changes(achange) {
+                if change_to_goal.intersection(&rules2[0]).is_not_low() {
+                    if let Some(rulx) = rules[0].restrict_for_changes(rule_to_goal) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
             } else if rules2[0].result_region().intersects(within) {
                 let rulx = rules2[0].restrict_result_region(within);
-                if achange.intersection(&rulx).is_not_low() {
-                    if let Some(rulx) = rulx.restrict_for_changes(achange) {
+                if change_to_goal.intersection(&rulx).is_not_low() {
+                    if let Some(rulx) = rulx.restrict_for_changes(rule_to_goal) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1834,13 +1838,13 @@ impl SomeAction {
             if rul0_result.is_superset_of(last_result) {
                 // Next rule to apply will be group rules2[1].
                 let rul_sqr = rules2[1].restrict_initial_region(&sqrx.state);
-                if achange.intersection(&rul_sqr).is_not_low() {
+                if change_to_goal.intersection(&rul_sqr).is_not_low() {
                     stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
                 }
             } else {
                 // Next rule to apply will be group rules[0].
                 let rul_sqr = rules2[0].restrict_initial_region(&sqrx.state);
-                if achange.intersection(&rul_sqr).is_not_low() {
+                if change_to_goal.intersection(&rul_sqr).is_not_low() {
                     stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
                 }
             }
@@ -1852,24 +1856,24 @@ impl SomeAction {
             let ruls0 = rules2[0].restrict_initial_region(regx);
             let ruls1 = rules2[1].restrict_initial_region(regx);
 
-            if achange.intersection(&ruls0).is_not_low() {
-                let ruls = ruls0.restrict_for_changes(achange);
+            if change_to_goal.intersection(&ruls0).is_not_low() {
+                let ruls = ruls0.restrict_for_changes(rule_to_goal);
                 for rulx in ruls.iter() {
                     stps.append(self.get_steps_from_two_rules(
                         rulx,
                         &ruls1.restrict_initial_region(&rulx.initial_region()),
-                        achange,
+                        rule_to_goal,
                         within,
                     ));
                 }
             }
-            if achange.intersection(&ruls1).is_not_low() {
-                let ruls = ruls1.restrict_for_changes(achange);
+            if change_to_goal.intersection(&ruls1).is_not_low() {
+                let ruls = ruls1.restrict_for_changes(rule_to_goal);
                 for rulx in ruls.iter() {
                     stps.append(self.get_steps_from_two_rules(
                         rulx,
                         &ruls0.restrict_initial_region(&rulx.initial_region()),
-                        achange,
+                        rule_to_goal,
                         within,
                     ));
                 }
@@ -1885,17 +1889,19 @@ impl SomeAction {
         &self,
         rulex: &SomeRule,
         rule_alt: &SomeRule,
-        achange: &SomeChange,
+        rule_to_goal: &SomeRule,
         within: &SomeRegion,
     ) -> StepStore {
         // println!("action::get_steps_from_two_rules: rule {rulex} alt {rule_alt} change {achange} within {within}");
         debug_assert!(rulex.initial_region() == rule_alt.initial_region());
 
+        let change_to_goal = rule_to_goal.wanted_changes();
+
         let mut stps = StepStore::new(vec![]);
 
         if within.is_superset_of(&rulex.result_region()) {
-            if achange.intersection(rulex).is_not_low() {
-                if let Some(rulx) = rulex.restrict_for_changes(achange) {
+            if change_to_goal.intersection(rulex).is_not_low() {
+                if let Some(rulx) = rulex.restrict_for_changes(rule_to_goal) {
                     let rula = rule_alt.restrict_initial_region(&rulx.initial_region());
 
                     if rula.causes_predictable_change() {
@@ -1912,8 +1918,8 @@ impl SomeAction {
         } else if rulex.result_region().intersects(within) {
             let rulx = rulex.restrict_result_region(within);
 
-            if achange.intersection(&rulx).is_not_low() {
-                if let Some(rulx) = rulx.restrict_for_changes(achange) {
+            if change_to_goal.intersection(&rulx).is_not_low() {
+                if let Some(rulx) = rulx.restrict_for_changes(rule_to_goal) {
                     let rula = rule_alt.restrict_initial_region(&rulx.initial_region());
 
                     if rula.causes_predictable_change() {

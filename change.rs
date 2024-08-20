@@ -83,8 +83,6 @@ impl SomeChange {
 
     /// Return the number of changes in a SomeChange instance.
     pub fn number_changes(&self) -> usize {
-        debug_assert!(self.b01.bitwise_and(&self.b10).is_low());
-
         self.b01.num_one_bits() + self.b10.num_one_bits()
     }
 
@@ -153,6 +151,22 @@ impl SomeChange {
         match SomeRule::new_from_string(str) {
             Ok(ruls) => Ok(ruls.to_change()),
             Err(errstr) => Err(errstr),
+        }
+    }
+
+    /// Return a change after doing a bitwise and operation with a given mask.
+    pub fn bitwise_and(&self, amask: &SomeMask) -> Self {
+        SomeChange {
+            b01: self.b01.bitwise_and(amask),
+            b10: self.b10.bitwise_and(amask),
+        }
+    }
+
+    /// Return a change after doing a bitwise not of its elements.
+    pub fn invert(&self) -> Self {
+        SomeChange {
+            b01: self.b01.bitwise_not(),
+            b10: self.b10.bitwise_not(),
         }
     }
 } // end impl SomeChange

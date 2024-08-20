@@ -253,9 +253,10 @@ fn run_number_times(num_runs: usize) -> usize {
     }
     let average_time = duration_total / duration_vec.len() as u32;
     let average_steps = steps_total / steps_vec.len();
+    let duration_minutes = duration_total.as_secs() / 60;
 
-    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
-         num_runs, average_steps, steps_high, steps_low, average_time, duration_high, duration_low, cant_do, num_groups_off);
+    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
+         num_runs, average_steps, steps_high, steps_low, duration_minutes, average_time, duration_high, duration_low, cant_do, num_groups_off);
     cant_do
 }
 

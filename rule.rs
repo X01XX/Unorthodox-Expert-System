@@ -129,16 +129,16 @@ impl SomeRule {
                     b01.push('1');
                     b11.push('1');
                     b10.push('0');
-                } else if token == "1X" || token == "1x" {
-                    b00.push('0');
-                    b01.push('0');
-                    b11.push('1'); // Assume minimum change.
-                    b10.push('0');
-                } else if token == "0X" || token == "0x" {
-                    b00.push('1'); // Assume minimum change.
-                    b01.push('0');
-                    b11.push('0');
-                    b10.push('0');
+                //                } else if token == "1X" || token == "1x" {
+                //                    b00.push('0');
+                //                    b01.push('0');
+                //                    b11.push('1');
+                //                    b10.push('1');
+                //                } else if token == "0X" || token == "0x" {
+                //                    b00.push('1');
+                //                    b01.push('1');
+                //                    b11.push('0');
+                //                    b10.push('0');
                 } else {
                     return Err(format!(
                         "SomeRule::new_from_string: Unrecognized token {}",
@@ -463,14 +463,24 @@ impl SomeRule {
     /// For rule bit positions that are X->x, X->0 or X->1,
     /// the X value can be changed to focus on the desired change,
     /// or to mask out an unwanted change.
-    pub fn restrict_for_changes(&self, change_needed: &SomeChange) -> Option<SomeRule> {
-        debug_assert_eq!(self.num_bits(), change_needed.num_bits());
-        debug_assert!(change_needed.is_not_low()); // Some change is required.
-        debug_assert!(change_needed.b01.bitwise_and(&change_needed.b10).is_low()); // Changes should not cancel.
+    pub fn restrict_for_changes(&self, rule_to_goal: &SomeRule) -> Option<SomeRule> {
+        debug_assert_eq!(self.num_bits(), rule_to_goal.num_bits());
+
+        let changes_to_goal = rule_to_goal.wanted_changes();
+        let unwanted_changes = rule_to_goal.unwanted_changes();
+
+        debug_assert!(changes_to_goal
+            .b01
+            .bitwise_and(&changes_to_goal.b10)
+            .is_low()); // Changes should not cancel.
+        debug_assert!(changes_to_goal
+            .b01
+            .bitwise_or(&changes_to_goal.b10)
+            .is_not_low()); // Some changes are needed.
 
         // Check if any rule changes are needed.
-        if self.b01.bitwise_and(&change_needed.b01).is_low()
-            && self.b10.bitwise_and(&change_needed.b10).is_low()
+        if self.b01.bitwise_and(&changes_to_goal.b01).is_low()
+            && self.b10.bitwise_and(&changes_to_goal.b10).is_low()
         {
             return None;
         }
@@ -494,7 +504,7 @@ impl SomeRule {
             // Get mask of unneeded changes in X->1 bit positions.
             let not_01 = rule_tmp
                 .b01
-                .bitwise_and_not(&change_needed.b01)
+                .bitwise_and(&unwanted_changes.b01)
                 .bitwise_and(&x1_msk);
 
             // Change selected X->1 bit positions to 1->1.
@@ -508,7 +518,7 @@ impl SomeRule {
             // Get mask of unneeded changes in X->0 bit positions.
             let not_10 = rule_tmp
                 .b10
-                .bitwise_and_not(&change_needed.b10)
+                .bitwise_and(&unwanted_changes.b10)
                 .bitwise_and(&x0_msk);
 
             // Change selected X->0 bit positions to 0->0.
@@ -521,8 +531,8 @@ impl SomeRule {
         let x_not_x = rule_tmp.b01.bitwise_and(&rule_tmp.b10);
 
         // Mask out unneeded 1->0 changes in X->x bit positions.
-        if change_needed.b01.is_not_low() {
-            let not_10 = change_needed.b01.bitwise_and(&x_not_x);
+        if changes_to_goal.b01.is_not_low() {
+            let not_10 = changes_to_goal.b01.bitwise_and(&x_not_x);
 
             // Change selected X->x bit positions to 0->1.
             if not_10.is_not_low() {
@@ -531,8 +541,8 @@ impl SomeRule {
         }
 
         // Mask out unneeded 0->1 changes in X->x bit positions.
-        if change_needed.b10.is_not_low() {
-            let not_01 = change_needed.b10.bitwise_and(&x_not_x);
+        if changes_to_goal.b10.is_not_low() {
+            let not_01 = changes_to_goal.b10.bitwise_and(&x_not_x);
 
             // Change selected X->x bit positions to 1->0.
             if not_01.is_not_low() {
@@ -545,7 +555,7 @@ impl SomeRule {
             // Get mask of needed changes in X->1 bit positions.
             let need_01 = rule_tmp
                 .b01
-                .bitwise_and(&change_needed.b01)
+                .bitwise_and(&changes_to_goal.b01)
                 .bitwise_and(&x1_msk);
 
             // Change selected X->1 bit positions to 0->1.
@@ -559,7 +569,7 @@ impl SomeRule {
             // Get mask of needed changes in X->0 bit positions.
             let need_10 = rule_tmp
                 .b10
-                .bitwise_and(&change_needed.b10)
+                .bitwise_and(&changes_to_goal.b10)
                 .bitwise_and(&x0_msk);
 
             // Change selected X->0 bit positions to 1->0.
@@ -628,10 +638,11 @@ impl SomeRule {
     }
 
     /// Return a minimum change rule for translating from a region to an intersection of another region.
-    /// 0->1 and 1->0 changes are required.
-    /// X->0, 0->X, becomes 0->0.
-    /// X->1, 1->X, becomes 1->1.
-    /// X->X becomes (1->1, 0->0).
+    /// The result will never have a X->x bit position.
+    /// The result may have a 0->X, or 1->X, bit position, in which case it will not pass a is-valid-union-test.
+    /// 0->X, 1->X, positions indicate that any change, or no change, will produce the desired result.
+    /// 0->1, 1->0, X->0, and X->1 changes indicate wanted changes.
+    /// Unwanted changes = not(wanted changes).and(not(any changes))
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
@@ -646,6 +657,8 @@ impl SomeRule {
         let x_to_0 = from_x.bitwise_and(&to_0);
         let x_to_1 = from_x.bitwise_and(&to_1);
         let x_to_x = from_x.bitwise_and(&to_x);
+
+        // Incorporate usually dissallowed bit changes, interpreted as "change don't care".
         let zero_to_x = from_0.bitwise_and(&to_x);
         let one_to_x = from_1.bitwise_and(&to_x);
 
@@ -655,13 +668,19 @@ impl SomeRule {
                 .bitwise_or(&x_to_0)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&zero_to_x),
-            b01: from_0.bitwise_and(&to_1),
+            b01: from_0
+                .bitwise_and(&to_1)
+                .bitwise_or(&x_to_1)
+                .bitwise_or(&zero_to_x),
             b11: from_1
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&one_to_x),
-            b10: from_1.bitwise_and(&to_0),
+            b10: from_1
+                .bitwise_and(&to_0)
+                .bitwise_or(&x_to_0)
+                .bitwise_or(&one_to_x),
         }
     }
 
@@ -780,6 +799,34 @@ impl SomeRule {
         };
         assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
         ret
+    }
+
+    /// Return a mask of "change don't care" bit positions.
+    fn change_dont_care_mask(&self) -> SomeMask {
+        self.initial_region()
+            .edge_mask()
+            .bitwise_and(&self.result_region().x_mask())
+    }
+
+    /// Return a mask of "change care" bit positions.
+    fn change_care_mask(&self) -> SomeMask {
+        self.change_dont_care_mask().bitwise_not()
+    }
+
+    /// Return a change containing wanted changes to achieve the rule goal.
+    pub fn wanted_changes(&self) -> SomeChange {
+        self.to_change().bitwise_and(&self.change_care_mask())
+    }
+
+    /// Return a change containing unwanted changes to achieve the rule goal.
+    /// Unwanted changes are not fatal, but lead off the "glide path" straight from the current
+    /// state to the goal (current_state.union(goal)).
+    /// An unwanted change of 0->1 in a bit position becomes
+    /// wanted 1->0 change in the next step, canceling the unwanted change.
+    pub fn unwanted_changes(&self) -> SomeChange {
+        self.wanted_changes()
+            .invert()
+            .bitwise_and(&self.change_care_mask())
     }
 } // end impl SomeRule
 
@@ -1048,22 +1095,27 @@ mod tests {
 
     #[test]
     fn restrict_for_changes() -> Result<(), String> {
-        // Bits 9 - 6, leave alone, no change is possible.
-        // Change X->x to 0->1 for bit 5, isolating a wanted change.
-        //        X->x to 1->0 for bit 4, isolating a wanted change.
-        //        X->0 to 1->0 for bit 3, isolating a wanted change.
-        //        X->1 to 0->1 for bit 2, isolating a wanted change.
-        //        X->0 to 0->0 for bit 1, Removing an unwanted change.
-        //        X->1 to 1->1 for bit 0, Removing an unwanted change.
-        let rul1 = SomeRule::new_from_string("00/01_11/10/Xx/Xx_X0/X1/X0/X1")?;
-        let chg1 = SomeChange::new(
-            SomeMask::new_from_string("0b00_0010_0100")?,
-            SomeMask::new_from_string("0b00_0001_1000")?,
+        // Bits 9 - 7, leave alone, don't care about change.
+        // Bit 6, no change possible.
+        // Change X->x to 0->1 for bit 5, care bit 1, isolating a wanted change.
+        //        X->x to 1->0 for bit 4, care bit 1, isolating a wanted change.
+        //        X->0 to 1->0 for bit 3, care bit 1, isolating a wanted change.
+        //        X->1 to 0->1 for bit 2, care bit 1, isolating a wanted change.
+        //        X->0 to 0->0 for bit 1, care bit 1, Removing an unwanted change.
+        //        X->1 to 1->1 for bit 0, care bit 1, Removing an unwanted change.
+        // Care mask bit 0 means the corresponding goal bit is X, so a change does not matter.
+        let rul1 = SomeRule::new_from_string("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1")?;
+
+        let rule_to_goal = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("10_0001_1000")?,
+            &SomeRegion::new_from_string("XX_X010_0100")?,
         );
 
-        if let Some(rul2) = rul1.restrict_for_changes(&chg1) {
+        println!("rule_to_goal {rule_to_goal}");
+
+        if let Some(rul2) = rul1.restrict_for_changes(&rule_to_goal) {
             println!("rul2 {}", rul2);
-            assert!(rul2 == SomeRule::new_from_string("00/01_11/10/01/10_10/01/00/11")?);
+            assert!(rul2 == SomeRule::new_from_string("X0/X1_Xx/10/01/10_10/01/00/11")?);
         } else {
             panic!("rul2 restriction should succeed");
         }
@@ -1225,47 +1277,52 @@ mod tests {
         let rul4 = SomeRule::new_from_string("01/00/10/11/X0/X1/Xx/XX")?;
         assert!(rul3 == rul4);
 
+        // Test 1->X. This is normally invalid in a rule, it is interpreted as "change don't care"
+        let rul1 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("1111_1111")?,
+            &SomeRegion::new_from_string("XXXX_XXXX")?,
+        );
+
+        let rul2 = SomeRule::new_from_string("11/10/00/01_X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_sequence(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("1111_1111")?,
+            &SomeRegion::new_from_string("1001_01XX")?,
+        );
+
+        assert!(rul3 == rul4);
+
+        // Test 0->X. This is normally invalid in a rule, it is interpreted as "change don't care"
+        let rul1 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("0000_0000")?,
+            &SomeRegion::new_from_string("XXXX_XXXX")?,
+        );
+
+        let rul2 = SomeRule::new_from_string("11/10/00/01_X0/X1/XX/Xx")?;
+        let rul3 = rul1.combine_sequence(&rul2);
+        println!("rul3 {}", rul3.formatted_string());
+
+        let rul4 = SomeRule::new_region_to_region(
+            &SomeRegion::new_from_string("0000_0000")?,
+            &SomeRegion::new_from_string("1001_01XX")?,
+        );
+
+        assert!(rul3 == rul4);
+
         Ok(())
     }
 
     #[test]
     fn new_region_to_region() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("r000")?;
-        let reg2 = SomeRegion::new_from_string("r01X")?;
+        let reg1 = SomeRegion::new_from_string("r000_111_XXX")?;
+        let reg2 = SomeRegion::new_from_string("r01X_01X_01X")?;
         let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        let rul2 = SomeRule::new_from_string("00/01/00")?;
-        assert!(rul1 == rul2);
 
-        let reg1 = SomeRegion::new_from_string("r111")?;
-        let reg2 = SomeRegion::new_from_string("r01X")?;
-        let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        let rul2 = SomeRule::new_from_string("10/11/11")?;
-        assert!(rul1 == rul2);
-
-        let reg1 = SomeRegion::new_from_string("rXXX")?;
-        let reg2 = SomeRegion::new_from_string("r01X")?;
-        let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
-        let rul2 = SomeRule::new_from_string("00/11/XX")?;
-        assert!(rul1 == rul2);
-
-        // Test proper subset region.
-        let reg1 = SomeRegion::new_from_string("r0011")?;
-        let reg2 = SomeRegion::new_from_string("rx01x")?;
-        let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        let rul2 = SomeRule::new_from_string("00/00/11/11")?;
-        assert!(rul1 == rul2);
-
-        // Test intersecting regions.
-        let reg1 = SomeRegion::new_from_string("r010x")?;
-        let reg2 = SomeRegion::new_from_string("rx1x0")?;
-        let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
-        println!("reg1: {reg1} reg2: {reg2} rul1 is {rul1}");
-        let rul2 = SomeRule::new_from_string("00/11/00/00")?;
-        assert!(rul1 == rul2);
+        assert!(rul1.initial_region() == reg1);
+        assert!(rul1.result_region() == reg2);
 
         Ok(())
     }
