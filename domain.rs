@@ -363,17 +363,21 @@ impl SomeDomain {
                         .intersection(&unwanted_changes)
                         .number_changes();
 
-                    let step_num_wanted_changes =
-                        rulx.to_change().intersection(&wanted_changes).number_changes();
+                    let step_num_wanted_changes = rulx
+                        .to_change()
+                        .intersection(&wanted_changes)
+                        .number_changes();
 
                     //println!("rulx {rulx} wanted {step_num_wanted_changes} unwanted {step_num_unwanted_changes}");
                     // Save ratio info.
                     // Ratio is wanted - unwanted.
-                    ratios.push((
-                        inx,
-                        iny,
-                        step_num_wanted_changes as isize - step_num_unwanted_changes as isize,
-                    ));
+                    let mut ratio =
+                        step_num_wanted_changes as isize - step_num_unwanted_changes as isize;
+                    // Treat GE zero ratios as equal.
+                    if ratio > 0 {
+                        ratio = 1;
+                    }
+                    ratios.push((inx, iny, ratio));
                 }
             }
             // Order by descending ratio.
@@ -392,16 +396,16 @@ impl SomeDomain {
             //println!("inx {inx} of 0..{num_same_ratios}");
             let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
             if verbose {
-                println!("\n    use asymmetric step {}", stepx);
+                println!("\n    use asymmetric step {} ", stepx);
 
                 let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
-
                 let rulx = rule_to.combine_sequence(&stepx.rule);
+                println!("    aggregate rule      {} ", rulx);
 
                 println!(
                     "    wanted changes {} unwanted_changes {}",
                     wanted_changes.intersection(&rulx),
-                    rulx.to_change().intersection(&unwanted_changes)
+                    unwanted_changes.intersection(&rulx)
                 );
             }
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose);
@@ -473,10 +477,7 @@ impl SomeDomain {
                 println!(
                     "    wanted changes {} unwanted_changes {}",
                     wanted_changes.intersection(&stepy.rule),
-                    stepy
-                        .rule
-                        .to_change()
-                        .intersection(&unwanted_changes)
+                    stepy.rule.to_change().intersection(&unwanted_changes)
                 );
             }
             let plan_to_goal =
@@ -494,10 +495,7 @@ impl SomeDomain {
                 println!(
                     "    wanted changes {} unwanted_changes {}",
                     wanted_changes.intersection(&stepy.rule),
-                    stepy
-                        .rule
-                        .to_change()
-                        .intersection(&unwanted_changes)
+                    stepy.rule.to_change().intersection(&unwanted_changes)
                 );
             }
             let plan_to_step =
@@ -508,16 +506,16 @@ impl SomeDomain {
 
         // Must be an asymmetric step.
         if verbose {
-            println!("    use asymmetric step {}", stepx);
+            println!("    use asymmetric step {} ", stepx);
 
             let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
-
             let rulx = rule_to.combine_sequence(&stepx.rule);
+            println!("    aggregate rule      {} ", rulx);
 
             println!(
                 "    wanted changes {} unwanted_changes {}",
                 wanted_changes.intersection(&rulx),
-                rulx.to_change().intersection(&unwanted_changes)
+                unwanted_changes.intersection(&rulx)
             );
         }
         self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose)
@@ -550,7 +548,7 @@ impl SomeDomain {
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
         let wanted_changes = rule_to_goal.wanted_changes();
 
-        let steps_str = self.get_steps(&rule_to_goal, None);
+        let steps_str = self.get_steps(&rule_to_goal, None, verbose);
         if steps_str.is_empty() {
             if verbose {
                 println!("\n    rules covering all needed bit changes {wanted_changes} not found");
@@ -732,7 +730,7 @@ impl SomeDomain {
         let num_depth = 4 * change_to_goal.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let steps_str = self.get_steps(&rule_to_goal, within);
+        let steps_str = self.get_steps(&rule_to_goal, within, false);
         if steps_str.is_empty() {
             return None;
         }
@@ -810,7 +808,7 @@ impl SomeDomain {
         let num_depth = 4 * wanted_changes.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let steps_str = self.get_steps(&rule_to_goal, within);
+        let steps_str = self.get_steps(&rule_to_goal, within, true);
         if steps_str.is_empty() {
             println!("\nRules covering all needed bit changes {wanted_changes} not found");
             return None;
@@ -840,7 +838,12 @@ impl SomeDomain {
     ///
     /// If all steps found, in aggregate, cannot change all bits needed, return None.
     ///
-    pub fn get_steps(&self, rule_to_goal: &SomeRule, within: Option<&SomeRegion>) -> StepStore {
+    pub fn get_steps(
+        &self,
+        rule_to_goal: &SomeRule,
+        within: Option<&SomeRegion>,
+        verbose: bool,
+    ) -> StepStore {
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
         debug_assert!(if let Some(reg) = within {
             reg.num_bits() == self.num_bits()
@@ -864,7 +867,16 @@ impl SomeDomain {
         };
 
         if wanted_changes.is_subset_of(&can_change) {
+            if verbose {
+                println!("Rules for each needed change have been found");
+            }
         } else {
+            if verbose {
+                println!(
+                    "Needed changes not found {}",
+                    can_change.invert().intersection(&wanted_changes)
+                );
+            }
             //println!("get_steps: step_vec wanted changes {} are not a subset of step_vec changes {}, returning None", required_change, can_change);
             return StepStore::new(vec![]);
         }

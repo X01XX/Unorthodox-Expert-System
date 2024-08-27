@@ -463,6 +463,33 @@ impl RuleStore {
         }
         true
     }
+
+    /// Return rules massaged to be within a given region.
+    /// The order of rules is preserved.
+    pub fn within(&self, within: &SomeRegion) -> Vec<Option<SomeRule>> {
+        let mut ret = Vec::<Option<SomeRule>>::new();
+
+        for rulx in self.iter() {
+            let mut ruly = rulx.clone();
+            if within.is_superset_of(&ruly.initial_region()) {
+            } else if within.intersects(&ruly.initial_region()) {
+                ruly = ruly.restrict_initial_region(within);
+            } else {
+                ret.push(None);
+                continue;
+            }
+
+            if within.is_superset_of(&ruly.result_region()) {
+                ret.push(Some(ruly));
+            } else if within.intersects(&ruly.result_region()) {
+                ruly = ruly.restrict_result_region(within);
+                ret.push(Some(ruly));
+            } else {
+                ret.push(None);
+            }
+        }
+        ret
+    }
 } // end impl RuleStore
 
 impl Index<usize> for RuleStore {

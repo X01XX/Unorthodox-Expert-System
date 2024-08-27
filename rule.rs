@@ -486,23 +486,19 @@ impl SomeRule {
         let x_not_x = rule_tmp.b01.bitwise_and(&rule_tmp.b10);
 
         // Mask out unneeded 1->0 changes in X->x bit positions.
-        {
-            let not_10 = wanted_changes.b01.bitwise_and(&x_not_x);
+        let not_10 = wanted_changes.b01.bitwise_and(&x_not_x);
 
-            // Change selected X->x bit positions to 0->1.
-            if not_10.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_ones(&not_10);
-            }
+        // Change selected X->x bit positions to 0->1.
+        if not_10.is_not_low() {
+            rule_tmp = rule_tmp.mask_out_ones(&not_10);
         }
 
         // Mask out unneeded 0->1 changes in X->x bit positions.
-        {
-            let not_01 = wanted_changes.b10.bitwise_and(&x_not_x);
+        let not_01 = wanted_changes.b10.bitwise_and(&x_not_x);
 
-            // Change selected X->x bit positions to 1->0.
-            if not_01.is_not_low() {
-                rule_tmp = rule_tmp.mask_out_zeros(&not_01);
-            }
+        // Change selected X->x bit positions to 1->0.
+        if not_01.is_not_low() {
+            rule_tmp = rule_tmp.mask_out_zeros(&not_01);
         }
 
         Some(rule_tmp)
@@ -527,10 +523,10 @@ impl SomeRule {
     /// The result region of the first rule may not intersect the initial region of the second rule.
     ///
     /// For a change to pass from one rule through a second rule:
-    ///    A wanted 0->1 change in first rule should correspond to a 1->1 in the second rule.
-    ///    A wanted 1->0 change in first rule should correspond to a 0->0 in the second rule.
+    ///    A wanted 0->1 change in first rule should correspond to a 1 result in the second rule.
+    ///    A wanted 1->0 change in first rule should correspond to a 0 result in the second rule.
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
-        // println!("sequence_reverses_change: {} to {} change wanted {}", self.formatted_string(), other.formatted_string(), wanted.formatted_string());
+        //println!("sequence_blocks_change: {} to {} change wanted {}", self, other, wanted);
         debug_assert!(self.num_bits() == other.num_bits());
         debug_assert!(self.num_bits() == wanted.num_bits());
         debug_assert!(wanted.is_not_low());
@@ -547,6 +543,12 @@ impl SomeRule {
         // in moving from the result region of the target rule to the initial region of the second rule.
         let rule2 = self.combine_sequence(other);
         //format!("rule2 {rule2}");
+
+        // Get a mask of wanted 0->1 changes in combined rule.
+        let msk01 = rule2.b01.bitwise_and(&wanted.b01);
+
+        // Get a mask of wanted 1->0 changes in combined rule.
+        let msk10 = rule2.b10.bitwise_and(&wanted.b10);
 
         // Check if any 0->1 changes passed through.
         if rule2.b01.bitwise_and(&msk01).is_not_low() {
@@ -735,8 +737,7 @@ impl SomeRule {
 
     /// Return a change containing wanted changes to achieve the rule goal.
     pub fn wanted_changes(&self) -> SomeChange {
-        self.to_change()
-            .bitwise_and(&self.change_care_mask())
+        self.to_change().bitwise_and(&self.change_care_mask())
     }
 
     /// Return a change containing unwanted changes to achieve the rule goal.
@@ -980,6 +981,7 @@ mod tests {
         let rul1 = SomeRule::new_from_string("01/01/01/10/10/10")?;
         let rul2 = SomeRule::new_from_string("11/X1/XX/00/X0/XX")?;
         let chg1 = SomeChange::new_from_string("01/01/01/10/10/10")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Change non pass-through conditions must be tested one-by-one.
@@ -988,30 +990,38 @@ mod tests {
         let rul1 = SomeRule::new_from_string("01")?;
         let rul2 = SomeRule::new_from_string("10")?;
         let chg1 = SomeChange::new_from_string("01")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("01")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X0")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("Xx")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Test 1->0 non pass-through conditions.
         let rul1 = SomeRule::new_from_string("10")?;
         let rul2 = SomeRule::new_from_string("01")?;
         let chg1 = SomeChange::new_from_string("10")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("10")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("X1")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::new_from_string("Xx")?;
+        println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         Ok(())

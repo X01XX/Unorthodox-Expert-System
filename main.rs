@@ -835,9 +835,9 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(
-        "\nChange Current_state {cur_state} to region {goal_region} num bit changes needed {} {}",
+        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                 b01 {}\n                 b10 {}",
         needed_change.number_changes(),
-        needed_change
+        needed_change.b01, needed_change.b10
     );
 
     if goal_region.is_superset_of(cur_state) {
@@ -850,13 +850,23 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     let cur_region = SomeRegion::new(vec![cur_state.clone()]);
 
-    if let Some(planx) = dmxs[dom_id].make_one_plan(&cur_region, &goal_region) {
-        let plnstr = PlanStore::new(vec![planx]);
-        dmxs.print_plan_detail(&plnstr);
-        println!("\nrunning plan:");
-        dmxs.run_plan_store(&plnstr);
-    } else {
+    for _ in 0..6 {
+        println!("\nCalculating plan.");
+        if let Some(planx) = dmxs[dom_id].make_one_plan(&cur_region, &goal_region) {
+            let plnstr = PlanStore::new(vec![planx]);
+            dmxs.print_plan_detail(&plnstr);
+            println!("\nrunning plan:");
+            dmxs.run_plan_store(&plnstr);
+            break;
+        }
+    }
+    if cur_region.is_superset_of(&dmxs[dom_id].cur_state) {
         println!("\nNo plan to get from {cur_region} to {goal_region}");
+    }
+    if goal_region.is_superset_of(&dmxs[dom_id].cur_state) {
+        println!("\nPlan succeeded");
+    } else {
+        println!("\nPlan failed");
     }
 
     pause_for_input("\nPress Enter to continue: ");
