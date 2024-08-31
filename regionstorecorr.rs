@@ -220,30 +220,14 @@ impl RegionStoreCorr {
         }
 
         for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
-            let xb_msk = regx.x_mask().bitwise_and(&regy.edge_mask());
-            if xb_msk.is_low() {
-                continue;
-            }
-            // At least one X over non-X bit found.
+            let remainders = regx.subtract(regy);
 
-            // Isolate each X over non-X bit.
-            let single_bits = xb_msk.split();
-
-            // Generate a new RegionStore for each isolated bit.
-            for sbitx in single_bits.iter() {
-                // Alter one X bit in self/regx to the opposite of the corresponding non-X bit in subtrahend/regy.
-                let regz = if sbitx.bitwise_and(regy.first_state()).is_low() {
-                    // Other/regy bit is zero, in regy.first_state (and regy.state2, since its non-X).
-                    regx.set_to_ones(sbitx)
-                } else {
-                    regx.set_to_zeros(sbitx)
-                };
-
+            for reg_rem in &remainders {
                 // Copy self, except for one region with one bit changed.
                 let mut one_result = Self::with_capacity(self.len());
                 for (iny, regm) in self.iter().enumerate() {
                     if iny == inx {
-                        one_result.push(regz.clone());
+                        one_result.push(reg_rem.clone());
                     } else {
                         one_result.push(regm.clone());
                     }
