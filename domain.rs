@@ -676,11 +676,11 @@ impl SomeDomain {
         //}
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within {
-            reg.num_bits() == self.num_bits()
-        } else {
-            true
-        });
+        if let Some(reg) = within {
+            debug_assert!(reg.num_bits() == self.num_bits());
+            debug_assert!(reg.is_superset_of(from_reg));
+            debug_assert!(reg.is_superset_of(goal_reg));
+        }
 
         if let Some(mut plans) = self.make_plans2(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {}", plans.len());
@@ -713,11 +713,12 @@ impl SomeDomain {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within {
-            reg.num_bits() == self.num_bits()
-        } else {
-            true
-        });
+        if let Some(reg) = within {
+            debug_assert!(reg.num_bits() == self.num_bits());
+            if !reg.is_superset_of(from_reg) || !reg.is_superset_of(goal_reg) {
+                return None;
+            }
+        }
 
         if goal_reg.is_superset_of(from_reg) {
             return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
@@ -790,11 +791,11 @@ impl SomeDomain {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within {
-            reg.num_bits() == self.num_bits()
-        } else {
-            true
-        });
+        if let Some(reg) = within {
+            debug_assert!(reg.num_bits() == self.num_bits());
+            debug_assert!(reg.is_superset_of(from_reg));
+            debug_assert!(reg.is_superset_of(goal_reg));
+        }
 
         if goal_reg.is_superset_of(from_reg) {
             return Some(SomePlan::new(self.id, vec![]));
@@ -845,11 +846,11 @@ impl SomeDomain {
         verbose: bool,
     ) -> StepStore {
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
-        debug_assert!(if let Some(reg) = within {
-            reg.num_bits() == self.num_bits()
-        } else {
-            true
-        });
+        if let Some(reg) = within {
+            debug_assert!(reg.num_bits() == self.num_bits());
+            debug_assert!(reg.is_superset_of(&rule_to_goal.initial_region()));
+            debug_assert!(reg.is_superset_of(&rule_to_goal.result_region()));
+        }
 
         // Check if changes are possible.
         let wanted_changes = rule_to_goal.wanted_changes();

@@ -5,7 +5,7 @@
 use crate::bits::NumBits;
 use crate::region::SomeRegion;
 use crate::statestorecorr::StateStoreCorr;
-use crate::tools::{self, corresponding_num_bits, AvecRef, StrLen};
+use crate::tools::{self, AvecRef, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -79,7 +79,7 @@ impl RegionStoreCorr {
     /// Return True if a RegionStoreCorr is a superset of all corresponding states in.
     pub fn is_superset_states(&self, stas: &StateStoreCorr) -> bool {
         debug_assert!(self.len() == stas.len());
-        debug_assert!(corresponding_num_bits(self, stas));
+        debug_assert!(self.corresponding_num_bits(stas));
 
         for (x, y) in self.iter().zip(stas.iter()) {
             if x.is_superset_of(y) {
@@ -94,7 +94,7 @@ impl RegionStoreCorr {
     /// Return true if RegionStoreCorr is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.is_subset_of(y) {
@@ -108,7 +108,7 @@ impl RegionStoreCorr {
     /// Return true if RegionStoreCorr is adjacent to another.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         self.distance(other) == 1
     }
@@ -116,7 +116,7 @@ impl RegionStoreCorr {
     /// Return true if RegionStoreCorr is adjacent to another.
     pub fn bridge(&self, other: &Self) -> Self {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
         debug_assert!(self.distance(other) == 1);
 
         let mut ret_regs = Self::new(vec![]);
@@ -140,7 +140,7 @@ impl RegionStoreCorr {
     /// Return True if a RegionStoreCorr is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.is_superset_of(y) {
@@ -155,7 +155,7 @@ impl RegionStoreCorr {
     /// Return the intersection, if any, of two RegionStoresCorrs.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         let mut ret = Self::with_capacity(self.len());
 
@@ -173,7 +173,7 @@ impl RegionStoreCorr {
     /// Calculate the distance between a RegionStoreCorr and States in a StateStoreCorr.
     pub fn distance_states(&self, stas: &StateStoreCorr) -> usize {
         debug_assert!(self.len() == stas.len());
-        debug_assert!(corresponding_num_bits(self, stas));
+        debug_assert!(self.corresponding_num_bits(stas));
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(stas.iter()) {
@@ -189,7 +189,7 @@ impl RegionStoreCorr {
     /// Calculate the distance between two RegionStoreCorrs.
     pub fn distance(&self, other: &Self) -> usize {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(other.iter()) {
@@ -205,7 +205,7 @@ impl RegionStoreCorr {
     /// Return RegionStoreCorr minus another.
     pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
         debug_assert!(self.len() == subtrahend.len());
-        debug_assert!(corresponding_num_bits(self, subtrahend));
+        debug_assert!(self.corresponding_num_bits(subtrahend));
 
         let mut ret = Vec::<Self>::new();
 
@@ -242,7 +242,7 @@ impl RegionStoreCorr {
     /// Return true if there is an intersection of two RegionStorCorrs.
     pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if !x.intersects(y) {
@@ -255,7 +255,7 @@ impl RegionStoreCorr {
     /// Make minimum changes to a RegionStoreCorr so that it will be a subset of another.
     pub fn translate_to(&self, other: &Self) -> Self {
         debug_assert!(self.len() == other.len());
-        debug_assert!(corresponding_num_bits(self, other));
+        debug_assert!(self.corresponding_num_bits(other));
 
         let mut ret_regs = Self::new(vec![]);
 
@@ -263,6 +263,16 @@ impl RegionStoreCorr {
             ret_regs.push(regx.translate_to(regy));
         }
         ret_regs
+    }
+
+    /// Return true if corresponding items in two vectors have the same number of bits.
+    pub fn corresponding_num_bits(&self, other: &impl AvecRef) -> bool {
+        for (item1, item2) in self.avec_ref().iter().zip(other.avec_ref().iter()) {
+            if item1.num_bits() != item2.num_bits() {
+                return false;
+            }
+        }
+        true
     }
 } // End impl RegionStoreCorr.
 

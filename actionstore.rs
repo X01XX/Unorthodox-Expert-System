@@ -102,6 +102,10 @@ impl ActionStore {
     /// Return steps that make at least one needed bit change.
     /// Optional region reference indicating the steps must remain within the given region.
     pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
+        debug_assert!(rule_to_goal.num_bits() == within.num_bits());
+        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
+        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
+
         // Run a thread for each action
         let stps: Vec<StepStore> = self
             .items

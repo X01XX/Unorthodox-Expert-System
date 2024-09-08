@@ -135,16 +135,6 @@ pub trait StrLen {
     fn strlen(&self) -> usize;
 }
 
-/// Return true if corresponding items in two vectors have the same number of bits.
-pub fn corresponding_num_bits(one: &impl AvecRef, other: &impl AvecRef) -> bool {
-    for (item1, item2) in one.avec_ref().iter().zip(other.avec_ref().iter()) {
-        if item1.num_bits() != item2.num_bits() {
-            return false;
-        }
-    }
-    true
-}
-
 pub trait AvecRef {
     fn avec_ref(&self) -> &Vec<impl NumBits>;
 }

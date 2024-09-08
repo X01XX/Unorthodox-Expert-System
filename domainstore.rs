@@ -15,7 +15,7 @@ use crate::state::SomeState;
 use crate::statestorecorr::StateStoreCorr;
 use crate::step::AltRuleHint::AltRule;
 use crate::target::ATarget;
-use crate::tools::{self, corresponding_num_bits};
+use crate::tools;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -206,6 +206,14 @@ impl DomainStore {
             }
             println!("  Seek when exiting a negative SR the current state is in.");
             println!("  Used to find a rule-path that crosses fewer negative SRs.");
+            // Double check.
+            for selx in self.select_non_negative.iter() {
+                for selz in self.select.iter() {
+                    if selz.neg_value < 0 {
+                        assert!(!selz.intersects(selx));
+                    }
+                }
+            }
         }
 
         // Calc negative fragments.
@@ -535,6 +543,13 @@ impl DomainStore {
         goal: &RegionStoreCorr,
         within: Option<&RegionStoreCorr>,
     ) -> Option<PlanStore> {
+        debug_assert!(from.len() == goal.len());
+        debug_assert!(from.corresponding_num_bits(goal));
+        if let Some(regs) = within {
+            debug_assert!(regs.len() == from.len() && from.corresponding_num_bits(regs));
+            debug_assert!(regs.is_superset_of(from));
+            debug_assert!(regs.is_superset_of(goal));
+        }
         //if let Some(path) = within {
         //    println!("make_plans2: from {from} to {goal} within {path}");
         //} else {
@@ -553,6 +568,11 @@ impl DomainStore {
             return None;
         }
 
+        // Check plans? TODO.
+        // Linking of planstores may cause a violation of the within regions.
+        //if let Some(regs) = within {
+        //}
+
         Some(plans.swap_remove(self.choose_a_plan(&plans, from)))
     }
 
@@ -566,12 +586,12 @@ impl DomainStore {
     ) -> Option<PlanStore> {
         //println!("domainstore: make_plans3: from {from} goal {goal}");
         debug_assert!(from.len() == goal.len());
-        debug_assert!(corresponding_num_bits(from, goal));
-        debug_assert!(if let Some(regs) = within {
-            regs.len() == from.len() && corresponding_num_bits(from, regs)
-        } else {
-            true
-        });
+        debug_assert!(from.corresponding_num_bits(goal));
+        if let Some(regs) = within {
+            debug_assert!(regs.len() == from.len() && from.corresponding_num_bits(regs));
+            debug_assert!(regs.is_superset_of(from));
+            debug_assert!(regs.is_superset_of(goal));
+        }
 
         let mut plans_per_target = PlanStore::new(Vec::<SomePlan>::with_capacity(from.len()));
 
@@ -663,6 +683,12 @@ impl DomainStore {
         goal_region: &SomeRegion,
         within: Option<&SomeRegion>,
     ) -> Option<PlanStore> {
+        debug_assert!(from_region.num_bits() == goal_region.num_bits());
+        if let Some(reg) = within {
+            debug_assert!(reg.num_bits() == from_region.num_bits());
+            debug_assert!(reg.is_superset_of(from_region));
+            debug_assert!(reg.is_superset_of(goal_region));
+        }
         //println!("domainstore: get_plans2: dom {dom_id} from {from_region} goal {goal_region}");
 
         self.items[dom_id].make_plans(from_region, goal_region, within)
@@ -1242,6 +1268,8 @@ impl DomainStore {
         goal_regs: &RegionStoreCorr,
         select_regions: &[&RegionStoreCorr],
     ) -> Option<PlanStore> {
+        debug_assert!(start_regs.len() == goal_regs.len());
+        debug_assert!(start_regs.corresponding_num_bits(goal_regs));
         //println!(
         //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
         //);
@@ -1332,7 +1360,7 @@ impl DomainStore {
         if cur_start.is_subset_of(&cur_goal) {
             if last_plan_store.is_not_empty() {
                 if let Some(ret_plan_store2) =
-                    self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+                    self.link_two_planstores(&ret_plan_store, &last_plan_store)
                 {
                     assert!(ret_plan_store2.validate(start_regs, goal_regs));
                     //println!("plan_using_least_negative_select_regions2: returning (4) {ret_plan_store2}");
@@ -1368,7 +1396,7 @@ impl DomainStore {
                 }
 
                 if let Some(ret_plan_store2) =
-                    self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+                    self.link_two_planstores(&ret_plan_store, &last_plan_store)
                 {
                     assert!(ret_plan_store2.validate(start_regs, goal_regs));
                     //println!("plan_using_least_negative_select_regions2: returning (7) {ret_plan_store2}");
@@ -1430,7 +1458,7 @@ impl DomainStore {
         // Last_plan_store plans may begin with a region containing 0, 1, or more, X bit positions.
         if last_plan_store.is_not_empty() {
             if let Some(ret_plan_store2) =
-                self.link_two_planstores(&ret_plan_store, &last_plan_store, start_regs)
+                self.link_two_planstores(&ret_plan_store, &last_plan_store)
             {
                 assert!(ret_plan_store2.validate(start_regs, goal_regs));
                 //println!("plan_using_least_negative_select_regions2: returning (8) {ret_plan_store2}");
@@ -1448,15 +1476,12 @@ impl DomainStore {
     /// Link two PlanStores together.
     /// It may be necessary to generate plans between corresponding
     /// domains.
-    fn link_two_planstores(
-        &self,
-        first: &PlanStore,
-        second: &PlanStore,
-        default: &RegionStoreCorr,
-    ) -> Option<PlanStore> {
-        let first_result_regions = first.result_regions(default);
+    fn link_two_planstores(&self, first: &PlanStore, second: &PlanStore) -> Option<PlanStore> {
+        let max_regs = self.maximum_regions();
 
-        let second_initial_regions = second.initial_regions(default);
+        let first_result_regions = first.result_regions(&max_regs);
+
+        let second_initial_regions = second.initial_regions(&max_regs);
 
         if first_result_regions.intersects(&second_initial_regions) {
             if let Some(ret_store) = first.link(second) {
@@ -1468,11 +1493,8 @@ impl DomainStore {
             }
         }
 
-        if let Some(plans) = self.make_plans2(
-            &first_result_regions,
-            &second_initial_regions,
-            Some(default),
-        ) {
+        if let Some(plans) = self.make_plans2(&first_result_regions, &second_initial_regions, None)
+        {
             //println!("linking 3 plans: {},  {},  {}", first, plans, second);
 
             if let Some(ret_store1) = first.link(&plans) {

@@ -1719,6 +1719,8 @@ impl SomeAction {
         //println!("Action::get_steps: for change {achange} within {within}");
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits);
         debug_assert!(within.num_bits() == self.num_bits);
+        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
+        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
 
         let change_to_goal = rule_to_goal.wanted_changes();
 

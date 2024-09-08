@@ -58,7 +58,7 @@ pub struct SelectRegions {
     pub regions: RegionStoreCorr,
     /// A positive value for being in the select state.
     pub pos_value: isize,
-    /// A negitive value for being in the select state.
+    /// A negative value for being in the select state.
     pub neg_value: isize,
     /// A net value for being in the select state.
     pub net_value: isize,
