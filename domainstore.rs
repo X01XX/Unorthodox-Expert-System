@@ -568,11 +568,6 @@ impl DomainStore {
             return None;
         }
 
-        // Check plans? TODO.
-        // Linking of planstores may cause a violation of the within regions.
-        //if let Some(regs) = within {
-        //}
-
         Some(plans.swap_remove(self.choose_a_plan(&plans, from)))
     }
 
@@ -615,7 +610,11 @@ impl DomainStore {
                         return None;
                     }
                 }
-            } // next optx
+                //                if !plans_per_target.remains_within(&within_regs) {
+                //                    println!("plans_per-target {plans_per_target} is not within {within_regs}");
+                //                    panic!("Done");
+                //                }
+            } // next dom_id
         } else {
             for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
                 if regy.is_superset_of(regx) {

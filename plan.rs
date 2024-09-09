@@ -319,6 +319,20 @@ impl SomePlan {
         }
         Some(self[0].num_bits())
     }
+
+    /// Return true if a Plan remains within a given Region.
+    pub fn remains_within(&self, within: &SomeRegion) -> bool {
+        if !within.is_superset_of(self.initial_region()) {
+            return false;
+        }
+
+        for stepx in self.iter() {
+            if !within.is_superset_of(&stepx.result) {
+                return false;
+            }
+        }
+        true
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {

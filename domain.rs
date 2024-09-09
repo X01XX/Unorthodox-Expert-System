@@ -277,6 +277,7 @@ impl SomeDomain {
         steps_by_change_vov: &[Vec<&SomeStep>],
         depth: usize,
         verbose: bool,
+        within: Option<&SomeRegion>,
     ) -> Option<SomePlan> {
         if verbose {
             println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
@@ -408,7 +409,7 @@ impl SomeDomain {
                     unwanted_changes.intersection(&rulx)
                 );
             }
-            return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose);
+            return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose, within);
         }
 
         // Asymmetric chaining is not required.
@@ -481,7 +482,7 @@ impl SomeDomain {
                 );
             }
             let plan_to_goal =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, verbose)?;
+                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, verbose, within)?;
 
             return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
         }
@@ -499,7 +500,7 @@ impl SomeDomain {
                 );
             }
             let plan_to_step =
-                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, verbose)?;
+                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, verbose, within)?;
 
             return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
         }
@@ -518,8 +519,8 @@ impl SomeDomain {
                 unwanted_changes.intersection(&rulx)
             );
         }
-        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose)
-    } // end depth_first_search2
+        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, verbose, within)
+    } // end depth_first_search
 
     /// Return possible plan to change state between two regions.
     fn plan_steps_between(
@@ -528,6 +529,7 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         depth: usize,
         verbose: bool,
+        within: Option<&SomeRegion>,
     ) -> Option<SomePlan> {
         if verbose {
             println!(
@@ -548,7 +550,7 @@ impl SomeDomain {
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
         let wanted_changes = rule_to_goal.wanted_changes();
 
-        let steps_str = self.get_steps(&rule_to_goal, None, verbose);
+        let steps_str = self.get_steps(&rule_to_goal, within, verbose);
         if steps_str.is_empty() {
             if verbose {
                 println!("\n    rules covering all needed bit changes {wanted_changes} not found");
@@ -565,6 +567,7 @@ impl SomeDomain {
             &steps_by_change_vov,
             depth - 1,
             verbose,
+            within,
         )
     }
 
@@ -587,6 +590,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
         verbose: bool,
+        within: Option<&SomeRegion>,
     ) -> Option<SomePlan> {
         if verbose {
             println!(
@@ -610,26 +614,26 @@ impl SomeDomain {
 
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
             let to_step_plan =
-                self.plan_steps_between(from_reg, &stepx.initial, depth - 1, verbose)?;
+                self.plan_steps_between(from_reg, &stepx.initial, depth - 1, verbose, within)?;
 
             // Restrict the step initial region, in case it is different from the to_step_plan result region,
             // possibly changing the step result region.
             let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
             let from_step_plan =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, verbose)?;
+                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, verbose, within)?;
 
             (to_step_plan, stepy, from_step_plan)
         } else {
             let from_step_plan =
-                self.plan_steps_between(&stepx.result, goal_reg, depth - 1, verbose)?;
+                self.plan_steps_between(&stepx.result, goal_reg, depth - 1, verbose, within)?;
 
             // Restrict the step result region, in case it is different from the from_step_plan initial region,
             // possibly changing the step initial region.
             let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
             let to_step_plan =
-                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, verbose)?;
+                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, verbose, within)?;
 
             (to_step_plan, stepy, from_step_plan)
         };
@@ -687,7 +691,21 @@ impl SomeDomain {
 
             let mut addplans = PlanStore::new(vec![]);
             for planx in plans.iter() {
+                //                if let Some(regs) = within {
+                //                    if !planx.remains_within(regs) {
+                //                        println!("(3) {planx} not within {regs}");
+                //                        panic!("Done");
+                //                    }
+                //                }
                 if let Some(shortcuts) = self.shortcuts(planx, within) {
+                    //                    for planx in shortcuts.iter() {
+                    //                        if let Some(regs) = within {
+                    //                            if !planx.remains_within(regs) {
+                    //                                println!("(4) {planx} not within {regs}");
+                    //                                panic!("Done");
+                    //                            }
+                    //                        }
+                    //                  }
                     // Check shortcuts.
                     //println!("Shortcuts for {planx} are {shortcuts}");
                     addplans.append(shortcuts);
@@ -751,6 +769,7 @@ impl SomeDomain {
                     &steps_by_change_vov,
                     num_depth,
                     false,
+                    within,
                 )
             })
             .collect::<Vec<SomePlan>>();
@@ -758,6 +777,12 @@ impl SomeDomain {
         // Check for failure.
         if plans.is_empty() {
             return None;
+        }
+        // Check plans.
+        if let Some(regs) = within {
+            for planx in &plans {
+                debug_assert!(planx.remains_within(regs));
+            }
         }
         //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
         Some(PlanStore::new(plans).delete_duplicates())
@@ -827,6 +852,7 @@ impl SomeDomain {
             &steps_by_change_vov,
             num_depth,
             true,
+            within,
         )
     } // end make_one_plan2
 

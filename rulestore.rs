@@ -482,8 +482,7 @@ impl RuleStore {
             if within.is_superset_of(&ruly.result_region()) {
                 ret.push(Some(ruly));
             } else if within.intersects(&ruly.result_region()) {
-                ruly = ruly.restrict_result_region(within);
-                ret.push(Some(ruly));
+                ret.push(Some(ruly.restrict_result_region(within)));
             } else {
                 ret.push(None);
             }

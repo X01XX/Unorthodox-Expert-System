@@ -231,6 +231,25 @@ impl PlanStore {
         ret_regs
     }
 
+    /// Return true if a PlanStore remains within a given RegionStoreCorr.
+    pub fn remains_within(&self, within: &RegionStoreCorr) -> bool {
+        let mut cur_regs = self.initial_regions(within);
+
+        if !within.is_superset_of(&cur_regs) {
+            return false;
+        }
+
+        for planx in self.items.iter() {
+            for stepx in planx.iter() {
+                cur_regs[planx.dom_id] = stepx.result.clone();
+                if !within.is_superset_of(&cur_regs) {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
     /// Return the initial_regions of a Planstore.
     /// The current regions should intersect the plan initial regions,
     /// and will be a default region in case a PlanStore does not have a plan for

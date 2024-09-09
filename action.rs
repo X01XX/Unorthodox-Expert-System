@@ -1761,6 +1761,10 @@ impl SomeAction {
         //if stps.is_not_empty() {
         //    println!("Action::get_steps: for change {achange} within {within} returning {stps}");
         //}
+        //for stepx in stps.iter() {
+        //    assert!(within.is_superset_of(&stepx.initial) && within.is_superset_of(&stepx.result));
+        //}
+        //println!("action: steps within");
         stps
     } // end get_steps
 
@@ -1788,17 +1792,12 @@ impl SomeAction {
         // Rule order is preserved.
         let rules2: Vec<Option<SomeRule>> = rules.within(within);
 
-        // Return if no rules survived.
-        if rules2.len() == 1 {
-            if rules2[0].is_none() {
-                return stps;
-            }
-        } else if rules2[0].is_none() && rules2[1].is_none() {
-            return stps;
-        }
-
         // Process one-rule RuleStore.
         if rules2.len() == 1 {
+            // Return if no rule within.
+            if rules2.len() == 1 && rules2[0].is_none() {
+                return stps;
+            }
             if let Some(rulx) = &rules2[0] {
                 if change_to_goal.intersection(rulx).is_not_low() {
                     if let Some(rulx) = rulx.restrict_for_changes(rule_to_goal) {
@@ -1811,6 +1810,11 @@ impl SomeAction {
         }
 
         // Must be a two-rule store, unfortunately.
+
+        // Return if no rule within.
+        if rules2[0].is_none() && rules2[1].is_none() {
+            return stps;
+        }
 
         // Split up group region between predictable result, that is, existing squares, and
         // unpredictable regions.
