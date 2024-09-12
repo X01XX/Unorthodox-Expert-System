@@ -753,6 +753,11 @@ impl SomeRule {
 
         SomeChange::new(b00, b11)
     }
+
+    /// Return a mask of any bit positions that change.
+    pub fn any_change_mask(&self) -> SomeMask {
+        self.b01.bitwise_or(&self.b10)
+    }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.

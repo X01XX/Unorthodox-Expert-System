@@ -83,11 +83,7 @@ impl RuleStore {
     /// If there are two rules, they will have at least one incompatibility,
     /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
     pub fn push(&mut self, val: SomeRule) {
-        debug_assert!(if let Some(num_bits) = self.num_bits() {
-            num_bits == val.num_bits()
-        } else {
-            true
-        });
+        debug_assert_eq!(self.num_bits().expect("SNH"), val.num_bits());
 
         self.items.push(val);
     }
@@ -149,7 +145,7 @@ impl RuleStore {
     /// Return true if a RuleStore is a superset of a rule.
     pub fn is_superset_of_rule(&self, other: &SomeRule) -> bool {
         assert!(!self.is_empty());
-        debug_assert_eq!(self.num_bits().unwrap(), other.num_bits());
+        debug_assert_eq!(self.num_bits().expect("SNH"), other.num_bits());
 
         if self.len() == 1 {
             return self[0].is_superset_of(other);
@@ -420,12 +416,8 @@ impl RuleStore {
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         debug_assert!(self.is_not_empty());
-        debug_assert_eq!(self.num_bits().unwrap(), regx.num_bits());
-        assert!(
-            regx.intersects(&self.initial_region()),
-            "{}",
-            format!("{} does not intersect {}", regx, self.initial_region())
-        );
+        debug_assert_eq!(self.num_bits().expect("SNH"), regx.num_bits());
+        debug_assert!(regx.intersects(&self.initial_region()));
 
         Self::new(
             self.items
@@ -455,6 +447,7 @@ impl RuleStore {
     /// Return true if all rules in the RuleStore have the same initial region.
     pub fn rules_initial_region_eq(&self, aregion: &SomeRegion) -> bool {
         debug_assert!(self.is_not_empty());
+        debug_assert!(self.num_bits().expect("SNH") == aregion.num_bits());
 
         for rulx in self.iter() {
             if rulx.initial_region() != *aregion {
@@ -465,24 +458,23 @@ impl RuleStore {
     }
 
     /// Return rules massaged to be within a given region.
-    /// The order of rules is preserved.
     pub fn within(&self, within: &SomeRegion) -> Vec<Option<SomeRule>> {
+        debug_assert!(self.is_not_empty());
+        debug_assert!(self.num_bits().expect("SNH") == within.num_bits());
+
         let mut ret = Vec::<Option<SomeRule>>::new();
 
         for rulx in self.iter() {
-            let mut ruly = rulx.clone();
-            if within.is_superset_of(&ruly.initial_region()) {
-            } else if within.intersects(&ruly.initial_region()) {
-                ruly = ruly.restrict_initial_region(within);
-            } else {
-                ret.push(None);
-                continue;
-            }
-
-            if within.is_superset_of(&ruly.result_region()) {
-                ret.push(Some(ruly));
-            } else if within.intersects(&ruly.result_region()) {
-                ret.push(Some(ruly.restrict_result_region(within)));
+            if rulx.initial_region().intersects(within) {
+                if within
+                    .edge_mask()
+                    .bitwise_and(&rulx.any_change_mask())
+                    .is_low()
+                {
+                    ret.push(Some(rulx.restrict_initial_region(within)));
+                } else {
+                    ret.push(None);
+                }
             } else {
                 ret.push(None);
             }
