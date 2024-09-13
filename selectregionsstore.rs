@@ -3,6 +3,7 @@
 use crate::regionscorr::RegionsCorr;
 use crate::selectregions::SelectRegions;
 use crate::statescorr::StatesCorr;
+use crate::regionscorrstore::RegionsCorrStore;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
@@ -354,78 +355,35 @@ impl SelectRegionsStore {
             return self.clone();
         }
 
-        let mut final_remainders = Self::new(vec![]);
-        let mut cur_remainders = self.clone();
+        // Create RegionsCorrStore from SelectRegionsStore.
+        let mut fragments = RegionsCorrStore::new(vec![]);
+        for selx in self.items.iter() {
+            fragments.push(selx.regions.clone());
+        }
 
-        loop {
-            // Find the remainders of each SelectRegions minus others.
-            let mut cycle_remainders = Self::new(vec![]);
-            let mut cycle_ints = Self::new(vec![]);
-
-            for (inx, selx) in cur_remainders.iter().enumerate() {
-                // Init selx remainders store.
-                let mut remx = Self::new(vec![selx.clone()]);
-                //println!("subtracting ints from {selx}");
-
-                // Subtract anything that intersects selx.
-                for (iny, sely) in cur_remainders.iter().enumerate() {
-                    if iny != inx && remx.any_intersection_of(sely) {
-                        //print!("    {remx} - {sely} = ");
-                        remx = remx.subtract_selectregions(sely);
-                        //print!("remx after subtraction {remx}");
-                        //println!(" ");
-                    }
-                }
-                //println!("Remainders of {selx} are {remx}");
-
-                // Add to cycle_remainders.
-                if !remx.is_empty() {
-                    // Aggregate intersections is selx subtract remainders.
-                    let ints = Self::new(vec![selx.clone()]).subtract(&remx);
-                    //println!("{} minus {} = {}", selx.clone(), remx, ints);
-
-                    for selz in remx.into_iter() {
-                        cycle_remainders.push_nosubs(selz);
-                    }
-
-                    // Add to cycle_ints.
-
-                    for selz in ints.into_iter() {
-                        cycle_ints.push_nosubs(selz);
-                    }
-                }
-            } // next inx, selx
-
-            //println!("cycle remainders: {}", cycle_remainders);
-            //println!("cycle_ints: {}", cycle_ints);
-            //assert!(1 == 2);
-
-            for selz in cycle_remainders.into_iter() {
-                final_remainders.push_nosubs(selz);
-            }
-            //println!("final remainders: {}", final_remainders);
-            if cycle_ints.is_empty() {
-                break;
-            }
-
-            // Set up next cycle.
-            cur_remainders = cycle_ints;
-            //println!("Next remainders = {cur_remainders}");
-        } // end loop
+        // Calc intersections.
+        fragments = fragments.split_by_intersections();
 
         //println!("final remainders: {}", final_remainders);
-        for selx in final_remainders.iter_mut() {
+        let mut sel_fragments = Vec::<SelectRegions>::with_capacity(fragments.len());
+        for regsx in fragments {
+            // Calc positive and negative value for RegionsCorr.
             let mut pos_value = 0;
             let mut neg_value = 0;
             for sely in self.iter() {
-                if sely.is_superset_of(selx) {
+                if sely.regions.is_superset_of(&regsx) {
                     pos_value += sely.pos_value;
                     neg_value += sely.neg_value;
                 }
             }
+            // Create a SelectRegions for the RegionsCorr.
+            let mut selx = SelectRegions::new(regsx, 0);
             selx.set_values(pos_value, neg_value);
+
+            // Save SelectRegions to vector.
+            sel_fragments.push(selx);
         }
-        final_remainders
+        Self::new(sel_fragments)
     }
 
     /// Return the sum of values of negative SelectRegions that are superset of a given RegionsCorr.

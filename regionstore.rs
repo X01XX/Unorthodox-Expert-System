@@ -256,19 +256,6 @@ impl RegionStore {
         ret
     }
 
-    /// Extend a NeedStore by emptying another NeedStore..
-    pub fn append_nosubs(&mut self, other: Self) {
-        debug_assert!(
-            self.is_empty()
-                || other.is_empty()
-                || self.items[0].num_bits() == other.items[0].num_bits()
-        );
-
-        for regx in other.into_iter() {
-            self.push_nosubs(regx);
-        }
-    }
-
     /// Return the intersection of two RegionStores.
     /// Regions overlapping adjacent regions, in the result, are not found.
     /// If that is wanted, it would be max-reg.subtract(&max-reg.subtract(ret))

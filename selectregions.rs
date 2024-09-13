@@ -174,6 +174,9 @@ impl SelectRegions {
 
     // Set the positive value.
     pub fn set_values(&mut self, pos_value: isize, neg_value: isize) {
+        debug_assert!(pos_value >= 0);
+        debug_assert!(neg_value <= 0);
+
         self.pos_value = pos_value;
         self.neg_value = neg_value;
         self.net_value = pos_value + neg_value;
