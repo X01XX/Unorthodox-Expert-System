@@ -1,7 +1,7 @@
 //! Implement an enum to indicate a desired target of state, region, or domain regions.
 
 use crate::region::SomeRegion;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionscorr::RegionsCorr;
 use crate::state::SomeState;
 
 use std::fmt;
@@ -15,7 +15,7 @@ impl fmt::Display for ATarget<'_> {
 pub enum ATarget<'a> {
     State { state: &'a SomeState },
     Region { region: &'a SomeRegion },
-    DomainRegions { regions: &'a RegionStoreCorr },
+    DomainRegions { regions: &'a RegionsCorr },
 }
 
 impl ATarget<'_> {

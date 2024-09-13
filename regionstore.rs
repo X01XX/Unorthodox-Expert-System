@@ -1,9 +1,9 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
-use crate::bits::vec_same_num_bits;
+use crate::bits::NumBits;
 use crate::region::{AccessStates, SomeRegion};
 use crate::state::SomeState;
-use crate::tools::{self, StrLen};
+use crate::tools::{self, AvecRef, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -40,8 +40,6 @@ impl Eq for RegionStore {}
 impl RegionStore {
     /// Return a new, RegionStore.
     pub fn new(items: Vec<SomeRegion>) -> Self {
-        debug_assert!(vec_same_num_bits(&items));
-
         Self { items }
     }
 
@@ -69,8 +67,6 @@ impl RegionStore {
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: SomeRegion) {
-        debug_assert!(self.is_empty() || val.num_bits() == self.num_bits().unwrap());
-
         self.items.push(val);
     }
 
@@ -294,53 +290,6 @@ impl RegionStore {
         ret
     }
 
-    /// Return self fragmented by intersections.
-    pub fn split_by_intersections(&self) -> Self {
-        if self.len() < 2 {
-            return self.clone();
-        }
-
-        // Get first level ints.
-        let mut tmp_ints = Self::new(vec![]);
-
-        // Check each possible pair.
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                if let Some(regz) = self[inx].intersection(&self[iny]) {
-                    tmp_ints.push_nosups(regz);
-                }
-            }
-        }
-
-        if tmp_ints.is_empty() {
-            return self.clone();
-        }
-        let mut remainder = self.subtract(&tmp_ints);
-
-        loop {
-            // Get first level ints.
-            let mut next_ints = Self::new(vec![]);
-
-            // Check each possible pair.
-            for inx in 0..(tmp_ints.len() - 1) {
-                for iny in (inx + 1)..tmp_ints.len() {
-                    if let Some(regz) = tmp_ints[inx].intersection(&tmp_ints[iny]) {
-                        next_ints.push_nosups(regz);
-                    }
-                } // next iny
-            } // next inx
-
-            if next_ints.is_empty() {
-                remainder.append_nosubs(tmp_ints);
-                return remainder;
-            }
-
-            let remain2 = tmp_ints.subtract(&next_ints);
-            remainder.append_nosubs(remain2);
-            tmp_ints = next_ints;
-        } // end loop
-    }
-
     /// Using two-state regions, where each pair of states represent incompatible squares.
     /// Superset regions are not fatal, but are inefficient.
     /// See the addendum "Calculating possible regions using dissimilar pairs of squares", in theory.html.
@@ -420,6 +369,12 @@ impl IntoIterator for RegionStore {
     }
 }
 
+impl AvecRef for RegionStore {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        &self.items
+    }
+}
+
 /// Implement the trait StrLen for RegionStore.
 impl StrLen for RegionStore {
     fn strlen(&self) -> usize {
@@ -452,64 +407,6 @@ mod tests {
         assert!(poss_regs1.len() == 5);
         assert!(poss_regs1.contains(&SomeRegion::new_from_string("r0X0X")?));
         assert!(poss_regs1.contains(&SomeRegion::new_from_string("rX11X")?));
-
-        Ok(())
-    }
-
-    #[test]
-    fn split_by_intersections() -> Result<(), String> {
-        // Try with empty RegionStore.
-        let regstr1 = RegionStore::new(vec![]);
-
-        let frags = regstr1.split_by_intersections();
-        println!("fragments of {regstr1} is {frags}");
-        assert!(frags == regstr1);
-
-        // Try with no intersections
-        let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rx1x0")?);
-        regstr1.push(SomeRegion::new_from_string("rx1x1")?);
-        regstr1.push(SomeRegion::new_from_string("rx0x1")?);
-
-        let frags = regstr1.split_by_intersections();
-        println!("fragments of {regstr1} is {frags}");
-        assert!(frags == regstr1);
-
-        // Try one-level intersections.
-        let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rx100")?);
-        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r0x1x")?);
-        regstr1.push(SomeRegion::new_from_string("rx11x")?);
-
-        let frags = regstr1.split_by_intersections();
-        println!("fragments of {regstr1} is {frags}");
-        assert!(frags.len() == 7);
-        assert!(frags.contains(&SomeRegion::new_from_string("r0100")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1x01")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r100x")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r001x")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r111x")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1100")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r011x")?));
-
-        // Try two-level intersections.
-        let mut regstr1 = RegionStore::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rx1xx")?);
-        regstr1.push(SomeRegion::new_from_string("rxx01")?);
-        regstr1.push(SomeRegion::new_from_string("r1xx1")?);
-
-        let frags = regstr1.split_by_intersections();
-        println!("fragments of {regstr1} is {frags}");
-        assert!(frags.len() == 8);
-        assert!(frags.contains(&SomeRegion::new_from_string("rx1x0")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r011x")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r0001")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1011")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r0101")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1111")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1001")?));
-        assert!(frags.contains(&SomeRegion::new_from_string("r1101")?));
 
         Ok(())
     }

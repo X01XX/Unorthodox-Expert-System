@@ -467,7 +467,8 @@ impl RuleStore {
         for rulx in self.iter() {
             if rulx.initial_region().intersects(within) {
                 let ruly = rulx.restrict_initial_region(within);
-                if within.is_superset_of(&ruly.result_region()) { // non-superset intersection is not expected.
+                if within.is_superset_of(&ruly.result_region()) {
+                    // non-superset intersection is not expected.
                     ret.push(Some(ruly));
                 } else {
                     ret.push(None);

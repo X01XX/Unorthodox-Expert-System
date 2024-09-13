@@ -1,19 +1,19 @@
 //! The StateStore struct. A vector of SomeState structs.
 //! Duplicates are suppressed.
 
-use crate::bits::vec_same_num_bits;
+use crate::bits::NumBits;
 use crate::state::SomeState;
-use crate::tools;
+use crate::tools::{vec_string, AvecRef};
 
 use serde::{Deserialize, Serialize};
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 
 use std::fmt;
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.items))
+        write!(f, "{}", vec_string(&self.items))
     }
 }
 
@@ -27,8 +27,6 @@ pub struct StateStore {
 impl StateStore {
     /// Return a new, empty, StateStore instance.
     pub fn new(items: Vec<SomeState>) -> Self {
-        debug_assert!(vec_same_num_bits(&items));
-
         let mut ret = Self {
             items: Vec::<SomeState>::with_capacity(items.len()),
         };
@@ -38,11 +36,16 @@ impl StateStore {
         ret
     }
 
+    /// Return a new StateStore instance, empty, with a specified capacity.
+    pub fn with_capacity(num: usize) -> Self {
+        Self {
+            items: Vec::<SomeState>::with_capacity(num),
+        }
+    }
+
     /// Add a state to a StateStore.
     /// Do not allow duplicates.
     pub fn push(&mut self, val: SomeState) {
-        debug_assert!(self.is_empty() || val.num_bits() == self.items[0].num_bits());
-
         if !self.contains(&val) {
             self.items.push(val);
         }
@@ -65,8 +68,6 @@ impl StateStore {
 
     /// Return true if a StateStore contains a state.
     pub fn contains(&self, stax: &SomeState) -> bool {
-        debug_assert!(self.is_empty() || stax.num_bits() == self.items[0].num_bits());
-
         self.items.contains(stax)
     }
 
@@ -89,6 +90,18 @@ impl Index<usize> for StateStore {
     type Output = SomeState;
     fn index(&self, i: usize) -> &SomeState {
         &self.items[i]
+    }
+}
+
+impl IndexMut<usize> for StateStore {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.items[i]
+    }
+}
+
+impl AvecRef for StateStore {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        &self.items
     }
 }
 

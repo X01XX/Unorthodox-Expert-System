@@ -7,7 +7,7 @@
 
 use crate::plan::SomePlan;
 use crate::region::SomeRegion;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionscorr::RegionsCorr;
 use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
@@ -219,7 +219,7 @@ impl PlanStore {
     /// The current regions should intersect the plan initial regions,
     /// and will be a default region in case a PlanStore does not have a plan for
     /// a domain.
-    pub fn result_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
+    pub fn result_regions(&self, default: &RegionsCorr) -> RegionsCorr {
         let mut ret_regs = default.clone();
 
         for planx in self.items.iter() {
@@ -231,8 +231,8 @@ impl PlanStore {
         ret_regs
     }
 
-    /// Return true if a PlanStore remains within a given RegionStoreCorr.
-    pub fn remains_within(&self, within: &RegionStoreCorr) -> bool {
+    /// Return true if a PlanStore remains within a given RegionsCorr.
+    pub fn remains_within(&self, within: &RegionsCorr) -> bool {
         let mut cur_regs = self.initial_regions(within);
 
         if !within.is_superset_of(&cur_regs) {
@@ -254,7 +254,7 @@ impl PlanStore {
     /// The current regions should intersect the plan initial regions,
     /// and will be a default region in case a PlanStore does not have a plan for
     /// a domain.
-    pub fn initial_regions(&self, default: &RegionStoreCorr) -> RegionStoreCorr {
+    pub fn initial_regions(&self, default: &RegionsCorr) -> RegionsCorr {
         let mut ret_regs = default.clone();
         for planx in self.items.iter() {
             if planx.is_empty() {
@@ -266,7 +266,7 @@ impl PlanStore {
     }
 
     /// Validate a PlanStore, given start and goal regions.
-    pub fn validate(&self, start_regs: &RegionStoreCorr, goal_regs: &RegionStoreCorr) -> bool {
+    pub fn validate(&self, start_regs: &RegionsCorr, goal_regs: &RegionsCorr) -> bool {
         let mut cur_regs = start_regs.clone();
         for planx in self.items.iter() {
             if planx.is_empty() {

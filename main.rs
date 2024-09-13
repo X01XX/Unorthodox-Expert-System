@@ -41,8 +41,8 @@ mod region;
 use region::SomeRegion;
 mod change;
 use change::SomeChange;
+mod regionscorr;
 mod regionstore;
-mod regionstorecorr;
 mod resultstore;
 mod rule;
 use crate::rule::SomeRule;
@@ -58,8 +58,8 @@ mod domain;
 mod needstore;
 mod plan;
 mod pn;
+mod statescorr;
 mod statestore;
-mod statestorecorr;
 use pn::Pn;
 mod domainstore;
 mod step;
@@ -72,7 +72,7 @@ mod selectregions;
 use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
-use crate::regionstorecorr::RegionStoreCorr;
+use crate::regionscorr::RegionsCorr;
 extern crate unicode_segmentation;
 
 use std::io;
@@ -400,27 +400,27 @@ fn domainstore_init() -> DomainStore {
     dmxs[1].add_action(ruls6);
 
     // Load optimal regions
-    let mut regstr1 = RegionStoreCorr::with_capacity(2);
+    let mut regstr1 = RegionsCorr::with_capacity(2);
     regstr1.push(SomeRegion::new_from_string("rx0x0x").expect("SNH"));
     regstr1.push(SomeRegion::new_from_string("rXXXX_XX1X_1XXX_XXXX").expect("SNH"));
 
-    let mut regstr2 = RegionStoreCorr::with_capacity(2);
+    let mut regstr2 = RegionsCorr::with_capacity(2);
     regstr2.push(SomeRegion::new_from_string("rx0xx1").expect("SNH"));
     regstr2.push(SomeRegion::new_from_string("rXXXX_XXX1_1XXX_XXXX").expect("SNH"));
 
-    let mut regstr3 = RegionStoreCorr::with_capacity(2);
+    let mut regstr3 = RegionsCorr::with_capacity(2);
     regstr3.push(SomeRegion::new_from_string("rxx1x1").expect("SNH"));
     regstr3.push(SomeRegion::new_from_string("rXXXX_XX00_0XXX_XXXX").expect("SNH"));
 
-    let mut regstr4 = RegionStoreCorr::with_capacity(2);
+    let mut regstr4 = RegionsCorr::with_capacity(2);
     regstr4.push(SomeRegion::new_from_string("rx1110").expect("SNH"));
     regstr4.push(SomeRegion::new_from_string("rXXXX_XXX0_0XXX_XXXX").expect("SNH"));
 
-    let mut regstr5 = RegionStoreCorr::with_capacity(2);
+    let mut regstr5 = RegionsCorr::with_capacity(2);
     regstr5.push(SomeRegion::new_from_string("rxXX00").expect("SNH"));
     regstr5.push(SomeRegion::new_from_string("rXXXX_XXx1_0xXX_XXXX").expect("SNH"));
 
-    let mut regstr6 = RegionStoreCorr::with_capacity(2);
+    let mut regstr6 = RegionsCorr::with_capacity(2);
     regstr6.push(SomeRegion::new_from_string("rxX10X").expect("SNH"));
     regstr6.push(SomeRegion::new_from_string("rXXXX_XX1x_x0XX_XXXX").expect("SNH"));
 

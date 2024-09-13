@@ -753,7 +753,6 @@ impl SomeRule {
 
         SomeChange::new(b00, b11)
     }
-
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
