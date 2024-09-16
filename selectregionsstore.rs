@@ -1,9 +1,9 @@
 //! Implement a struct of SelectRegionStore.
 
 use crate::regionscorr::RegionsCorr;
+use crate::regionscorrstore::RegionsCorrStore;
 use crate::selectregions::SelectRegions;
 use crate::statescorr::StatesCorr;
-use crate::regionscorrstore::RegionsCorrStore;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};

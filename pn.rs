@@ -8,7 +8,7 @@
 //!
 //! For Pn::Two squares, their RuleStores should be compatible for a union.
 //! There should be no squares inbetween that are Pn::Unpredictable.
-//! There should be no squares inbetween that are Pn::One, with more than one sample,
+//! There should be no squares inbetween that are Pn::One, with more than two samples,
 //! as that indicates not-Pn::Two, since order matters.
 //! Squares inbetween with one sample should have a rule that is a subset of one
 //! of the combined rules.

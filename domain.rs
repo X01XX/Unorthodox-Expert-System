@@ -1118,31 +1118,21 @@ impl SomeDomain {
                 //     planx[*from_inx].initial, &planx[*to_inx].result
                 //);
                 //println!("    Plans found {plans2}");
-                for plany in plans2.iter() {
+                for plany in plans2 {
                     let mut new_plan = SomePlan::new(self.id, vec![]);
                     if *from_inx > 0 {
                         for inz in 0..*from_inx {
-                            match new_plan.push(planx[inz].clone()) {
-                                Ok(()) => continue,
-                                Err(_errstr) => {
-                                    //println!("    push failed {errstr}");
-                                    return None;
-                                }
-                            }
+                            new_plan =
+                                new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()]))?;
                         }
                     }
                     //println!("    sub plan1 {}", plany);
-                    new_plan.append(plany.clone());
+                    new_plan = new_plan.link(&plany)?;
 
                     if *to_inx < planx.len() {
                         for inz in (to_inx + 1)..planx.len() {
-                            match new_plan.push(planx[inz].clone()) {
-                                Ok(()) => continue,
-                                Err(_errstr) => {
-                                    //println!("    push failed {errstr}");
-                                    return None;
-                                }
-                            }
+                            new_plan =
+                                new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()]))?;
                         }
                     }
                     //println!("    new_plan {new_plan}");

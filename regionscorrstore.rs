@@ -1,7 +1,7 @@
 //! The RegionsCorrStore, a vector of RegionsCorr structs.
 
-use crate::tools::{self, StrLen};
 use crate::regionscorr::RegionsCorr;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -157,11 +157,12 @@ impl RegionsCorrStore {
     /// Each fragment returned will be a subset of one, or more, items in
     /// the original, but not otherwise intersect any item in the original.
     pub fn split_by_intersections(&self) -> Self {
-        if self.len() < 2 { // Nothing to intersect.
+        if self.len() < 2 {
+            // Nothing to intersect.
             return self.clone();
         }
 
-        let mut ret_remainders = Self::new(vec![]);   // Store to collect successive remainders.
+        let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
 
         let mut cur_left = self.clone(); // Store for current non-remainders.
 
@@ -209,7 +210,6 @@ impl RegionsCorrStore {
 
         ret_remainders
     }
-
 } // end impl RegionsCorrStore.
 
 impl Index<usize> for RegionsCorrStore {
@@ -257,12 +257,11 @@ mod tests {
     fn new() -> Result<(), String> {
         let regs = vec![
             RegionsCorr::new(vec![SomeRegion::new_from_string("rx101")?]),
-            RegionsCorr::new(vec![SomeRegion::new_from_string("rx101")?])
+            RegionsCorr::new(vec![SomeRegion::new_from_string("rx101")?]),
         ];
         let regstr1 = RegionsCorrStore::new(regs);
         println!("regstr1 {regstr1}");
 
         Ok(())
     }
-
 }

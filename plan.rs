@@ -161,16 +161,8 @@ impl SomePlan {
         })
     }
 
-    /// Append a plan from another plan.
-    pub fn append(&mut self, other: Self) {
-        if self.is_not_empty() && other.is_not_empty() {
-            assert!(self.result_region() == other.initial_region());
-        }
-        self.steps.append(other.steps);
-    }
-
     /// Add a step to a SomePlan.
-    pub fn push(&mut self, stepx: SomeStep) -> Result<(), String> {
+    fn push(&mut self, stepx: SomeStep) -> Result<(), String> {
         if self.is_not_empty() {
             if self.result_region() != &stepx.initial {
                 return Err(format!("plan {self} does not intersect step {stepx}"));
@@ -186,9 +178,20 @@ impl SomePlan {
 
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
     pub fn link(&self, other: &Self) -> Option<Self> {
+        //println!("link: {self} and {other}");
+        debug_assert!(self.dom_id == other.dom_id);
+
         // Sanity checks
-        if self.is_empty() || other.is_empty() || self.dom_id != other.dom_id {
+        if self.is_empty() && other.is_empty() {
             return None;
+        }
+
+        if self.is_empty() && other.is_not_empty() {
+            return Some(other.clone());
+        }
+
+        if self.is_not_empty() && other.is_empty() {
+            return Some(self.clone());
         }
 
         // Restrict the StepStores, forward and backward.
@@ -302,7 +305,7 @@ impl SomePlan {
         ret_num
     }
 
-    /// Return true if a plan contians an initial region.
+    /// Return true if a plan contains an initial region.
     fn any_initial_intersects(&self, regx: &SomeRegion) -> bool {
         for stepx in self.iter() {
             if stepx.initial.intersects(regx) {
