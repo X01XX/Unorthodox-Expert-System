@@ -1,7 +1,7 @@
 # Unorthodox-Expert-System
 An expert of its own state. Rules can be developed, revised, and used without human intervention. The rules are low-level, probably not what you expect.
 
-The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. By seeking specific samples, combining pairs of similar samples to form rules that encompass spans of unsampled states, and responding to unexpected samples from the use of imperfect rules.
+The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. By seeking specific samples, combining pairs of similar samples to form rules that encompass spans of sparsely sampled states, and responding to unexpected samples from the use of imperfect rules.
 
 Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html.
 
