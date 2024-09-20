@@ -1,7 +1,7 @@
 # Unorthodox-Expert-System
 An expert of its own state. Rules can be developed, revised, and used without human intervention. The rules are low-level, probably not what you expect.
 
-The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. Seek specific samples, respond to unexpected samples from the use of imperfect rules, and combine pairs of similar samples to encompass spans of untested states.
+The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. Seek specific samples, respond to unexpected samples from the use of imperfect rules, and combine pairs of similar samples to encompass spans of unsampled states.
 
 Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, there is a work-around, see the top of the file theory.html.
 
@@ -27,7 +27,7 @@ What is needed?  Sampling a state that is not in a group. Sampling a state to in
 
 Plans appear as something like "P[1,2,4]" which means: Run action 1, then 2, then 4, to get to a desired state.  Then run the need action to get the desired sample.  The command "ppd need-number" shows a good map of the plan.
 
-If a plan does not work as expected, rules are updated, then an attempt is made to recalculate, and execute, a plan to the goal.
+If a plan does not work as expected, rules are updated, then an attempt is made to recalculate, and execute, a plan to the goal, as IRL.
 
 After a number of groups are formed, the user can change the state with a command like "to r010X", which will attempt to change the current state to 0101 or 0100.
 
