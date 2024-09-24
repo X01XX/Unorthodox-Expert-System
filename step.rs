@@ -97,6 +97,22 @@ impl SomeStep {
         }
     }
 
+    /// Return a no-op step.
+    pub fn new_no_op(rule: SomeRule) -> Self {
+        let initial = rule.initial_region();
+
+        let result = rule.result_region();
+
+        Self {
+            act_id: None,
+            initial,
+            result,
+            rule,
+            alt_rule: AltRuleHint::NoAlt {},
+            group_inx: 0,
+        }
+    }
+
     /// Return a new step, by taking a given step and restricting the initial region.
     pub fn restrict_initial_region(&self, reg: &SomeRegion) -> Self {
         debug_assert_eq!(self.num_bits(), reg.num_bits());
@@ -248,14 +264,7 @@ mod tests {
     fn nop() -> Result<(), String> {
         let tmp_reg = SomeRegion::new_from_string("r0X0X")?;
         let tmp_rul = SomeRule::new_region_to_region(&tmp_reg, &tmp_reg);
-        let tmp_stp = SomeStep {
-                act_id: None,
-                initial: tmp_reg.clone(),
-                result: tmp_reg.clone(),
-                rule: tmp_rul,
-                alt_rule: AltRuleHint::NoAlt {},
-                group_inx: 0,
-            };
+        let tmp_stp = SomeStep::new_no_op(tmp_rul);
         println!("nop stop {tmp_stp}");
 
         let stpx = tmp_stp.restrict_initial_region(&SomeRegion::new_from_string("r0XX1")?);

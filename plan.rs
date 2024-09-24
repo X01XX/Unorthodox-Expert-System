@@ -443,4 +443,18 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn nop() -> Result<(), String> {
+        let tmp_reg = SomeRegion::new_from_string("r0X0X")?;
+        let tmp_rul = SomeRule::new_region_to_region(&tmp_reg, &tmp_reg);
+        let tmp_stp = SomeStep::new_no_op(tmp_rul);
+        println!("nop stop {tmp_stp}");
+
+        let pln1 = SomePlan::new(0, vec![tmp_stp]);
+        println!("pln1 {pln1}");
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 }
