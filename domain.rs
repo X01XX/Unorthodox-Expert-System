@@ -205,7 +205,8 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
-            let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
+            let act_id = stpx.act_id.expect("SNH");
+            let asample = self.actions.take_action_step(act_id, &self.cur_state);
             num_steps += 1;
 
             self.set_cur_state(asample.result.clone());
@@ -217,7 +218,7 @@ impl SomeDomain {
             // Handle unexpected/unwanted result.
             println!(
                 "\nChange [{} -{:02}> {}] unexpected, expected {}",
-                prev_state, stpx.act_id, self.cur_state, stpx,
+                prev_state, act_id, self.cur_state, stpx,
             );
 
             // Avoid an infinite loop of retries.
@@ -233,7 +234,7 @@ impl SomeDomain {
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
 
-                    let asample = self.actions.take_action_step(stpx.act_id, &self.cur_state);
+                    let asample = self.actions.take_action_step(act_id, &self.cur_state);
                     num_steps += 1;
 
                     self.set_cur_state(asample.result.clone());

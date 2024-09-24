@@ -38,7 +38,7 @@ impl fmt::Display for AltRuleHint {
 /// A step that changes a state to another.
 pub struct SomeStep {
     /// Action number.
-    pub act_id: usize,
+    pub act_id: Option<usize>,
     /// Initial region of rule.
     pub initial: SomeRegion,
     /// Result region of rule.
@@ -88,7 +88,7 @@ impl SomeStep {
         let result = rule.result_region();
 
         Self {
-            act_id,
+            act_id: Some(act_id),
             initial,
             result,
             rule,
@@ -136,7 +136,11 @@ impl SomeStep {
         let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
         rcstr.push_str(&self.initial.to_string());
-        rcstr.push_str(&format!(" -{:02}> ", self.act_id));
+        if let Some(act_id) = self.act_id {
+            rcstr.push_str(&format!(" -{:02}> ", act_id));
+        } else {
+            rcstr.push_str(" -no> ");
+        }
         rcstr.push_str(&self.result.to_string());
         rcstr.push_str(&format!(" {}", self.alt_rule));
         rcstr.push(']');
@@ -211,7 +215,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0010")?); //(tmp_sta.clone(), tmp_sta2.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0010")?);
         let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {});
 
         let strrep = format!("{tmp_stp}");
@@ -236,6 +240,32 @@ mod tests {
         let calc_len = tmp_stp.strlen();
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn nop() -> Result<(), String> {
+        let tmp_reg = SomeRegion::new_from_string("r0X0X")?;
+        let tmp_rul = SomeRule::new_region_to_region(&tmp_reg, &tmp_reg);
+        let tmp_stp = SomeStep {
+                act_id: None,
+                initial: tmp_reg.clone(),
+                result: tmp_reg.clone(),
+                rule: tmp_rul,
+                alt_rule: AltRuleHint::NoAlt {},
+                group_inx: 0,
+            };
+        println!("nop stop {tmp_stp}");
+
+        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::new_from_string("r0XX1")?);
+        println!("stpx: {stpx}");
+        assert!(stpx.initial == SomeRegion::new_from_string("r0X01")?);
+
+        let stpx = tmp_stp.restrict_result_region(&SomeRegion::new_from_string("rX00X")?);
+        println!("stpx: {stpx}");
+        assert!(stpx.initial == SomeRegion::new_from_string("r000X")?);
+
         //assert!(1 == 2);
         Ok(())
     }

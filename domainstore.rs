@@ -1708,10 +1708,17 @@ impl DomainStore {
             println!("\n  Domain: {}, Plan:", planx.dom_id);
             for stepx in planx.iter() {
                 let df = stepx.initial.diff_edge_mask(&stepx.result);
-                print!(
-                    "    {} Action {:02} -> {}",
-                    &stepx.initial, &stepx.act_id, stepx.result
-                );
+                if let Some(act_id) = stepx.act_id {
+                    print!(
+                        "    {} Action {:02} -> {}",
+                        stepx.initial, act_id, stepx.result
+                    );
+                } else {
+                    print!(
+                        "    {} Action no -> {}",
+                        stepx.initial, stepx.result
+                    );
+                }
                 cur_states[planx.dom_id] = stepx
                     .rule
                     .result_from_initial_state(&cur_states[planx.dom_id]);

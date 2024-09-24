@@ -232,7 +232,11 @@ impl SomePlan {
             } else {
                 rs.push(',');
             }
-            rs.push_str(&format!("{}", stpx.act_id));
+            if let Some(act_id) = stpx.act_id {
+                rs.push_str(&format!("{}", act_id));
+            } else {
+                rs.push_str("no");
+            }
         }
         rs.push(']');
         if self.shortcut {
