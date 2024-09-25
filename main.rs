@@ -73,6 +73,7 @@ use crate::selectregions::SelectRegions;
 mod selectregionsstore;
 mod target;
 use crate::regionscorr::RegionsCorr;
+mod planscorr;
 mod regionscorrstore;
 
 extern crate unicode_segmentation;

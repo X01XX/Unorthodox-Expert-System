@@ -270,6 +270,7 @@ impl SomeDomain {
     ///
     /// Otherwise, randomly choose a forward or backward chaining step.
     ///
+    #[allow(clippy::too_many_arguments)]
     fn depth_first_search(
         &self,
         from_reg: &SomeRegion,

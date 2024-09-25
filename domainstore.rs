@@ -1714,10 +1714,7 @@ impl DomainStore {
                         stepx.initial, act_id, stepx.result
                     );
                 } else {
-                    print!(
-                        "    {} Action no -> {}",
-                        stepx.initial, stepx.result
-                    );
+                    print!("    {} Action no -> {}", stepx.initial, stepx.result);
                 }
                 cur_states[planx.dom_id] = stepx
                     .rule
