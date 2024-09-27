@@ -8,6 +8,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
 use crate::step::{AltRuleHint, SomeStep};
 
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 
@@ -23,7 +24,7 @@ impl fmt::Display for PlansCorr {
 #[derive(Deserialize, Serialize, Debug, Clone, Default)]
 pub struct PlansCorr {
     /// A vector of plans.
-    plans: PlanStore,
+    pub plans: PlanStore,
 }
 
 impl PlansCorr {

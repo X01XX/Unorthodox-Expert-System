@@ -205,6 +205,10 @@ impl SomeDomain {
         for stpx in pln.iter() {
             let prev_state = self.cur_state.clone();
 
+            if stpx.act_id.is_none() {
+                continue;
+            }
+
             let act_id = stpx.act_id.expect("SNH");
             let asample = self.actions.take_action_step(act_id, &self.cur_state);
             num_steps += 1;

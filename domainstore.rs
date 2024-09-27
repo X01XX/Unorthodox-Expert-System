@@ -6,6 +6,7 @@ use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
+use crate::planscorr::PlansCorr;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
@@ -297,6 +298,25 @@ impl DomainStore {
                         return false;
                     }
                 }
+            }
+        }
+        true
+    }
+
+    /// Run a PlansCorr.
+    pub fn run_planscorr(&mut self, plns: &PlansCorr) -> bool {
+        let vecb = plns
+            .plans
+            .items
+            .par_iter()
+            .zip(self.items.par_iter_mut())
+            .map(|(plnx, domx)| domx.run_plan(plnx, 0))
+            .collect::<Vec<Result<usize, String>>>();
+
+        for rsltx in vecb.iter() {
+            match rsltx {
+                Ok(_) => continue,
+                Err(_) => return false,
             }
         }
         true
@@ -1767,6 +1787,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::rule::SomeRule;
+    use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
     use crate::step::{AltRuleHint, SomeStep};
 
@@ -2890,6 +2911,71 @@ mod tests {
         } else {
             return Err(format!("No plan found?"));
         }
+        Ok(())
+    }
+
+    #[test]
+    /// Test running plans in parallel, as in going from SelectRegions fragment to
+    /// intersection of another SelectRegions fragment.
+    fn run_plans_in_parallel() -> Result<(), String> {
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Add domains.
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(3)));
+        dmxs.add_domain(SomeState::new(SomeBits::new(2)));
+
+        // Add an action for each domain.
+        dmxs[0].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )?])]);
+        dmxs[1].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx",
+        )?])]);
+        dmxs[2].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx",
+        )?])]);
+
+        // Set domain starting states.
+        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000")?);
+        dmxs[1].set_cur_state(SomeState::new_from_string("0b001")?);
+        dmxs[2].set_cur_state(SomeState::new_from_string("0b10")?);
+
+        // Set up plan for domain 0, action 0.
+        let stp1 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("00/00/00/01")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan0 = SomePlan::new(0, vec![stp1]);
+
+        // Set up plan for domain 1, action 0, no-op.
+        let stp1 = SomeStep::new_no_op(SomeRule::new_from_string("00/00/11")?);
+        let plan1 = SomePlan::new(1, vec![stp1]);
+
+        // Set up plan for domain 2, action 0.
+        let stp1 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("11/01")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan2 = SomePlan::new(2, vec![stp1]);
+
+        // Set up PlansCorr.
+        let plnsc1 = PlansCorr::new(vec![plan0, plan1, plan2]);
+        println!("{plnsc1}");
+
+        let before = dmxs.all_current_states();
+        dmxs.run_planscorr(&plnsc1);
+        let after = dmxs.all_current_states();
+        println!("Before: {before}");
+        println!("After:  {after}");
+        assert!(after[0] == SomeState::new_from_string("0b0001")?);
+        assert!(after[1] == SomeState::new_from_string("0b001")?);
+        assert!(after[2] == SomeState::new_from_string("0b11")?);
+
+        //assert!(1 == 2);
         Ok(())
     }
 }
