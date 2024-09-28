@@ -13,6 +13,7 @@ impl fmt::Display for RegionsCorrStore {
         write!(f, "{}", tools::vec_string(&self.items))
     }
 }
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RegionsCorrStore {
@@ -39,13 +40,6 @@ impl RegionsCorrStore {
     /// Return a new, RegionsCorrStore.
     pub fn new(items: Vec<RegionsCorr>) -> Self {
         Self { items }
-    }
-
-    /// Return a new RegionsCorrStore instance, empty, with a specified capacity.
-    pub fn _with_capacity(num: usize) -> Self {
-        Self {
-            items: Vec::<RegionsCorr>::with_capacity(num),
-        }
     }
 
     /// Return the number of regions.

@@ -7,6 +7,7 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
+use crate::planscorrstore::PlansCorrStore;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
@@ -303,7 +304,26 @@ impl DomainStore {
         true
     }
 
-    /// Run a PlansCorr.
+    /// Run a PlansCorrStore.
+    /// A series of steps from one SelectRegions fragment to another, to another.
+    pub fn run_planscorrstore(&mut self, plnsstr: &PlansCorrStore) -> bool {
+        for plnscrx in plnsstr.iter() {
+            if plnscrx
+                .initial_regions()
+                .is_superset_of(&self.all_current_regions())
+            {
+                if self.run_planscorr(plnscrx) {
+                } else {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Run a PlansCorr, plans will be run in parallel.
     pub fn run_planscorr(&mut self, plns: &PlansCorr) -> bool {
         let vecb = plns
             .plans
@@ -544,7 +564,7 @@ impl DomainStore {
 
     /// Create a RegionsStoreCorr of current regions, except a given region.
     pub fn current_regions_except(&self, dom_id: usize, targ: &SomeRegion) -> RegionsCorr {
-        let mut regs = RegionsCorr::new(vec![]);
+        let mut regs = RegionsCorr::with_capacity(self.len());
 
         for dom_idx in 0..self.len() {
             if dom_idx == dom_id {
@@ -1758,7 +1778,7 @@ impl DomainStore {
 
     /// Return the maximum possible regions.
     pub fn maximum_regions(&self) -> RegionsCorr {
-        let mut ret_regs = RegionsCorr::new(Vec::<SomeRegion>::with_capacity(self.len()));
+        let mut ret_regs = RegionsCorr::with_capacity(self.len());
         for domx in self.items.iter() {
             ret_regs.push(SomeRegion::new(vec![
                 domx.cur_state.new_high(),
@@ -2917,7 +2937,7 @@ mod tests {
     #[test]
     /// Test running plans in parallel, as in going from SelectRegions fragment to
     /// intersection of another SelectRegions fragment.
-    fn run_plans_in_parallel() -> Result<(), String> {
+    fn run_planscorr() -> Result<(), String> {
         // Init DomainStore.
         let mut dmxs = DomainStore::new();
 
@@ -2967,13 +2987,124 @@ mod tests {
         println!("{plnsc1}");
 
         let before = dmxs.all_current_states();
-        dmxs.run_planscorr(&plnsc1);
-        let after = dmxs.all_current_states();
         println!("Before: {before}");
+
+        assert!(dmxs.run_planscorr(&plnsc1));
+
+        let after = dmxs.all_current_states();
         println!("After:  {after}");
+
         assert!(after[0] == SomeState::new_from_string("0b0001")?);
         assert!(after[1] == SomeState::new_from_string("0b001")?);
         assert!(after[2] == SomeState::new_from_string("0b11")?);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    /// Test running a PlansCorrStore.
+    fn run_planscorrstore() -> Result<(), String> {
+        // Init DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Add domain 0.
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+
+        // Add domain 0 actions.
+        dmxs[0].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )?])]);
+        dmxs[0].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )?])]);
+        dmxs[0].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )?])]);
+        dmxs[0].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )?])]);
+
+        // Set domain 0 starting state.
+        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000")?);
+
+        // Add domain 1.
+        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+
+        // Add domain 1 actions.
+        dmxs[1].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/XX/Xx",
+        )?])]);
+        dmxs[1].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/XX/Xx/XX",
+        )?])]);
+        dmxs[1].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "XX/Xx/XX/XX",
+        )?])]);
+        dmxs[1].add_action(vec![RuleStore::new(vec![SomeRule::new_from_string(
+            "Xx/XX/XX/XX",
+        )?])]);
+
+        // Set domain 1 starting state.
+        dmxs[1].set_cur_state(SomeState::new_from_string("0b1111")?);
+
+        // Set up plan for domain 0, action 2.
+        let stp2 = SomeStep::new(
+            2,
+            SomeRule::new_from_string("00/01/00/00")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan0 = SomePlan::new(0, vec![stp2]);
+
+        // Set up plan for domain 1, action 0.
+        let stp0 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("11/11/11/10")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan1 = SomePlan::new(1, vec![stp0]);
+
+        // Set up PlansCorr.
+        let plnsc1 = PlansCorr::new(vec![plan0, plan1]);
+        println!("plnsc1 {plnsc1}");
+
+        // So 0000->0100, 1111->1110.
+
+        // Set up plan for domain 0, action 0.
+        let stp0 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("00/11/00/01")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan0 = SomePlan::new(0, vec![stp0]);
+
+        // Set up plan for domain 1, action 1.
+        let stp1 = SomeStep::new(
+            1,
+            SomeRule::new_from_string("11/11/10/00")?,
+            AltRuleHint::NoAlt {},
+        );
+        let plan1 = SomePlan::new(1, vec![stp1]);
+
+        // Set up PlansCorr.
+        let plnsc2 = PlansCorr::new(vec![plan0, plan1]);
+        println!("plnsc2 {plnsc2}");
+
+        // Set up PlansCorrStore.
+        let plnscrstr = PlansCorrStore::new(vec![plnsc1, plnsc2]);
+
+        let before = dmxs.all_current_states();
+        println!("Before: {before}");
+
+        // Run it.
+        assert!(dmxs.run_planscorrstore(&plnscrstr));
+
+        // Check results.
+        let after = dmxs.all_current_states();
+        println!("After:  {after}");
+
+        assert!(after[0] == SomeState::new_from_string("0b0101")?);
+        assert!(after[1] == SomeState::new_from_string("0b1100")?);
 
         //assert!(1 == 2);
         Ok(())

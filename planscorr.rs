@@ -7,6 +7,7 @@ use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
 use crate::step::{AltRuleHint, SomeStep};
+use crate::tools::{AvecRef, StrLen};
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,11 @@ impl PlansCorr {
     /// Return the number of plans in a PlansCorr.
     pub fn len(&self) -> usize {
         self.plans.len()
+    }
+
+    /// Return true if the store is not empty.
+    pub fn is_not_empty(&self) -> bool {
+        !self.plans.is_empty()
     }
 
     /// Push a plan into a PlansCorr.
@@ -108,6 +114,20 @@ impl Index<usize> for PlansCorr {
     type Output = SomePlan;
     fn index(&self, i: usize) -> &SomePlan {
         &self.plans[i]
+    }
+}
+
+/// Implement the trait StrLen for PlansCorr.
+impl StrLen for PlansCorr {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.is_not_empty() {
+            rc_len += self.plans.len() * self.plans[0].strlen();
+            rc_len += (self.plans.len() - 1) * 2;
+        }
+
+        rc_len
     }
 }
 
