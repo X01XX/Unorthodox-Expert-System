@@ -18,6 +18,7 @@ use crate::statescorr::StatesCorr;
 use crate::step::AltRuleHint::AltRule;
 use crate::target::ATarget;
 use crate::tools;
+use crate::step::SomeStep;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -1787,6 +1788,79 @@ impl DomainStore {
         }
         ret_regs
     }
+
+    /// Get plans for moving from one set of states to another, within a gives RegionsCorr.
+    pub fn make_plans4(
+        &self,
+        from: &RegionsCorr,
+        goal: &RegionsCorr,
+        within: &RegionsCorr,
+    ) -> Option<PlansCorr> {
+        debug_assert!(from.len() == goal.len());
+        debug_assert!(from.corresponding_num_bits(goal));
+        debug_assert!(within.len() == from.len() && from.corresponding_num_bits(within));
+        debug_assert!(within.is_superset_of(from));
+        debug_assert!(within.is_superset_of(goal));
+
+        //if let Some(path) = within {
+        //    println!("make_plans2: from {from} to {goal} within {path}");
+        //} else {
+        //    println!("make_plans2: from {from} to {goal}");
+        //}
+
+        if from.is_subset_of(goal) {
+            return None;
+        }
+        let mut plans = (0..6)
+            .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+            .filter_map(|_| self.make_plans5(from, goal, within))
+            .collect::<Vec<PlansCorr>>();
+
+        if plans.is_empty() {
+            return None;
+        }
+
+        Some(plans.swap_remove(rand::thread_rng().gen_range(0..plans.len())))
+    }
+
+    /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    pub fn make_plans5(
+        &self,
+        from: &RegionsCorr,
+        goal: &RegionsCorr,
+        within: &RegionsCorr,
+    ) -> Option<PlansCorr> {
+        //println!("domainstore: make_plans3: from {from} goal {goal}");
+        debug_assert!(from.len() == goal.len());
+        debug_assert!(from.corresponding_num_bits(goal));
+        debug_assert!(within.len() == from.len() && from.corresponding_num_bits(within));
+        debug_assert!(within.is_superset_of(from));
+        debug_assert!(within.is_superset_of(goal));
+
+        let mut plans_per_target = PlansCorr::with_capacity(from.len());
+
+        // Find a plan for each target.
+        for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
+            if regy.is_superset_of(regx) {
+                plans_per_target.push(SomePlan::new(dom_id, vec![SomeStep::new_no_op(regx)]));
+            } else {
+                // Try making plans.
+                if let Some(mut plans) =
+                    self.get_plans(dom_id, regx, regy, Some(&within[dom_id]))
+                {
+                    plans_per_target.push(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
+                } else {
+                    // return None if any target cannot be reached.
+                    return None;
+                }
+            }
+        } // next domain
+
+        //println!("domainstore: make_plans5: from {from} goal {goal} returning {plans_per_target}");
+        Some(plans_per_target)
+    }
+
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -2971,7 +3045,7 @@ mod tests {
         let plan0 = SomePlan::new(0, vec![stp1]);
 
         // Set up plan for domain 1, action 0, no-op.
-        let stp1 = SomeStep::new_no_op(SomeRule::new_from_string("00/00/11")?);
+        let stp1 = SomeStep::new_no_op(&SomeRegion::new_from_string("001")?);
         let plan1 = SomePlan::new(1, vec![stp1]);
 
         // Set up plan for domain 2, action 0.

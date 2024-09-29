@@ -98,16 +98,12 @@ impl SomeStep {
     }
 
     /// Return a no-op step.
-    pub fn new_no_op(rule: SomeRule) -> Self {
-        let initial = rule.initial_region();
-
-        let result = rule.result_region();
-
+    pub fn new_no_op(regx: &SomeRegion) -> Self {
         Self {
             act_id: None,
-            initial,
-            result,
-            rule,
+            initial: regx.clone(),
+            result: regx.clone(),
+            rule: SomeRule::new_region_to_region(regx, regx),
             alt_rule: AltRuleHint::NoAlt {},
             group_inx: 0,
         }
@@ -263,8 +259,7 @@ mod tests {
     #[test]
     fn nop() -> Result<(), String> {
         let tmp_reg = SomeRegion::new_from_string("r0X0X")?;
-        let tmp_rul = SomeRule::new_region_to_region(&tmp_reg, &tmp_reg);
-        let tmp_stp = SomeStep::new_no_op(tmp_rul);
+        let tmp_stp = SomeStep::new_no_op(&tmp_reg);
         println!("nop stop {tmp_stp}");
 
         let stpx = tmp_stp.restrict_initial_region(&SomeRegion::new_from_string("r0XX1")?);

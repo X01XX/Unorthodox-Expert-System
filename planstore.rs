@@ -43,6 +43,11 @@ impl PlanStore {
         Self { items }
     }
 
+    /// Return a new PlanStore instance, with a given capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        Self { items: Vec::<SomePlan>::with_capacity(cap) }
+    }
+
     /// Return the length of the SomePlan vector.
     pub fn len(&self) -> usize {
         self.items.len()

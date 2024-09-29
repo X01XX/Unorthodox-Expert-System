@@ -36,6 +36,16 @@ impl PlansCorr {
         }
     }
 
+    /// Return a new, empty, PlansCorr instance, with a given capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        debug_assert!(cap > 0);
+
+        Self {
+            plans: PlanStore::with_capacity(cap),
+        }
+        
+    }
+
     /// Return the number of plans in a PlansCorr.
     pub fn len(&self) -> usize {
         self.plans.len()
