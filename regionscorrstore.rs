@@ -85,7 +85,7 @@ impl RegionsCorrStore {
     }
 
     /// Return true if there is any intersection of a given RegionsCorr.
-    fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
+    pub fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
         for rcy in self.iter() {
             if rcy.intersects(rcx) {
                 return true;
@@ -119,7 +119,7 @@ impl RegionsCorrStore {
     }
 
     /// Subtract a RegionsCorr.
-    fn subtract_regionscorr(&self, rcx: &RegionsCorr) -> Self {
+    pub fn subtract_regionscorr(&self, rcx: &RegionsCorr) -> Self {
         let mut ret_store = Self::new(vec![]);
 
         for rcy in self.iter() {

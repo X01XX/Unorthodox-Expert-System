@@ -43,7 +43,6 @@ impl PlansCorr {
         Self {
             plans: PlanStore::with_capacity(cap),
         }
-        
     }
 
     /// Return the number of plans in a PlansCorr.
