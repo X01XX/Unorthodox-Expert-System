@@ -291,6 +291,22 @@ impl SomePlan {
         ret_state
     }
 
+    /// Return the result state of a plan.
+    pub fn result_from_initial_region(&self, regx: &SomeRegion) -> Option<SomeRegion> {
+        if self.is_empty() || !self.initial_region().intersects(regx) {
+            return None;
+        }
+        let mut cur_reg = regx.clone();
+        for stepx in self.iter() {
+            if stepx.initial.intersects(&cur_reg) {
+                cur_reg = stepx.rule.result_from_initial_region(&cur_reg);
+            } else {
+                return None;
+            }
+        }
+        Some(cur_reg)
+    }
+
     /// Return a String representation of SomePlan.
     fn formatted_string(&self) -> String {
         if self.shortcut {
@@ -339,6 +355,28 @@ impl SomePlan {
             }
         }
         true
+    }
+
+    /// Return the number of steps to run for a Plan.
+    pub fn number_steps_to_run(&self) -> usize {
+        let mut numr = 0;
+        for stepx in self.iter() {
+            if stepx.act_id.is_some() {
+                numr += 1;
+            }
+        }
+        numr
+    }
+
+    /// Return true if a plan causes change.
+    pub fn causes_change(&self) -> bool {
+        if self.is_empty() {
+            return false;
+        }
+        if self.len() > 1 {
+            return true;
+        }
+        self[0].act_id.is_some()
     }
 } // end impl SomePlan
 

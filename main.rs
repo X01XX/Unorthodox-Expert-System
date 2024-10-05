@@ -64,7 +64,7 @@ use pn::Pn;
 mod domainstore;
 mod step;
 mod stepstore;
-use domainstore::{DomainStore, InxPlan};
+use domainstore::{DomainStore, InxPlan, NeedPlan};
 mod actioninterface;
 mod planstore;
 use crate::planstore::PlanStore;
@@ -654,27 +654,11 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
                 let ndx = &dmxs.needs[dmxs.can_do[n_num].inx];
-                let pln = &dmxs.can_do[n_num].plans;
 
                 println!("\n{} Need: {}", n_num, ndx);
-                match ndx {
-                    SomeNeed::ToSelectRegion { .. } => {
-                        //println!("\n{}", pln.str2());
-                        dmxs.print_plan_detail(pln);
-                    }
-                    SomeNeed::ExitSelectRegion { .. } => {
-                        //println!("\n{}", pln.str2());
-                        dmxs.print_plan_detail(pln);
-                    }
-                    _ => {
-                        if ndx.satisfied_by(dmxs[ndx.dom_id().unwrap()].current_state()) {
-                            println!("\nPlan: current state satisfies need, just take the action");
-                        } else {
-                            //println!("\n{}", pln.str2());
-                            //print_plan_detail(dmxs, pln);
-                            dmxs.print_plan_detail(pln);
-                        }
-                    }
+                match &dmxs.can_do[n_num].plans {
+                    NeedPlan::AtTarget {} => println!("AT?"),
+                    NeedPlan::PlanFound { plan: plnx } => dmxs.print_planscorrstore_detail(plnx),
                 }
                 Ok(())
             }
@@ -710,19 +694,21 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     }
 
     // Run the plan, allow for one failure.
-    if !dmxs.run_plan_store(&inx_pln.plans) {
-        print!("Run plan failed, ");
-        if let Some(plans2) = dmxs.make_plans(
-            dmxs.needs[inx_pln.inx].dom_id(),
-            &dmxs.needs[inx_pln.inx].target(),
-        ) {
-            println!("try again with {}", plans2);
-            if !dmxs.run_plan_store(&plans2) {
-                println!("Unexpected result, giving up.");
-                return false;
+    if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
+        if !dmxs.run_planscorrstore(plans) {
+            print!("Run plan failed, ");
+            if let Some(plans2) = dmxs.make_plans(
+                dmxs.needs[inx_pln.inx].dom_id(),
+                &dmxs.needs[inx_pln.inx].target(),
+            ) {
+                println!("try again with {}", plans2);
+                if !dmxs.run_planscorrstore(&plans2) {
+                    println!("Unexpected result, giving up.");
+                    return false;
+                }
+            } else {
+                println!("unexpected result, new path to goal not found.");
             }
-        } else {
-            println!("unexpected result, new path to goal not found.");
         }
     }
 
@@ -772,7 +758,10 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
                     dmxs.needs[nd_inx],
-                    dmxs.can_do[n_num].plans.str_terse()
+                    match &dmxs.can_do[n_num].plans {
+                        NeedPlan::AtTarget {} => "At Target".to_string(),
+                        NeedPlan::PlanFound { plan: plnsx } => plnsx.str_terse(),
+                    }
                 );
 
                 match dmxs.needs[nd_inx] {

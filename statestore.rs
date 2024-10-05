@@ -46,9 +46,7 @@ impl StateStore {
     /// Add a state to a StateStore.
     /// Do not allow duplicates.
     pub fn push(&mut self, val: SomeState) {
-        if !self.contains(&val) {
-            self.items.push(val);
-        }
+        self.items.push(val);
     }
 
     /// Return true if the store is empty.
@@ -112,7 +110,6 @@ mod tests {
     #[test]
     fn new() -> Result<(), String> {
         let sta1 = SomeState::new_from_string("0b0001")?;
-        let sta1a = SomeState::new_from_string("0b0001")?;
 
         let sta2 = SomeState::new_from_string("0b0010")?;
 
@@ -121,18 +118,8 @@ mod tests {
         println!("store {store}");
         assert!(store.len() == 1);
 
-        // Create a one-state store, deleting dupliactes.
-        let store = StateStore::new(vec![sta1.clone(), sta1a.clone()]);
-        println!("store {store}");
-        assert!(store.len() == 1);
-
         // Create a two-state store.
         let store = StateStore::new(vec![sta1.clone(), sta2.clone()]);
-        println!("store {store}");
-        assert!(store.len() == 2);
-
-        // Create a two-state store, deleting duplicates.
-        let store = StateStore::new(vec![sta1.clone(), sta2.clone(), sta1a.clone()]);
         println!("store {store}");
         assert!(store.len() == 2);
 

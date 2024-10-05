@@ -693,7 +693,7 @@ impl SomeDomain {
         }
 
         if let Some(mut plans) = self.make_plans2(from_reg, goal_reg, within) {
-            //println!("make_plans2 num found {}", plans.len());
+            //println!("make_plans2 num found {} plans", plans.len());
 
             let mut addplans = PlanStore::new(vec![]);
             for planx in plans.iter() {
@@ -1245,7 +1245,7 @@ mod tests {
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             None,
         ) {
-            println!("plans {plans}");
+            println!("1plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
                 Ok(num) => {
                     if num == 1 {
@@ -1290,7 +1290,7 @@ mod tests {
             &SomeRegion::new_from_string("r0011").expect("SNH"),
             Some(&SomeRegion::new_from_string("r00XX")?),
         ) {
-            println!("plans {plans}");
+            // println!("2plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
                 Ok(num) => {
                     if num == 1 {

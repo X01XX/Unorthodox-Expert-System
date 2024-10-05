@@ -186,7 +186,7 @@ impl PlanStore {
     }
 
     /// Extend a StepStore by push_link another StepStore.
-    pub fn append_link(&mut self, other: Self) -> bool {
+    pub fn _append_link(&mut self, other: Self) -> bool {
         for planx in other.items {
             if !self.push_link(planx) {
                 return false;

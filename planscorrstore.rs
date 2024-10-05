@@ -5,6 +5,8 @@
 //!
 use crate::planscorr::PlansCorr;
 use crate::regionscorr::RegionsCorr;
+use crate::statescorr::StatesCorr;
+use crate::step::{AltRuleHint, SomeStep};
 use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
@@ -126,6 +128,10 @@ impl PlansCorrStore {
 
     /// Return a PlansCorrStorr linked to another.
     pub fn link(&self, other: &Self) -> Option<Self> {
+        //println!("planscorrstore::link {self} to {other}");
+        if self.is_empty() {
+            return Some(other.clone());
+        }
         let result_regs = self.result_regions();
         let initial_regs = other.initial_regions();
 
@@ -138,6 +144,72 @@ impl PlansCorrStore {
             }
         }
         None
+    }
+
+    /// Return a more restricted display version of a PlansCorrStore.
+    pub fn str_terse(&self) -> String {
+        let mut rc_str = String::new();
+
+        rc_str.push('(');
+
+        for (inx, plansx) in self.items.iter().enumerate() {
+            let mut num_plans = 0;
+            for planx in plansx.iter() {
+                if planx.causes_change() {
+                    num_plans += 1;
+                }
+            }
+            if num_plans > 1 {
+                rc_str.push('(');
+            }
+
+            let mut cnt = 0;
+            for planx in plansx.iter() {
+                if planx.causes_change() {
+                    if cnt > 0 {
+                        rc_str.push_str(", ");
+                    }
+                    rc_str.push_str(&planx.str_terse());
+                    cnt += 1;
+                }
+            }
+
+            if num_plans > 1 {
+                rc_str.push(')');
+            }
+
+            if inx > 0 {
+                rc_str.push_str(", ");
+            }
+        }
+        rc_str.push(')');
+
+        rc_str
+    }
+
+    /// Return the expected result, given ititial regions.
+    pub fn result_from_initial_regions(&self, regions: &RegionsCorr) -> Option<RegionsCorr> {
+        let mut cur_regs = regions.clone();
+        for planscx in self.items.iter() {
+            if let Some(next_regs) = planscx.result_from_initial_regions(&cur_regs) {
+                cur_regs = next_regs;
+            }
+        }
+        Some(cur_regs)
+    }
+
+    /// Return number bits changed running plans in store.
+    pub fn num_bits_changed(&self) -> usize {
+        self.initial_regions().distance(&self.result_regions())
+    }
+
+    /// Return the number of steps to run for a PlansCorrStore.
+    pub fn number_steps_to_run(&self) -> usize {
+        let mut numr = 0;
+        for planscx in self.iter() {
+            numr += planscx.number_steps_to_run();
+        }
+        numr
     }
 }
 

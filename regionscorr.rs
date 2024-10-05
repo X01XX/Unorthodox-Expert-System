@@ -81,6 +81,10 @@ impl RegionsCorr {
 
     /// Return True if a RegionsCorr is a superset of all corresponding states in.
     pub fn is_superset_states(&self, stas: &StatesCorr) -> bool {
+        if self.len() != stas.len() {
+            println!("regionscorr {self}");
+            println!("stas {stas}");
+        }
         debug_assert!(self.len() == stas.len());
         debug_assert!(self.corresponding_num_bits(stas));
 

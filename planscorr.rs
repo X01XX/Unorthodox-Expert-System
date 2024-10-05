@@ -6,12 +6,14 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
+use crate::statescorr::StatesCorr;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::tools::{AvecRef, StrLen};
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
+use std::slice::Iter;
 
 use std::fmt;
 
@@ -114,8 +116,75 @@ impl PlansCorr {
     }
 
     /// Return true if a PlansCorr can be linked to another.
-    pub fn can_be_linked(&self, other: &Self) -> bool {
+    pub fn _can_be_linked(&self, other: &Self) -> bool {
         self.result_regions().intersects(&other.initial_regions())
+    }
+
+    /// Return the expected result, given initial regions.
+    pub fn result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
+        //println!("planscorr::result_from_initial_states self {self} states {states}");
+        debug_assert!(self.len() == states.len());
+        let mut ret_stas = StatesCorr::with_capacity(states.len());
+        for (planx, stax) in self.iter().zip(states.iter()) {
+            if planx.initial_region().is_superset_of(stax) {
+                ret_stas.push(planx.result_from_initial_state(stax));
+            } else {
+                return None;
+            }
+        }
+        Some(ret_stas)
+    }
+
+    /// Return the expected result, given initial regions.
+    pub fn result_from_initial_regions(&self, regions: &RegionsCorr) -> Option<RegionsCorr> {
+        let mut ret_regs = RegionsCorr::with_capacity(regions.len());
+        for (planx, regx) in self.iter().zip(regions.iter()) {
+            if regx.intersects(planx.initial_region()) {
+                if let Some(regy) = planx.result_from_initial_region(regx) {
+                    ret_regs.push(regy);
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        Some(ret_regs)
+    }
+
+    /// Return a vector iterator.
+    pub fn iter(&self) -> Iter<SomePlan> {
+        self.plans.iter()
+    }
+
+    /// Return the number of bits changed by a PlansCorr.
+    pub fn num_bits_changed(&self) -> usize {
+        let mut numc = 0;
+
+        for plnx in self.plans.iter() {
+            numc += plnx.num_bits_changed();
+        }
+        numc
+    }
+
+    /// Return the number of steps to run for a PlansCorr.
+    pub fn number_steps_to_run(&self) -> usize {
+        let mut numr = 0;
+        for plnx in self.iter() {
+            numr += plnx.number_steps_to_run();
+        }
+        numr
+    }
+
+    /// Return a rating for a PlansCorr.
+    pub fn plans_range(&self) -> RegionsCorr {
+        // Form new RegionsCorr representing the whole range of possible regions,
+        // since the PlansCorr will be crun in prallel.
+        let mut plans_range = RegionsCorr::with_capacity(self.len());
+        for plnx in self.iter() {
+            plans_range.push(plnx.initial_region().union(plnx.result_region()));
+        }
+        plans_range
     }
 }
 
