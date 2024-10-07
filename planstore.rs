@@ -175,7 +175,7 @@ impl PlanStore {
         rc_str.push('[');
         for planx in &self.items {
             if flg == 1 {
-                rc_str.push_str(",\n ");
+                rc_str.push_str(", ");
             }
             rc_str.push_str(&planx.to_string());
             flg = 1;

@@ -15,7 +15,7 @@ use std::slice::Iter;
 
 impl fmt::Display for PlansCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.items))
+        write!(f, "{} value {}", tools::vec_string(&self.items), self.value)
     }
 }
 
@@ -24,12 +24,13 @@ impl fmt::Display for PlansCorrStore {
 pub struct PlansCorrStore {
     /// A vector of PlansCorr.
     pub items: Vec<PlansCorr>,
+    pub value: isize,
 }
 
 impl PlansCorrStore {
     /// Return a new, PlansCorrStore.
     pub fn new(items: Vec<PlansCorr>) -> Self {
-        let ret_plnsc = Self { items };
+        let ret_plnsc = Self { items, value: 0 };
         assert!(ret_plnsc.is_valid());
         ret_plnsc
     }
@@ -37,6 +38,11 @@ impl PlansCorrStore {
     /// Return the number of plans.
     pub fn len(&self) -> usize {
         self.items.len()
+    }
+
+    /// Set the PlansCorrStore value.
+    pub fn set_value(&mut self, value: isize) {
+        self.value = value;
     }
 
     /// Return true if the store is empty.
