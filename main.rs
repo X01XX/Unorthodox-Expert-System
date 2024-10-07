@@ -697,7 +697,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
         if !dmxs.run_planscorrstore(plans) {
             print!("Run plan failed, ");
-            if let Some(plans2) = dmxs.make_plans(
+            if let Some(plans2) = dmxs.plan_using_least_negative_select_regions_domx(
                 dmxs.needs[inx_pln.inx].dom_id(),
                 &dmxs.needs[inx_pln.inx].target(),
             ) {
