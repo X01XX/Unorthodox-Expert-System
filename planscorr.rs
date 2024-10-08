@@ -121,7 +121,7 @@ impl PlansCorr {
     }
 
     /// Return the expected result, given initial regions.
-    pub fn result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
+    pub fn _result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
         //println!("planscorr::result_from_initial_states self {self} states {states}");
         debug_assert!(self.len() == states.len());
         let mut ret_stas = StatesCorr::with_capacity(states.len());

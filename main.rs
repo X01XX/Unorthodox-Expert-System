@@ -697,14 +697,19 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
         if !dmxs.run_planscorrstore(plans) {
             print!("Run plan failed, ");
-            if let Some(plans2) = dmxs.plan_using_least_negative_select_regions_domx(
+            if let Some(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
                 dmxs.needs[inx_pln.inx].dom_id(),
                 &dmxs.needs[inx_pln.inx].target(),
             ) {
-                println!("try again with {}", plans2);
-                if !dmxs.run_planscorrstore(&plans2) {
-                    println!("Unexpected result, giving up.");
-                    return false;
+                match ndpln2 {
+                    NeedPlan::PlanFound { plan: plans2 } => {
+                        println!("try again with {}", plans2);
+                        if !dmxs.run_planscorrstore(&plans2) {
+                            println!("Unexpected result, giving up.");
+                            return false;
+                        }
+                    }
+                    _ => return false,
                 }
             } else {
                 println!("unexpected result, new path to goal not found.");
