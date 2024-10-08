@@ -502,17 +502,12 @@ impl DomainStore {
           // Unreachable, since there is no break command.
     } // end evaluate_needs
 
-    /// Create a RegionsStoreCorr of current regions, except a given region.
-    pub fn current_regions_except(&self, dom_id: usize, targ: &SomeRegion) -> RegionsCorr {
-        let mut regs = RegionsCorr::with_capacity(self.len());
+    /// Create a RegionsStoreCorr of maximum regions, except a for given domain.
+    pub fn maximum_regions_except(&self, dom_id: usize, targ: &SomeRegion) -> RegionsCorr {
+        let mut regs = self.maximum_regions();
 
-        for dom_idx in 0..self.len() {
-            if dom_idx == dom_id {
-                regs.push(targ.clone());
-            } else {
-                regs.push(SomeRegion::new(vec![self.items[dom_idx].cur_state.clone()]));
-            }
-        }
+        regs[dom_id] = targ.clone();
+
         regs
     }
 
@@ -1045,8 +1040,8 @@ impl DomainStore {
         // which are defined as superset of all domain current states.
         let goal = match target {
             ATarget::State { state } => &self
-                .current_regions_except(dom_id.unwrap(), &SomeRegion::new(vec![(*state).clone()])),
-            ATarget::Region { region } => &self.current_regions_except(dom_id.unwrap(), region),
+                .maximum_regions_except(dom_id.unwrap(), &SomeRegion::new(vec![(*state).clone()])),
+            ATarget::Region { region } => &self.maximum_regions_except(dom_id.unwrap(), region),
             ATarget::DomainRegions { regions } => regions,
         };
         self.plan_using_least_negative_select_regions(&from, goal)
