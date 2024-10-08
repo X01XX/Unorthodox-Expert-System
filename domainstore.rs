@@ -1110,7 +1110,8 @@ impl DomainStore {
             for selx in self.select.iter() {
                 if selx.neg_value == next_most_min {
                     // Subtract select regions.
-                    if selx.regions.intersects(start_regs) || selx.regions.intersects(goal_regs) {
+                    if selx.regions.intersects(start_regs) || selx.regions.is_superset_of(goal_regs)
+                    {
                         return last_results;
                     }
                     sel_regs = sel_regs.subtract_regionscorr(&selx.regions);
@@ -1198,7 +1199,7 @@ impl DomainStore {
         let mut mid_paths = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .filter_map(|_| {
-                self.plan_using_least_negative_select_regions3(
+                self.plan_using_least_negative_select_regions_path(
                     start_regs,
                     goal_regs,
                     select_regions,
@@ -1245,7 +1246,7 @@ impl DomainStore {
 
     /// Return a series of intersecting RegionsCorrs, to
     /// guide a path between start and goal.
-    fn plan_using_least_negative_select_regions3<'a>(
+    fn plan_using_least_negative_select_regions_path<'a>(
         &'a self,
         start_regs: &'a RegionsCorr,
         goal_regs: &'a RegionsCorr,
