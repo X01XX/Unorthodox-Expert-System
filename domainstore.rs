@@ -554,14 +554,12 @@ impl DomainStore {
         dom_id: usize,
         from_region: &SomeRegion,
         goal_region: &SomeRegion,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<PlanStore> {
         debug_assert!(from_region.num_bits() == goal_region.num_bits());
-        if let Some(reg) = within {
-            debug_assert!(reg.num_bits() == from_region.num_bits());
-            debug_assert!(reg.is_superset_of(from_region));
-            debug_assert!(reg.is_superset_of(goal_region));
-        }
+        debug_assert!(within.num_bits() == from_region.num_bits());
+        debug_assert!(within.is_superset_of(from_region));
+        debug_assert!(within.is_superset_of(goal_region));
         //println!("domainstore: get_plans: dom {dom_id} from {from_region} goal {goal_region}");
 
         self.items[dom_id].make_plans(from_region, goal_region, within)
@@ -1071,7 +1069,7 @@ impl DomainStore {
 
         // Check if no plans are needed.
         if start_regs.intersects(goal_regs) {
-            if let Some(plncsx) = self.make_plans2(start_regs, goal_regs, &self.maximum_regions()) {
+            if let Some(plncsx) = self.make_plans(start_regs, goal_regs, &self.maximum_regions()) {
                 return Some(NeedPlan::PlanFound {
                     plan: PlansCorrStore::new(vec![plncsx]),
                 });
@@ -1193,7 +1191,7 @@ impl DomainStore {
         for selx in select_regions.iter() {
             if selx.is_superset_of(start_regs) && selx.intersects(goal_regs) {
                 if let Some(plans) =
-                    self.make_plans2(start_regs, &selx.intersection(goal_regs)?, selx)
+                    self.make_plans(start_regs, &selx.intersection(goal_regs)?, selx)
                 {
                     //assert!(plans.is_valid());
                     //println!("plan_using_least_negative_select_regions2: returning (1) {plans}");
@@ -1212,7 +1210,7 @@ impl DomainStore {
             .filter_map(|_| {
                 self.get_path_through_select_regions(start_regs, goal_regs, select_regions)
             })
-            .collect::<Vec<Vec<RegionsCorr>>>();
+            .collect::<Vec<RegionsCorrStore>>();
 
         if mid_paths.is_empty() {
             return None;
@@ -1226,7 +1224,7 @@ impl DomainStore {
         let mut mid_plans = PlansCorrStore::new(vec![]);
         for inx in 1..(pathx.len() - 1) {
             if let Some(intx) = pathx[inx].intersection(&pathx[inx + 1]) {
-                if let Some(plans) = self.make_plans2(&cur_regs, &intx, &pathx[inx]) {
+                if let Some(plans) = self.make_plans(&cur_regs, &intx, &pathx[inx]) {
                     mid_plans = mid_plans.link(&PlansCorrStore::new(vec![plans]))?;
                     //println!("mid plans {mid_plans}");
                     cur_regs = mid_plans.result_regions();
@@ -1252,12 +1250,9 @@ impl DomainStore {
     } // end plan_using_least_negative_select_regions2
 
     /// Massage a path for return.
-    fn get_path_through_select_regions2<'a>(
-        &'a self,
-        path: &[&'a RegionsCorr],
-    ) -> Vec<RegionsCorr> {
+    fn get_path_through_select_regions2(&self, path: &[&RegionsCorr]) -> RegionsCorrStore {
         let num_items = path.len();
-        let mut ret_path = Vec::<RegionsCorr>::with_capacity(num_items);
+        let mut ret_path = RegionsCorrStore::with_capacity(num_items);
 
         ret_path.push(path[0].intersection(path[1]).expect("SNH"));
 
@@ -1281,7 +1276,7 @@ impl DomainStore {
         start_regs: &'a RegionsCorr,
         goal_regs: &'a RegionsCorr,
         select_regions: &'a RegionsCorrStore,
-    ) -> Option<Vec<RegionsCorr>> {
+    ) -> Option<RegionsCorrStore> {
         //println!(
         //    "get_path_through_select_regions: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
         //);
@@ -1555,16 +1550,13 @@ impl DomainStore {
     pub fn maximum_regions(&self) -> RegionsCorr {
         let mut ret_regs = RegionsCorr::with_capacity(self.len());
         for domx in self.items.iter() {
-            ret_regs.push(SomeRegion::new(vec![
-                domx.cur_state.new_high(),
-                domx.cur_state.new_low(),
-            ]));
+            ret_regs.push(domx.maximum_region());
         }
         ret_regs
     }
 
-    /// Get plans for moving from one set of states to another, within a gives RegionsCorr.
-    pub fn make_plans2(
+    /// Get plans for moving from one set of domain states to another, within a given set of domain regions.
+    pub fn make_plans(
         &self,
         from: &RegionsCorr,
         goal: &RegionsCorr,
@@ -1576,14 +1568,14 @@ impl DomainStore {
         debug_assert!(within.is_superset_of(from));
         debug_assert!(within.is_superset_of(goal));
 
-        //println!("make_plans2: from {from} to {goal} within {within}");
+        //println!("make_plans: from {from} to {goal} within {within}");
 
         if from.is_subset_of(goal) {
             return None;
         }
         let mut plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(|_| self.make_plans3(from, goal, within))
+            .filter_map(|_| self.make_plans2(from, goal, within))
             .collect::<Vec<PlansCorr>>();
 
         if plans.is_empty() {
@@ -1595,13 +1587,13 @@ impl DomainStore {
 
     /// Return an Option PlanStore, to go from a set of domain/regions to another set of domain/regions.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
-    pub fn make_plans3(
+    pub fn make_plans2(
         &self,
         from: &RegionsCorr,
         goal: &RegionsCorr,
         within: &RegionsCorr,
     ) -> Option<PlansCorr> {
-        //println!("domainstore: make_plans3: from {from} goal {goal}");
+        //println!("domainstore: make_plans2: from {from} goal {goal}");
         debug_assert!(from.len() == goal.len());
         debug_assert!(from.corresponding_num_bits(goal));
         debug_assert!(within.len() == from.len() && from.corresponding_num_bits(within));
@@ -1616,7 +1608,7 @@ impl DomainStore {
                 plans_per_target.push(SomePlan::new(dom_id, vec![SomeStep::new_no_op(regx)]));
             } else {
                 // Try making plans.
-                if let Some(mut plans) = self.get_plans(dom_id, regx, regy, Some(&within[dom_id])) {
+                if let Some(mut plans) = self.get_plans(dom_id, regx, regy, &within[dom_id]) {
                     plans_per_target
                         .push(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
                 } else {
@@ -1626,7 +1618,7 @@ impl DomainStore {
             }
         } // next domain
 
-        //println!("domainstore: make_plans5: from {from} goal {goal} returning {plans_per_target}");
+        //println!("domainstore: make_plans2: from {from} goal {goal} returning {plans_per_target}");
         Some(plans_per_target)
     }
 } // end impl DomainStore

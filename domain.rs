@@ -283,7 +283,7 @@ impl SomeDomain {
         steps_by_change_vov: &[Vec<&SomeStep>],
         depth: usize,
         verbose: bool,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<SomePlan> {
         if verbose {
             println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
@@ -535,7 +535,7 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         depth: usize,
         verbose: bool,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<SomePlan> {
         if verbose {
             println!(
@@ -596,7 +596,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
         verbose: bool,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<SomePlan> {
         if verbose {
             println!(
@@ -677,7 +677,7 @@ impl SomeDomain {
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<PlanStore> {
         //if let Some(in_reg) = within {
         //    println!("domain::make_plans: from {from_reg} goal {goal_reg} within {in_reg}");
@@ -686,11 +686,9 @@ impl SomeDomain {
         //}
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        if let Some(reg) = within {
-            debug_assert!(reg.num_bits() == self.num_bits());
-            debug_assert!(reg.is_superset_of(from_reg));
-            debug_assert!(reg.is_superset_of(goal_reg));
-        }
+        debug_assert!(within.num_bits() == self.num_bits());
+        debug_assert!(within.is_superset_of(from_reg));
+        debug_assert!(within.is_superset_of(goal_reg));
 
         if let Some(mut plans) = self.make_plans2(from_reg, goal_reg, within) {
             //println!("make_plans2 num found {} plans", plans.len());
@@ -732,16 +730,15 @@ impl SomeDomain {
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<PlanStore> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        if let Some(reg) = within {
-            debug_assert!(reg.num_bits() == self.num_bits());
-            if !reg.is_superset_of(from_reg) || !reg.is_superset_of(goal_reg) {
-                return None;
-            }
+        debug_assert!(within.num_bits() == self.num_bits());
+
+        if !within.is_superset_of(from_reg) || !within.is_superset_of(goal_reg) {
+            return None;
         }
 
         if goal_reg.is_superset_of(from_reg) {
@@ -785,11 +782,10 @@ impl SomeDomain {
             return None;
         }
         // Check plans.
-        if let Some(regs) = within {
-            for planx in &plans {
-                debug_assert!(planx.remains_within(regs));
-            }
+        for planx in &plans {
+            debug_assert!(planx.remains_within(within));
         }
+
         //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
         Some(PlanStore::new(plans).delete_duplicates())
     } // end make_plans2
@@ -808,7 +804,7 @@ impl SomeDomain {
             return Some(SomePlan::new(self.id, vec![]));
         }
 
-        self.make_one_plan2(from_reg, goal_reg, None)
+        self.make_one_plan2(from_reg, goal_reg, &self.maximum_region())
     }
 
     /// Make a plan to change from a region to another region.
@@ -817,16 +813,14 @@ impl SomeDomain {
         &self,
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
     ) -> Option<SomePlan> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.num);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-        if let Some(reg) = within {
-            debug_assert!(reg.num_bits() == self.num_bits());
-            debug_assert!(reg.is_superset_of(from_reg));
-            debug_assert!(reg.is_superset_of(goal_reg));
-        }
+        debug_assert!(within.num_bits() == self.num_bits());
+        debug_assert!(within.is_superset_of(from_reg));
+        debug_assert!(within.is_superset_of(goal_reg));
 
         if goal_reg.is_superset_of(from_reg) {
             return Some(SomePlan::new(self.id, vec![]));
@@ -874,25 +868,19 @@ impl SomeDomain {
     pub fn get_steps(
         &self,
         rule_to_goal: &SomeRule,
-        within: Option<&SomeRegion>,
+        within: &SomeRegion,
         verbose: bool,
     ) -> StepStore {
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
-        if let Some(reg) = within {
-            debug_assert!(reg.num_bits() == self.num_bits());
-            debug_assert!(reg.is_superset_of(&rule_to_goal.initial_region()));
-            debug_assert!(reg.is_superset_of(&rule_to_goal.result_region()));
-        }
+        debug_assert!(within.num_bits() == self.num_bits());
+        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
+        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
 
         // Check if changes are possible.
         let wanted_changes = rule_to_goal.wanted_changes();
 
         // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str: StepStore = if let Some(regx) = within {
-            self.actions.get_steps(rule_to_goal, regx)
-        } else {
-            self.actions.get_steps(rule_to_goal, &self.max_region())
-        };
+        let steps_str: StepStore = self.actions.get_steps(rule_to_goal, within);
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let Some(can_change) = steps_str.aggregate_changes() else {
@@ -915,11 +903,6 @@ impl SomeDomain {
         }
 
         steps_str
-    }
-
-    /// Return the maximum possiblo region for a domain.
-    fn max_region(&self) -> SomeRegion {
-        SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
     }
 
     /// Return the current maximum region that can be reached from the current state.
@@ -1014,7 +997,7 @@ impl SomeDomain {
     }
 
     /// Return a plan shortcut, or None.
-    fn shortcuts(&self, planx: &SomePlan, within: Option<&SomeRegion>) -> Option<PlanStore> {
+    fn shortcuts(&self, planx: &SomePlan, within: &SomeRegion) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
@@ -1024,12 +1007,7 @@ impl SomeDomain {
 
     /// Try to get multiple plan shortcuts.
     /// Return a plan shortcut, or None.
-    fn shortcuts2(
-        &self,
-        planx: &SomePlan,
-        depth: usize,
-        within: Option<&SomeRegion>,
-    ) -> Option<PlanStore> {
+    fn shortcuts2(&self, planx: &SomePlan, depth: usize, within: &SomeRegion) -> Option<PlanStore> {
         //println!("shortcuts2: plan {planx} depth {depth}");
         if depth > 5 {
             return None;
@@ -1051,7 +1029,7 @@ impl SomeDomain {
     }
 
     /// Return one plan shortcut.
-    fn shortcuts3(&self, planx: &SomePlan, within: Option<&SomeRegion>) -> Option<PlanStore> {
+    fn shortcuts3(&self, planx: &SomePlan, within: &SomeRegion) -> Option<PlanStore> {
         if planx.len() < 3 {
             return None;
         }
@@ -1158,6 +1136,11 @@ impl SomeDomain {
             Some(shortcuts)
         }
     }
+
+    /// Return the maximum region for the domain.
+    pub fn maximum_region(&self) -> SomeRegion {
+        SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
+    }
 } // end impl SomeDomain
 
 #[cfg(test)]
@@ -1243,7 +1226,7 @@ mod tests {
         if let Some(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0101").expect("SNH"),
             &SomeRegion::new_from_string("r0100").expect("SNH"),
-            None,
+            &SomeRegion::new_from_string("rXXXX").expect("SNH"),
         ) {
             println!("1plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
@@ -1288,7 +1271,7 @@ mod tests {
         if let Some(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0001").expect("SNH"),
             &SomeRegion::new_from_string("r0011").expect("SNH"),
-            Some(&SomeRegion::new_from_string("r00XX")?),
+            &SomeRegion::new_from_string("r00XX")?,
         ) {
             // println!("2plans {plans}");
             match dm0.run_plan(&plans[0], 2) {
@@ -1961,7 +1944,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
             assert!(shortcuts.len() == 1);
             let shrt = &shortcuts[0];
             println!("shrt {shrt}");
@@ -2085,7 +2068,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2200,7 +2183,7 @@ mod tests {
         let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4]);
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2345,7 +2328,7 @@ mod tests {
         );
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, None) {
+        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);

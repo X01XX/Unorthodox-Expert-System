@@ -42,6 +42,13 @@ impl RegionsCorrStore {
         Self { items }
     }
 
+    /// Return a new RegionsCorrStore instance, empty, with a specified capacity.
+    pub fn with_capacity(num: usize) -> Self {
+        Self {
+            items: Vec::<RegionsCorr>::with_capacity(num),
+        }
+    }
+
     /// Return the number of regions.
     pub fn len(&self) -> usize {
         self.items.len()
