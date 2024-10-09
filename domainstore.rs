@@ -1212,7 +1212,7 @@ impl DomainStore {
             .filter_map(|_| {
                 self.get_path_through_select_regions(start_regs, goal_regs, select_regions)
             })
-            .collect::<Vec<Vec<&RegionsCorr>>>();
+            .collect::<Vec<Vec<RegionsCorr>>>();
 
         if mid_paths.is_empty() {
             return None;
@@ -1225,8 +1225,8 @@ impl DomainStore {
 
         let mut mid_plans = PlansCorrStore::new(vec![]);
         for inx in 1..(pathx.len() - 1) {
-            if let Some(intx) = pathx[inx].intersection(pathx[inx + 1]) {
-                if let Some(plans) = self.make_plans2(&cur_regs, &intx, pathx[inx]) {
+            if let Some(intx) = pathx[inx].intersection(&pathx[inx + 1]) {
+                if let Some(plans) = self.make_plans2(&cur_regs, &intx, &pathx[inx]) {
                     mid_plans = mid_plans.link(&PlansCorrStore::new(vec![plans]))?;
                     //println!("mid plans {mid_plans}");
                     cur_regs = mid_plans.result_regions();
@@ -1251,6 +1251,29 @@ impl DomainStore {
         Some(ret_planscorrstore)
     } // end plan_using_least_negative_select_regions2
 
+    /// Massage a path for return.
+    fn get_path_through_select_regions2<'a>(
+        &'a self,
+        path: &[&'a RegionsCorr],
+    ) -> Vec<RegionsCorr> {
+        let num_items = path.len();
+        let mut ret_path = Vec::<RegionsCorr>::with_capacity(num_items);
+
+        ret_path.push(path[0].intersection(path[1]).expect("SNH"));
+
+        for itemx in path.iter().take(num_items - 1).skip(1) {
+            ret_path.push((*itemx).clone());
+        }
+
+        ret_path.push(
+            path[num_items - 1]
+                .intersection(path[num_items - 2])
+                .expect("SNH"),
+        );
+
+        ret_path
+    }
+
     /// Return a series of intersecting RegionsCorrs, to
     /// guide a path between start and goal.
     fn get_path_through_select_regions<'a>(
@@ -1258,9 +1281,9 @@ impl DomainStore {
         start_regs: &'a RegionsCorr,
         goal_regs: &'a RegionsCorr,
         select_regions: &'a RegionsCorrStore,
-    ) -> Option<Vec<&RegionsCorr>> {
+    ) -> Option<Vec<RegionsCorr>> {
         //println!(
-        //    "plan_using_least_negative_select_regions3: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
+        //    "get_path_through_select_regions: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
         //);
         // Start a list with the start regions, and a list with the goal regions.
         // Successively add intersections, of the last item of each list, to extend each list,
@@ -1340,7 +1363,7 @@ impl DomainStore {
             // Check if done, with no result.
             if start_added || goal_added {
             } else {
-                //println!("plan_using_least_negative_select_regions3: returning (1) no new intersections found");
+                //println!("get_path_through_select_regions: returning (1) no new intersections found");
                 return None;
             }
 
@@ -1368,8 +1391,8 @@ impl DomainStore {
                 for regs_tx in tmp_path.iter().rev() {
                     start_ints.push(regs_tx);
                 }
-                //println!("plan_using_least_negative_select_regions3: returning (1) {}", tools::vec_ref_string(&start_ints));
-                return Some(start_ints);
+                //println!("get_path_through_select_regions: returning (1) {}", tools::vec_ref_string(&start_ints));
+                return Some(self.get_path_through_select_regions2(&start_ints));
             }
 
             // Check the last goal_ints item against all start_ints.
@@ -1395,11 +1418,11 @@ impl DomainStore {
                 for regs_gx in goal_ints.iter().rev() {
                     tmp_path.push(regs_gx);
                 }
-                //println!("plan_using_least_negative_select_regions3: returning (2) {}", tools::vec_ref_string(&tmp_path));
-                return Some(tmp_path);
+                //println!("get_path_through_select_regions: returning (2) {}", tools::vec_ref_string(&tmp_path));
+                return Some(self.get_path_through_select_regions2(&tmp_path));
             }
         } // end loop
-    } // end plan_using_least_negative_select_regions3
+    } // end get_path_through_select_regions
 
     /// Return a String representation of a DomainStore.
     fn formatted_string(&self) -> String {
@@ -2729,6 +2752,42 @@ mod tests {
         assert!(after[0] == SomeState::new_from_string("0b0101")?);
         assert!(after[1] == SomeState::new_from_string("0b1100")?);
 
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    /// Test run_planscorrstore, where start and goal are not subsets of any select regions.
+    fn get_path_through_select_regions() -> Result<(), String> {
+        // Init DomainStore.
+        let dmxs = DomainStore::new();
+
+        let start_regs = RegionsCorr::new(vec![SomeRegion::new_from_string("r1X11").expect("SNH")]);
+        let goal_regs = RegionsCorr::new(vec![SomeRegion::new_from_string("rX000").expect("SNH")]);
+
+        let within = RegionsCorrStore::new(vec![
+            RegionsCorr::new(vec![SomeRegion::new_from_string("r0XXX").expect("SNH")]),
+            RegionsCorr::new(vec![SomeRegion::new_from_string("rX1XX").expect("SNH")]),
+        ]);
+
+        let path = dmxs.get_path_through_select_regions(&start_regs, &goal_regs, &within);
+        if let Some(pathx) = path {
+            print!("path: ");
+            for rcx in pathx.iter() {
+                print!("{rcx}");
+            }
+            println!(" ");
+            assert!(
+                pathx[0]
+                    == RegionsCorr::new(vec![SomeRegion::new_from_string("r1111").expect("SNH")])
+            );
+            assert!(
+                pathx[pathx.len() - 1]
+                    == RegionsCorr::new(vec![SomeRegion::new_from_string("r0000").expect("SNH")])
+            );
+        } else {
+            return Err("No path found?".to_string());
+        }
         //assert!(1 == 2);
         Ok(())
     }
