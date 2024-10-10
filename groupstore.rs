@@ -7,7 +7,6 @@ use crate::pn::Pn;
 use crate::region::{AccessStates, SomeRegion};
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
-use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::tools;
 
@@ -54,7 +53,7 @@ impl GroupStore {
     }
 
     /// Calculate and set the aggregate changes and updated flag.
-    fn calc_aggregate_changes(&mut self) {
+    pub fn calc_aggregate_changes(&mut self) {
         self.aggregate_changes = None;
 
         for grpx in &self.items {
@@ -71,93 +70,6 @@ impl GroupStore {
         }
 
         self.agg_chgs_updated = true;
-    }
-
-    /// Check groups with a recently changed sqaure.
-    /// Return the references to groups that are inactivated by a square.
-    pub fn check_square(&mut self, sqrx: &SomeSquare, dom_id: usize, act_id: usize) -> RegionStore {
-        //println!("GroupStore:check_square: {}", sqrx.state);
-        let mut regs_invalid = RegionStore::new(vec![]);
-
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, grpx) in self.items.iter_mut().enumerate() {
-            if !grpx.check_square(sqrx) {
-                if sqrx.pn > grpx.pn {
-                    println!(
-                        "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
-                        dom_id, act_id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
-                    );
-                } else if sqrx.pn < grpx.pn && sqrx.pnc {
-                    println!(
-                        "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
-                        dom_id, act_id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
-                    );
-                } else {
-                    println!(
-                        "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
-                        dom_id,
-                        act_id,
-                        sqrx.state,
-                        if let Some(rules) = &sqrx.rules {
-                            rules.to_string()
-                        } else {
-                            String::from("None")
-                        },
-                        grpx.region,
-                        if let Some(rules) = &grpx.rules {
-                            rules.to_string()
-                        } else {
-                            String::from("None")
-                        },
-                    );
-                }
-
-                regs_invalid.push(grpx.region.clone());
-                rmvec.push(inx);
-            }
-        } // next grpx
-
-        // Remove the groups
-        for inx in rmvec.iter().rev() {
-            println!(
-                "\nDom {} Act {} Group {} deleted",
-                dom_id, act_id, self.items[*inx].region
-            );
-            tools::remove_unordered(&mut self.items, *inx);
-        }
-
-        if rmvec.is_empty() {
-        } else {
-            self.calc_aggregate_changes();
-        }
-
-        // Check limited status of groups.
-        for grpx in self.items.iter_mut() {
-            if !grpx.limited || !grpx.region.is_adjacent(&sqrx.state) {
-                continue;
-            }
-            if let Some(anchor) = &grpx.anchor {
-                if anchor.is_adjacent(&sqrx.state) {
-                    if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
-                        //println!("at 4");
-                        grpx.set_limited_off(dom_id, act_id);
-                    } else if grpx.pn == sqrx.pn {
-                        if let Some(grpx_ruls) = &grpx.rules {
-                            if let Some(sqr_ruls) = &sqrx.rules {
-                                if grpx_ruls.union(sqr_ruls).is_some() {
-                                    //println!("at 3");
-                                    grpx.set_limited_off(dom_id, act_id);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        } // next grpx
-
-        //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
-        regs_invalid
     }
 
     /// Return true if an item is in exactly one group.
@@ -262,83 +174,31 @@ impl GroupStore {
             .collect()
     }
 
-    //  Find and remove a given group, identified by region.
-    //  pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
-    //
-    //      Find a matching group region
-    //      let mut fnd = false;
-    //      let mut inx = 0;
-    //
-    //      for grpx in &mut self.items {
-    //
-    //          if grpx.region == *reg {
-    //              fnd = true;
-    //              break;
-    //          }
-    //          inx += 1;
-    //      }
-    //
-    //      Remove the group
-    //      if fnd {
-    //          remove_unordered(&mut self.items, inx);
-    //      }
-    //
-    //      fnd
-    //  }
+    /// Find and remove a group, given a group region.
+    /// Maintain group item order.
+    pub fn remove_group(&mut self, reg: &SomeRegion) -> bool {
+        // Find a matching group region
+        let mut fnd = false;
+        let mut inx = 0;
 
-    /// Find and remove any subset groups.
-    pub fn remove_subsets_of(&mut self, reg: &SomeRegion, dom_id: usize, act_id: usize) -> bool {
-        // Accumulate indices of groups that are subsets
-        let mut rmvec = Vec::<usize>::new();
-
-        for (inx, grpx) in &mut self.items.iter().enumerate() {
-            if grpx.is_subset_of(reg) {
-                rmvec.push(inx);
+        for grpx in &mut self.items {
+            if grpx.region == *reg {
+                fnd = true;
+                break;
             }
+            inx += 1;
         }
 
-        // Remove the groups
-        for inx in rmvec.iter().rev() {
-            println!(
-                "\nDom {} Act {} Group {} deleted, subset of {reg}",
-                dom_id, act_id, self.items[*inx].region
-            );
-            tools::remove_unordered(&mut self.items, *inx);
+        // Remove the group
+        if fnd {
+            self.items.remove(inx);
         }
-
-        !rmvec.is_empty()
+        fnd
     }
 
     /// Add a group to the end of the list.
     /// So older, more likely groups are first in the list.
-    /// The push command in LISP puts an item at the beginning of the list.
-    pub fn push_nosubs(&mut self, grp: SomeGroup, dom_id: usize, act_id: usize) -> bool {
-        // Check for supersets, which probably is an error
-        if self.any_superset_of(&grp.region) {
-            let regs = self.supersets_of(&grp.region);
-            println!(
-                "Dom {} Act {} skipped adding group {}, a superset exists in {}",
-                dom_id,
-                act_id,
-                grp.region,
-                tools::vec_ref_string(&regs)
-            );
-            return false;
-        }
-
-        // Remove subset groups
-        self.remove_subsets_of(&grp.region, dom_id, act_id);
-
-        // push the new group
-        if grp.region.states.len() > 1 {
-            println!(
-                "\nDom {} Act {} Adding group {} from {}",
-                dom_id, act_id, grp, grp.region.states,
-            );
-        } else {
-            println!("\nDom {} Act {} Adding group {}", dom_id, act_id, grp);
-        }
-
+    pub fn push(&mut self, grp: SomeGroup) -> bool {
         self.items.push(grp);
 
         self.calc_aggregate_changes();
@@ -410,6 +270,15 @@ impl GroupStore {
         }
 
         rc_str
+    }
+
+    /// Set group limited to false.
+    pub fn group_set_limited_off(&mut self, grp_reg: &SomeRegion) -> bool {
+        if let Some(grpx) = self.find_mut(grp_reg) {
+            grpx.set_limited_off()
+        } else {
+            false
+        }
     }
 } // end impl GroupStore
 

@@ -143,7 +143,7 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
-        self.actions.get_needs(&self.cur_state, self.id)
+        self.actions.get_needs(&self.cur_state)
     }
 
     /// Evaluate an arbitrary sample given by the user.

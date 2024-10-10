@@ -89,13 +89,9 @@ impl SomeGroup {
 
     /// Accessor set the pnc field to true.
     /// Reform region, if needed.
-    pub fn set_pnc(&mut self, dom_id: usize, act_id: usize) {
+    pub fn set_pnc(&mut self) -> bool {
         if self.pnc {
-            println!(
-                "Dom {} Act {} Group {} already confirmed",
-                dom_id, act_id, self.region
-            );
-            return;
+            return false;
         }
 
         self.pnc = true;
@@ -105,10 +101,7 @@ impl SomeGroup {
                 self.region.far_state().clone(),
             ]);
         }
-        println!(
-            "Dom {} Act {} Group {} confirmed",
-            dom_id, act_id, self.region
-        );
+        true
     }
 
     /// Return a string representing a group.
@@ -216,22 +209,19 @@ impl SomeGroup {
         self.anchor_mask = None;
     }
 
-    /// Set limited to false.
-    pub fn set_limited_off(&mut self, dom_id: usize, act_id: usize) {
-        println!(
-            "Dom {} Act {} Group {} set limited off",
-            dom_id, act_id, self.region
-        );
-        self.limited = false;
-        self.anchor_mask = None;
+    /// Set limited flag to false.
+    pub fn set_limited_off(&mut self) -> bool {
+        if self.limited {
+            self.limited = false;
+            self.anchor_mask = None;
+            true
+        } else {
+            false
+        }
     }
 
     /// Set limited to true.
-    pub fn set_limited(&mut self, anchor_mask: SomeMask, dom_id: usize, act_id: usize) {
-        println!(
-            "Dom {} Act {} Group {} set limited on, adj mask {}",
-            dom_id, act_id, self.region, anchor_mask
-        );
+    pub fn set_limited(&mut self, anchor_mask: SomeMask) {
         self.limited = true;
         self.anchor_mask = Some(anchor_mask);
 

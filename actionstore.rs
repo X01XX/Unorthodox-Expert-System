@@ -69,7 +69,7 @@ impl ActionStore {
     }
 
     /// Get needs for all actions in the store.
-    pub fn get_needs(&mut self, cur_state: &SomeState, dom_id: usize) -> NeedStore {
+    pub fn get_needs(&mut self, cur_state: &SomeState) -> NeedStore {
         //println!("actionstore: get_needs");
 
         let max_reg_prev = self.reachable_region(cur_state);
@@ -86,7 +86,7 @@ impl ActionStore {
         let vecx: Vec<NeedStore> = self
             .items
             .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
-            .map(|actx| actx.get_needs(cur_state, dom_id, &max_reg))
+            .map(|actx| actx.get_needs(cur_state, &max_reg))
             .collect::<Vec<NeedStore>>();
 
         // Consolidate needs into one NeedStore.

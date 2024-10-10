@@ -127,10 +127,10 @@ impl SomeAction {
         //println!("Dom {} Act {} eval_changed_square: {key}", self.dom_id, self.id);
         debug_assert_eq!(key.num_bits(), self.num_bits);
 
-        let sqrx = self.squares.find_mut(key).expect("SNH");
-
         // Check if it invalidates any groups.
-        let regs_invalid: RegionStore = self.groups.check_square(sqrx, self.dom_id, self.id);
+        let regs_invalid: RegionStore = self.groups_check_square(key);
+
+        let sqrx = self.squares.find_mut(key).expect("SNH");
 
         let pnc = sqrx.pnc;
         let pn = sqrx.pn;
@@ -160,7 +160,12 @@ impl SomeAction {
             }
 
             if grpx.region.len() == 1 {
-                grpx.set_pnc(self.dom_id, self.id);
+                if grpx.set_pnc() {
+                    println!(
+                        "Dom {} Act {} Group {} confirmed",
+                        self.dom_id, self.id, grpx.region
+                    );
+                }
                 continue;
             }
 
@@ -168,8 +173,11 @@ impl SomeAction {
             // check if the group can be set to pnc.
             if key == grpx.region.first_state() {
                 if let Some(sqr2) = self.squares.find(&grpx.region.far_state()) {
-                    if sqr2.pnc {
-                        grpx.set_pnc(self.dom_id, self.id);
+                    if sqr2.pnc && grpx.set_pnc() {
+                        println!(
+                            "Dom {} Act {} Group {} confirmed",
+                            self.dom_id, self.id, grpx.region
+                        );
                     }
                 }
                 continue;
@@ -177,8 +185,11 @@ impl SomeAction {
 
             if *key == grpx.region.far_state() {
                 let sqr1 = self.squares.find(grpx.region.first_state()).expect("SHN");
-                if sqr1.pnc {
-                    grpx.set_pnc(self.dom_id, self.id);
+                if sqr1.pnc && grpx.set_pnc() {
+                    println!(
+                        "Dom {} Act {} Group {} confirmed",
+                        self.dom_id, self.id, grpx.region
+                    );
                 }
             }
         } // next grpx
@@ -296,7 +307,7 @@ impl SomeAction {
         // Store possible groups, some may be duplicates.
         for grpx in groups {
             if !self.groups.any_superset_of(&grpx.region) {
-                self.groups.push_nosubs(grpx, self.dom_id, self.id);
+                self.groups_push_nosubs(grpx);
             }
         }
     }
@@ -396,12 +407,7 @@ impl SomeAction {
     /// When most needs are satisfied, needs for group limitation are generated.
     /// If housekeeping needs are generated, they are processed and needs
     /// are checked again.
-    pub fn get_needs(
-        &mut self,
-        cur_state: &SomeState,
-        dom_id: usize,
-        max_reg: &SomeRegion,
-    ) -> NeedStore {
+    pub fn get_needs(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> NeedStore {
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
@@ -410,7 +416,7 @@ impl SomeAction {
         let mut get_new_needs = true;
         while get_new_needs {
             // Get some needs.
-            ret = self.get_needs2(cur_state, dom_id, max_reg);
+            ret = self.get_needs2(cur_state, max_reg);
 
             get_new_needs = false;
 
@@ -441,12 +447,7 @@ impl SomeAction {
     }
 
     /// Get needs, process any housekeeping needs.
-    pub fn get_needs2(
-        &mut self,
-        cur_state: &SomeState,
-        dom_id: usize,
-        max_reg: &SomeRegion,
-    ) -> NeedStore {
+    pub fn get_needs2(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> NeedStore {
         //println!("Running Action {}::get_needs2 {}", self.num, cur_state);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
@@ -509,11 +510,7 @@ impl SomeAction {
                     rules,
                 } = ndx
                 {
-                    self.groups.push_nosubs(
-                        SomeGroup::new(group_region.clone(), rules.clone()),
-                        dom_id,
-                        self.id,
-                    );
+                    self.groups_push_nosubs(SomeGroup::new(group_region.clone(), rules.clone()));
                     try_again = true;
                 }
             } // next ndx
@@ -521,7 +518,7 @@ impl SomeAction {
 
         // Do cleanup, if needed.
         if self.cleanup_trigger >= CLEANUP {
-            self.cleanup(&nds, dom_id);
+            self.cleanup(&nds);
             self.cleanup_trigger = 0;
         }
 
@@ -563,7 +560,7 @@ impl SomeAction {
     }
 
     /// Cleanup unneeded squares.
-    fn cleanup(&mut self, needs: &NeedStore, dom_id: usize) {
+    fn cleanup(&mut self, needs: &NeedStore) {
         // Identify bridge regions.
         let mut shared_regions = RegionStore::new(vec![]);
         for inx in 0..(self.groups.len() - 1) {
@@ -595,7 +592,7 @@ impl SomeAction {
         } // next inx
           // Delete shared symmetric groups.
         for regx in shared_regions.iter() {
-            self.groups.remove_subsets_of(regx, dom_id, self.id);
+            self.groups_remove_subsets_of(regx);
         }
 
         // Store for keys of squares to delete.
@@ -700,17 +697,25 @@ impl SomeAction {
 
             // If this is a one-state group ..
             if grpx.one_state() {
-                if sqrx.pnc {
-                    grpx.set_pnc(self.dom_id, self.id);
+                if sqrx.pnc && grpx.set_pnc() {
+                    println!(
+                        "Dom {} Act {} Group {} confirmed",
+                        self.dom_id, self.id, grpx.region
+                    );
                 }
+
                 continue;
             }
 
             if let Some(sqry) = self.squares.find(&grpx.region.far_state()) {
                 if sqry.pnc {
-                    if sqrx.pnc {
-                        grpx.set_pnc(self.dom_id, self.id);
+                    if sqrx.pnc && grpx.set_pnc() {
+                        println!(
+                            "Dom {} Act {} Group {} confirmed",
+                            self.dom_id, self.id, grpx.region
+                        );
                     }
+
                     continue;
                 }
                 //println!("ConfirmGroup: (2) sqr {sqrx}");
@@ -779,8 +784,11 @@ impl SomeAction {
                 if max_reg.is_superset_of(anchor) {
                     if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
-                        if *anchor_mask != max_mask {
-                            grpx.set_limited_off(self.dom_id, self.id);
+                        if *anchor_mask != max_mask && grpx.set_limited_off() {
+                            println!(
+                                "Dom {} Act {} Group {} set limited off",
+                                self.dom_id, self.id, grpx.region
+                            );
                         }
                     }
                 }
@@ -855,8 +863,14 @@ impl SomeAction {
 
         let num_edges = edges.num_one_bits();
 
+        println!(
+            "Dom {} Act {} Group {} set limited on, adj mask {}",
+            self.dom_id, self.id, grp_reg, edges
+        );
+
         let grpx = self.groups.find_mut(grp_reg).expect("SNH");
-        grpx.set_limited(edges, self.dom_id, self.id);
+
+        grpx.set_limited(edges);
 
         for grpy in self.groups.iter_mut() {
             if grpy.limited {
@@ -867,8 +881,11 @@ impl SomeAction {
                 continue;
             }
             if let Some(edgesy) = &grpy.anchor_mask {
-                if edgesy.num_one_bits() < num_edges {
-                    grpy.set_limited_off(self.dom_id, self.id);
+                if edgesy.num_one_bits() < num_edges && grpy.set_limited_off() {
+                    println!(
+                        "Dom {} Act {} Group {} set limited off",
+                        self.dom_id, self.id, grpy.region
+                    );
                 }
             }
         } // next grpy
@@ -2156,30 +2173,32 @@ impl SomeAction {
                     if !grpx.pnc {
                         let sqr1 = self.squares.find(grp_reg.first_state()).expect("SNH");
                         if grp_reg.len() == 1 {
-                            if sqr1.pnc {
-                                grpx.set_pnc(self.dom_id, self.id);
+                            if sqr1.pnc && grpx.set_pnc() {
+                                println!(
+                                    "Dom {} Act {} Group {} confirmed",
+                                    self.dom_id, self.id, grpx.region
+                                );
                             }
                         } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
-                            if sqr1.pnc && sqr2.pnc {
-                                grpx.set_pnc(self.dom_id, self.id);
+                            if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
+                                println!(
+                                    "Dom {} Act {} Group {} confirmed",
+                                    self.dom_id, self.id, grpx.region
+                                );
                             }
                         }
                     }
                 }
             }
-            SomeNeed::StateInRemainder { dom_id, .. } => {
+            SomeNeed::StateInRemainder { .. } => {
                 if !self.groups.any_superset_of(cur_state) {
                     let sqr1 = self.squares.find(cur_state).expect("SNH");
                     if sqr1.pnc {
                         self.check_remainder = true;
-                        self.groups.push_nosubs(
-                            SomeGroup::new(
-                                SomeRegion::new(vec![cur_state.clone()]),
-                                sqr1.rules.clone(),
-                            ),
-                            *dom_id,
-                            self.id,
-                        );
+                        self.groups_push_nosubs(SomeGroup::new(
+                            SomeRegion::new(vec![cur_state.clone()]),
+                            sqr1.rules.clone(),
+                        ));
                     }
                 }
             }
@@ -2362,6 +2381,157 @@ impl SomeAction {
         rc_str.push(')');
         rc_str
     }
+
+    /// Check groups with a recently changed sqaure.
+    /// Return the references to groups that are inactivated by a square.
+    pub fn groups_check_square(&mut self, key: &SomeState) -> RegionStore {
+        //println!("action:check_square: {}", sqrx.state);
+        let mut regs_invalid = RegionStore::new(vec![]);
+
+        let sqrx = self.squares.find(key).expect("SNH");
+
+        for grpx in self.groups.iter_mut() {
+            if !grpx.check_square(sqrx) {
+                if sqrx.pn > grpx.pn {
+                    println!(
+                        "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
+                        self.dom_id, self.id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
+                    );
+                } else if sqrx.pn < grpx.pn && sqrx.pnc {
+                    println!(
+                        "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
+                        self.dom_id, self.id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
+                    );
+                } else {
+                    println!(
+                        "\nDom {} Act {} square {} {} invalidates\n             group {} {}",
+                        self.dom_id,
+                        self.id,
+                        sqrx.state,
+                        if let Some(rules) = &sqrx.rules {
+                            rules.to_string()
+                        } else {
+                            String::from("None")
+                        },
+                        grpx.region,
+                        if let Some(rules) = &grpx.rules {
+                            rules.to_string()
+                        } else {
+                            String::from("None")
+                        },
+                    );
+                }
+
+                regs_invalid.push(grpx.region.clone());
+            }
+        } // next grpx
+
+        // Remove the groups
+        for regx in regs_invalid.iter() {
+            println!(
+                "\nDom {} Act {} Group {} deleted",
+                self.dom_id, self.id, regx
+            );
+            self.groups.remove_group(regx);
+        }
+
+        if regs_invalid.is_empty() {
+        } else {
+            self.groups.calc_aggregate_changes();
+        }
+
+        // Check limited status of groups.
+        for grpx in self.groups.iter_mut() {
+            if !grpx.limited || !grpx.region.is_adjacent(&sqrx.state) {
+                continue;
+            }
+            if let Some(anchor) = &grpx.anchor {
+                if anchor.is_adjacent(&sqrx.state) {
+                    if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
+                        if grpx.set_limited_off() {
+                            println!(
+                                "Dom {} Act {} Group {} set limited off",
+                                self.dom_id, self.id, grpx.region
+                            );
+                        }
+                    } else if grpx.pn == sqrx.pn {
+                        if let Some(grpx_ruls) = &grpx.rules {
+                            if let Some(sqr_ruls) = &sqrx.rules {
+                                if grpx_ruls.union(sqr_ruls).is_some() && grpx.set_limited_off() {
+                                    println!(
+                                        "Dom {} Act {} Group {} set limited off",
+                                        self.dom_id, self.id, grpx.region
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } // next grpx
+
+        //println!("GroupStore::check_square: {} groups removed", regs_invalid.len());
+        regs_invalid
+    }
+
+    /// Add a group to the end of the list.
+    /// So older, longer surviving, groups are first in the list.
+    pub fn groups_push_nosubs(&mut self, grp: SomeGroup) -> bool {
+        // Check for supersets, which probably is an error
+        if self.groups.any_superset_of(&grp.region) {
+            let regs = self.groups.supersets_of(&grp.region);
+            println!(
+                "Dom {} Act {} skipped adding group {}, a superset exists in {}",
+                self.dom_id,
+                self.id,
+                grp.region,
+                tools::vec_ref_string(&regs)
+            );
+            return false;
+        }
+
+        // Remove subset groups
+        self.groups_remove_subsets_of(&grp.region);
+
+        // Push the new group
+        if grp.region.states.len() > 1 {
+            println!(
+                "\nDom {} Act {} Adding group {} from {}",
+                self.dom_id, self.id, grp, grp.region.states,
+            );
+        } else {
+            println!("\nDom {} Act {} Adding group {}", self.dom_id, self.id, grp);
+        }
+
+        self.groups.push(grp);
+
+        self.groups.calc_aggregate_changes();
+
+        true
+    }
+
+    /// Find and remove any groups that are a subset of a given region.
+    pub fn groups_remove_subsets_of(&mut self, reg: &SomeRegion) -> bool {
+        // Accumulate indices of groups that are subsets
+        let mut rmvec = Vec::<SomeRegion>::new();
+
+        for grpx in &mut self.groups.iter() {
+            if grpx.is_subset_of(reg) {
+                rmvec.push(grpx.region.clone());
+            }
+        }
+
+        // Remove the groups
+        for regx in rmvec.iter() {
+            println!(
+                "\nDom {} Act {} Group {} deleted, subset of {reg}",
+                self.dom_id, self.id, regx
+            );
+            self.groups.remove_group(regx);
+        }
+
+        !rmvec.is_empty()
+    }
 } // end impl SomeAction
 
 // Some action tests are made from the domain level.
@@ -2471,7 +2641,7 @@ mod tests {
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
 
-        let nds = act0.get_needs(&s1, 0, &max_reg);
+        let nds = act0.get_needs(&s1, &max_reg);
         println!("Act: {}", act0);
         println!("needs: {}", nds);
 
