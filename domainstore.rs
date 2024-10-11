@@ -1084,10 +1084,10 @@ impl DomainStore {
             self.plan_using_least_negative_select_regions_get_plan(start_regs, goal_regs, &sel_regs)
         {
             if self.rate_planscorrstore(&planx) == 0 {
-                planx.set_value(0);
+                planx.set_value(0 - planx.num_altrules());
                 return Some(NeedPlan::PlanFound { plan: planx });
             }
-            planx.set_value(next_most_min);
+            planx.set_value(next_most_min - planx.num_altrules());
             last_results = Some(NeedPlan::PlanFound { plan: planx });
         } else {
             return last_results;
@@ -1120,7 +1120,7 @@ impl DomainStore {
             if let Some(mut planx) = self
                 .plan_using_least_negative_select_regions_get_plan(start_regs, goal_regs, &sel_regs)
             {
-                planx.set_value(next_most_min2);
+                planx.set_value(next_most_min2 - planx.num_altrules());
                 last_results = Some(NeedPlan::PlanFound { plan: planx });
             } else {
                 return last_results;

@@ -1,16 +1,14 @@
-#![allow(dead_code, unused_imports)]
 //! The PlansCorr struct. A store of SomePlan structs,
 //! corresponding to the DomainStore vector.
+//! Plans, per domain, will be run in parallel.
+//! PlansCorr instances will be linked together for movement between SelectRegions, via intersections.
+//! Linking PlansCorr instances requires non-change plans, so a non-change step, for some domains.
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
-use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
-use crate::rule::SomeRule;
 use crate::statescorr::StatesCorr;
-use crate::step::{AltRuleHint, SomeStep};
-use crate::tools::{AvecRef, StrLen};
+use crate::tools::StrLen;
 
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
@@ -186,6 +184,15 @@ impl PlansCorr {
         }
         plans_range
     }
+
+    /// Return the number of steps with AltRuleHint::AltRule set.
+    pub fn num_altrules(&self) -> isize {
+        let mut num_alt = 0;
+        for plnx in self.iter() {
+            num_alt += plnx.num_altrules();
+        }
+        num_alt
+    }
 }
 
 impl Index<usize> for PlansCorr {
@@ -212,6 +219,9 @@ impl StrLen for PlansCorr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::region::SomeRegion;
+    use crate::rule::SomeRule;
+    use crate::step::{AltRuleHint, SomeStep};
 
     #[test]
     fn new() -> Result<(), String> {

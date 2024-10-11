@@ -1,13 +1,10 @@
-#![allow(dead_code, unused_imports)]
 //! The PlansCorrStore struct.
 //!
 //! A vector of PlansCorr with interlocking result plans and initial plans.
 //!
 use crate::planscorr::PlansCorr;
 use crate::regionscorr::RegionsCorr;
-use crate::statescorr::StatesCorr;
-use crate::step::{AltRuleHint, SomeStep};
-use crate::tools::{self, StrLen};
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -208,6 +205,15 @@ impl PlansCorrStore {
             numr += planscx.number_steps_to_run();
         }
         numr
+    }
+
+    /// Return the number of steps with AltRuleHint::AltRule set.
+    pub fn num_altrules(&self) -> isize {
+        let mut num_alt = 0;
+        for planscx in self.iter() {
+            num_alt += planscx.num_altrules();
+        }
+        num_alt
     }
 }
 

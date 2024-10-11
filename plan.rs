@@ -18,7 +18,7 @@
 
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::step::SomeStep;
+use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::tools::StrLen;
 
@@ -392,6 +392,18 @@ impl SomePlan {
             agg_reg = agg_reg.union(&cur_reg);
         }
         agg_reg
+    }
+
+    /// Return the number of steps with AltRuleHint::AltRule set.
+    pub fn num_altrules(&self) -> isize {
+        let mut num_alt = 0;
+        for stepx in self.iter() {
+            num_alt += match stepx.alt_rule {
+                AltRuleHint::AltRule { .. } => 1,
+                _ => 0,
+            }
+        }
+        num_alt
     }
 } // end impl SomePlan
 
