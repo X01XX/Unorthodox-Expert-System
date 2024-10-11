@@ -271,15 +271,6 @@ impl GroupStore {
 
         rc_str
     }
-
-    /// Set group limited to false.
-    pub fn group_set_limited_off(&mut self, grp_reg: &SomeRegion) -> bool {
-        if let Some(grpx) = self.find_mut(grp_reg) {
-            grpx.set_limited_off()
-        } else {
-            false
-        }
-    }
 } // end impl GroupStore
 
 impl Index<usize> for GroupStore {

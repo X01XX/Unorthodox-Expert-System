@@ -386,13 +386,13 @@ impl SelectRegionsStore {
         Self::new(sel_fragments)
     }
 
-    /// Return the sum of values of negative SelectRegions that are superset of a given RegionsCorr.
+    /// Return the sum of values of negative SelectRegions that intersect a given RegionsCorr.
     pub fn rate_by_negative_regions(&self, regs: &RegionsCorr) -> isize {
         debug_assert!(self.is_empty() || regs.len() == self.items[0].len());
 
         let mut value: isize = 0;
         for regsx in self.items.iter() {
-            if regsx.neg_value < 0 && regsx.regions.is_superset_of(regs) {
+            if regsx.neg_value < 0 && regsx.regions.intersects(regs) {
                 value += regsx.neg_value;
             }
         }

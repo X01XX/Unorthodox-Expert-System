@@ -528,23 +528,13 @@ impl DomainStore {
     /// A square in a region can exit the region to an adjacent square by changing one bit.
     /// A square adjacent to a region can enter the region by changing one bit.
     fn rate_planscorr(&self, planscs: &PlansCorr) -> isize {
-        // Store rate for each step.
-        let mut rate = 0;
+        let mut cur_regions = self.all_current_regions();
 
-        let mut cur_regions = planscs.initial_regions();
-        // Skip start value of negative SelectRegions.
+        // Collect path regions for each plan.
         for planx in planscs.iter() {
-            for stepx in planx.iter() {
-                cur_regions[planx.dom_id] = stepx
-                    .rule
-                    .result_from_initial_region(&cur_regions[planx.dom_id]);
-                rate += self.select.rate_by_negative_regions(&cur_regions);
-                if let AltRule { .. } = &stepx.alt_rule {
-                    rate -= 1;
-                }
-            }
+            cur_regions[planx.dom_id] = planx.path_for(&cur_regions[planx.dom_id]);
         }
-        rate
+        self.select.rate_by_negative_regions(&cur_regions)
     }
 
     /// Get plans to move to a goal region, choose a plan.

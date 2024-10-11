@@ -156,21 +156,16 @@ impl PlansCorrStore {
     pub fn str_terse(&self) -> String {
         let mut rc_str = String::new();
 
-        rc_str.push('(');
-
-        for (inx, plansx) in self.items.iter().enumerate() {
-            let mut num_plans = 0;
-            for planx in plansx.iter() {
-                if planx.causes_change() {
-                    num_plans += 1;
-                }
-            }
-            if num_plans > 1 {
+        rc_str.push('[');
+        for (inx, planscx) in self.items.iter().enumerate() {
+            if inx > 0 {
+                rc_str.push_str(", (");
+            } else {
                 rc_str.push('(');
             }
 
             let mut cnt = 0;
-            for planx in plansx.iter() {
+            for planx in planscx.iter() {
                 if planx.causes_change() {
                     if cnt > 0 {
                         rc_str.push_str(", ");
@@ -179,16 +174,9 @@ impl PlansCorrStore {
                     cnt += 1;
                 }
             }
-
-            if num_plans > 1 {
-                rc_str.push(')');
-            }
-
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
+            rc_str.push(')');
         }
-        rc_str.push(')');
+        rc_str.push(']');
 
         rc_str
     }
@@ -206,7 +194,11 @@ impl PlansCorrStore {
 
     /// Return number bits changed running plans in store.
     pub fn num_bits_changed(&self) -> usize {
-        self.initial_regions().distance(&self.result_regions())
+        let mut numc = 0;
+        for planscx in self.iter() {
+            numc += planscx.num_bits_changed();
+        }
+        numc
     }
 
     /// Return the number of steps to run for a PlansCorrStore.

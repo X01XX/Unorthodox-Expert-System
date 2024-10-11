@@ -378,6 +378,21 @@ impl SomePlan {
         }
         self[0].act_id.is_some()
     }
+
+    /// Return the aggregate region of a plan path.
+    pub fn path_for(&self, regx: &SomeRegion) -> SomeRegion {
+        debug_assert!(self.initial_region().intersects(regx));
+
+        let mut cur_reg = regx.clone();
+        let mut agg_reg = regx.clone();
+
+        for stepx in self.iter() {
+            debug_assert!(stepx.initial.intersects(&cur_reg));
+            cur_reg = stepx.rule.result_from_initial_region(&cur_reg);
+            agg_reg = agg_reg.union(&cur_reg);
+        }
+        agg_reg
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {
