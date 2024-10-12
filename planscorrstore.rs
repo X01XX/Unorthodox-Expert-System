@@ -8,6 +8,7 @@ use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::Index;
 use std::slice::Iter;
 
 impl fmt::Display for PlansCorrStore {
@@ -54,15 +55,10 @@ impl PlansCorrStore {
 
     /// Return true if a PlansCorrStore is valid sequence.
     pub fn is_valid(&self) -> bool {
-        let mut last_plnscx: Option<&PlansCorr> = None;
-
-        for plnscx in self.iter() {
-            if let Some(plnsc_before) = last_plnscx {
-                if plnsc_before.result_regions() != plnscx.initial_regions() {
-                    return false;
-                }
+        for inx in (0..self.len()).skip(1) {
+            if !self[inx - 1].is_linked(&self[inx]) {
+                return false;
             }
-            last_plnscx = Some(plnscx);
         }
         true
     }
@@ -214,6 +210,13 @@ impl PlansCorrStore {
             num_alt += planscx.num_altrules();
         }
         num_alt
+    }
+}
+
+impl Index<usize> for PlansCorrStore {
+    type Output = PlansCorr;
+    fn index(&self, i: usize) -> &PlansCorr {
+        &self.items[i]
     }
 }
 
@@ -483,6 +486,50 @@ mod tests {
         }
 
         //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn result_from_initial_regions() -> Result<(), String> {
+        let stp1 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("X0/XX")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp2 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("01/X1")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp3 = SomeStep::new(
+            1,
+            SomeRule::new_from_string("X0/Xx/X1")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp4 = SomeStep::new(
+            1,
+            SomeRule::new_from_string("01/XX/10")?,
+            AltRuleHint::NoAlt {},
+        );
+
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new(0, vec![stp1, stp2]),
+            SomePlan::new(1, vec![stp3, stp4]),
+        ]);
+
+        let plcstr = PlansCorrStore::new(vec![plnsc1]);
+        println!("plcstr {plcstr}");
+
+        if let Some(rslts) = plcstr.result_from_initial_regions(&RegionsCorr::new(vec![
+            SomeRegion::new_from_string("r00")?,
+            SomeRegion::new_from_string("r001")?,
+        ])) {
+            println!("rslts {rslts}");
+            assert!(rslts[0] == SomeRegion::new_from_string("r11")?);
+            assert!(rslts[1] == SomeRegion::new_from_string("r110")?);
+        } else {
+            return Err("result_from_initial_regions failed".to_string());
+        }
         Ok(())
     }
 }

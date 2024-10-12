@@ -109,7 +109,7 @@ impl PlansCorr {
     }
 
     /// Return true if two PlansCorrs are linked, result regions to initial regions.
-    pub fn linked(&self, other: &Self) -> bool {
+    pub fn is_linked(&self, other: &Self) -> bool {
         self.result_regions() == other.initial_regions()
     }
 
@@ -174,18 +174,21 @@ impl PlansCorr {
         numr
     }
 
-    /// Return a rating for a PlansCorr.
+    /// Return a range for a PlansCorr.
+    /// When plans are run in parallel, the whole range of possible results
+    /// must be considered for intersection with negative SelectRegions.
     pub fn plans_range(&self) -> RegionsCorr {
         // Form new RegionsCorr representing the whole range of possible regions,
         // since the PlansCorr will be crun in prallel.
         let mut plans_range = RegionsCorr::with_capacity(self.len());
         for plnx in self.iter() {
-            plans_range.push(plnx.initial_region().union(plnx.result_region()));
+            plans_range.push(plnx.range());
         }
         plans_range
     }
 
     /// Return the number of steps with AltRuleHint::AltRule set.
+    /// A step with an AltRule hint is less reliable (50%) than one without.
     pub fn num_altrules(&self) -> isize {
         let mut num_alt = 0;
         for plnx in self.iter() {
@@ -369,6 +372,46 @@ mod tests {
         } else {
             return Err("restrict failed?".to_string());
         }
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn plans_range() -> Result<(), String> {
+        let stp1 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("00/10/00/01")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp2 = SomeStep::new(
+            0,
+            SomeRule::new_from_string("00/01/01/11")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp3 = SomeStep::new(
+            1,
+            SomeRule::new_from_string("11/00/00/01")?,
+            AltRuleHint::NoAlt {},
+        );
+        let stp4 = SomeStep::new(
+            1,
+            SomeRule::new_from_string("11/00/01/11")?,
+            AltRuleHint::NoAlt {},
+        );
+
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new(0, vec![stp1, stp2]),
+            SomePlan::new(1, vec![stp3, stp4]),
+        ]);
+        println!("{plnsc1}");
+
+        let rng = plnsc1.plans_range();
+        println!("range {rng}");
+
+        assert!(rng.len() == 2);
+        assert!(rng[0] == SomeRegion::new_from_string("r0XXX")?);
+        assert!(rng[1] == SomeRegion::new_from_string("r10XX")?);
 
         //assert!(1 == 2);
         Ok(())

@@ -405,6 +405,15 @@ impl SomePlan {
         }
         num_alt
     }
+
+    /// Return the range traversed by a plan.
+    pub fn range(&self) -> SomeRegion {
+        let mut rng = self.initial_region().clone();
+        for stepx in self.iter() {
+            rng = rng.union(&stepx.result);
+        }
+        rng
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {
