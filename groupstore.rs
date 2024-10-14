@@ -28,10 +28,6 @@ impl fmt::Display for GroupStore {
 pub struct GroupStore {
     /// Vector of SomeGroup structs.
     pub items: Vec<SomeGroup>,
-    /// Changes possible for all groups.
-    pub aggregate_changes: Option<SomeChange>,
-    /// An indicator that the changes possible were recently updated.
-    pub agg_chgs_updated: bool,
 }
 
 impl GroupStore {
@@ -39,37 +35,26 @@ impl GroupStore {
     pub fn new(items: Vec<SomeGroup>) -> Self {
         debug_assert!(vec_same_num_bits(&items));
 
-        Self {
-            items,
-            aggregate_changes: None,
-            agg_chgs_updated: false,
-        }
+        Self { items }
     }
 
-    /// Set the agg_chgs_updated flag to false, after incorporating
-    /// it into the parent ActionStore struct.
-    pub fn reset_agg_chgs_updated(&mut self) {
-        self.agg_chgs_updated = false;
-    }
-
-    /// Calculate and set the aggregate changes and updated flag.
-    pub fn calc_aggregate_changes(&mut self) {
-        self.aggregate_changes = None;
+    /// Calculate and return the aggregate changes of all group rules.
+    pub fn calc_aggregate_changes(&mut self) -> Option<SomeChange> {
+        let mut aggregate_changes: Option<SomeChange> = None;
 
         for grpx in &self.items {
             if grpx.pn == Pn::Unpredictable {
                 continue;
             }
             for rulx in grpx.rules.as_ref().expect("SNH").iter() {
-                if let Some(changes) = &self.aggregate_changes {
-                    self.aggregate_changes = Some(changes.union(rulx));
+                if let Some(changes) = aggregate_changes {
+                    aggregate_changes = Some(changes.union(rulx));
                 } else {
-                    self.aggregate_changes = Some(rulx.to_change());
+                    aggregate_changes = Some(rulx.to_change());
                 }
             }
         }
-
-        self.agg_chgs_updated = true;
+        aggregate_changes
     }
 
     /// Return true if an item is in exactly one group.
@@ -272,6 +257,15 @@ impl GroupStore {
         rc_str
     }
 } // end impl GroupStore
+
+impl IntoIterator for GroupStore {
+    type Item = SomeGroup;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
 
 impl Index<usize> for GroupStore {
     type Output = SomeGroup;

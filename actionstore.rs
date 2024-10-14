@@ -143,7 +143,7 @@ impl ActionStore {
         // Check for any action agg_chgs_updated set to true.
         let mut no_recalc = true;
         for actx in &self.items {
-            if actx.agg_chgs_updated() {
+            if actx.agg_chgs_updated {
                 no_recalc = false;
                 break;
             }
@@ -186,7 +186,7 @@ impl ActionStore {
 
         // Reset agg_chgs_updated flags, as needed.
         for actx in &mut self.items {
-            if actx.agg_chgs_updated() {
+            if actx.agg_chgs_updated {
                 actx.reset_agg_chgs_updated();
             }
         }

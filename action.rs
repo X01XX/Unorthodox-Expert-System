@@ -70,6 +70,10 @@ pub struct SomeAction {
     check_remainder: bool,
     /// Regions currently not covered by groups, when tere are no more needs to sample squares.
     remainder_check_regions: RegionStore,
+    /// Changes possible for all groups.
+    aggregate_changes: Option<SomeChange>,
+    /// An indicator that the changes possible were recently updated.
+    pub agg_chgs_updated: bool,
 }
 
 impl SomeAction {
@@ -85,6 +89,8 @@ impl SomeAction {
             cleanup_trigger: 0,
             check_remainder: false,
             remainder_check_regions: RegionStore::new(vec![]),
+            aggregate_changes: None,
+            agg_chgs_updated: false,
         }
     }
 
@@ -295,25 +301,23 @@ impl SomeAction {
         self.check_remainder = true;
 
         // Collect possible groups.
-        let groups: Vec<SomeGroup> = if keys.len() == 1 {
-            self.create_groups_from_squares2(&keys[0])
-        } else {
-            keys.par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
-                .map(|keyx| self.create_groups_from_squares2(keyx))
-                .flatten()
-                .collect::<Vec<SomeGroup>>()
-        };
+        let groups: Vec<GroupStore> = keys
+            .par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
+            .map(|keyx| self.create_groups_from_squares2(keyx))
+            .collect::<Vec<GroupStore>>();
 
         // Store possible groups, some may be duplicates.
-        for grpx in groups {
-            if !self.groups.any_superset_of(&grpx.region) {
-                self.groups_push_nosubs(grpx);
+        for grpstrx in groups {
+            for grpx in grpstrx.into_iter() {
+                if !self.groups.any_superset_of(&grpx.region) {
+                    self.groups_push_nosubs(grpx);
+                }
             }
         }
     }
 
     /// Check groups due to a new, or updated, square.
-    fn create_groups_from_squares2(&self, key: &SomeState) -> Vec<SomeGroup> {
+    fn create_groups_from_squares2(&self, key: &SomeState) -> GroupStore {
         //println!("Dom {} Act {} create_groups_from_squares2: {key}", self.dom_id, self.id);
         debug_assert_eq!(key.num_bits(), self.num_bits);
         debug_assert!(!self.groups.any_superset_of(key));
@@ -331,7 +335,7 @@ impl SomeAction {
         // for group bootstrapping.
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return vec![];
+            return GroupStore::new(vec![]);
         }
 
         //println!("Checking Square {} for new groups", sqrx.state);
@@ -1921,7 +1925,7 @@ impl SomeAction {
     /// Squares that are incompatible limit the possible groups.
     /// Compatible squares, can be mutually incompatible. 0->1 and 0->0 are incompatible with each other,
     /// but compatible with 1->1.
-    fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> Vec<SomeGroup> {
+    fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> GroupStore {
         //println!("Dom {} Act {} possible_groups_from_square: {}", self.dom_id, self.id, sqrx.state);
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
 
@@ -1929,7 +1933,7 @@ impl SomeAction {
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return ret_grps;
+            return GroupStore::new(ret_grps);
         }
 
         // Calc the maximum possible region.
@@ -2136,7 +2140,7 @@ impl SomeAction {
                 sqrx.rules.clone(),
             ));
         }
-        ret_grps
+        GroupStore::new(ret_grps)
     } // end possible_regions_from_square
 
     /// Validate a region that may be made from a given square, in combination with similar squares.
@@ -2245,22 +2249,17 @@ impl SomeAction {
 
     /// Return a change with all changes that can be made for the action.
     pub fn aggregate_changes(&self) -> Option<&SomeChange> {
-        if let Some(changes) = &self.groups.aggregate_changes {
+        if let Some(changes) = &self.aggregate_changes {
             Some(changes)
         } else {
             None
         }
     }
 
-    /// Return the GroupStore flag indicating the update status of its aggregate changes value.
-    pub fn agg_chgs_updated(&self) -> bool {
-        self.groups.agg_chgs_updated
-    }
-
     /// Reset to GroupStore agg_chgs_updated flag, after the incorporation
     /// of its aggregate changes into the parent ActionStore struct.
     pub fn reset_agg_chgs_updated(&mut self) {
-        self.groups.reset_agg_chgs_updated();
+        self.agg_chgs_updated = false;
     }
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
@@ -2437,7 +2436,8 @@ impl SomeAction {
 
         if regs_invalid.is_empty() {
         } else {
-            self.groups.calc_aggregate_changes();
+            self.aggregate_changes = self.groups.calc_aggregate_changes();
+            self.agg_chgs_updated = true;
         }
 
         // Check limited status of groups.
