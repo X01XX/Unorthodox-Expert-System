@@ -6,7 +6,6 @@
 //! as the initial region for a following plan with the same Domain ID.
 
 use crate::plan::SomePlan;
-use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::tools::StrLen;
 
@@ -73,65 +72,11 @@ impl PlanStore {
         !self.items.is_empty()
     }
 
-    /// Return the index of the last plan with a given domain number.
-    fn last_dom(&self, dom_id: usize) -> Option<usize> {
-        let mut ret: Option<usize> = None;
-        for (inx, planx) in self.items.iter().enumerate() {
-            if planx.dom_id == dom_id {
-                ret = Some(inx);
-            }
-        }
-        ret
-    }
-
     /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
         if !self.items.contains(&planx) {
             self.items.push(planx);
         }
-    }
-
-    /// Add a plan to the PlanStore.
-    /// The plan should be linkable with a previously existing plan, of the same Domain ID, if any.
-    pub fn push_link(&mut self, planx: SomePlan) -> bool {
-        if planx.is_empty() {
-            return true;
-        }
-        //println!("planstore:push for {} push {}", self, planx);
-
-        // Check if successive plans of the same domain can be combined.
-        if !self.is_empty() {
-            let inx = self.len() - 1;
-            if self.items[inx].dom_id == planx.dom_id {
-                if let Some(plany) = self.items[inx].link(&planx) {
-                    self.items[inx] = plany;
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        }
-
-        // Verify a domain plan that is split into parts.
-        if let Some(inx) = self.last_dom(planx.dom_id) {
-            if self[inx].result_region() == planx.initial_region() {
-            } else if self[inx].result_region().intersects(planx.initial_region()) {
-                self.items.push(
-                    planx
-                        .restrict_initial_region(self[inx].result_region())
-                        .unwrap(),
-                );
-                return true;
-            }
-            //println!("checking {} and {}", self[inx].result_region(), planx.initial_region());
-            if self[inx].result_region() != planx.initial_region() {
-                return false;
-            }
-        }
-
-        self.items.push(planx);
-        //println!("new planstore {self}");
-        true
     }
 
     /// Return a vector iterator.
@@ -185,33 +130,11 @@ impl PlanStore {
         rc_str
     }
 
-    /// Extend a StepStore by push_link another StepStore.
-    pub fn _append_link(&mut self, other: Self) -> bool {
-        for planx in other.items {
-            if !self.push_link(planx) {
-                return false;
-            }
-        }
-        true
-    }
-
     /// Extend a StepStore by pushing another StepStore.
     pub fn append(&mut self, other: Self) {
         for planx in other.items {
             self.push(planx);
         }
-    }
-
-    /// Return the result of the last plan for a domain, if any.
-    pub fn domain_result(&self, dom_id: usize) -> Option<&SomeRegion> {
-        let mut rslt: Option<&SomeRegion> = None;
-
-        for planx in self.iter() {
-            if planx.dom_id == dom_id && planx.is_not_empty() {
-                rslt = Some(planx.result_region());
-            }
-        }
-        rslt
     }
 
     /// Return number bits changed running plans in store.
@@ -306,30 +229,6 @@ impl PlanStore {
         }
     }
 
-    /// Link two Planstores.
-    pub fn link(&self, other: &Self) -> Option<Self> {
-        let mut ret_plans = self.clone();
-
-        for planx in other.items.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-            if let Some(regx) = ret_plans.domain_result(planx.dom_id) {
-                if let Some(plany) = planx.restrict_initial_region(regx) {
-                    if !ret_plans.push_link(plany) {
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            } else if !ret_plans.push_link(planx.clone()) {
-                return None;
-            }
-        }
-
-        Some(ret_plans)
-    }
-
     /// Return a PlanStore with duplicates deleted.
     pub fn delete_duplicates(&self) -> Self {
         let mut ret_store = PlanStore::new(vec![]);
@@ -397,6 +296,7 @@ impl IntoIterator for PlanStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::region::SomeRegion;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::step::{AltRuleHint, SomeStep};

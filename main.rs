@@ -67,7 +67,6 @@ mod stepstore;
 use domainstore::{DomainStore, InxPlan, NeedPlan};
 mod actioninterface;
 mod planstore;
-use crate::planstore::PlanStore;
 mod selectregions;
 use crate::selectregions::SelectRegions;
 mod selectregionsstore;
@@ -76,6 +75,7 @@ use crate::regionscorr::RegionsCorr;
 mod planscorr;
 mod planscorrstore;
 mod regionscorrstore;
+use crate::target::ATarget;
 
 extern crate unicode_segmentation;
 
@@ -850,11 +850,21 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     for _ in 0..6 {
         println!("\nCalculating plan.");
-        if let Some(planx) = dmxs[dom_id].make_one_plan(&cur_region, &goal_region) {
-            let plnstr = PlanStore::new(vec![planx]);
-            dmxs.print_plan_detail(&plnstr);
-            println!("\nrunning plan:");
-            dmxs.run_plan_store(&plnstr);
+        if let Some(planx) = dmxs.plan_using_least_negative_select_regions_for_target(
+            Some(dom_id),
+            &ATarget::Region {
+                region: &goal_region,
+            },
+        ) {
+            //let plnstr = PlanStore::new(vec![planx]);
+            match planx {
+                NeedPlan::AtTarget {} => println!("At Target"),
+                NeedPlan::PlanFound { plan: plnx } => {
+                    println!("{}", plnx.str_terse());
+                    println!("\nrunning plan:");
+                    dmxs.run_planscorrstore(&plnx);
+                }
+            };
             break;
         }
     }

@@ -153,14 +153,6 @@ impl SomeChange {
             b10: self.b10.bitwise_and(amask),
         }
     }
-
-    /// Return a change after doing a bitwise not of its elements.
-    pub fn invert(&self) -> Self {
-        SomeChange {
-            b01: self.b01.bitwise_not(),
-            b10: self.b10.bitwise_not(),
-        }
-    }
 } // end impl SomeChange
 
 /// Allow different types, containing 0->1 and 1->0 masks, to interact.

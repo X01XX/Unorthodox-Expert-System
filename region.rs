@@ -14,6 +14,8 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::Index;
+use std::slice::Iter;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -526,6 +528,11 @@ impl SomeRegion {
         self.set_to_x(&to_x_mask)
             .intersection(&other.set_to_x(&to_x_mask))
     }
+
+    /// Return a vector iterator.
+    pub fn iter(&self) -> Iter<SomeState> {
+        self.states.iter()
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -585,6 +592,13 @@ impl AccessStates for SomeRegion {
     }
     fn num_bits(&self) -> usize {
         self.num_bits()
+    }
+}
+
+impl Index<usize> for SomeRegion {
+    type Output = SomeState;
+    fn index(&self, i: usize) -> &SomeState {
+        &self.states[i]
     }
 }
 

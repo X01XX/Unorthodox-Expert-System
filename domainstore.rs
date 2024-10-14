@@ -296,22 +296,6 @@ impl DomainStore {
         }
     }
 
-    /// Run a PlanStore.
-    pub fn run_plan_store(&mut self, plns: &PlanStore) -> bool {
-        for plnx in plns.iter() {
-            if plnx.is_not_empty() {
-                match self.run_plan(plnx) {
-                    Ok(_) => continue,
-                    Err(msg) => {
-                        println!("{}", msg);
-                        return false;
-                    }
-                }
-            }
-        }
-        true
-    }
-
     /// Run a PlansCorrStore.
     /// A series of steps from one SelectRegions fragment to another, to another.
     pub fn run_planscorrstore(&mut self, plnsstr: &PlansCorrStore) -> bool {
@@ -349,12 +333,6 @@ impl DomainStore {
             }
         }
         true
-    }
-
-    /// Run a plan for a given Domain.
-    /// Return true if the plan ran to completion.
-    pub fn run_plan(&mut self, pln: &SomePlan) -> Result<usize, String> {
-        self.items[pln.dom_id].run_plan(pln, 0)
     }
 
     /// Take an action to satisfy a need,
@@ -1603,6 +1581,7 @@ impl DomainStore {
                         .push(plans.remove(rand::thread_rng().gen_range(0..plans.len())))
                 } else {
                     // return None if any target cannot be reached.
+                    //println!("domainstore: make_plans2: from {from} goal {goal} returning None");
                     return None;
                 }
             }

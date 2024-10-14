@@ -332,6 +332,12 @@ impl RegionStore {
             None
         }
     }
+
+    /// Return true if a RegionStore is a superset of a Region.
+    #[allow(dead_code)]
+    pub fn is_superset_of(&self, other: &Self) -> bool {
+        other.subtract(self).is_empty()
+    }
 } // end impl RegionStore.
 
 impl Index<usize> for RegionStore {
@@ -630,6 +636,58 @@ mod tests {
             } // next y
         } // next x
 
+        Ok(())
+    }
+
+    #[test]
+    fn is_superset_of() -> Result<(), String> {
+        let regs = vec![
+            SomeRegion::new_from_string("rx1X1")?,
+            SomeRegion::new_from_string("r1xx1")?,
+        ];
+        let regstr1 = RegionStore::new(regs);
+        println!("regstr1 {regstr1}");
+
+        // Test single SomeRegion superset.
+        let sub1 = RegionStore::new(vec![SomeRegion::new_from_string("r11x1")?]);
+        println!("sub1 {sub1}");
+
+        if regstr1.is_superset_of(&sub1) {
+            println!("test 1 OK");
+        } else {
+            return Err("test1 failed".to_string());
+        }
+
+        // Test intersections that add up to a superset.
+        let sub2 = RegionStore::new(vec![SomeRegion::new_from_string("r1x01")?]);
+        println!("sub2 {sub2}");
+
+        if regstr1.is_superset_of(&sub2) {
+            println!("test 2 OK");
+        } else {
+            return Err("test2 failed".to_string());
+        }
+
+        // Test intersections that do not add up to a superset.
+        let sub3 = RegionStore::new(vec![SomeRegion::new_from_string("r100x")?]);
+        println!("sub3 {sub3}");
+
+        if regstr1.is_superset_of(&sub3) {
+            return Err("test3 failed".to_string());
+        } else {
+            println!("test 3 OK");
+        }
+
+        // Test no intersections.
+        let sub4 = RegionStore::new(vec![SomeRegion::new_from_string("r1x00")?]);
+        println!("sub4 {sub4}");
+
+        if regstr1.is_superset_of(&sub4) {
+            return Err("test4 failed".to_string());
+        } else {
+            println!("test 4 OK");
+        }
+        //assert!(1 == 2);
         Ok(())
     }
 }

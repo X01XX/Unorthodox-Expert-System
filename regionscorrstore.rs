@@ -55,7 +55,8 @@ impl RegionsCorrStore {
     }
 
     /// Return true if the store is empty.
-    pub fn _is_empty(&self) -> bool {
+    #[allow(dead_code)]
+    pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
 
@@ -211,6 +212,12 @@ impl RegionsCorrStore {
 
         ret_remainders
     }
+
+    /// Return true if a RegionsCorr is a superset of a RegionsCorrStore.
+    #[allow(dead_code)]
+    pub fn is_superset_of(&self, other: &Self) -> bool {
+        other.subtract(self).is_empty()
+    }
 } // end impl RegionsCorrStore.
 
 impl Index<usize> for RegionsCorrStore {
@@ -263,6 +270,70 @@ mod tests {
         let regstr1 = RegionsCorrStore::new(regs);
         println!("regstr1 {regstr1}");
 
+        Ok(())
+    }
+
+    #[test]
+    fn is_superset_of() -> Result<(), String> {
+        let regs = vec![
+            RegionsCorr::new(vec![SomeRegion::new_from_string("rx1X1")?]),
+            RegionsCorr::new(vec![SomeRegion::new_from_string("r1xx1")?]),
+        ];
+        let regstr1 = RegionsCorrStore::new(regs);
+        println!("regstr1 {regstr1}");
+
+        // Test single RegionsCorr superset.
+        let sub1 =
+            RegionsCorrStore::new(vec![RegionsCorr::new(vec![SomeRegion::new_from_string(
+                "r11x1",
+            )?])]);
+        println!("sub1 {sub1}");
+
+        if regstr1.is_superset_of(&sub1) {
+            println!("test 1 OK");
+        } else {
+            return Err("test1 failed".to_string());
+        }
+
+        // Test intersections that add up to a superset.
+        let sub2 =
+            RegionsCorrStore::new(vec![RegionsCorr::new(vec![SomeRegion::new_from_string(
+                "r1x01",
+            )?])]);
+        println!("sub2 {sub2}");
+
+        if regstr1.is_superset_of(&sub2) {
+            println!("test 2 OK");
+        } else {
+            return Err("test2 failed".to_string());
+        }
+
+        // Test intersections that do not add up to a superset.
+        let sub3 =
+            RegionsCorrStore::new(vec![RegionsCorr::new(vec![SomeRegion::new_from_string(
+                "r100x",
+            )?])]);
+        println!("sub3 {sub3}");
+
+        if regstr1.is_superset_of(&sub3) {
+            return Err("test3 failed".to_string());
+        } else {
+            println!("test 3 OK");
+        }
+
+        // Test no intersections.
+        let sub4 =
+            RegionsCorrStore::new(vec![RegionsCorr::new(vec![SomeRegion::new_from_string(
+                "r1x00",
+            )?])]);
+        println!("sub4 {sub4}");
+
+        if regstr1.is_superset_of(&sub4) {
+            return Err("test4 failed".to_string());
+        } else {
+            println!("test 4 OK");
+        }
+        //assert!(1 == 2);
         Ok(())
     }
 }
