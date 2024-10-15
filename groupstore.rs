@@ -186,8 +186,6 @@ impl GroupStore {
     pub fn push(&mut self, grp: SomeGroup) -> bool {
         self.items.push(grp);
 
-        self.calc_aggregate_changes();
-
         true
     }
 

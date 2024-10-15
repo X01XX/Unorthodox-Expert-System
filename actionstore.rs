@@ -157,7 +157,7 @@ impl ActionStore {
         // Recalc ActionStore aggregate_changes.
         let mut new_chgs: Option<SomeChange> = None;
 
-        for actx in &self.items {
+        for actx in &mut self.items {
             if let Some(act_changes) = actx.aggregate_changes() {
                 if let Some(tot_changes) = new_chgs {
                     new_chgs = Some(tot_changes.union(act_changes));

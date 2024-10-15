@@ -2248,7 +2248,12 @@ impl SomeAction {
     }
 
     /// Return a change with all changes that can be made for the action.
-    pub fn aggregate_changes(&self) -> Option<&SomeChange> {
+    pub fn aggregate_changes(&mut self) -> Option<&SomeChange> {
+        if self.agg_chgs_updated {
+        } else {
+            self.aggregate_changes = self.groups.calc_aggregate_changes();
+            self.agg_chgs_updated = true;
+        }
         if let Some(changes) = &self.aggregate_changes {
             Some(changes)
         } else {
@@ -2527,7 +2532,9 @@ impl SomeAction {
                 "\nDom {} Act {} Group {} deleted, subset of {reg}",
                 self.dom_id, self.id, regx
             );
-            self.groups.remove_group(regx);
+            if self.groups.remove_group(regx) {
+                self.reset_agg_chgs_updated();
+            }
         }
 
         !rmvec.is_empty()
