@@ -110,6 +110,7 @@ pub enum SomeNeed {
     AddGroup {
         group_region: SomeRegion,
         rules: Option<RuleStore>,
+        pnc: bool,
     },
 }
 
@@ -316,11 +317,12 @@ impl SomeNeed {
             Self::AddGroup {
                 group_region,
                 rules,
+                pnc
             } => {
                 if let Some(xrules) = rules {
-                    format!("N(Create group from {group_region} {xrules})")
+                    format!("N(Create group from {group_region} {xrules} pnc {pnc})")
                 } else {
-                    format!("N(Create group from {group_region} No rules)")
+                    format!("N(Create group from {group_region} No rules pnc {pnc})")
                 }
             }
             Self::ConfirmGroup {

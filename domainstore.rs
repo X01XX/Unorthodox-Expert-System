@@ -1,7 +1,6 @@
 //! The DomainStore struct, a vector of SomeDomain structs,
 //! and values/methods that manage the domains.
 
-use crate::change::SomeChange;
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -85,7 +84,7 @@ pub struct DomainStore {
     pub select_positive: SelectRegionsStore,
     /// Negative select fragments.
     pub select_negative: SelectRegionsStore,
-    /// Times visited positive select regions.
+    /// Times visited, order corresponding to, positive select regions.
     pub times_visited: Vec<usize>,
     /// Non-negative, may be, or overlap, positive, regions.
     pub select_non_negative: SelectRegionsStore,
@@ -776,17 +775,6 @@ impl DomainStore {
         }
 
         self.select_goal_needs(&all_regs)
-    }
-
-    /// Return a vector of aggregate change references, per domain.
-    pub fn aggregate_changes(&self) -> Vec<&SomeChange> {
-        let mut change_vec = Vec::<&SomeChange>::with_capacity(self.len());
-        for domx in self.items.iter() {
-            if let Some(changes) = &domx.aggregate_changes() {
-                change_vec.push(changes);
-            }
-        }
-        change_vec
     }
 
     /// Return a need for moving to an select region.

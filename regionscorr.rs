@@ -1,4 +1,5 @@
-//! The RegionsCorr struct, a store of SomeRegions, corresponding to domains in a vector.
+//! The RegionsCorr struct, a store of SomeRegions, corresponding in order, to domains in a DomainStore instance.
+//!
 //! Each region will have a number of bits equal to the bits used by the corresponding
 //! domain, not necessarily the same as other regions in the vector.
 
@@ -42,15 +43,17 @@ impl Eq for RegionsCorr {}
 impl RegionsCorr {
     /// Return a new, RegionsCorr.
     pub fn new(regions: Vec<SomeRegion>) -> Self {
+        debug_assert!(!regions.is_empty());
         Self {
             regions: RegionStore::new(regions),
         }
     }
 
     /// Return a new RegionsCorr instance, empty, with a specified capacity.
-    pub fn with_capacity(num: usize) -> Self {
+    pub fn with_capacity(cap: usize) -> Self {
+        debug_assert!(cap > 0);
         Self {
-            regions: RegionStore::with_capacity(num),
+            regions: RegionStore::with_capacity(cap),
         }
     }
 
@@ -126,7 +129,7 @@ impl RegionsCorr {
         debug_assert!(self.corresponding_num_bits(other));
         debug_assert!(self.distance(other) == 1);
 
-        let mut ret_regs = Self::new(vec![]);
+        let mut ret_regs = Self::with_capacity(self.len());
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.is_adjacent(y) {
@@ -264,7 +267,7 @@ impl RegionsCorr {
         debug_assert!(self.len() == other.len());
         debug_assert!(self.corresponding_num_bits(other));
 
-        let mut ret_regs = Self::new(vec![]);
+        let mut ret_regs = Self::with_capacity(self.len());
 
         for (regx, regy) in self.iter().zip(other.iter()) {
             ret_regs.push(regx.translate_to(regy));

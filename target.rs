@@ -18,7 +18,7 @@ pub enum ATarget<'a> {
     DomainRegions { regions: &'a RegionsCorr },
 }
 
-impl ATarget<'_> {
+impl<'a> ATarget<'a> {
     /// Return a String representation.
     fn formatted_string(&self) -> String {
         match self {

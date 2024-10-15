@@ -1,5 +1,6 @@
 //! The StatesCorr struct. A store of SomeState structs,
-//! corresponding to the DomainStore vector.
+//! corresponding, in order, to domains in a DomainStore instance.
+//!
 //! States will use the same number of bits as the corresponding domain,
 //! which may be different from other states in the vector.
 use crate::bits::NumBits;
@@ -30,15 +31,17 @@ pub struct StatesCorr {
 impl StatesCorr {
     /// Return a new, empty, StatesCorr instance.
     pub fn new(states: Vec<SomeState>) -> Self {
+        debug_assert!(!states.is_empty());
         Self {
             states: StateStore::new(states),
         }
     }
 
-    /// Return a new StatesCorr instance, empty, with a specified capacity.
-    pub fn with_capacity(num: usize) -> Self {
+    /// Return a new, empty, StatesCorr instance, with a specified capacity.
+    pub fn with_capacity(cap: usize) -> Self {
+        debug_assert!(cap > 0);
         Self {
-            states: StateStore::with_capacity(num),
+            states: StateStore::with_capacity(cap),
         }
     }
 

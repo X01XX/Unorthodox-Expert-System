@@ -1,6 +1,8 @@
 //! The PlansCorr struct. A store of SomePlan structs,
-//! corresponding to the DomainStore vector.
+//! corresponding, in order, to domains in a DomainStore instance.
+//!
 //! Plans, per domain, will be run in parallel.
+//!
 //! PlansCorr instances will be linked together for movement between SelectRegions, via intersections.
 //! Linking PlansCorr instances requires non-change plans, so a non-change step, for some domains.
 use crate::plan::SomePlan;
@@ -31,6 +33,7 @@ pub struct PlansCorr {
 impl PlansCorr {
     /// Return a new, empty, PlansCorr instance.
     pub fn new(plans: Vec<SomePlan>) -> Self {
+        debug_assert!(!plans.is_empty());
         Self {
             plans: PlanStore::new(plans),
         }
@@ -82,7 +85,7 @@ impl PlansCorr {
 
     /// Restrict the initial regions of a PlansCorr plans.
     pub fn restrict_initial_regions(&self, regx: &RegionsCorr) -> Option<Self> {
-        let mut ret_plans = Self::new(Vec::<SomePlan>::with_capacity(self.len()));
+        let mut ret_plans = Self::with_capacity(self.len());
 
         for (plnx, regx) in self.plans.iter().zip(regx.iter()) {
             if let Some(plny) = plnx.restrict_initial_region(regx) {
@@ -96,7 +99,7 @@ impl PlansCorr {
 
     /// Restrict the result regions of a PlansCorr plans.
     pub fn restrict_result_regions(&self, regx: &RegionsCorr) -> Option<Self> {
-        let mut ret_plans = Self::new(Vec::<SomePlan>::with_capacity(self.len()));
+        let mut ret_plans = Self::with_capacity(self.len());
 
         for (plnx, regx) in self.plans.iter().zip(regx.iter()) {
             if let Some(plny) = plnx.restrict_result_region(regx) {

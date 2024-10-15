@@ -1,6 +1,7 @@
 //! Implement a struct of SelectRegions.
-//! This struct contains regions in domain order, the regions will have a size matching the corresponding domain, not other
-//! regions in the vector.
+//! This struct contains regions corresponding, in order, to domains in a DomainStore instance.
+//!
+//! Each instance has a given value.
 //!
 //! The regions have a boolean And relationship.
 //! If only one region is non-maximum, that singles out that domain.

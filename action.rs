@@ -160,6 +160,8 @@ impl SomeAction {
         }
 
         // Check if a group can be confirmed.
+        let mut group_confirmed = false;
+
         for grpx in self.groups.iter_mut() {
             if grpx.pnc || !grpx.region.is_superset_of(key) {
                 continue;
@@ -171,6 +173,7 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
+                    group_confirmed = true;
                 }
                 continue;
             }
@@ -185,6 +188,7 @@ impl SomeAction {
                             self.dom_id, self.id, grpx.region
                         );
                     }
+                    group_confirmed = true;
                 }
                 continue;
             }
@@ -196,9 +200,13 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
+                    group_confirmed = true;
                 }
             }
         } // next grpx
+        if group_confirmed {
+            self.reset_agg_chgs_updated();
+        }
     }
 
     /// Do basic functions for any new sample.
@@ -512,9 +520,14 @@ impl SomeAction {
                 if let SomeNeed::AddGroup {
                     group_region,
                     rules,
+                    pnc,
                 } = ndx
                 {
-                    self.groups_push_nosubs(SomeGroup::new(group_region.clone(), rules.clone()));
+                    self.groups_push_nosubs(SomeGroup::new(
+                        group_region.clone(),
+                        rules.clone(),
+                        *pnc,
+                    ));
                     try_again = true;
                 }
             } // next ndx
@@ -676,6 +689,8 @@ impl SomeAction {
         //println!("confirm_group_needs");
         let mut ret_nds = NeedStore::new(vec![]);
 
+        let mut group_confirmed = false;
+
         for (group_num, grpx) in self.groups.iter_mut().enumerate() {
             if grpx.pnc {
                 continue;
@@ -706,6 +721,7 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
+                    group_confirmed = true;
                 }
 
                 continue;
@@ -718,8 +734,8 @@ impl SomeAction {
                             "Dom {} Act {} Group {} confirmed",
                             self.dom_id, self.id, grpx.region
                         );
+                        group_confirmed = true;
                     }
-
                     continue;
                 }
                 //println!("ConfirmGroup: (2) sqr {sqrx}");
@@ -735,6 +751,10 @@ impl SomeAction {
             needx.add_priority_base();
             ret_nds.push(needx);
         } // next grpx
+
+        if group_confirmed {
+            self.reset_agg_chgs_updated();
+        }
 
         ret_nds
     } // end confirm_group_needs
@@ -1190,6 +1210,7 @@ impl SomeAction {
                         nds_grp_add.push(SomeNeed::AddGroup {
                             group_region: regz,
                             rules: ruls,
+                            pnc: anchor_sqr.pnc,
                         });
                     }
                 } else {
@@ -1369,7 +1390,7 @@ impl SomeAction {
         &self,
         regx: &SomeRegion,
         max_pn: Pn,
-    ) -> Option<(SomeRegion, Option<RuleStore>)> {
+    ) -> Option<(SomeRegion, Option<RuleStore>, bool)> {
         let squares_in = self.squares.squares_in_reg(regx);
 
         if squares_in.is_empty() {
@@ -1520,7 +1541,21 @@ impl SomeAction {
             }
         };
 
-        Some((SomeRegion::new(states), rules))
+        // Calc pnc.
+        let mut pnc = true;
+
+        for stax in states.iter() {
+            if let Some(sqrx) = self.squares.find(stax) {
+                if !sqrx.pnc {
+                    pnc = false;
+                    break;
+                }
+            } else {
+                pnc = false;
+                break;
+            }
+        }
+        Some((SomeRegion::new(states), rules, pnc))
     } // end check_region_for_group
 
     /// Check two groups that may be combined.
@@ -1542,12 +1577,13 @@ impl SomeAction {
 
         let reg_combined = grpx.region.union(&grpy.region);
 
-        if let Some((regx, rules)) = self.check_region_for_group(&reg_combined, grpx.pn) {
+        if let Some((regx, rules, pnc)) = self.check_region_for_group(&reg_combined, grpx.pn) {
             if regx == reg_combined {
                 //println!("group_combine_needs: returning (2) {regx} for combination of {} and {}", grpx.region, grpy.region);
                 nds.push(SomeNeed::AddGroup {
                     group_region: regx,
                     rules,
+                    pnc,
                 });
             }
         }
@@ -2138,6 +2174,7 @@ impl SomeAction {
             ret_grps.push(SomeGroup::new(
                 SomeRegion::new(vec![sqrx.state.clone()]),
                 sqrx.rules.clone(),
+                sqrx.pnc,
             ));
         }
         GroupStore::new(ret_grps)
@@ -2150,9 +2187,9 @@ impl SomeAction {
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert!(regx.is_superset_of(sqrx));
 
-        if let Some((regy, rules)) = self.check_region_for_group(regx, sqrx.pn) {
+        if let Some((regy, rules, pnc)) = self.check_region_for_group(regx, sqrx.pn) {
             if regy.is_superset_of(&sqrx.state) {
-                Some(SomeGroup::new(regy, rules))
+                Some(SomeGroup::new(regy, rules, pnc))
             } else {
                 None
             }
@@ -2182,6 +2219,7 @@ impl SomeAction {
                                     "Dom {} Act {} Group {} confirmed",
                                     self.dom_id, self.id, grpx.region
                                 );
+                                self.reset_agg_chgs_updated();
                             }
                         } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
                             if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
@@ -2190,6 +2228,7 @@ impl SomeAction {
                                     self.dom_id, self.id, grpx.region
                                 );
                             }
+                            self.reset_agg_chgs_updated();
                         }
                     }
                 }
@@ -2202,6 +2241,7 @@ impl SomeAction {
                         self.groups_push_nosubs(SomeGroup::new(
                             SomeRegion::new(vec![cur_state.clone()]),
                             sqr1.rules.clone(),
+                            sqr1.pnc,
                         ));
                     }
                 }
@@ -2441,7 +2481,6 @@ impl SomeAction {
 
         if regs_invalid.is_empty() {
         } else {
-            self.aggregate_changes = self.groups.calc_aggregate_changes();
             self.agg_chgs_updated = true;
         }
 
@@ -2510,7 +2549,7 @@ impl SomeAction {
 
         self.groups.push(grp);
 
-        self.groups.calc_aggregate_changes();
+        self.agg_chgs_updated = false;
 
         true
     }
@@ -2751,6 +2790,64 @@ mod tests {
             .groups
             .find(&SomeRegion::new_from_string("rxxx1")?)
             .is_some());
+
+        Ok(())
+    }
+
+    #[test]
+    fn aggregate_changes() -> Result<(), String> {
+        // Init action.
+        let sx = SomeState::new_from_string("0b0000")?;
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+
+        // Set up square 2.
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+
+        assert!(act0.groups.len() == 1);
+        // Group is not yet pnc, so no aggregate changes.
+        assert!(act0.aggregate_changes.is_none());
+
+        // Confirm group 2.
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+        assert!(act0.aggregate_changes().is_none());
+
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+
+        if let Some(change2) = act0.aggregate_changes() {
+            println!("change2 {change2}");
+            assert!(*change2 == SomeChange::new_from_string("00/00/10/00")?);
+        } else {
+            return Err("Test 2 failed".to_string());
+        }
+
+        // Make group 45, pnc.
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
+
+        assert!(act0.groups.len() == 2);
+
+        if let Some(change3) = act0.aggregate_changes() {
+            println!("change3 {change3}");
+            assert!(*change3 == SomeChange::new_from_string("01/00/10/10")?);
+        } else {
+            return Err("Test 3 failed".to_string());
+        }
+
+        // Make square 5 unpredictable.
+        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1111")?);
+
+        assert!(act0.groups.len() == 3); // groups 0010, 0100, 0101 (unpredictable).
+
+        if let Some(change4) = act0.aggregate_changes() {
+            println!("change4 {change4}");
+            assert!(*change4 == SomeChange::new_from_string("01/00/10/00")?);
+        } else {
+            return Err("Test 4 failed".to_string());
+        }
 
         Ok(())
     }

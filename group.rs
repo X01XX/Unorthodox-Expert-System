@@ -52,7 +52,7 @@ pub struct SomeGroup {
 impl SomeGroup {
     /// Return a new group, given a region, and rules (if any).
     /// The RuleStore will be empty for Pn::Unpredictable squares.
-    pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>) -> Self {
+    pub fn new(regionx: SomeRegion, ruls: Option<RuleStore>, pnc: bool) -> Self {
         //println!(
         //  "creating group {}",
         //   regionx
@@ -79,7 +79,7 @@ impl SomeGroup {
         Self {
             region: regionx,
             pn: pnx,
-            pnc: false,
+            pnc,
             rules: ruls,
             limited: false,
             anchor: None,
@@ -365,7 +365,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
-        let mut grpx = SomeGroup::new(regx, Some(rules));
+        let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
         let initial = SomeState::new_from_string("0b1100")?;
         let result = SomeState::new_from_string("0b0100")?;
@@ -383,7 +383,7 @@ mod tests {
         let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
-        let mut grpx = SomeGroup::new(regx, Some(rules)); // Pn::One
+        let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::One
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
             SomeState::new_from_string("0b1100")?,
@@ -406,7 +406,7 @@ mod tests {
 
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
-        let mut grpx = SomeGroup::new(regx, Some(rules)); // Pn::Two
+        let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::Two
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
             SomeState::new_from_string("0b1100")?,
@@ -431,7 +431,7 @@ mod tests {
 
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
-        let mut grpx = SomeGroup::new(regx, rules);
+        let mut grpx = SomeGroup::new(regx, rules, false);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
             SomeState::new_from_string("0b1100")?,
@@ -447,7 +447,7 @@ mod tests {
 
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
-        let mut grpx = SomeGroup::new(regx, Some(rules));
+        let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
             SomeState::new_from_string("0b1100")?,
