@@ -299,12 +299,17 @@ impl DomainStore {
     /// A series of steps from one SelectRegions fragment to another, to another.
     pub fn run_planscorrstore(&mut self, plnsstr: &PlansCorrStore) -> bool {
         //println!("domainstore::run_planscorrstore: {plnsstr}");
+        let mut not_first = false;
         for plnscrx in plnsstr.iter() {
             if plnscrx
                 .initial_regions()
                 .is_superset_of(&self.all_current_regions())
             {
+                if not_first {
+                    println!("----");
+                }
                 if self.run_planscorr(plnscrx) {
+                    not_first = true;
                 } else {
                     return false;
                 }
@@ -1273,7 +1278,7 @@ impl DomainStore {
                 }
                 // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
                 // one has already been chosen.
-                if start_ints.len() > 1 && selx.is_superset_of(start_regs) {
+                if start_ints.len() > 1 && selx.intersects(start_regs) {
                     continue;
                 }
 
@@ -1302,7 +1307,7 @@ impl DomainStore {
                 }
                 // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
                 // one has already been chosen.
-                if goal_ints.len() > 1 && selx.is_superset_of(goal_regs) {
+                if goal_ints.len() > 1 && selx.intersects(goal_regs) {
                     continue;
                 }
 

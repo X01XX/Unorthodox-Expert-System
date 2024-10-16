@@ -316,9 +316,6 @@ impl SelectRegionsStore {
 
         for regy in self.iter() {
             if subtrahend.intersects(regy) {
-                if subtrahend.regions == regy.regions {
-                    continue;
-                }
                 for regsz in regy.subtract(subtrahend) {
                     ret_str.push_nosubs(regsz);
                 }
@@ -337,13 +334,10 @@ impl SelectRegionsStore {
         );
 
         let mut ret = self.clone();
+
         for selx in other.items.iter() {
             if ret.any_intersection_of(selx) {
-                let tmp = ret.subtract_selectregions(selx);
-                if tmp.is_empty() {
-                    return Self::new(vec![]);
-                }
-                ret = tmp;
+                ret = ret.subtract_selectregions(selx);
             }
         }
         ret

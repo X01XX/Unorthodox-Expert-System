@@ -189,7 +189,7 @@ impl RegionStore {
         true
     }
 
-    /// Subtract a group/region/square/state from a RegionStore.
+    /// Subtract a region/state from a RegionStore.
     pub fn subtract_item(&self, itmx: &impl AccessStates) -> Self {
         debug_assert!(self.is_empty() || itmx.num_bits() == self.items[0].num_bits());
 
@@ -210,7 +210,9 @@ impl RegionStore {
 
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, subtrahend: &Self) -> Self {
-        debug_assert!(self.is_empty() || subtrahend.num_bits() == self.num_bits());
+        debug_assert!(
+            self.is_empty() || subtrahend.is_empty() || subtrahend.num_bits() == self.num_bits()
+        );
 
         let mut ret_str = self.clone();
 
