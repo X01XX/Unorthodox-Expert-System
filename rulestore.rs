@@ -83,7 +83,7 @@ impl RuleStore {
     /// If there are two rules, they will have at least one incompatibility,
     /// 0->0/0->1 or 1->1/1->0, and have equal initial regions.
     pub fn push(&mut self, val: SomeRule) {
-        debug_assert_eq!(self.num_bits().expect("SNH"), val.num_bits());
+        debug_assert!(self.is_empty() || self.num_bits().expect("SNH") == val.num_bits());
 
         self.items.push(val);
     }
@@ -458,23 +458,17 @@ impl RuleStore {
     }
 
     /// Return rules massaged to be within a given region.
-    pub fn within(&self, within: &SomeRegion) -> Vec<Option<SomeRule>> {
+    pub fn within(&self, within: &SomeRegion) -> Self {
         debug_assert!(self.is_not_empty());
         debug_assert!(self.num_bits().expect("SNH") == within.num_bits());
 
-        let mut ret = Vec::<Option<SomeRule>>::new();
+        let mut ret = Self::new(vec![]);
 
         for rulx in self.iter() {
             if rulx.initial_region().intersects(within) {
-                let ruly = rulx.restrict_initial_region(within);
-                if within.is_superset_of(&ruly.result_region()) {
-                    // non-superset intersection is not expected.
-                    ret.push(Some(ruly));
-                } else {
-                    ret.push(None);
-                }
+                ret.push(rulx.restrict_initial_region(within));
             } else {
-                ret.push(None);
+                return ret;
             }
         }
         ret
