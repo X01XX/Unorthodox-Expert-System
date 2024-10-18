@@ -393,16 +393,6 @@ impl SomeDomain {
 
             //println!("\n    use asymmetric step {} ", stepx);
 
-            //let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
-            // let rulx = rule_to.combine_sequence(&stepx.rule);
-            // println!("    aggregate rule      {} ", rulx);
-
-            // println!(
-            //     "    wanted changes {} unwanted_changes {}",
-            //     wanted_changes.intersection(&rulx),
-            //     unwanted_changes.intersection(&rulx)
-            // );
-
             return self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within);
         }
 
@@ -507,17 +497,6 @@ impl SomeDomain {
         }
 
         // Must be an asymmetric step.
-        //println!("    use asymmetric step {} ", stepx);
-
-        //let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
-        //let rulx = rule_to.combine_sequence(&stepx.rule);
-        //println!("    aggregate rule      {} ", rulx);
-
-        //println!(
-        //    "    wanted changes {} unwanted_changes {}",
-        //    wanted_changes.intersection(&rulx),
-        //    unwanted_changes.intersection(&rulx)
-        //);
 
         if within.is_superset_of(&stepx.initial) {
             self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within)
@@ -539,13 +518,8 @@ impl SomeDomain {
 
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-
-        if !within.is_superset_of(from_reg) {
-            return None;
-        }
-        if !within.is_superset_of(goal_reg) {
-            return None;
-        }
+        debug_assert!(within.is_superset_of(from_reg));
+        debug_assert!(within.is_superset_of(goal_reg));
 
         if depth == 0 {
             //println!("\n    depth limit exceeded.");

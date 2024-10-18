@@ -458,19 +458,41 @@ impl RuleStore {
     }
 
     /// Return rules massaged to be within a given region.
-    pub fn within(&self, within: &SomeRegion) -> Self {
+    /// Rule order is preserved.
+    pub fn within(&self, within: &SomeRegion) -> Vec<Option<SomeRule>> {
         debug_assert!(self.is_not_empty());
         debug_assert!(self.num_bits().expect("SNH") == within.num_bits());
 
-        let mut ret = Self::new(vec![]);
+        let mut ret = Vec::<Option<SomeRule>>::new();
 
         for rulx in self.iter() {
-            if rulx.initial_region().intersects(within) {
-                ret.push(rulx.restrict_initial_region(within));
+            let initial = rulx.initial_region();
+
+            if within.is_superset_of(&initial) {
+                let result = rulx.result_region();
+
+                if within.is_superset_of(&result) {
+                    ret.push(Some(rulx.clone()));
+                } else if within.intersects(&result) {
+                    ret.push(Some(rulx.restrict_result_region(within)));
+                } else {
+                    ret.push(None);
+                }
+            } else if within.intersects(&initial) {
+                let ruly = rulx.restrict_initial_region(within);
+                let result = ruly.result_region();
+
+                if within.is_superset_of(&result) {
+                    ret.push(Some(ruly.clone()));
+                } else if within.intersects(&result) {
+                    ret.push(Some(ruly.restrict_result_region(within)));
+                } else {
+                    ret.push(None);
+                }
             } else {
-                return ret;
+                ret.push(None);
             }
-        }
+        } // next rulx
         ret
     }
 } // end impl RuleStore

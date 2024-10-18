@@ -1818,17 +1818,12 @@ impl SomeAction {
                 stps.append(stpsx);
             }
         }
-        //if stps.is_not_empty() {
-        //    println!("Action::get_steps: for change {achange} within {within} returning {stps}");
-        //}
-        //for stepx in stps.iter() {
-        //    assert!(within.is_superset_of(&stepx.initial) && within.is_superset_of(&stepx.result));
-        //}
         //println!("action: steps within");
         stps
     } // end get_steps
 
     /// Get steps for a desired change, from a RuleStore that contains one or two rules.
+    /// The within argument serves to restrict unwanted changes that may be included with wanted changes.
     fn get_steps_from_rulestore(
         &self,
         rules: &RuleStore,
@@ -1852,16 +1847,13 @@ impl SomeAction {
         // Rule order is preserved.
         let rules2 = rules.within(within);
 
-        // Return if no rule within.
-        if rules2.is_empty() {
-            return stps;
-        }
-
         // Process one-rule RuleStore.
         if rules2.len() == 1 {
-            if change_to_goal.intersection(&rules2[0]).is_not_low() {
-                if let Some(rulx) = rules2[0].restrict_for_changes(rule_to_goal) {
-                    stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
+            if let Some(rulx) = &rules2[0] {
+                if change_to_goal.intersection(rulx).is_not_low() {
+                    if let Some(rulx) = rulx.restrict_for_changes(rule_to_goal) {
+                        stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
+                    }
                 }
             }
 
@@ -1871,11 +1863,16 @@ impl SomeAction {
 
         // Must be a two-rule store, unfortunately.
 
+        // Return if no rule within.
+        if rules2[0].is_none() && rules2[1].is_none() {
+            return stps;
+        }
+
         // Split up group region between predictable result, that is, existing squares, and
         // unpredictable regions.
         //
         // A square result is predictable because you know the previous result.
-        let rule_initial_reg = rules2[0].initial_region();
+        let rule_initial_reg = rules[0].initial_region().intersection(within).expect("SNH");
 
         let mut regs = RegionStore::new(vec![rule_initial_reg.clone()]);
 
@@ -1896,19 +1893,23 @@ impl SomeAction {
             let last_result = sqrx.most_recent_result();
             //println!("sqr {} most recent result {last_result}", sqrx.state);
 
-            if rules2[0].result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
-            } else {
-                let rul_sqr = rules2[0].restrict_initial_region(&sqrx.state);
-                if change_to_goal.intersection(&rul_sqr).is_not_low() {
-                    stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+            if let Some(rulx) = &rules2[0] {
+                if rulx.result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
+                } else {
+                    let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
+                    if change_to_goal.intersection(&rul_sqr).is_not_low() {
+                        stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+                    }
                 }
             }
 
-            if rules2[1].result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
-            } else {
-                let rul_sqr = rules2[1].restrict_initial_region(&sqrx.state);
-                if change_to_goal.intersection(&rul_sqr).is_not_low() {
-                    stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+            if let Some(rulx) = &rules2[1] {
+                if rulx.result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
+                } else {
+                    let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
+                    if change_to_goal.intersection(&rul_sqr).is_not_low() {
+                        stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+                    }
                 }
             }
         } // next sqrx
@@ -1916,29 +1917,33 @@ impl SomeAction {
         // println!("regs left {regs}");
         // Process regions not predicted from squares.
         for regx in regs.iter() {
-            let ruly = rules2[0].restrict_initial_region(regx);
-            if change_to_goal.intersection(&ruly).is_not_low() {
-                if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
-                    stps.push(SomeStep::new(
-                        self.id,
-                        rulz,
-                        AltRuleHint::AltRule {
-                            rule: rules[1].clone(),
-                        },
-                    ));
+            if let Some(rulx) = &rules2[0] {
+                let ruly = rulx.restrict_initial_region(regx);
+                if change_to_goal.intersection(&ruly).is_not_low() {
+                    if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
+                        stps.push(SomeStep::new(
+                            self.id,
+                            rulz,
+                            AltRuleHint::AltRule {
+                                rule: rules[1].clone(),
+                            },
+                        ));
+                    }
                 }
             }
 
-            let ruly = rules2[1].restrict_initial_region(regx);
-            if change_to_goal.intersection(&ruly).is_not_low() {
-                if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
-                    stps.push(SomeStep::new(
-                        self.id,
-                        rulz,
-                        AltRuleHint::AltRule {
-                            rule: rules[0].clone(),
-                        },
-                    ));
+            if let Some(rulx) = &rules2[1] {
+                let ruly = rulx.restrict_initial_region(regx);
+                if change_to_goal.intersection(&ruly).is_not_low() {
+                    if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
+                        stps.push(SomeStep::new(
+                            self.id,
+                            rulz,
+                            AltRuleHint::AltRule {
+                                rule: rules[0].clone(),
+                            },
+                        ));
+                    }
                 }
             }
         } // next regx
