@@ -60,9 +60,6 @@ impl PartialEq for SomeStep {
         if self.initial != other.initial {
             return false;
         }
-        if self.result != other.result {
-            return false;
-        }
         if self.group_inx != other.group_inx {
             return false;
         }

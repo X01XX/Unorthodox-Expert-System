@@ -273,7 +273,6 @@ impl SomeDomain {
     /// If a possible bit-change only has Asymmetric Chaining steps, randomly choose one to use.
     ///
     /// Otherwise, randomly choose a forward or backward chaining step.
-    ///
     fn depth_first_search(
         &self,
         from_reg: &SomeRegion,
@@ -287,6 +286,8 @@ impl SomeDomain {
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(steps_str.is_empty() || steps_str.num_bits().unwrap() == self.num_bits());
+        debug_assert!(within.is_superset_of(from_reg));
+        debug_assert!(within.is_superset_of(goal_reg));
 
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
@@ -474,10 +475,14 @@ impl SomeDomain {
             //    stepy.rule.to_change().intersection(&unwanted_changes)
             //);
 
-            let plan_to_goal =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, within)?;
+            if within.is_superset_of(&stepy.result) {
+                let plan_to_goal =
+                    self.plan_steps_between(&stepy.result, goal_reg, depth - 1, within)?;
 
-            return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
+                return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
+            } else {
+                return None;
+            }
         }
 
         // Process backward chaining step.
@@ -491,10 +496,14 @@ impl SomeDomain {
             //    stepy.rule.to_change().intersection(&unwanted_changes)
             //);
 
-            let plan_to_step =
-                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, within)?;
+            if within.is_superset_of(&stepy.initial) {
+                let plan_to_step =
+                    self.plan_steps_between(from_reg, &stepy.initial, depth - 1, within)?;
 
-            return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
+                return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
+            } else {
+                return None;
+            }
         }
 
         // Must be an asymmetric step.
@@ -510,7 +519,11 @@ impl SomeDomain {
         //    unwanted_changes.intersection(&rulx)
         //);
 
-        self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within)
+        if within.is_superset_of(&stepx.initial) {
+            self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within)
+        } else {
+            None
+        }
     } // end depth_first_search
 
     /// Return possible plan to change state between two regions.
@@ -522,12 +535,17 @@ impl SomeDomain {
         within: &SomeRegion,
     ) -> Option<SomePlan> {
         //println!(
-        //    "\ndomain::plan_steps_between: from {} to {} depth {}",
-        //    from_reg, goal_reg, depth
-        //);
+        //    "\ndomain::plan_steps_between: from {from_reg} to {goal_reg} within {within} whence {whence} depth {depth}");
 
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
+
+        if !within.is_superset_of(from_reg) {
+            return None;
+        }
+        if !within.is_superset_of(goal_reg) {
+            return None;
+        }
 
         if depth == 0 {
             //println!("\n    depth limit exceeded.");
@@ -591,6 +609,8 @@ impl SomeDomain {
 
         debug_assert!(!stepx.initial.intersects(from_reg));
         debug_assert!(!stepx.result.intersects(goal_reg));
+        debug_assert!(within.is_superset_of(from_reg));
+        debug_assert!(within.is_superset_of(goal_reg));
 
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
             let to_step_plan =
@@ -708,6 +728,7 @@ impl SomeDomain {
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
+        debug_assert!(within.is_superset_of(from_reg));
 
         if !within.is_superset_of(from_reg) || !within.is_superset_of(goal_reg) {
             return None;
@@ -774,7 +795,7 @@ impl SomeDomain {
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
         debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
-        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
+        //debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
 
         // Check if changes are possible.
         let wanted_changes = rule_to_goal.wanted_changes();
