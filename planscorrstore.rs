@@ -126,10 +126,10 @@ impl PlansCorrStore {
     }
 
     /// Return a PlansCorrStorr linked to another.
-    pub fn link(&self, other: &Self) -> Option<Self> {
+    pub fn link(&self, other: &Self) -> Result<Self, String> {
         //println!("planscorrstore::link {self} to {other}");
         if self.is_empty() {
-            return Some(other.clone());
+            return Ok(other.clone());
         }
         let result_regs = self.result_regions();
         let initial_regs = other.initial_regions();
@@ -138,11 +138,11 @@ impl PlansCorrStore {
             if let Some(mut plnscx) = self.restrict_result_regions(&initial_regs) {
                 if let Some(mut plnscy) = other.restrict_initial_regions(&result_regs) {
                     plnscx.items.append(&mut plnscy.items);
-                    return Some(plnscx);
+                    return Ok(plnscx);
                 }
             }
         }
-        None
+        Err(format!("planscorrstore::link: {self} to {other} failed"))
     }
 
     /// Return a more restricted display version of a PlansCorrStore.
@@ -471,7 +471,7 @@ mod tests {
         );
 
         // Calc link.
-        if let Some(plnscstr3) = plnscstr1.link(&plnscstr2) {
+        if let Ok(plnscstr3) = plnscstr1.link(&plnscstr2) {
             println!("plnscstr3 {plnscstr3}");
             assert!(
                 plnscstr3.initial_regions()

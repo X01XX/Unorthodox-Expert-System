@@ -1772,6 +1772,8 @@ impl SomeAction {
     ///
     /// For a two-result group, see if there is an existing square that is expected to
     /// produce the desired change.
+    ///
+    /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
     pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
         //println!("Action::get_steps: for change {achange} within {within}");
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits);
@@ -1823,7 +1825,6 @@ impl SomeAction {
     } // end get_steps
 
     /// Get steps for a desired change, from a RuleStore that contains one or two rules.
-    /// The within argument serves to restrict unwanted changes that may be included with wanted changes.
     fn get_steps_from_rulestore(
         &self,
         rules: &RuleStore,

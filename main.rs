@@ -697,7 +697,7 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
     if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
         if !dmxs.run_planscorrstore(plans) {
             print!("Run plan failed, ");
-            if let Some(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
+            if let Ok(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
                 dmxs.needs[inx_pln.inx].dom_id(),
                 &dmxs.needs[inx_pln.inx].target(),
             ) {
@@ -850,22 +850,24 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     for _ in 0..6 {
         println!("\nCalculating plan.");
-        if let Some(planx) = dmxs.plan_using_least_negative_select_regions_for_target(
+        match dmxs.plan_using_least_negative_select_regions_for_target(
             Some(dom_id),
             &ATarget::Region {
                 region: &goal_region,
             },
         ) {
-            //let plnstr = PlanStore::new(vec![planx]);
-            match planx {
-                NeedPlan::AtTarget {} => println!("At Target"),
-                NeedPlan::PlanFound { plan: plnx } => {
-                    println!("{}", plnx.str_terse());
-                    println!("\nrunning plan:");
-                    dmxs.run_planscorrstore(&plnx);
-                }
-            };
-            break;
+            Ok(planx) => {
+                match planx {
+                    NeedPlan::AtTarget {} => println!("At Target"),
+                    NeedPlan::PlanFound { plan: plnx } => {
+                        println!("{}", plnx.str_terse());
+                        println!("\nrunning plan:");
+                        dmxs.run_planscorrstore(&plnx);
+                        break;
+                    }
+                };
+            }
+            Err(errstr) => println!("{errstr}"),
         }
     }
     if cur_region.is_superset_of(&dmxs[dom_id].cur_state) {

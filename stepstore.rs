@@ -195,7 +195,7 @@ impl StepStore {
     pub fn get_steps_by_bit_change(
         &self,
         required_change: &SomeChange,
-    ) -> Option<Vec<Vec<&SomeStep>>> {
+    ) -> Result<Vec<Vec<&SomeStep>>, String> {
         //println!("StepStore::get_steps_by_bit_change: steps {self} change {required_change}");
         debug_assert!(if let Some(num_bits) = self.num_bits() {
             num_bits == required_change.num_bits()
@@ -209,7 +209,9 @@ impl StepStore {
 
         for avec in steps_by_change_vov.iter() {
             if avec.is_empty() {
-                return None;
+                return Err(format!(
+                    "stepstore::get_steps_by_bit_change: No steps found for {required_change}"
+                ));
             }
         }
 
@@ -218,7 +220,9 @@ impl StepStore {
         // Check if any pair of single-bit change, all steps in vectors, are mutually exclusive.
         // So one change can be made, but not the other.
         if any_mutually_exclusive_changes(&steps_by_change_vov, required_change) {
-            return None;
+            return Err(
+                "stepstore::get_steps_by_bit_change: Mutually exclusive steps found".to_string(),
+            );
         }
 
         // Check for step vectors where all steps should be done after all steps in at least one other step vector,
@@ -226,14 +230,14 @@ impl StepStore {
         if steps_by_change_vov.len() > 1 {
             let inxs: Vec<usize> = do_later_changes(&steps_by_change_vov, required_change);
             if inxs.len() == steps_by_change_vov.len() {
-                return None;
+                return Err("stepstore::get_steps_by_bit_change: ?".to_string());
             }
             for inx in inxs.iter() {
                 tools::remove_unordered(&mut steps_by_change_vov, *inx);
             }
         }
 
-        Some(steps_by_change_vov)
+        Ok(steps_by_change_vov)
     }
 
     /// Return the number of bits used be steps in the StepStore.

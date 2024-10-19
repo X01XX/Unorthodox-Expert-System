@@ -177,48 +177,66 @@ impl SomePlan {
     }
 
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
-    pub fn link(&self, other: &Self) -> Option<Self> {
+    pub fn link(&self, other: &Self) -> Result<Self, String> {
         //println!("link: {self} and {other}");
         debug_assert!(self.dom_id == other.dom_id);
 
         // Sanity checks
         if self.is_empty() && other.is_empty() {
-            return None;
+            return Err("plan::link: both plans are empty".to_string());
         }
 
         if self.is_empty() && other.is_not_empty() {
-            return Some(other.clone());
+            return Ok(other.clone());
         }
 
         if self.is_not_empty() && other.is_empty() {
-            return Some(self.clone());
+            return Ok(self.clone());
         }
 
         // Restrict the StepStores, forward and backward.
         let reg1 = self.result_region();
         let reg2 = other.initial_region();
 
-        let regx = reg1.intersection(reg2)?;
+        let regx = match reg1.intersection(reg2) {
+            Some(regy) => regy,
+            None => return Err(format!("plan::link: reg {reg1} does not intersect {reg2}")),
+        };
 
-        let mut steps1 = self.restrict_result_region(&regx)?;
+        let mut steps1 = match self.restrict_result_region(&regx) {
+            Some(stepsx) => stepsx,
+            None => {
+                return Err(format!(
+                    "plan::link: self {self} restrict result to {regx} failed"
+                ))
+            }
+        };
         //println!("steps1 {steps1}");
 
-        let steps2 = other.restrict_initial_region(&regx)?;
+        let steps2 = match other.restrict_initial_region(&regx) {
+            Some(stepsx) => stepsx,
+            None => {
+                return Err(format!(
+                    "plan::link: other {other} restrict initial to {regx} failed"
+                ))
+            }
+        };
+
         //println!("steps2 {steps2}");
 
         // Push each step to check each step for problems.
         for stepx in steps2.steps.into_iter() {
             match steps1.push(stepx) {
                 Ok(()) => continue,
-                Err(_errstr) => {
+                Err(errstr) => {
                     //println!("    push failed {errstr}");
-                    return None;
+                    return Err(errstr);
                 }
             }
         }
 
         //println!("stepstore:link: 2 {} and {} giving {}", self, other, rc_steps);
-        Some(steps1)
+        Ok(steps1)
     } // end link
 
     /// Return a string of action numbers to represent a plan.
@@ -505,7 +523,7 @@ mod tests {
         println!("stp1 {}", stp_str1);
         println!("stp2 {}", stp_str2);
 
-        let Some(stp_str3) = stp_str1.link(&stp_str2) else {
+        let Ok(stp_str3) = stp_str1.link(&stp_str2) else {
             return Err("Link error?".to_string());
         };
         println!("stp3 {}", stp_str3);

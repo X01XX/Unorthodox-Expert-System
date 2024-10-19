@@ -196,7 +196,7 @@ impl SomeDomain {
 
         if !pln.initial_region().is_superset_of(&self.cur_state) {
             return Err(format!(
-                "Current state {} is not in the start region of plan {}",
+                "domain::run_plan: Current state {} is not in the start region of plan {}",
                 &self.cur_state, &pln
             ));
         }
@@ -227,13 +227,13 @@ impl SomeDomain {
 
             // Avoid an infinite loop of retries.
             if depth == 1 {
-                return Err("Try return/retry depth limit exceeded".to_string());
+                return Err("domain::run_plan: Try return/retry depth limit exceeded".to_string());
             }
 
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
                 AltRuleHint::NoAlt {} => {
-                    return Err("Unexpected result, step failed".to_string());
+                    return Err("domain::run_plan: Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltNoChange {} => {
                     println!("Try action a second time");
@@ -246,14 +246,14 @@ impl SomeDomain {
                     if stpx.result.is_superset_of(&self.cur_state) {
                         continue;
                     }
-                    return Err("Unexpected result, step failed".to_string());
+                    return Err("domain::run_plan: Unexpected result, step failed".to_string());
                 }
                 AltRuleHint::AltRule { rule } => {
                     if rule.result_region().is_superset_of(&self.cur_state) {
                         //println!("Recalculate plan");
-                        return Err("Recalculate plan".to_string());
+                        return Err("domain::run_plan: Recalculate plan".to_string());
                     } else {
-                        return Err("Unexpected result, step failed".to_string());
+                        return Err("domain::run_plan: Unexpected result, step failed".to_string());
                     }
                 }
             }
@@ -262,7 +262,7 @@ impl SomeDomain {
         if pln.result_region().is_superset_of(&self.cur_state) {
             Ok(num_steps)
         } else {
-            Err("Plan result region not reached".to_string())
+            Err("domain::run_plan: Plan result region not reached".to_string())
         }
     } // end run_plan
 
@@ -273,6 +273,8 @@ impl SomeDomain {
     /// If a possible bit-change only has Asymmetric Chaining steps, randomly choose one to use.
     ///
     /// Otherwise, randomly choose a forward or backward chaining step.
+    ///
+    /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
     fn depth_first_search(
         &self,
         from_reg: &SomeRegion,
@@ -281,7 +283,7 @@ impl SomeDomain {
         steps_by_change_vov: &[Vec<&SomeStep>],
         depth: usize,
         within: &SomeRegion,
-    ) -> Option<SomePlan> {
+    ) -> Result<SomePlan, String> {
         //println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
@@ -301,14 +303,14 @@ impl SomeDomain {
                 if stepy.result.intersects(goal_reg) {
                     let stepz = stepy.restrict_result_region(goal_reg);
 
-                    return Some(SomePlan::new(self.id, vec![stepz]));
+                    return Ok(SomePlan::new(self.id, vec![stepz]));
                 }
             }
         }
 
         // Check depth
         if depth == 0 {
-            return None;
+            return Err("domain::depth_first_search: Depth limit exceeded".to_string());
         }
 
         // Calc wanted, and unwanted, changes.
@@ -471,7 +473,7 @@ impl SomeDomain {
 
                 return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
             } else {
-                return None;
+                return Err(format!("domain::depth_first_search: Step {stepy} result region is not a subset of within {within}"));
             }
         }
 
@@ -492,7 +494,7 @@ impl SomeDomain {
 
                 return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
             } else {
-                return None;
+                return Err(format!("domain::depth_first_search: Step {stepy} initial region is not a subset of within {within}"));
             }
         }
 
@@ -501,7 +503,7 @@ impl SomeDomain {
         if within.is_superset_of(&stepx.initial) {
             self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within)
         } else {
-            None
+            Err(format!("domain::depth_first_search: Step {stepx} initial region is not a subset of within {within}"))
         }
     } // end depth_first_search
 
@@ -512,7 +514,7 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         depth: usize,
         within: &SomeRegion,
-    ) -> Option<SomePlan> {
+    ) -> Result<SomePlan, String> {
         //println!(
         //    "\ndomain::plan_steps_between: from {from_reg} to {goal_reg} within {within} whence {whence} depth {depth}");
 
@@ -523,7 +525,7 @@ impl SomeDomain {
 
         if depth == 0 {
             //println!("\n    depth limit exceeded.");
-            return None;
+            return Err("domain::plan_steps_between: Depth limit exceeded".to_string());
         }
 
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
@@ -532,7 +534,7 @@ impl SomeDomain {
         let steps_str = self.get_steps(&rule_to_goal, within);
         if steps_str.is_empty() {
             //println!("\n    rules covering all needed bit changes {wanted_changes} not found");
-            return None;
+            return Err(format!("domain::plan_steps_between: No steps found for rule {rule_to_goal} within {within}"));
         }
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&wanted_changes)?;
@@ -566,7 +568,7 @@ impl SomeDomain {
         stepx: &SomeStep,
         depth: usize,
         within: &SomeRegion,
-    ) -> Option<SomePlan> {
+    ) -> Result<SomePlan, String> {
         //println!(
         //    "\ndomain::asymmetric_chaining: from: {} to step: {} to goal {} depth: {}",
         //    from_reg, stepx, goal_reg, depth
@@ -574,7 +576,7 @@ impl SomeDomain {
 
         if depth == 0 {
             //println!("\n    depth limit exceeded.");
-            return None;
+            return Err("domain::asymmetric_chaining: Depth limit exceeded".to_string());
         }
 
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
@@ -644,7 +646,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: &SomeRegion,
-    ) -> Option<PlanStore> {
+    ) -> Result<PlanStore, String> {
         //if let Some(in_reg) = within {
         //    println!("domain::make_plans: from {from_reg} goal {goal_reg} within {in_reg}");
         //} else {
@@ -656,38 +658,23 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(from_reg));
         debug_assert!(within.is_superset_of(goal_reg));
 
-        if let Some(mut plans) = self.make_plans2(from_reg, goal_reg, within) {
-            //println!("make_plans2 num found {} plans", plans.len());
+        match self.make_plans2(from_reg, goal_reg, within) {
+            Ok(mut plans) => {
+                //println!("make_plans2 num found {} plans", plans.len());
 
-            let mut addplans = PlanStore::new(vec![]);
-            for planx in plans.iter() {
-                //                if let Some(regs) = within {
-                //                    if !planx.remains_within(regs) {
-                //                        println!("(3) {planx} not within {regs}");
-                //                        panic!("Done");
-                //                    }
-                //                }
-                if let Some(shortcuts) = self.shortcuts(planx, within) {
-                    //                    for planx in shortcuts.iter() {
-                    //                        if let Some(regs) = within {
-                    //                            if !planx.remains_within(regs) {
-                    //                                println!("(4) {planx} not within {regs}");
-                    //                                panic!("Done");
-                    //                            }
-                    //                        }
-                    //                  }
-                    // Check shortcuts.
-                    //println!("Shortcuts for {planx} are {shortcuts}");
-                    addplans.append(shortcuts);
+                let mut addplans = PlanStore::new(vec![]);
+                for planx in plans.iter() {
+                    if let Some(shortcuts) = self.shortcuts(planx, within) {
+                        addplans.append(shortcuts);
+                    }
                 }
+                if addplans.is_not_empty() {
+                    plans.append(addplans);
+                }
+                Ok(plans)
             }
-            if addplans.is_not_empty() {
-                plans.append(addplans);
-            }
-
-            return Some(plans);
+            Err(errstr) => Err(errstr),
         }
-        None
     }
 
     /// Make a plan to change from a region to another region.
@@ -697,19 +684,16 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: &SomeRegion,
-    ) -> Option<PlanStore> {
+    ) -> Result<PlanStore, String> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
         debug_assert!(within.is_superset_of(from_reg));
-
-        if !within.is_superset_of(from_reg) || !within.is_superset_of(goal_reg) {
-            return None;
-        }
+        debug_assert!(within.is_superset_of(goal_reg));
 
         if goal_reg.is_superset_of(from_reg) {
-            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
+            return Ok(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
         }
         // Figure the required change.
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
@@ -721,7 +705,9 @@ impl SomeDomain {
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&rule_to_goal, within);
         if steps_str.is_empty() {
-            return None;
+            return Err(format!(
+                "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
+            ));
         }
 
         // Get vector of steps for each bit change.
@@ -731,7 +717,7 @@ impl SomeDomain {
         // recalculated for each run, below, of random_depth_first_search.
         let plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .filter_map(|_| {
+            .map(|_| {
                 self.depth_first_search(
                     from_reg,
                     goal_reg,
@@ -741,19 +727,40 @@ impl SomeDomain {
                     within,
                 )
             })
-            .collect::<Vec<SomePlan>>();
+            .collect::<Vec<Result<SomePlan, String>>>();
 
         // Check for failure.
         if plans.is_empty() {
-            return None;
-        }
-        // Check plans.
-        for planx in &plans {
-            debug_assert!(planx.remains_within(within));
+            return Err(format!(
+                "domain::make_plans2: No plans found for {from_reg} to {goal_reg} within {within}"
+            ));
         }
 
+        // Check for plans.
+        let mut plans2 = Vec::<SomePlan>::new();
+        let mut problems = Vec::<String>::new();
+        for rslt in plans {
+            match rslt {
+                Ok(planx) => {
+                    if !plans2.contains(&planx) {
+                        debug_assert!(planx.remains_within(within));
+                        plans2.push(planx);
+                    }
+                }
+                Err(errstr) => {
+                    if !problems.contains(&errstr) {
+                        problems.push(errstr);
+                    }
+                }
+            }
+        } // next rslt.
+
+        if plans2.is_empty() {
+            Err(format!("{:?}", problems))
+        } else {
+            Ok(PlanStore::new(plans2))
+        }
         //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
-        Some(PlanStore::new(plans).delete_duplicates())
     } // end make_plans2
 
     /// Get steps that may allow a change to be made.
@@ -981,7 +988,7 @@ impl SomeDomain {
                     return Some(shortcuts);
                 }
             }
-            if let Some(plans2) =
+            if let Ok(plans2) =
                 self.make_plans2(&planx[*from_inx].initial, &planx[*to_inx].result, within)
             {
                 // println!(
@@ -993,17 +1000,28 @@ impl SomeDomain {
                     let mut new_plan = SomePlan::new(self.id, vec![]);
                     if *from_inx > 0 {
                         for inz in 0..*from_inx {
-                            new_plan =
-                                new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()]))?;
+                            new_plan = match new_plan
+                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
+                            {
+                                Ok(planx) => planx,
+                                Err(_errstr) => return None,
+                            }
                         }
                     }
                     //println!("    sub plan1 {}", plany);
-                    new_plan = new_plan.link(&plany)?;
+                    new_plan = match new_plan.link(&plany) {
+                        Ok(planx) => planx,
+                        Err(_errstr) => return None,
+                    };
 
                     if *to_inx < planx.len() {
                         for inz in (to_inx + 1)..planx.len() {
-                            new_plan =
-                                new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()]))?;
+                            new_plan = match new_plan
+                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
+                            {
+                                Ok(planx) => planx,
+                                Err(_errstr) => return None,
+                            }
                         }
                     }
                     //println!("    new_plan {new_plan}");
@@ -1110,7 +1128,7 @@ mod tests {
         println!("Acts: {}\n", dm0.actions);
 
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
-        if let Some(plans) = dm0.make_plans(
+        if let Ok(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0101").expect("SNH"),
             &SomeRegion::new_from_string("r0100").expect("SNH"),
             &SomeRegion::new_from_string("rXXXX").expect("SNH"),
@@ -1155,7 +1173,7 @@ mod tests {
         // One of the following plans will succeed as is, one will need to return to square 5 and try again, then it will succeed.
         dm0.cur_state = SomeState::new_from_string("0b0001")?; // -> 0011
 
-        if let Some(plans) = dm0.make_plans(
+        if let Ok(plans) = dm0.make_plans(
             &SomeRegion::new_from_string("r0001").expect("SNH"),
             &SomeRegion::new_from_string("r0011").expect("SNH"),
             &SomeRegion::new_from_string("r00XX")?,
