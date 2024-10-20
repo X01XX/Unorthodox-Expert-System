@@ -183,7 +183,7 @@ impl SomeDomain {
         self.cur_state = stax;
     }
 
-    /// Run a plan, return true if it runs to completion.
+    /// Run a plan, return number steps if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
         debug_assert_eq!(pln.dom_id, self.id);
         debug_assert!(pln.is_empty() || pln.num_bits().unwrap() == self.num_bits());
@@ -646,7 +646,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: &SomeRegion,
-    ) -> Result<PlanStore, String> {
+    ) -> Result<PlanStore, Vec<String>> {
         //if let Some(in_reg) = within {
         //    println!("domain::make_plans: from {from_reg} goal {goal_reg} within {in_reg}");
         //} else {
@@ -673,7 +673,7 @@ impl SomeDomain {
                 }
                 Ok(plans)
             }
-            Err(errstr) => Err(errstr),
+            Err(errvec) => Err(errvec),
         }
     }
 
@@ -684,7 +684,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: &SomeRegion,
-    ) -> Result<PlanStore, String> {
+    ) -> Result<PlanStore, Vec<String>> {
         //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
@@ -705,13 +705,16 @@ impl SomeDomain {
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&rule_to_goal, within);
         if steps_str.is_empty() {
-            return Err(format!(
+            return Err(vec![format!(
                 "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
-            ));
+            )]);
         }
 
         // Get vector of steps for each bit change.
-        let steps_by_change_vov = steps_str.get_steps_by_bit_change(&change_to_goal)?;
+        let steps_by_change_vov = match steps_str.get_steps_by_bit_change(&change_to_goal) {
+            Ok(stps) => stps,
+            Err(errstr) => return Err(vec![errstr]),
+        };
 
         // Calculated steps_str, and steps_by_change_vov, ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
@@ -731,9 +734,9 @@ impl SomeDomain {
 
         // Check for failure.
         if plans.is_empty() {
-            return Err(format!(
+            return Err(vec![format!(
                 "domain::make_plans2: No plans found for {from_reg} to {goal_reg} within {within}"
-            ));
+            )]);
         }
 
         // Check for plans.
@@ -756,7 +759,7 @@ impl SomeDomain {
         } // next rslt.
 
         if plans2.is_empty() {
-            Err(format!("{:?}", problems))
+            Err(problems)
         } else {
             Ok(PlanStore::new(plans2))
         }

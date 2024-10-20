@@ -867,7 +867,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
                     }
                 };
             }
-            Err(errstr) => println!("{errstr}"),
+            Err(errvec) => println!("{:?}", errvec),
         }
     }
     if cur_region.is_superset_of(&dmxs[dom_id].cur_state) {
