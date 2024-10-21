@@ -297,9 +297,11 @@ impl DomainStore {
 
     /// Run a PlansCorrStore.
     /// A series of steps from one SelectRegions fragment to another, to another.
-    pub fn run_planscorrstore(&mut self, plnsstr: &PlansCorrStore) -> bool {
+    pub fn run_planscorrstore(&mut self, plnsstr: &PlansCorrStore) -> Result<usize, String> {
         //println!("domainstore::run_planscorrstore: {plnsstr}");
         let mut not_first = false;
+        let mut steps_run = 0;
+
         for plnscrx in plnsstr.iter() {
             if plnscrx
                 .initial_regions()
@@ -308,20 +310,28 @@ impl DomainStore {
                 if not_first {
                     println!("----");
                 }
-                if self.run_planscorr(plnscrx) {
-                    not_first = true;
-                } else {
-                    return false;
+                match self.run_planscorr(plnscrx) {
+                    Ok(num) => {
+                        not_first = true;
+                        steps_run += num;
+                    }
+                    Err(errstr) => return Err(errstr),
                 }
             } else {
-                return false;
+                return Err(format!(
+                    "planscorr initial regions {} not within current regions {}",
+                    plnscrx.initial_regions(),
+                    self.all_current_regions()
+                ));
             }
         }
-        true
+        Ok(steps_run)
     }
 
     /// Run a PlansCorr, plans will be run in parallel.
-    pub fn run_planscorr(&mut self, plns: &PlansCorr) -> bool {
+    pub fn run_planscorr(&mut self, plns: &PlansCorr) -> Result<usize, String> {
+        let mut steps_run = 0;
+
         let vecb = plns
             .plans
             .items
@@ -330,13 +340,13 @@ impl DomainStore {
             .map(|(plnx, domx)| domx.run_plan(plnx, 0))
             .collect::<Vec<Result<usize, String>>>();
 
-        for rsltx in vecb.iter() {
+        for rsltx in vecb {
             match rsltx {
-                Ok(_) => continue,
-                Err(_) => return false,
+                Ok(num) => steps_run += num,
+                Err(errstr) => return Err(errstr),
             }
         }
-        true
+        Ok(steps_run)
     }
 
     /// Take an action to satisfy a need,
@@ -1074,7 +1084,7 @@ impl DomainStore {
 
         // Test max regions.
         let mut sel_regs = RegionsCorrStore::new(vec![self.maximum_regions()]);
-        let mut last_results: Option<NeedPlan>;
+        let mut last_results: Option<NeedPlan> = None;
 
         match self
             .plan_using_least_negative_select_regions_get_plan(start_regs, goal_regs, &sel_regs)
@@ -1085,7 +1095,10 @@ impl DomainStore {
                     return Ok(NeedPlan::PlanFound { plan: planx });
                 } else {
                     // Save result, maybe something better will be found, below.
-                    last_results = Some(NeedPlan::PlanFound { plan: planx });
+                    if last_results.is_none() {
+                        // use before overlaying to satisfy clippy?
+                        last_results = Some(NeedPlan::PlanFound { plan: planx });
+                    }
                 }
             }
             Err(errstr) => return Err(errstr),
@@ -1255,10 +1268,7 @@ impl DomainStore {
         }
 
         // Add mid_plans to existing start_plan_store, if any.
-        ret_planscorrstore = match ret_planscorrstore.link(&mid_plans) {
-            Ok(plnscs) => plnscs,
-            Err(errstr) => return Err(vec![errstr]),
-        };
+        ret_planscorrstore = ret_planscorrstore.link(&mid_plans).unwrap();
 
         assert!(ret_planscorrstore
             .result_from_initial_regions(start_regs)
@@ -1776,40 +1786,40 @@ mod tests {
 
         // Set up action to change the first bit.
         domx.add_action(vec![]);
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
 
-        let sd = SomeState::new_from_string("0b1101").unwrap();
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        let sd = SomeState::new_from_string("0b1101")?;
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
 
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
         domx.add_action(vec![]);
 
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
         let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r0101").unwrap());
+        regstr1.push(SomeRegion::new_from_string("r0101")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("r1001").unwrap());
+        regstr2.push(SomeRegion::new_from_string("r1001")?);
         dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::new_from_string("0x1").unwrap();
+        let first_state = SomeState::new_from_string("0x1")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         println!("\nActions {}\n", dmxs[0].actions);
@@ -1842,44 +1852,44 @@ mod tests {
         // Set up action to change the first bit.
         domx.add_action(vec![]);
 
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
-        let sd = SomeState::new_from_string("0b1101").unwrap();
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        let sd = SomeState::new_from_string("0b1101")?;
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
         domx.add_action(vec![]);
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
         let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r0x00").unwrap());
+        regstr1.push(SomeRegion::new_from_string("r0x00")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
         let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("rx100").unwrap());
+        regstr2.push(SomeRegion::new_from_string("rx100")?);
         dmxs.add_select(SelectRegions::new(regstr2, -1));
 
         let mut regstr3 = RegionsCorr::with_capacity(1);
-        regstr3.push(SomeRegion::new_from_string("r01x1").unwrap());
+        regstr3.push(SomeRegion::new_from_string("r01x1")?);
         dmxs.add_select(SelectRegions::new(regstr3, -1));
 
         let mut regstr4 = RegionsCorr::with_capacity(1);
-        regstr4.push(SomeRegion::new_from_string("r10x1").unwrap());
+        regstr4.push(SomeRegion::new_from_string("r10x1")?);
         dmxs.add_select(SelectRegions::new(regstr4, -1));
 
         let mut regstr5 = RegionsCorr::with_capacity(1);
-        regstr5.push(SomeRegion::new_from_string("r101x").unwrap());
+        regstr5.push(SomeRegion::new_from_string("r101x")?);
         dmxs.add_select(SelectRegions::new(regstr5, -1));
         dmxs.calc_select();
 
@@ -1916,30 +1926,30 @@ mod tests {
         // Set up action to change the first bit.
         domx.add_action(vec![]);
 
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        domx.eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
         domx.add_action(vec![]);
 
         let sd = SomeState::new_from_string("0b1101")?;
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        domx.eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
         domx.add_action(vec![]);
 
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        domx.eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
         domx.add_action(vec![]);
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
         let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rxx0x").unwrap());
+        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -2006,20 +2016,20 @@ mod tests {
         dmxs[0].add_action(vec![]);
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Init aggregate needs.
         dmxs.get_needs();
@@ -2028,12 +2038,12 @@ mod tests {
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
         let mut regstr0 = RegionsCorr::with_capacity(1);
-        regstr0.push(SomeRegion::new_from_string("r1100").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r1100")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
         let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r1011").unwrap());
+        regstr1.push(SomeRegion::new_from_string("r1011")?);
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -2075,52 +2085,52 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select region.
         let max_region = SomeRegion::new_from_string("rxxxx")?;
 
         // Set up dom 0 negative regions.
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r01x1").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r01x1")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("rx101").unwrap());
+        regstr0.push(SomeRegion::new_from_string("rx101")?);
         regstr0.push(max_region.clone());
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 1 negative regions.
         let mut regstr0 = RegionsCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(SomeRegion::new_from_string("r011x").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r011x")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionsCorr::with_capacity(2);
         regstr0.push(max_region.clone());
-        regstr0.push(SomeRegion::new_from_string("rx111").unwrap());
+        regstr0.push(SomeRegion::new_from_string("rx111")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2178,38 +2188,38 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[1].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[1].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[1].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set up negative regions.
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r00xx").unwrap());
-        regstr0.push(SomeRegion::new_from_string("rxx11").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r00xx")?);
+        regstr0.push(SomeRegion::new_from_string("rxx11")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r11xx").unwrap());
-        regstr0.push(SomeRegion::new_from_string("r01xx").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r11xx")?);
+        regstr0.push(SomeRegion::new_from_string("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2361,20 +2371,20 @@ mod tests {
 
         // Load select regions
         let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r00000x0x").unwrap());
-        regstr1.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr1.push(SomeRegion::new_from_string("r00000x0x")?);
+        regstr1.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r00000xx1").unwrap());
-        regstr2.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr2.push(SomeRegion::new_from_string("r00000xx1")?);
+        regstr2.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr3 = RegionsCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string("r0000x1x1").unwrap());
-        regstr3.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr3.push(SomeRegion::new_from_string("r0000x1x1")?);
+        regstr3.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         let mut regstr4 = RegionsCorr::with_capacity(2);
-        regstr4.push(SomeRegion::new_from_string("r00001110").unwrap());
-        regstr4.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX").unwrap());
+        regstr4.push(SomeRegion::new_from_string("r00001110")?);
+        regstr4.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 1));
@@ -2498,16 +2508,16 @@ mod tests {
 
         // Load select regions
         let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rxx0x").unwrap());
+        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
 
         let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("r00x1").unwrap());
+        regstr2.push(SomeRegion::new_from_string("r00x1")?);
 
         let mut regstr3 = RegionsCorr::with_capacity(1);
-        regstr3.push(SomeRegion::new_from_string("r11x1").unwrap());
+        regstr3.push(SomeRegion::new_from_string("r11x1")?);
 
         let mut regstr4 = RegionsCorr::with_capacity(1);
-        regstr4.push(SomeRegion::new_from_string("r10x0").unwrap());
+        regstr4.push(SomeRegion::new_from_string("r10x0")?);
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 4));
@@ -2568,28 +2578,28 @@ mod tests {
         dmxs[0].add_action(vec![]);
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001").unwrap());
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110").unwrap());
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b0000->0b0001")?);
+        dmxs[0].eval_sample_arbitrary(0, &SomeSample::new_from_string("0b1111->0b1110")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010").unwrap());
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101").unwrap());
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b0000->0b0010")?);
+        dmxs[0].eval_sample_arbitrary(1, &SomeSample::new_from_string("0b1111->0b1101")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100").unwrap());
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011").unwrap());
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b0000->0b0100")?);
+        dmxs[0].eval_sample_arbitrary(2, &SomeSample::new_from_string("0b1111->0b1011")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000").unwrap());
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
+        dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set up negative regions.
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r01xx").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r01xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r10xx").unwrap());
+        regstr0.push(SomeRegion::new_from_string("r10xx")?);
         dmxs.add_select(SelectRegions::new(regstr0, -2));
 
         // Calc non-negative RegionSores.
@@ -2641,9 +2651,9 @@ mod tests {
         )?])]);
 
         // Set domain starting states.
-        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000").unwrap());
-        dmxs[1].set_cur_state(SomeState::new_from_string("0b001").unwrap());
-        dmxs[2].set_cur_state(SomeState::new_from_string("0b10").unwrap());
+        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000")?);
+        dmxs[1].set_cur_state(SomeState::new_from_string("0b001")?);
+        dmxs[2].set_cur_state(SomeState::new_from_string("0b10")?);
 
         // Set up plan for domain 0, action 0.
         let stp1 = SomeStep::new(
@@ -2654,7 +2664,7 @@ mod tests {
         let plan0 = SomePlan::new(0, vec![stp1]);
 
         // Set up plan for domain 1, action 0, no-op.
-        let stp1 = SomeStep::new_no_op(&SomeRegion::new_from_string("001").unwrap());
+        let stp1 = SomeStep::new_no_op(&SomeRegion::new_from_string("001")?);
         let plan1 = SomePlan::new(1, vec![stp1]);
 
         // Set up plan for domain 2, action 0.
@@ -2672,14 +2682,17 @@ mod tests {
         let before = dmxs.all_current_states();
         println!("Before: {before}");
 
-        assert!(dmxs.run_planscorr(&plnsc1));
+        match dmxs.run_planscorr(&plnsc1) {
+            Err(errstr) => return Err(errstr),
+            _ => (),
+        }
 
         let after = dmxs.all_current_states();
         println!("After:  {after}");
 
-        assert!(after[0] == SomeState::new_from_string("0b0001").unwrap());
-        assert!(after[1] == SomeState::new_from_string("0b001").unwrap());
-        assert!(after[2] == SomeState::new_from_string("0b11").unwrap());
+        assert!(after[0] == SomeState::new_from_string("0b0001")?);
+        assert!(after[1] == SomeState::new_from_string("0b001")?);
+        assert!(after[2] == SomeState::new_from_string("0b11")?);
 
         //assert!(1 == 2);
         Ok(())
@@ -2709,7 +2722,7 @@ mod tests {
         )?])]);
 
         // Set domain 0 starting state.
-        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000").unwrap());
+        dmxs[0].set_cur_state(SomeState::new_from_string("0b0000")?);
 
         // Add domain 1.
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
@@ -2729,7 +2742,7 @@ mod tests {
         )?])]);
 
         // Set domain 1 starting state.
-        dmxs[1].set_cur_state(SomeState::new_from_string("0b1111").unwrap());
+        dmxs[1].set_cur_state(SomeState::new_from_string("0b1111")?);
 
         // Set up plan for domain 0, action 2.
         let stp2 = SomeStep::new(
@@ -2780,14 +2793,17 @@ mod tests {
         println!("Before: {before}");
 
         // Run it.
-        assert!(dmxs.run_planscorrstore(&plnscrstr));
+        match dmxs.run_planscorrstore(&plnscrstr) {
+            Err(errstr) => return Err(errstr),
+            _ => (),
+        }
 
         // Check results.
         let after = dmxs.all_current_states();
         println!("After:  {after}");
 
-        assert!(after[0] == SomeState::new_from_string("0b0101").unwrap());
-        assert!(after[1] == SomeState::new_from_string("0b1100").unwrap());
+        assert!(after[0] == SomeState::new_from_string("0b0101")?);
+        assert!(after[1] == SomeState::new_from_string("0b1100")?);
 
         //assert!(1 == 2);
         Ok(())

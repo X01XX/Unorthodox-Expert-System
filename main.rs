@@ -695,24 +695,42 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
     // Run the plan, allow for one failure.
     if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
-        if !dmxs.run_planscorrstore(plans) {
-            print!("Run plan failed, ");
-            if let Ok(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
-                dmxs.needs[inx_pln.inx].dom_id(),
-                &dmxs.needs[inx_pln.inx].target(),
-            ) {
-                match ndpln2 {
-                    NeedPlan::PlanFound { plan: plans2 } => {
-                        println!("try again with {}", plans2);
-                        if !dmxs.run_planscorrstore(&plans2) {
-                            println!("Unexpected result, giving up.");
-                            return false;
-                        }
-                    }
-                    _ => return false,
+        match dmxs.run_planscorrstore(plans) {
+            Ok(num) => {
+                if num == 1 {
+                    println!("{num} step run.")
+                } else {
+                    println!("{num} steps run.")
                 }
-            } else {
-                println!("unexpected result, new path to goal not found.");
+            }
+            Err(errstr) => {
+                println!("Run plan failed, {errstr}.");
+                if let Ok(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
+                    dmxs.needs[inx_pln.inx].dom_id(),
+                    &dmxs.needs[inx_pln.inx].target(),
+                ) {
+                    match ndpln2 {
+                        NeedPlan::PlanFound { plan: plans2 } => {
+                            println!("Try again with {}", plans2);
+                            match dmxs.run_planscorrstore(&plans2) {
+                                Ok(num) => {
+                                    if num == 1 {
+                                        println!("{num} step run.")
+                                    } else {
+                                        println!("{num} steps run.")
+                                    }
+                                }
+                                Err(errstr) => {
+                                    println!("Second failure, giving up, {errstr}");
+                                    return false;
+                                }
+                            }
+                        }
+                        _ => return false,
+                    }
+                } else {
+                    println!("Unexpected result, new path to goal not found.");
+                }
             }
         }
     }
@@ -862,7 +880,16 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
                     NeedPlan::PlanFound { plan: plnx } => {
                         println!("{}", plnx.str_terse());
                         println!("\nrunning plan:");
-                        dmxs.run_planscorrstore(&plnx);
+                        match dmxs.run_planscorrstore(&plnx) {
+                            Ok(num) => {
+                                if num == 1 {
+                                    println!("{num} step run.")
+                                } else {
+                                    println!("{num} steps run.")
+                                }
+                            }
+                            Err(errstr) => println!("{errstr}"),
+                        }
                         break;
                     }
                 };
