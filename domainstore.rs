@@ -886,7 +886,14 @@ impl DomainStore {
 
         let cur_state = &self.items[dom_id].current_state();
 
-        println!("\nDom: {dom_id} Current State: {cur_state}");
+        println!(
+            "\nDom: {dom_id} Current State: {cur_state} Available changes: {}",
+            if let Some(agg_cngs) = self.items[dom_id].aggregate_changes() {
+                format!("{agg_cngs}")
+            } else {
+                "None".to_string()
+            }
+        );
     }
 
     /// Print needs that can be done.

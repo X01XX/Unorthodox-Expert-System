@@ -43,7 +43,7 @@ impl GroupStore {
         let mut aggregate_changes: Option<SomeChange> = None;
 
         for grpx in &self.items {
-            if !grpx.pnc || grpx.pn == Pn::Unpredictable {
+            if grpx.pn == Pn::Unpredictable {
                 continue;
             }
             for rulx in grpx.rules.as_ref().expect("SNH").iter() {

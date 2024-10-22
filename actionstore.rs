@@ -141,16 +141,17 @@ impl ActionStore {
     /// Calc all possible changes.
     pub fn calc_aggregate_changes(&mut self) {
         // Check for any action agg_chgs_updated set to true.
-        let mut no_recalc = true;
+        let mut recalc = false;
         for actx in &self.items {
-            if actx.agg_chgs_updated {
-                no_recalc = false;
+            if !actx.agg_chgs_updated {
+                recalc = true;
                 break;
             }
         }
 
         // If no agg_chgs_updated are set to true, return.
-        if no_recalc {
+        if !recalc {
+            //println!("actionstore::calc_aggregate_changes: skipping");
             return;
         }
 
@@ -212,7 +213,9 @@ impl ActionStore {
     /// Take an action for a need, evaluate the resulting sample.
     /// It is assumed that a sample made for a need must be saved.
     pub fn take_action_need(&mut self, ndx: &SomeNeed, cur_state: &SomeState) -> SomeSample {
-        self.items[ndx.act_id()].take_action_need(cur_state, ndx)
+        let smpl = self.items[ndx.act_id()].take_action_need(cur_state, ndx);
+        self.calc_aggregate_changes();
+        smpl
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -223,18 +226,23 @@ impl ActionStore {
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
         //println!("max_reg {max_reg}");
         self.items[act_id].eval_sample_arbitrary(smpl);
+        self.calc_aggregate_changes();
     }
 
     /// Take an action with the current state.
     /// Return a sample.
     pub fn take_action_step(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        self.items[act_id].take_action_step(cur_state)
+        let smpl = self.items[act_id].take_action_step(cur_state);
+        self.calc_aggregate_changes();
+        smpl
     }
 
     /// Take an action with the current state, store the sample.
     /// Return a sample.
     pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
-        self.items[act_id].take_action_arbitrary(cur_state)
+        let smpl = self.items[act_id].take_action_arbitrary(cur_state);
+        self.calc_aggregate_changes();
+        smpl
     }
 } // end impl ActionStore
 

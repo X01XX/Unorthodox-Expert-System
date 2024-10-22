@@ -159,9 +159,6 @@ impl SomeAction {
             return;
         }
 
-        // Check if a group can be confirmed.
-        let mut group_confirmed = false;
-
         for grpx in self.groups.iter_mut() {
             if grpx.pnc || !grpx.region.is_superset_of(key) {
                 continue;
@@ -173,7 +170,6 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
-                    group_confirmed = true;
                 }
                 continue;
             }
@@ -188,7 +184,6 @@ impl SomeAction {
                             self.dom_id, self.id, grpx.region
                         );
                     }
-                    group_confirmed = true;
                 }
                 continue;
             }
@@ -200,13 +195,9 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
-                    group_confirmed = true;
                 }
             }
         } // next grpx
-        if group_confirmed {
-            self.reset_agg_chgs_updated();
-        }
     }
 
     /// Do basic functions for any new sample.
@@ -272,6 +263,11 @@ impl SomeAction {
     /// Check invalid regions for orphaned squares, create new regions.
     fn process_invalid_regions(&mut self, invalid_regs: &RegionStore) {
         debug_assert!(invalid_regs.is_empty() || invalid_regs.num_bits().unwrap() == self.num_bits);
+
+        // Remove the groups.
+        for regx in invalid_regs.iter() {
+            self.remove_group(regx);
+        }
 
         // Load states from squares in the invalidated regions.
         let mut stas_in_regs = StateStore::new(vec![]);
@@ -460,7 +456,7 @@ impl SomeAction {
 
     /// Get needs, process any housekeeping needs.
     pub fn get_needs2(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> NeedStore {
-        //println!("Running Action {}::get_needs2 {}", self.num, cur_state);
+        //println!("action::get_needs2: Dom {} Act {} cur_state {cur_state} max_reg {max_reg}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
@@ -686,10 +682,8 @@ impl SomeAction {
     /// Should only affect groups with Pn::One.
     /// Groups closer to the beginning of the group will have priority due to lower group number.
     pub fn confirm_group_needs(&mut self) -> NeedStore {
-        //println!("confirm_group_needs");
+        //println!("action::confirm_group_needs: Dom {} Act {}", self.dom_id, self.id);
         let mut ret_nds = NeedStore::new(vec![]);
-
-        let mut group_confirmed = false;
 
         for (group_num, grpx) in self.groups.iter_mut().enumerate() {
             if grpx.pnc {
@@ -721,7 +715,6 @@ impl SomeAction {
                         "Dom {} Act {} Group {} confirmed",
                         self.dom_id, self.id, grpx.region
                     );
-                    group_confirmed = true;
                 }
 
                 continue;
@@ -734,7 +727,6 @@ impl SomeAction {
                             "Dom {} Act {} Group {} confirmed",
                             self.dom_id, self.id, grpx.region
                         );
-                        group_confirmed = true;
                     }
                     continue;
                 }
@@ -752,10 +744,6 @@ impl SomeAction {
             ret_nds.push(needx);
         } // next grpx
 
-        if group_confirmed {
-            self.reset_agg_chgs_updated();
-        }
-
         ret_nds
     } // end confirm_group_needs
 
@@ -770,10 +758,8 @@ impl SomeAction {
     /// Recheck the rating of the current anchor, and other possible anchors,
     /// in case the anchor should be changed.
     pub fn limit_groups_needs(&mut self, max_reg: &SomeRegion) -> Option<NeedStore> {
-        //println!("limit_groups_needs chg {}", change_mask);
+        //println!("action::limit_groups_needs: Dom {} Act {} max_reg {max_reg}", self.dom_id, self.id);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
-
-        //let mut ret_nds = NeedStore::new(vec![]);
 
         // Check if groups current anchors are still in only one region.
         let mut remove_anchor = Vec::<SomeRegion>::new();
@@ -829,8 +815,6 @@ impl SomeAction {
             let mut set_on = Vec::<(SomeRegion, SomeMask)>::new();
 
             for group_num in 0..self.groups.len() {
-                let regx = self.groups[group_num].region.clone();
-
                 if !self.groups[group_num].pnc {
                     continue;
                 }
@@ -838,6 +822,8 @@ impl SomeAction {
                 if self.groups[group_num].limited {
                     continue;
                 }
+
+                let regx = self.groups[group_num].region.clone();
 
                 let ndsx = self.limit_group_anchor_needs(&regx, group_num, max_reg);
                 if ndsx.is_not_empty() {
@@ -973,6 +959,10 @@ impl SomeAction {
         group_num: usize,
         max_reg: &SomeRegion,
     ) -> NeedStore {
+        //println!(
+        //    "action::limit_group_anchor_needs: Dom {} Act {} group {regx} max_reg {max_reg}",
+        //    self.dom_id, self.id
+        //);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
@@ -1006,6 +996,8 @@ impl SomeAction {
         for stax in additional_stas.iter() {
             stas_in.push(stax.clone());
         }
+
+        //println!("action::limit_group_anchor_needs: stas to check {stas_in}");
 
         let grpx_pn = self.groups.find(regx).as_ref().expect("SNH").pn;
         let grpx_rules = self.groups.find(regx).as_ref().expect("SNH").rules.clone();
@@ -1044,6 +1036,8 @@ impl SomeAction {
                 }
             }
         }
+        //println!("shared regions {shared_regions}");
+
         // For each state, sta1, only in the group region, greg:
         //
         //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
@@ -1061,13 +1055,16 @@ impl SomeAction {
                 || shared_regions.any_superset_of_state(stax)
                 || !max_reg.is_superset_of(stax)
             {
-                //println!("stax for anchor {stax} in group {} skipped", grpx.region);
+                //println!("stax for anchor {stax} in group {} skipped", regx);
                 continue;
             }
 
             let sta_rate = self.group_anchor_rate(regx, stax);
 
-            //println!("group {} possible anchor {} rating {} {} {}", regx, stax, sta_rate.0, sta_rate.1, sta_rate.2);
+            //println!(
+            //    "group {} possible anchor {} rating {} {} {}",
+            //    regx, stax, sta_rate.0, sta_rate.1, sta_rate.2
+            //);
 
             // Accumulate highest rated anchors
             if sta_rate > max_rate {
@@ -1081,7 +1078,7 @@ impl SomeAction {
         } // next stax
 
         if cfmv_max.is_empty() {
-            //println!("group {} cfmv_max empty", grpx.region);
+            //println!("group {} cfmv_max empty", regx);
             return NeedStore::new(vec![]);
         }
 
@@ -1097,8 +1094,8 @@ impl SomeAction {
                     .expect("Group anchor state should refer to an existing square");
 
                 if anchor_sqr.pnc {
+                    //println!("group {} anchor {} pnc", regx, anchor);
                     return NeedStore::new(vec![]);
-                    // println!("group {} anchor {} pnc", greg, anchor_sta);
                 }
 
                 // Get additional samples of the anchor
@@ -1112,6 +1109,8 @@ impl SomeAction {
                 };
                 needx.add_priority_base();
                 ret_nds.push(needx);
+
+                //println!("Returning {ret_nds}");
 
                 return ret_nds;
             }
@@ -1153,6 +1152,11 @@ impl SomeAction {
         max_reg: &SomeRegion,
         group_num: usize,
     ) -> Option<NeedStore> {
+        // println!(
+        //     "action::limit_group_adj_needs: Dom {} Act {} group {regx} anchor {anchor_sta}",
+        //     self.dom_id, self.id
+        // );
+
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert_eq!(anchor_sta.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
@@ -1178,6 +1182,7 @@ impl SomeAction {
         // Ignore bits that cannot be changed by any action.
         if max_reg.is_superset_of(anchor_sta) {
         } else {
+            //    println!("action::limit_group_adj_needs: returning None (1)");
             return None;
         }
 
@@ -1188,7 +1193,7 @@ impl SomeAction {
         for mskx in edge_msks {
             let adj_sta = anchor_sta.bitwise_xor(&mskx);
 
-            //println!("*** for group {} checking adj sqr {}", greg, adj_sta);
+            //println!("*** for group {} checking adj sqr {}", regx, adj_sta);
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
@@ -1255,6 +1260,7 @@ impl SomeAction {
 
         // Group is non-X, so no far state
         if regx.len() == 1 {
+            //println!("action::limit_group_adj_needs: returning None (2)");
             return None;
         }
 
@@ -1294,8 +1300,10 @@ impl SomeAction {
             && self.groups[group_num].causes_predictable_change()
         {
             if ret_nds.is_empty() {
+                //println!("action::limit_group_adj_needs: returning None (3)");
                 return None;
             } else {
+                //println!("action::limit_group_adj_needs: returning {ret_nds}");
                 return Some(ret_nds);
             }
         }
@@ -1338,15 +1346,17 @@ impl SomeAction {
 
         //println!("limit_group_needs: returning {}", &ret_nds);
         if ret_nds.is_empty() {
+            //println!("action::limit_group_adj_needs: returning None (4)");
             None
         } else {
+            //println!("action::limit_group_adj_needs: returning (2) {ret_nds}");
             Some(ret_nds)
         }
     } // end limit_group_adj_needs
 
     /// Check group pairs for an intersection.
     pub fn group_pair_needs(&self) -> NeedStore {
-        //println!("group_pair_needs");
+        //println!("action::group_pair_needs: Dom {} Act {}", self.dom_id, self.id);
         let mut nds = NeedStore::new(vec![]);
 
         // Check for no pairs.
@@ -1600,8 +1610,8 @@ impl SomeAction {
         group_num: usize,
     ) -> NeedStore {
         //println!(
-        //  "groups_pair_intersection_needs {} {} and {} {}",
-        //  &grpx.region, grpx.pn, grpy.region, grpy.pn
+        //  "action::groups_pair_intersection_needs: Dom {} Act {} {} {} and {} {}",
+        //  self.dom_id, self.id, &grpx.region, grpx.pn, grpy.region, grpy.pn
         //);
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(grpy.num_bits(), self.num_bits);
@@ -1710,7 +1720,7 @@ impl SomeAction {
         rulsx: Option<RuleStore>,
         rulsy: Option<RuleStore>,
     ) -> Option<SomeNeed> {
-        //println!("cont_int_region_needs {} for grp {} {} and grp {} {}", regx, grpx.region, grpx.rules, grpy.region, grpy.rules);
+        //println!("action::cont_int_region_needs: Dom {} Act {} {} for grp {} and grp {}", self.dom_id, self.id, regx, grpx, grpy);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(grpy.num_bits(), self.num_bits);
@@ -1775,7 +1785,7 @@ impl SomeAction {
     ///
     /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
     pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
-        //println!("Action::get_steps: for change {achange} within {within}");
+        //println!("action::get_steps: Dom {} Act {} for rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits);
         debug_assert!(within.num_bits() == self.num_bits);
         debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
@@ -1831,7 +1841,7 @@ impl SomeAction {
         rule_to_goal: &SomeRule,
         within: &SomeRegion,
     ) -> StepStore {
-        //println!("action::get_steps_from_rulestore: rules {rules} rule_to_goal {rule_to_goal} within {within}");
+        //println!("action::get_steps_from_rulestore: Dom {} Act {} rules {rules} rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
         debug_assert!(rules.is_not_empty());
 
         let mut stps = StepStore::new(vec![]);
@@ -1958,7 +1968,7 @@ impl SomeAction {
     /// Compatible squares, can be mutually incompatible. 0->1 and 0->0 are incompatible with each other,
     /// but compatible with 1->1.
     fn possible_groups_from_square(&self, sqrx: &SomeSquare) -> GroupStore {
-        //println!("Dom {} Act {} possible_groups_from_square: {}", self.dom_id, self.id, sqrx.state);
+        //println!("action::possible_groups_from_square: Dom {} Act {} possible_groups_from_square: {}", self.dom_id, self.id, sqrx.state);
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
 
         let mut ret_grps = Vec::<SomeGroup>::new();
@@ -2178,7 +2188,7 @@ impl SomeAction {
 
     /// Validate a region that may be made from a given square, in combination with similar squares.
     fn validate_possible_group(&self, sqrx: &SomeSquare, regx: &SomeRegion) -> Option<SomeGroup> {
-        // println!("validate_possible_group: state {} num sim {} reg {}", sqrx.state, not_dissim_sqrs.len(), regx);
+        //println!("action::validate_possible_group: Dom {} Act {} state {} reg {}", self.dom_id, self.id, sqrx.state, regx);
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert!(regx.is_superset_of(sqrx));
@@ -2196,7 +2206,7 @@ impl SomeAction {
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
-        //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
+        //println!("action::take_action_need: Dom {} Act {} take_action_arbitrary cur_state {cur_state} need {ndx}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(ndx.act_id(), self.id);
 
@@ -2215,7 +2225,6 @@ impl SomeAction {
                                     "Dom {} Act {} Group {} confirmed",
                                     self.dom_id, self.id, grpx.region
                                 );
-                                self.reset_agg_chgs_updated();
                             }
                         } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
                             if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
@@ -2224,7 +2233,6 @@ impl SomeAction {
                                     self.dom_id, self.id, grpx.region
                                 );
                             }
-                            self.reset_agg_chgs_updated();
                         }
                     }
                 }
@@ -2251,7 +2259,7 @@ impl SomeAction {
     /// Take an action with the current state, add the sample teo squarestore.
     /// Return a sample.
     pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
-        //println!("Dom {} Act {} take_action_arbitrary cur_state {cur_state}", self.dom_id, self.id);
+        //println!("action::take_action_arbitrary: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
 
         let astate = self
@@ -2269,7 +2277,7 @@ impl SomeAction {
     /// Assume the result is as expected.
     /// Return a sample.
     pub fn take_action_step(&mut self, cur_state: &SomeState) -> SomeSample {
-        //println!("Dom {} Act {} take_action_step cur_state {cur_state}", self.dom_id, self.id);
+        //println!("action::take_action_step: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
 
         let astate = self
@@ -2305,7 +2313,7 @@ impl SomeAction {
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_anchor_info(&self) -> Result<(), String> {
-        println!("Act: {} group anchor rates", self.id);
+        //println!("action::display_anchor_info: Dom {} Act {} group anchor rates", self.dom_id, self.id);
         for grpx in self.groups.iter() {
             if grpx.anchor.is_some() {
                 self.display_group_anchor_info2(grpx)?
@@ -2393,6 +2401,8 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
+        //rc_str.push_str(&format!(", agg_chgs_updated {}", self.agg_chgs_updated));
+
         if self.remainder_check_regions.is_not_empty() {
             rc_str.push_str(&format!(", remainder: {}", self.remainder_check_regions));
         }
@@ -2425,7 +2435,8 @@ impl SomeAction {
     /// Check groups with a recently changed sqaure.
     /// Return the references to groups that are inactivated by a square.
     pub fn groups_check_square(&mut self, key: &SomeState) -> RegionStore {
-        //println!("action:check_square: {}", sqrx.state);
+        //println!("action::check_square: Dom {} Act {} key {key}", self.dom_id, self.id);
+
         let mut regs_invalid = RegionStore::new(vec![]);
 
         let sqrx = self.squares.find(key).expect("SNH");
@@ -2465,20 +2476,6 @@ impl SomeAction {
                 regs_invalid.push(grpx.region.clone());
             }
         } // next grpx
-
-        // Remove the groups
-        for regx in regs_invalid.iter() {
-            println!(
-                "\nDom {} Act {} Group {} deleted",
-                self.dom_id, self.id, regx
-            );
-            self.groups.remove_group(regx);
-        }
-
-        if regs_invalid.is_empty() {
-        } else {
-            self.agg_chgs_updated = true;
-        }
 
         // Check limited status of groups.
         for grpx in self.groups.iter_mut() {
@@ -2533,19 +2530,8 @@ impl SomeAction {
         // Remove subset groups
         self.groups_remove_subsets_of(&grp.region);
 
-        // Push the new group
-        if grp.region.states.len() > 1 {
-            println!(
-                "\nDom {} Act {} Adding group {} from {}",
-                self.dom_id, self.id, grp, grp.region.states,
-            );
-        } else {
-            println!("\nDom {} Act {} Adding group {}", self.dom_id, self.id, grp);
-        }
-
-        self.groups.push(grp);
-
-        self.agg_chgs_updated = false;
+        // Add the new group
+        self.add_group(grp);
 
         true
     }
@@ -2564,15 +2550,48 @@ impl SomeAction {
         // Remove the groups
         for regx in rmvec.iter() {
             println!(
-                "\nDom {} Act {} Group {} deleted, subset of {reg}",
+                "\nDom {} Act {} Group {} is a subset of {reg}",
                 self.dom_id, self.id, regx
             );
-            if self.groups.remove_group(regx) {
-                self.reset_agg_chgs_updated();
-            }
+            self.remove_group(regx);
         }
 
         !rmvec.is_empty()
+    }
+
+    // Add a group.
+    // This is always used, instead of self.groups.push, to insure
+    // that self.agg_chgs_updated is changed.
+    pub fn add_group(&mut self, grpx: SomeGroup) {
+        if grpx.region.states.len() > 1 {
+            println!(
+                "\nDom {} Act {} Adding Group {} from {}",
+                self.dom_id, self.id, grpx, grpx.region.states,
+            );
+        } else {
+            println!(
+                "\nDom {} Act {} Adding Group {}",
+                self.dom_id, self.id, grpx
+            );
+        }
+        self.groups.push(grpx);
+        self.agg_chgs_updated = false;
+    }
+
+    // Remove a group.
+    // This is always used, instead of self.groups.remove_group, to insure
+    // that self.agg_chgs_updated is changed.
+    pub fn remove_group(&mut self, grp_reg: &SomeRegion) -> bool {
+        if self.groups.remove_group(grp_reg) {
+            self.agg_chgs_updated = false;
+            println!(
+                "\nDom {} Act {} Group {} deleted",
+                self.dom_id, self.id, grp_reg
+            );
+            true
+        } else {
+            false
+        }
     }
 } // end impl SomeAction
 
@@ -2805,7 +2824,13 @@ mod tests {
 
         // Confirm group 2.
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
-        assert!(act0.aggregate_changes().is_none());
+
+        if let Some(cngs) = act0.aggregate_changes() {
+            println!("agg cncs (1) {cngs}");
+        } else {
+            println!("agg cncs (1) None");
+        }
+        assert!(act0.aggregate_changes() == Some(&SomeChange::new_from_string("00/00/10/00")?));
 
         act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
 
