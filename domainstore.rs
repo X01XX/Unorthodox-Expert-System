@@ -1063,21 +1063,26 @@ impl DomainStore {
             return Ok(NeedPlan::AtTarget {});
         }
 
-        // Check if no plans are needed.
-        if start_regs.intersects(goal_regs) {
-            match self.make_plans(start_regs, goal_regs, &self.maximum_regions()) {
-                Ok(plncsx) => {
-                    //println!("domainstore::plan_using_least_negative_select_regions: return 2");
-                    return Ok(NeedPlan::PlanFound {
-                        plan: PlansCorrStore::new(vec![plncsx]),
-                    });
-                }
-                Err(errvec) => {
-                    //println!("domainstore::plan_using_least_negative_select_regions: return 2");
-                    return Err(errvec);
+        // Define last_results.
+        let mut last_results: Result<NeedPlan, Vec<String>>;
+
+        // Test direct path.
+        match self.plan_using_least_negative_select_regions_get_plan(
+            start_regs,
+            goal_regs,
+            &RegionsCorrStore::new(vec![start_regs.union(goal_regs)]),
+        ) {
+            Ok(planx) =>  {
+                if self.rate_planscorrstore(&planx) == 0 {
+                    //println!("domainstore::plan_using_least_negative_select_regions: return 3");
+                    return Ok(NeedPlan::PlanFound { plan: planx });
+                } else {
+                    // Save result, maybe something better will be found, below.
+                    last_results = Ok(NeedPlan::PlanFound { plan: planx });
                 }
             }
-        }
+            Err(errstr) => last_results = Err(errstr),
+        };
 
         // Successively subtract out most negative regions first, until no path can be found.
         // Find first min.
@@ -1089,40 +1094,17 @@ impl DomainStore {
         }
         //println!("domainstore::plan_using_least_negative_select_regions: initial next most min is {next_most_min}");
 
-        // Test max regions.
         let mut sel_regs = RegionsCorrStore::new(vec![self.maximum_regions()]);
-        let mut last_results: Option<NeedPlan> = None;
-
-        match self
-            .plan_using_least_negative_select_regions_get_plan(start_regs, goal_regs, &sel_regs)
-        {
-            Ok(planx) => {
-                if self.rate_planscorrstore(&planx) == 0 {
-                    //println!("domainstore::plan_using_least_negative_select_regions: return 3");
-                    return Ok(NeedPlan::PlanFound { plan: planx });
-                } else {
-                    // Save result, maybe something better will be found, below.
-                    if last_results.is_none() {
-                        // use before overlaying to satisfy clippy?
-                        last_results = Some(NeedPlan::PlanFound { plan: planx });
-                    }
-                }
-            }
-            Err(errstr) => return Err(errstr),
-        };
 
         // Find successive mins, lt 0.
-        while next_most_min < 0 {
+        while next_most_min < 1 {
             //println!("domainstore::plan_using_least_negative_select_regions: next most min is {next_most_min}");
             // Find next most min num.
-            let mut next_most_min2 = 0;
+            let mut next_most_min2 = 1;
             for selx in self.select.iter() {
                 if selx.neg_value > next_most_min && selx.neg_value < next_most_min2 {
                     next_most_min2 = selx.neg_value;
                 }
-            }
-            if next_most_min2 > 0 {
-                next_most_min2 = 0;
             }
 
             // Process all items with next most min num.
@@ -1140,27 +1122,21 @@ impl DomainStore {
                 .plan_using_least_negative_select_regions_get_plan(start_regs, goal_regs, &sel_regs)
             {
                 Ok(mut planx) => {
-                    planx.set_value(next_most_min2);
-                    last_results = Some(NeedPlan::PlanFound { plan: planx });
-                }
-                Err(errstr) => {
-                    if let Some(planx) = last_results {
-                        return Ok(planx);
+                    planx.set_value(if next_most_min2 > 0 {
+                        0
                     } else {
-                        return Err(errstr);
-                    }
+                        next_most_min2
+                    });
+                    last_results = Ok(NeedPlan::PlanFound { plan: planx });
+                }
+                Err(_errstr) => {
+                    return last_results;
                 }
             }
             next_most_min = next_most_min2;
         }
         // Return previous results.
-        if let Some(planx) = last_results {
-            Ok(planx)
-        } else {
-            Err(vec![
-                "domainstore::plan_using_least_negative_select_regions: No plan found".to_string(),
-            ])
-        }
+        last_results
     }
 
     /// Return the nearest non-negative regions.

@@ -180,6 +180,20 @@ impl RegionsCorr {
         Some(ret)
     }
 
+    /// Return the union, of two RegionStoresCorrs.
+    pub fn union(&self, other: &Self) -> Self {
+        debug_assert!(self.len() == other.len());
+        debug_assert!(self.corresponding_num_bits(other));
+
+        let mut ret = Self::with_capacity(self.len());
+
+        for (x, y) in self.iter().zip(other.iter()) {
+            ret.push(x.union(y));
+        }
+
+        ret
+    }
+
     /// Calculate the distance between a RegionsCorr and States in a StatesCorr.
     pub fn distance_states(&self, stas: &StatesCorr) -> usize {
         debug_assert!(self.len() == stas.len());

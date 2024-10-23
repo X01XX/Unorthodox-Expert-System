@@ -203,32 +203,23 @@ fn run_number_times(num_runs: usize) -> usize {
         runs_left -= 1;
 
         let start = Instant::now();
-        match do_one_session() {
-            Ok((steps, groups, expected)) => {
-                if groups == expected {
-                    let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}");
-                    duration_vec.push(duration);
-                    steps_vec.push(steps);
-                } else {
-                    let duration = start.elapsed();
-                    println!("Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}");
+        let (steps, groups, expected, num_cant) = do_one_session();
 
-                    if groups != expected {
-                        num_groups_off += 1
-                    }
-                }
-            }
-            Err(_) => {
-                cant_do += 1;
-            }
+        let duration = start.elapsed();
+        println!(
+            "Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}"
+        );
+        duration_vec.push(duration);
+        steps_vec.push(steps);
+        if groups != expected {
+            num_groups_off += 1
+        }
+        if num_cant > 0 {
+            cant_do += 1;
         }
     }
 
-    if duration_vec.is_empty() {
-        println!("Number with unsatisfied needs: {cant_do} Num groups off {num_groups_off}");
-        return 1;
-    }
+    println!("Number with unsatisfied needs: {cant_do} Num groups off {num_groups_off}");
 
     let mut duration_total = Duration::new(0, 0);
     let mut duration_high = duration_vec[0];
@@ -257,7 +248,8 @@ fn run_number_times(num_runs: usize) -> usize {
     }
     let average_time = duration_total / duration_vec.len() as u32;
     let average_steps = steps_total / steps_vec.len();
-    let duration_minutes = duration_total.as_secs() / 60;
+    // let duration_minutes = duration_total.as_secs() as i32 / 60 as i32;
+    let duration_minutes = duration_total / 60;
 
     println!("\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
          num_runs, average_steps, steps_high, steps_low, duration_minutes, average_time, duration_high, duration_low, cant_do, num_groups_off);
@@ -446,7 +438,7 @@ fn domainstore_init() -> DomainStore {
 /// there are no more needs.
 /// Return error if no needs that can be done are available and
 /// there are needs than cannot be done.
-fn do_one_session() -> Result<(usize, usize, usize), String> {
+fn do_one_session() -> (usize, usize, usize, usize) {
     let mut dmxs = domainstore_init();
     loop {
         // Generate needs, get can_do and cant_do need vectors.
@@ -454,17 +446,12 @@ fn do_one_session() -> Result<(usize, usize, usize), String> {
 
         // Check for end.
         if dmxs.can_do.is_empty() {
-            if dmxs.cant_do.is_empty() {
-                return Ok((
-                    dmxs.step_num,
-                    dmxs.number_groups(),
-                    dmxs.number_groups_expected(),
-                ));
-            } else {
-                // do_session(&mut dmxs);
-                // process::exit(0);
-                return Err("There are needs that cannot be done".to_string());
-            }
+            return (
+                dmxs.step_num,
+                dmxs.number_groups(),
+                dmxs.number_groups_expected(),
+                dmxs.cant_do.len(),
+            );
         }
 
         do_any_need(&mut dmxs);
