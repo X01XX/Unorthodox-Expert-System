@@ -221,6 +221,7 @@ impl SomeRegion {
 
     /// Return true if two regions intersect.
     pub fn intersects(&self, other: &impl AccessStates) -> bool {
+        //println!("region::intersects: num b s {} num b o {}", self.num_bits(), other.num_bits());
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         self.diff_edge_mask(other).is_low()

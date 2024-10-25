@@ -523,8 +523,8 @@ impl DomainStore {
         let mut cur_regions = self.all_current_regions();
 
         // Collect path regions for each plan.
-        for planx in planscs.iter() {
-            cur_regions[planx.dom_id] = planx.path_for(&cur_regions[planx.dom_id]);
+        for (dom_id, planx) in planscs.iter().enumerate() {
+            cur_regions[dom_id] = planx.path_for(&cur_regions[dom_id]);
         }
         self.select.rate_by_negative_regions(&cur_regions)
     }
@@ -1072,7 +1072,7 @@ impl DomainStore {
             goal_regs,
             &RegionsCorrStore::new(vec![start_regs.union(goal_regs)]),
         ) {
-            Ok(planx) =>  {
+            Ok(planx) => {
                 if self.rate_planscorrstore(&planx) == 0 {
                     //println!("domainstore::plan_using_least_negative_select_regions: return 3");
                     return Ok(NeedPlan::PlanFound { plan: planx });
@@ -1465,51 +1465,6 @@ impl DomainStore {
     }
 
     /// Print a plan step-by-step, indicating changes.
-    pub fn print_plan_detail(&self, plan_str: &PlanStore) {
-        self.print_plan_detail2(plan_str, &self.all_current_states());
-    }
-
-    /// Print a plan step-by-step, indicating changes.
-    pub fn print_plan_detail2(&self, plan_str: &PlanStore, states: &StatesCorr) {
-        let mut cur_states = states.clone();
-
-        for planx in plan_str.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-
-            println!("\n  Domain: {}, Plan:", planx.dom_id);
-            for stepx in planx.iter() {
-                let df = stepx.initial.diff_edge_mask(&stepx.result);
-                if let Some(act_id) = stepx.act_id {
-                    print!(
-                        "    {} Action {:02} -> {}",
-                        stepx.initial, act_id, stepx.result
-                    );
-                } else {
-                    print!("    {} Action no -> {}", stepx.initial, stepx.result);
-                }
-                cur_states[planx.dom_id] = stepx
-                    .rule
-                    .result_from_initial_state(&cur_states[planx.dom_id]);
-
-                if let AltRule { .. } = &stepx.alt_rule {
-                    print!(" Alt_rule: -1");
-                }
-
-                for sel_regx in self.select.iter() {
-                    if sel_regx.net_value < 0 && sel_regx.regions.is_superset_states(&cur_states) {
-                        print!(" in {:+}, {}", sel_regx.regions, sel_regx.net_value);
-                    }
-                }
-
-                println!("\n     {}", df.mark_ones());
-            } // next stepsx
-            println!("    {}", cur_states[planx.dom_id]);
-        } // next planx
-    }
-
-    /// Print a plan step-by-step, indicating changes.
     pub fn print_planscorrstore_detail(&self, plan_str: &PlansCorrStore) {
         self.print_planscorrstore_detail2(plan_str, &self.all_current_states());
     }
@@ -1519,9 +1474,9 @@ impl DomainStore {
         let mut cur_states = states.clone();
 
         for planscx in planscsx.iter() {
-            for planx in planscx.iter() {
+            for (dom_id, planx) in planscx.iter().enumerate() {
                 if planx.causes_change() {
-                    println!("\n  Domain: {}, Plan:", planx.dom_id);
+                    println!("\n  Domain: {}, Plan:", dom_id);
                     for stepx in planx.iter() {
                         let df = stepx.initial.diff_edge_mask(&stepx.result);
                         if let Some(act_id) = stepx.act_id {
@@ -1532,9 +1487,8 @@ impl DomainStore {
                         } else {
                             print!("    {} Action no -> {}", stepx.initial, stepx.result);
                         }
-                        cur_states[planx.dom_id] = stepx
-                            .rule
-                            .result_from_initial_state(&cur_states[planx.dom_id]);
+                        cur_states[dom_id] =
+                            stepx.rule.result_from_initial_state(&cur_states[dom_id]);
 
                         if let AltRule { .. } = &stepx.alt_rule {
                             print!(" Alt_rule: -1");
@@ -1550,9 +1504,9 @@ impl DomainStore {
 
                         println!("\n     {}", df.mark_ones());
                     } // next stepsx
-                    println!("    {}", cur_states[planx.dom_id]);
+                    println!("    {}", cur_states[dom_id]);
                 } else {
-                    println!("\n  Domain: {}, Plan: At Target", planx.dom_id);
+                    println!("\n  Domain: {}, Plan: At Target", dom_id);
                 }
             } // next planx
         } // next planscx
@@ -1636,7 +1590,7 @@ impl DomainStore {
         // Find a plan for each target.
         for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
             if regy.is_superset_of(regx) {
-                plans_per_target.push(SomePlan::new(dom_id, vec![SomeStep::new_no_op(regx)]));
+                plans_per_target.push(SomePlan::new(vec![SomeStep::new_no_op(regx)]));
             } else {
                 // Try making plans.
                 match self.get_plans(dom_id, regx, regy, &within[dom_id]) {
@@ -2644,11 +2598,11 @@ mod tests {
             SomeRule::new_from_string("00/00/00/01")?,
             AltRuleHint::NoAlt {},
         );
-        let plan0 = SomePlan::new(0, vec![stp1]);
+        let plan0 = SomePlan::new(vec![stp1]);
 
         // Set up plan for domain 1, action 0, no-op.
         let stp1 = SomeStep::new_no_op(&SomeRegion::new_from_string("001")?);
-        let plan1 = SomePlan::new(1, vec![stp1]);
+        let plan1 = SomePlan::new(vec![stp1]);
 
         // Set up plan for domain 2, action 0.
         let stp1 = SomeStep::new(
@@ -2656,7 +2610,7 @@ mod tests {
             SomeRule::new_from_string("11/01")?,
             AltRuleHint::NoAlt {},
         );
-        let plan2 = SomePlan::new(2, vec![stp1]);
+        let plan2 = SomePlan::new(vec![stp1]);
 
         // Set up PlansCorr.
         let plnsc1 = PlansCorr::new(vec![plan0, plan1, plan2]);
@@ -2733,7 +2687,7 @@ mod tests {
             SomeRule::new_from_string("00/01/00/00")?,
             AltRuleHint::NoAlt {},
         );
-        let plan0 = SomePlan::new(0, vec![stp2]);
+        let plan0 = SomePlan::new(vec![stp2]);
 
         // Set up plan for domain 1, action 0.
         let stp0 = SomeStep::new(
@@ -2741,7 +2695,7 @@ mod tests {
             SomeRule::new_from_string("11/11/11/10")?,
             AltRuleHint::NoAlt {},
         );
-        let plan1 = SomePlan::new(1, vec![stp0]);
+        let plan1 = SomePlan::new(vec![stp0]);
 
         // Set up PlansCorr.
         let plnsc1 = PlansCorr::new(vec![plan0, plan1]);
@@ -2755,7 +2709,7 @@ mod tests {
             SomeRule::new_from_string("00/11/00/01")?,
             AltRuleHint::NoAlt {},
         );
-        let plan0 = SomePlan::new(0, vec![stp0]);
+        let plan0 = SomePlan::new(vec![stp0]);
 
         // Set up plan for domain 1, action 1.
         let stp1 = SomeStep::new(
@@ -2763,7 +2717,7 @@ mod tests {
             SomeRule::new_from_string("11/11/10/00")?,
             AltRuleHint::NoAlt {},
         );
-        let plan1 = SomePlan::new(1, vec![stp1]);
+        let plan1 = SomePlan::new(vec![stp1]);
 
         // Set up PlansCorr.
         let plnsc2 = PlansCorr::new(vec![plan0, plan1]);

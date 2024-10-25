@@ -158,12 +158,12 @@ impl PlansCorrStore {
             }
 
             let mut cnt = 0;
-            for planx in planscx.iter() {
+            for (iny, planx) in planscx.iter().enumerate() {
                 if planx.causes_change() {
                     if cnt > 0 {
                         rc_str.push_str(", ");
                     }
-                    rc_str.push_str(&planx.str_terse());
+                    rc_str.push_str(&format!("P[{iny}]:{}]", &planx.str_terse()));
                     cnt += 1;
                 }
             }
@@ -242,10 +242,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
@@ -268,10 +265,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
@@ -305,10 +299,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
@@ -342,10 +333,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
@@ -394,10 +382,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
@@ -447,7 +432,7 @@ mod tests {
             SomeRule::new_from_string("00/01/11/XX")?,
             AltRuleHint::NoAlt {},
         );
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(0, vec![stp1, stp2])]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1, stp2])]);
         let plnscstr1 = PlansCorrStore::new(vec![plnsc1]);
 
         // Set up second PlansCorrStore.
@@ -461,7 +446,7 @@ mod tests {
             SomeRule::new_from_string("XX/11/00/10")?,
             AltRuleHint::NoAlt {},
         );
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(0, vec![stp1, stp2])]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1, stp2])]);
         let plnscstr2 = PlansCorrStore::new(vec![plnsc1]);
 
         println!(
@@ -513,8 +498,8 @@ mod tests {
         );
 
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1, stp2]),
-            SomePlan::new(1, vec![stp3, stp4]),
+            SomePlan::new(vec![stp1, stp2]),
+            SomePlan::new(vec![stp3, stp4]),
         ]);
 
         let plcstr = PlansCorrStore::new(vec![plnsc1]);

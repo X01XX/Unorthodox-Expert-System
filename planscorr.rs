@@ -88,6 +88,7 @@ impl PlansCorr {
         let mut ret_plans = Self::with_capacity(self.len());
 
         for (plnx, regx) in self.plans.iter().zip(regx.iter()) {
+            //println!("plan {plnx} reg  {regx}");
             if let Some(plny) = plnx.restrict_initial_region(regx) {
                 ret_plans.push(plny);
             } else {
@@ -242,10 +243,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         //assert!(1 == 2);
@@ -265,10 +263,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
@@ -293,10 +288,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
@@ -321,10 +313,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::new(vec![
@@ -357,10 +346,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1]),
-            SomePlan::new(1, vec![stp2]),
-        ]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::new(vec![
@@ -404,8 +390,8 @@ mod tests {
         );
 
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(0, vec![stp1, stp2]),
-            SomePlan::new(1, vec![stp3, stp4]),
+            SomePlan::new(vec![stp1, stp2]),
+            SomePlan::new(vec![stp3, stp4]),
         ]);
         println!("{plnsc1}");
 

@@ -74,7 +74,7 @@ impl PlanStore {
 
     /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
-        if !self.items.contains(&planx) {
+        if !self.contains(&planx) {
             self.items.push(planx);
         }
     }
@@ -87,23 +87,6 @@ impl PlanStore {
     /// Return a reference to the las plan.
     pub fn last(&self) -> Option<&SomePlan> {
         self.items.last()
-    }
-
-    /// Return a more restricted display version of a PlanStore.
-    pub fn str_terse(&self) -> String {
-        let mut rc_str = String::new();
-
-        rc_str.push('(');
-
-        for (inx, planx) in self.items.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&planx.str_terse());
-        }
-        rc_str.push(')');
-
-        rc_str
     }
 
     /// Return the number of steps in the plans of the PlanStore.
@@ -145,41 +128,6 @@ impl PlanStore {
             .sum()
     }
 
-    /// Return the result regions of a Planstore.
-    /// The current regions should intersect the plan initial regions,
-    /// and will be a default region in case a PlanStore does not have a plan for
-    /// a domain.
-    pub fn result_regions(&self, default: &RegionsCorr) -> RegionsCorr {
-        let mut ret_regs = default.clone();
-
-        for planx in self.items.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-            ret_regs[planx.dom_id] = planx.result_region().clone();
-        }
-        ret_regs
-    }
-
-    /// Return true if a PlanStore remains within a given RegionsCorr.
-    pub fn remains_within(&self, within: &RegionsCorr) -> bool {
-        let mut cur_regs = self.initial_regions(within);
-
-        if !within.is_superset_of(&cur_regs) {
-            return false;
-        }
-
-        for planx in self.items.iter() {
-            for stepx in planx.iter() {
-                cur_regs[planx.dom_id] = stepx.result.clone();
-                if !within.is_superset_of(&cur_regs) {
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
     /// Return the initial_regions of a Planstore.
     /// The current regions should intersect the plan initial regions,
     /// and will be a default region in case a PlanStore does not have a plan for
@@ -187,46 +135,12 @@ impl PlanStore {
     pub fn initial_regions(&self, default: &RegionsCorr) -> RegionsCorr {
         let mut ret_regs = default.clone();
         for planx in self.items.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-            ret_regs[planx.dom_id] = planx.initial_region().clone();
+            //if planx.is_empty() {
+            //    continue;
+            //}
+            ret_regs.push(planx.initial_region().clone());
         }
         ret_regs
-    }
-
-    /// Validate a PlanStore, given start and goal regions.
-    pub fn validate(&self, start_regs: &RegionsCorr, goal_regs: &RegionsCorr) -> bool {
-        let mut cur_regs = start_regs.clone();
-        for planx in self.items.iter() {
-            if planx.is_empty() {
-                continue;
-            }
-            let dom_id = planx.dom_id;
-            for stepx in planx.iter() {
-                if stepx.initial.intersects(&cur_regs[dom_id]) {
-                    cur_regs[dom_id] = stepx.rule.result_from_initial_region(&cur_regs[dom_id]);
-                } else {
-                    println!("Validate (1)");
-                    println!("Plans: {self}");
-                    println!("start    {start_regs}");
-                    println!("goal     {goal_regs}");
-                    println!("cur_regs {cur_regs}");
-                    println!("sub plan {planx}");
-                    return false;
-                }
-            }
-        }
-        if goal_regs.is_superset_of(&cur_regs) {
-            true
-        } else {
-            println!("Validate (2)");
-            println!("Plans: {self}");
-            println!("start    {start_regs}");
-            println!("goal     {goal_regs}");
-            println!("cur_regs {cur_regs}");
-            false
-        }
     }
 
     /// Return a PlanStore with duplicates deleted.
@@ -240,7 +154,12 @@ impl PlanStore {
 
     /// Return true if a PlanStore contains a plan.
     pub fn contains(&self, planx: &SomePlan) -> bool {
-        self.items.contains(planx)
+        for itemx in self.items.iter() {
+            if itemx.num_bits() == planx.num_bits() && itemx == planx {
+                return true;
+            }
+        }
+        false
     }
 
     /// Return a mutable iterator
@@ -306,7 +225,7 @@ mod tests {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
-        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
+        let tmp_pln = SomePlan::new(vec![tmp_stp.clone()]);
 
         let mut plnstr = PlanStore::new(vec![tmp_pln]);
         let fstr = plnstr.formatted_string();
@@ -316,7 +235,7 @@ mod tests {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
 
-        plnstr.push(SomePlan::new(0, vec![tmp_stp.clone()]));
+        plnstr.push(SomePlan::new(vec![tmp_stp.clone()]));
         let fstr = plnstr.formatted_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);
@@ -345,7 +264,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln1 = SomePlan::new(0, vec![step1, step2]);
+        let pln1 = SomePlan::new(vec![step1, step2]);
 
         let step3 = SomeStep::new(
             0,
@@ -359,7 +278,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln2 = SomePlan::new(0, vec![step3, step4]);
+        let pln2 = SomePlan::new(vec![step3, step4]);
 
         let plnstr1 = PlanStore::new(vec![pln1, pln2]);
         println!("plnstr1 {plnstr1}");

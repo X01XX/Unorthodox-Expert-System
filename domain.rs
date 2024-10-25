@@ -185,7 +185,7 @@ impl SomeDomain {
 
     /// Run a plan, return number steps if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
-        debug_assert_eq!(pln.dom_id, self.id);
+        //debug_assert_eq!(pln.dom_id, self.id);
         debug_assert!(pln.is_empty() || pln.num_bits().unwrap() == self.num_bits());
 
         let mut num_steps = 0;
@@ -303,7 +303,7 @@ impl SomeDomain {
                 if stepy.result.intersects(goal_reg) {
                     let stepz = stepy.restrict_result_region(goal_reg);
 
-                    return Ok(SomePlan::new(self.id, vec![stepz]));
+                    return Ok(SomePlan::new(vec![stepz]));
                 }
             }
         }
@@ -471,7 +471,7 @@ impl SomeDomain {
                 let plan_to_goal =
                     self.plan_steps_between(&stepy.result, goal_reg, depth - 1, within)?;
 
-                return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
+                return SomePlan::new(vec![stepy]).link(&plan_to_goal);
             } else {
                 return Err(format!("domain::depth_first_search: Step {stepy} result region is not a subset of within {within}"));
             }
@@ -492,7 +492,7 @@ impl SomeDomain {
                 let plan_to_step =
                     self.plan_steps_between(from_reg, &stepy.initial, depth - 1, within)?;
 
-                return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
+                return plan_to_step.link(&SomePlan::new(vec![stepy]));
             } else {
                 return Err(format!("domain::depth_first_search: Step {stepy} initial region is not a subset of within {within}"));
             }
@@ -617,7 +617,7 @@ impl SomeDomain {
         // Try linking two plans together with the step.
         //println!("\n    linking plan {to_step_plan} step {stepy} plan {from_step_plan}");
         to_step_plan
-            .link(&SomePlan::new(self.id, vec![stepy]))?
+            .link(&SomePlan::new(vec![stepy]))?
             .link(&from_step_plan)
     }
 
@@ -693,7 +693,7 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(goal_reg));
 
         if goal_reg.is_superset_of(from_reg) {
-            return Ok(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
+            return Ok(PlanStore::new(vec![SomePlan::new(vec![])]));
         }
         // Figure the required change.
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
@@ -987,7 +987,7 @@ impl SomeDomain {
                 if shortcuts.is_empty() {
                     last_pri = *pri;
                 } else {
-                    // println!("    shortcuts(1) {shortcuts}");
+                    //println!("    found shortcuts {shortcuts}");
                     return Some(shortcuts);
                 }
             }
@@ -1000,11 +1000,10 @@ impl SomeDomain {
                 //);
                 //println!("    Plans found {plans2}");
                 for plany in plans2 {
-                    let mut new_plan = SomePlan::new(self.id, vec![]);
+                    let mut new_plan = SomePlan::new(vec![]);
                     if *from_inx > 0 {
                         for inz in 0..*from_inx {
-                            new_plan = match new_plan
-                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
+                            new_plan = match new_plan.link(&SomePlan::new(vec![planx[inz].clone()]))
                             {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
@@ -1019,8 +1018,7 @@ impl SomeDomain {
 
                     if *to_inx < planx.len() {
                         for inz in (to_inx + 1)..planx.len() {
-                            new_plan = match new_plan
-                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
+                            new_plan = match new_plan.link(&SomePlan::new(vec![planx[inz].clone()]))
                             {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
@@ -1032,7 +1030,6 @@ impl SomeDomain {
                         //println!("    plan too big, continue");
                         continue;
                     }
-                    new_plan.set_shortcut();
                     shortcuts.push(new_plan);
                 } // next plany
             } // endif
@@ -1040,7 +1037,7 @@ impl SomeDomain {
         if shortcuts.is_empty() {
             None
         } else {
-            //println!("    shortcuts(2) {shortcuts}");
+            //println!("    found shortcuts {shortcuts}");
             Some(shortcuts)
         }
     }
@@ -1849,7 +1846,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln1 = SomePlan::new(0, vec![step1, step2, step3]);
+        let pln1 = SomePlan::new(vec![step1, step2, step3]);
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -1973,7 +1970,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4, step5, step6]);
+        let pln1 = SomePlan::new(vec![step1, step2, step3, step4, step5, step6]);
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -2088,7 +2085,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln1 = SomePlan::new(0, vec![step1, step2, step3, step4]);
+        let pln1 = SomePlan::new(vec![step1, step2, step3, step4]);
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -2230,10 +2227,7 @@ mod tests {
             AltRuleHint::NoAlt {},
         );
 
-        let pln1 = SomePlan::new(
-            0,
-            vec![step1, step2, step3, step4, step5, step6, step7, step8],
-        );
+        let pln1 = SomePlan::new(vec![step1, step2, step3, step4, step5, step6, step7, step8]);
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {

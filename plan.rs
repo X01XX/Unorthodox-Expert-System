@@ -40,9 +40,6 @@ impl PartialEq for SomePlan {
         if self.len() != other.len() {
             return false;
         }
-        if self.dom_id != other.dom_id {
-            return false;
-        }
         if self.is_empty() {
             return true;
         }
@@ -63,16 +60,13 @@ impl Eq for SomePlan {}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 /// A struct containing a domain id and steps.
 pub struct SomePlan {
-    /// Domain indicator.
-    pub dom_id: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
-    pub shortcut: bool,
 }
 
 impl SomePlan {
     /// Return a new, empty, plan.
-    pub fn new(dom_id: usize, stepvec: Vec<SomeStep>) -> Self {
+    pub fn new(stepvec: Vec<SomeStep>) -> Self {
         if stepvec.len() > 1 {
             let last_inx = stepvec.len() - 1;
             let mut initial_regs = vec![];
@@ -86,15 +80,8 @@ impl SomePlan {
         }
 
         Self {
-            dom_id,
             steps: StepStore::new(stepvec),
-            shortcut: false,
         }
-    }
-
-    /// Set shortcut flag.
-    pub fn set_shortcut(&mut self) {
-        self.shortcut = true;
     }
 
     /// Return a plan after restricting the result region.
@@ -125,15 +112,12 @@ impl SomePlan {
             steps.reverse_order();
         }
 
-        Some(Self {
-            dom_id: self.dom_id,
-            steps,
-            shortcut: false,
-        })
+        Some(Self { steps })
     }
 
     /// Return a plan after restricting its initial region.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Option<Self> {
+        //println!("plan::restrict_initial_region: {self} {regx}");
         if self.is_empty() || !regx.intersects(self.initial_region()) {
             return None;
         }
@@ -154,11 +138,7 @@ impl SomePlan {
             steps.push(stepy);
         } //next stepx
 
-        Some(Self {
-            dom_id: self.dom_id,
-            steps,
-            shortcut: false,
-        })
+        Some(Self { steps })
     }
 
     /// Add a step to a SomePlan.
@@ -179,7 +159,6 @@ impl SomePlan {
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
     pub fn link(&self, other: &Self) -> Result<Self, String> {
         //println!("link: {self} and {other}");
-        debug_assert!(self.dom_id == other.dom_id);
 
         // Sanity checks
         if self.is_empty() && other.is_empty() {
@@ -193,6 +172,8 @@ impl SomePlan {
         if self.is_not_empty() && other.is_empty() {
             return Ok(self.clone());
         }
+
+        debug_assert!(self.num_bits() == other.num_bits());
 
         // Restrict the StepStores, forward and backward.
         let reg1 = self.result_region();
@@ -241,7 +222,7 @@ impl SomePlan {
 
     /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
-        let mut rs = format!("P:{}[", self.dom_id);
+        let mut rs = String::new();
 
         let mut flg = 0;
         for stpx in self.steps.iter() {
@@ -255,10 +236,6 @@ impl SomePlan {
             } else {
                 rs.push_str("no");
             }
-        }
-        rs.push(']');
-        if self.shortcut {
-            rs.push('s');
         }
         rs
     }
@@ -327,11 +304,7 @@ impl SomePlan {
 
     /// Return a String representation of SomePlan.
     fn formatted_string(&self) -> String {
-        if self.shortcut {
-            format!("{}s P:{}", self.steps, self.dom_id)
-        } else {
-            format!("{} P:{}", self.steps, self.dom_id)
-        }
+        format!("{}", self.steps)
     }
 
     /// Return the number of bits changed through each step of a plan.
@@ -444,7 +417,7 @@ impl Index<usize> for SomePlan {
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
-        4 + self.steps.strlen() + if self.shortcut { 1 } else { 0 }
+        self.steps.strlen()
     }
 }
 
@@ -460,7 +433,7 @@ mod tests {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b1111")?); //(tmp_sta.clone(), tmp_stb.clone()));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
-        let tmp_pln = SomePlan::new(0, vec![tmp_stp.clone()]);
+        let tmp_pln = SomePlan::new(vec![tmp_stp.clone()]);
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -472,8 +445,7 @@ mod tests {
         let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b1111->0b0011")?); //(tmp_stb.clone(), tmp_st3.clone()));
         let tmp_stp2 = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
-        let mut tmp_pln = SomePlan::new(0, vec![tmp_stp.clone(), tmp_stp2]);
-        tmp_pln.set_shortcut();
+        let tmp_pln = SomePlan::new(vec![tmp_stp.clone(), tmp_stp2]);
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -506,7 +478,7 @@ mod tests {
             SomeRule::new_region_to_region(&reg2, &reg3),
             AltRuleHint::NoAlt {},
         );
-        let stp_str1 = SomePlan::new(0, vec![step1, step2]);
+        let stp_str1 = SomePlan::new(vec![step1, step2]);
 
         let step4 = SomeStep::new(
             0,
@@ -518,7 +490,7 @@ mod tests {
             SomeRule::new_region_to_region(&reg5, &reg6),
             AltRuleHint::NoAlt {},
         );
-        let stp_str2 = SomePlan::new(0, vec![step4, step5]);
+        let stp_str2 = SomePlan::new(vec![step4, step5]);
 
         println!("stp1 {}", stp_str1);
         println!("stp2 {}", stp_str2);
@@ -542,7 +514,7 @@ mod tests {
         let tmp_stp = SomeStep::new_no_op(&tmp_reg);
         println!("nop stop {tmp_stp}");
 
-        let pln1 = SomePlan::new(0, vec![tmp_stp]);
+        let pln1 = SomePlan::new(vec![tmp_stp]);
         println!("pln1 {pln1}");
 
         //assert!(1 == 2);

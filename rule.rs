@@ -129,16 +129,16 @@ impl SomeRule {
                     b01.push('1');
                     b11.push('1');
                     b10.push('0');
-                //                } else if token == "1X" || token == "1x" {
-                //                    b00.push('0');
-                //                    b01.push('0');
-                //                    b11.push('1');
-                //                    b10.push('1');
-                //                } else if token == "0X" || token == "0x" {
-                //                    b00.push('1');
-                //                    b01.push('1');
-                //                    b11.push('0');
-                //                    b10.push('0');
+                } else if token == "1X" || token == "1x" {
+                    b00.push('0');
+                    b01.push('0');
+                    b11.push('1');
+                    b10.push('1');
+                } else if token == "0X" || token == "0x" {
+                    b00.push('1');
+                    b01.push('1');
+                    b11.push('0');
+                    b10.push('0');
                 } else {
                     return Err(format!(
                         "SomeRule::new_from_string: Unrecognized token {}",
@@ -566,12 +566,8 @@ impl SomeRule {
         SomeChange::new(self.b01.clone(), self.b10.clone())
     }
 
-    /// Return a minimum change rule for translating from a region to an intersection of another region.
-    /// The result will never have a X->x bit position.
+    /// Return a rule for translating from a region to another region.
     /// The result may have a 0->X, or 1->X, bit position, in which case it will not pass a is-valid-union-test.
-    /// 0->X, 1->X, positions indicate that any change, or no change, will produce the desired result.
-    /// 0->1, 1->0, X->0, and X->1 changes indicate wanted changes.
-    /// Unwanted changes = not(wanted changes).and(not(any changes))
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
@@ -585,7 +581,14 @@ impl SomeRule {
 
         let x_to_0 = from_x.bitwise_and(&to_0);
         let x_to_1 = from_x.bitwise_and(&to_1);
-        let x_to_x = from_x.bitwise_and(&to_x);
+        let x_to_x = from_x.bitwise_and(&to_x).bitwise_and(
+            &from
+                .first_state()
+                .bitwise_xor(&to.first_state().bitwise_not()),
+        );
+        let x_to_xnot = from_x
+            .bitwise_and(&to_x)
+            .bitwise_and(&from.first_state().bitwise_xor(to.first_state()));
 
         // Incorporate usually dissallowed bit changes, interpreted as "change don't care".
         let zero_to_x = from_0.bitwise_and(&to_x);
@@ -600,7 +603,8 @@ impl SomeRule {
             b01: from_0
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
-                .bitwise_or(&zero_to_x),
+                .bitwise_or(&zero_to_x)
+                .bitwise_or(&x_to_xnot),
             b11: from_1
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
@@ -609,7 +613,8 @@ impl SomeRule {
             b10: from_1
                 .bitwise_and(&to_0)
                 .bitwise_or(&x_to_0)
-                .bitwise_or(&one_to_x),
+                .bitwise_or(&one_to_x)
+                .bitwise_or(&x_to_xnot),
         }
     }
 
@@ -1245,13 +1250,12 @@ mod tests {
 
     #[test]
     fn new_region_to_region() -> Result<(), String> {
-        let reg1 = SomeRegion::new_from_string("r000_111_XXX")?;
-        let reg2 = SomeRegion::new_from_string("r01X_01X_01X")?;
+        let reg1 = SomeRegion::new_from_string("r000_111_XXX_Xx")?;
+        let reg2 = SomeRegion::new_from_string("r01X_01X_01X_xX")?;
         let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
 
-        assert!(rul1.initial_region() == reg1);
-        assert!(rul1.result_region() == reg2);
+        assert!(rul1 == SomeRule::new_from_string("00/01/0X_10/11/1X/X0_X1/XX_Xx/Xx")?);
 
         Ok(())
     }
