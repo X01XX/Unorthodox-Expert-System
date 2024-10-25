@@ -17,6 +17,7 @@
 //! sample the current state.
 
 use crate::region::SomeRegion;
+use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
@@ -27,6 +28,8 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -405,6 +408,95 @@ impl SomePlan {
         }
         rng
     }
+
+    /// Return a plan, given a string representation.
+    pub fn new_from_string(plan_str: &str) -> Result<Self, String> {
+        //println!("plan::new_from_string: {plan_str}");
+        // Split string into <region>-<action number> tokens, plus region at end.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+
+        for chr in plan_str.graphemes(true) {
+            if chr == ">" {
+                token_list.push(token);
+                token = String::new();
+            } else {
+                token.push_str(chr);
+            }
+        }
+        token_list.push(token);
+        //println!("token_list {:?}", token_list);
+
+        if token_list.len() < 2 {
+            panic!("plan::new_from_string: invalid string");
+        }
+
+        // Split tokens between region and action, plus region at end.
+        token = String::new();
+        let mut token_list2 = Vec::<String>::new();
+
+        for tokenx in token_list.iter() {
+            for chr in tokenx.graphemes(true) {
+                if chr == "-" {
+                    token_list2.push(token);
+                    token = String::new();
+                } else {
+                    token.push_str(chr);
+                }
+            }
+        }
+        token_list2.push(token);
+
+        // println!("token_list2 {:?}", token_list2);
+
+        // Tally up tokens and actions.
+        let mut steps = Vec::<SomeStep>::new();
+        let mut regions = Vec::<SomeRegion>::new();
+        let mut actions = Vec::<usize>::new();
+
+        for (inx, tokenx) in token_list2.into_iter().enumerate() {
+            if inx % 2 == 0 {
+                regions.push(SomeRegion::new_from_string(&tokenx).expect("Invalid region token"));
+            } else {
+                let act_id = match tokenx.parse::<usize>() {
+                    Ok(act_id) => act_id,
+                    Err(error) => return Err(format!("Invalid action token {error}")),
+                };
+                actions.push(act_id);
+            }
+
+            // Check if enough data to form a step.
+            if regions.len() == 2 && actions.len() == 1 {
+                let stepx = SomeStep::new(
+                    actions[0],
+                    SomeRule::new_region_to_region(&regions[0], &regions[1]),
+                    AltRuleHint::NoAlt {},
+                );
+                //println!("step {stepx}");
+                steps.push(stepx);
+                regions = vec![regions[1].clone()];
+                actions = vec![];
+            }
+        }
+        let ret_plan = SomePlan::new(steps);
+        //println!("ret_plan {ret_plan}");
+
+        Ok(ret_plan)
+    }
+
+    // Return true if a plan is valid.
+    pub fn is_valid(&self) -> bool {
+        let mut last_step: Option<&SomeStep> = None;
+        for stepx in self.iter() {
+            if let Some(stepy) = last_step {
+                if stepy.result != stepx.initial {
+                    return false;
+                }
+            }
+            last_step = Some(stepx);
+        }
+        true
+    }
 } // end impl SomePlan
 
 impl Index<usize> for SomePlan {
@@ -516,6 +608,24 @@ mod tests {
 
         let pln1 = SomePlan::new(vec![tmp_stp]);
         println!("pln1 {pln1}");
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn new_from_string() -> Result<(), String> {
+        let strx = "R01X-0->R101-1->R011";
+        let planx = match SomePlan::new_from_string(&strx) {
+            Ok(planx) => planx,
+            Err(errstr) => return Err(errstr),
+        };
+        println!("plan {planx}");
+
+        assert!(planx.len() == 2);
+        assert!(*planx.initial_region() == SomeRegion::new_from_string("R01x")?);
+        assert!(*planx.result_region() == SomeRegion::new_from_string("R011")?);
+        assert!(planx.is_valid());
 
         //assert!(1 == 2);
         Ok(())
