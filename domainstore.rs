@@ -1626,7 +1626,6 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
-    use crate::step::{AltRuleHint, SomeStep};
 
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StatesCorr) -> usize {
@@ -1672,12 +1671,10 @@ mod tests {
         domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
 
         // Set select regions.
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r01X1").unwrap());
+        let regstr1 = RegionsCorr::new_from_string("RSC[r01X1]").unwrap();
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
-        let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("rX101").unwrap());
+        let regstr2 = RegionsCorr::new_from_string("RSC[rX101]").unwrap();
         dmxs.add_select(SelectRegions::new(regstr2, -2));
         dmxs.calc_select();
 
@@ -1746,12 +1743,10 @@ mod tests {
         domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r0101")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0101]")?;
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
-        let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("r1001")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r1001]")?;
         dmxs.add_select(SelectRegions::new(regstr2, -1));
         dmxs.calc_select();
 
@@ -1809,24 +1804,19 @@ mod tests {
         domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r0x00")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x00]")?;
         dmxs.add_select(SelectRegions::new(regstr1, -1));
 
-        let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("rx100")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[rx100]")?;
         dmxs.add_select(SelectRegions::new(regstr2, -1));
 
-        let mut regstr3 = RegionsCorr::with_capacity(1);
-        regstr3.push(SomeRegion::new_from_string("r01x1")?);
+        let regstr3 = RegionsCorr::new_from_string("RSC[r01x1]")?;
         dmxs.add_select(SelectRegions::new(regstr3, -1));
 
-        let mut regstr4 = RegionsCorr::with_capacity(1);
-        regstr4.push(SomeRegion::new_from_string("r10x1")?);
+        let regstr4 = RegionsCorr::new_from_string("RSC[r10x1]")?;
         dmxs.add_select(SelectRegions::new(regstr4, -1));
 
-        let mut regstr5 = RegionsCorr::with_capacity(1);
-        regstr5.push(SomeRegion::new_from_string("r101x")?);
+        let regstr5 = RegionsCorr::new_from_string("RSC[r101x]")?;
         dmxs.add_select(SelectRegions::new(regstr5, -1));
         dmxs.calc_select();
 
@@ -1885,8 +1875,7 @@ mod tests {
         domx.eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set select regions.
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[rxx0x]")?;
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -1974,13 +1963,11 @@ mod tests {
         // Set select regions.
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
-        let mut regstr0 = RegionsCorr::with_capacity(1);
-        regstr0.push(SomeRegion::new_from_string("r1100")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[r1100]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("r1011")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r1011]")?;
         dmxs.add_select(SelectRegions::new(regstr1, -1));
         dmxs.calc_select();
 
@@ -2045,29 +2032,18 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b0000->0b1000")?);
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
-        // Set select region.
-        let max_region = SomeRegion::new_from_string("rxxxx")?;
-
         // Set up dom 0 negative regions.
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r01x1")?);
-        regstr0.push(max_region.clone());
+        let regstr0 = RegionsCorr::new_from_string("RSC[r01x1, rxxxx]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("rx101")?);
-        regstr0.push(max_region.clone());
+        let regstr0 = RegionsCorr::new_from_string("RSC[rx101, rxxxx]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Set up dom 1 negative regions.
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(max_region.clone());
-        regstr0.push(SomeRegion::new_from_string("r011x")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[rxxxx, r011x]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(max_region.clone());
-        regstr0.push(SomeRegion::new_from_string("rx111")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[rxxxx, rx111]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2149,14 +2125,12 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set up negative regions.
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r00xx")?);
-        regstr0.push(SomeRegion::new_from_string("rxx11")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[r00xx, rxx11]")?;
+
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r11xx")?);
-        regstr0.push(SomeRegion::new_from_string("r01xx")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[r11xx, r01xx]")?;
+
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2246,14 +2220,10 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111").unwrap());
 
         // Set up negative regions.
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r000x").unwrap());
-        regstr0.push(SomeRegion::new_from_string("rxx11").unwrap());
+        let regstr0 = RegionsCorr::new_from_string("RSC[r000x, rxx11]").unwrap();
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r11x1").unwrap());
-        regstr0.push(SomeRegion::new_from_string("r01xx").unwrap());
+        let regstr0 = RegionsCorr::new_from_string("RSC[r11x1, r01xx]").unwrap();
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
         // Calc non-negative RegionSores.
@@ -2307,21 +2277,13 @@ mod tests {
         dmxs[1].add_action(vec![]);
 
         // Load select regions
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r00000x0x")?);
-        regstr1.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r00000x0x, rXXXXXX10_1XXX_XXXX]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r00000xx1")?);
-        regstr2.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r00000xx1, rXXXXXX10_1XXX_XXXX]")?;
 
-        let mut regstr3 = RegionsCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string("r0000x1x1")?);
-        regstr3.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
+        let regstr3 = RegionsCorr::new_from_string("RSC[r0000x1x1, rXXXXXX10_1XXX_XXXX]")?;
 
-        let mut regstr4 = RegionsCorr::with_capacity(2);
-        regstr4.push(SomeRegion::new_from_string("r00001110")?);
-        regstr4.push(SomeRegion::new_from_string("rXXXXXX10_1XXX_XXXX")?);
+        let regstr4 = RegionsCorr::new_from_string("RSC[r00001110, rXXXXXX10_1XXX_XXXX]")?;
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 1));
@@ -2391,17 +2353,12 @@ mod tests {
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::new(SomeBits::new(4)));
 
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        let neg_reg1 = SomeRegion::new_from_string("rX1XX")?;
-
-        regstr1.push(neg_reg1.clone());
+        let regstr1 = RegionsCorr::new_from_string("RSC[rX1XX]")?;
 
         // Add selectregions.
         dmxs.add_select(SelectRegions::new(regstr1.clone(), -1));
 
-        let mut regstr2 = RegionsCorr::with_capacity(1);
-        let neg_reg2 = SomeRegion::new_from_string("r1XX1")?;
-        regstr2.push(neg_reg2.clone());
+        let regstr2 = RegionsCorr::new_from_string("RSC[r1XX1]")?;
 
         // Add select regionstores.
         dmxs.add_select(SelectRegions::new(regstr2.clone(), -1));
@@ -2444,17 +2401,13 @@ mod tests {
         dmxs[0].add_action(vec![]);
 
         // Load select regions
-        let mut regstr1 = RegionsCorr::with_capacity(1);
-        regstr1.push(SomeRegion::new_from_string("rxx0x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[rxx0x]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(1);
-        regstr2.push(SomeRegion::new_from_string("r00x1")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r00x1]")?;
 
-        let mut regstr3 = RegionsCorr::with_capacity(1);
-        regstr3.push(SomeRegion::new_from_string("r11x1")?);
+        let regstr3 = RegionsCorr::new_from_string("RSC[r11x1]")?;
 
-        let mut regstr4 = RegionsCorr::with_capacity(1);
-        regstr4.push(SomeRegion::new_from_string("r10x0")?);
+        let regstr4 = RegionsCorr::new_from_string("RSC[r10x0]")?;
 
         // Add select region stores.
         dmxs.add_select(SelectRegions::new(regstr1, 4));
@@ -2531,12 +2484,10 @@ mod tests {
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::new_from_string("0b1111->0b0111")?);
 
         // Set up negative regions.
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r01xx")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[r01xx]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -1));
 
-        let mut regstr0 = RegionsCorr::with_capacity(2);
-        regstr0.push(SomeRegion::new_from_string("r10xx")?);
+        let regstr0 = RegionsCorr::new_from_string("RSC[r10xx]")?;
         dmxs.add_select(SelectRegions::new(regstr0, -2));
 
         // Calc non-negative RegionSores.
@@ -2593,24 +2544,13 @@ mod tests {
         dmxs[2].set_cur_state(SomeState::new_from_string("0b10")?);
 
         // Set up plan for domain 0, action 0.
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/00/00/01")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan0 = SomePlan::new(vec![stp1]);
+        let plan0 = SomePlan::new_from_string("Plan[r0000-0->r0001]")?;
 
         // Set up plan for domain 1, action 0, no-op.
-        let stp1 = SomeStep::new_no_op(&SomeRegion::new_from_string("001")?);
-        let plan1 = SomePlan::new(vec![stp1]);
+        let plan1 = SomePlan::new_from_string("Plan[r001-no->r001]")?;
 
         // Set up plan for domain 2, action 0.
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("11/01")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan2 = SomePlan::new(vec![stp1]);
+        let plan2 = SomePlan::new_from_string("Plan[r10-0->11]")?;
 
         // Set up PlansCorr.
         let plnsc1 = PlansCorr::new(vec![plan0, plan1, plan2]);
@@ -2682,20 +2622,10 @@ mod tests {
         dmxs[1].set_cur_state(SomeState::new_from_string("0b1111")?);
 
         // Set up plan for domain 0, action 2.
-        let stp2 = SomeStep::new(
-            2,
-            SomeRule::new_from_string("00/01/00/00")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan0 = SomePlan::new(vec![stp2]);
+        let plan0 = SomePlan::new_from_string("Plan[r0000-2->r0100]")?;
 
         // Set up plan for domain 1, action 0.
-        let stp0 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("11/11/11/10")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan1 = SomePlan::new(vec![stp0]);
+        let plan1 = SomePlan::new_from_string("Plan[r1111-0->r1110]")?;
 
         // Set up PlansCorr.
         let plnsc1 = PlansCorr::new(vec![plan0, plan1]);
@@ -2704,20 +2634,10 @@ mod tests {
         // So 0000->0100, 1111->1110.
 
         // Set up plan for domain 0, action 0.
-        let stp0 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/11/00/01")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan0 = SomePlan::new(vec![stp0]);
+        let plan0 = SomePlan::new_from_string("Plan[r0100-0->0101]")?;
 
         // Set up plan for domain 1, action 1.
-        let stp1 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("11/11/10/00")?,
-            AltRuleHint::NoAlt {},
-        );
-        let plan1 = SomePlan::new(vec![stp1]);
+        let plan1 = SomePlan::new_from_string("Plan[r1110-1->r1100]")?; //(vec![stp1]);
 
         // Set up PlansCorr.
         let plnsc2 = PlansCorr::new(vec![plan0, plan1]);

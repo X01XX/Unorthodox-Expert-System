@@ -10,6 +10,8 @@ use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 
 use std::fmt;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -82,6 +84,75 @@ impl StateStore {
             Some(&self.items[0])
         }
     }
+
+    /// Return a statestore, given a string representation.
+    /// Like [] or [s1010, s0101].
+    pub fn new_from_string(statestore_str: &str) -> Result<Self, String> {
+        //println!("statestore::new_from_string: {statestore_str}");
+
+        let mut statestore_str2 = String::new();
+        let mut last_chr = false;
+
+        for (inx, chr) in statestore_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "[" {
+                    continue;
+                } else {
+                    return Err("Invalid string, should start with [".to_string());
+                }
+            }
+            if chr == "]" {
+                last_chr = true;
+                continue;
+            }
+
+            if last_chr {
+                return Err("Invalid string, should end with ]".to_string());
+            }
+            statestore_str2.push_str(chr);
+        }
+        if !last_chr {
+            return Err("Invalid string, should end with ]".to_string());
+        }
+
+        if statestore_str2.is_empty() {
+            return Ok(StateStore::new(vec![]));
+        }
+
+        // Split string into <region> tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+
+        for chr in statestore_str2.graphemes(true) {
+            if chr == "," || chr == " " {
+                if token.is_empty() {
+                } else {
+                    token_list.push(token);
+                    token = String::new();
+                }
+            } else {
+                token.push_str(chr);
+            }
+        }
+        if token.is_empty() {
+        } else {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        // println!("token_list2 {:?}", token_list2);
+
+        // Tally up tokens.
+        let mut regions = Vec::<SomeState>::new();
+
+        for tokenx in token_list.into_iter() {
+            regions.push(SomeState::new_from_string(&tokenx).expect("Invalid region token"));
+        }
+        let ret_statestore = StateStore::new(regions);
+        //println!("ret_statestore {ret_statestore}");
+
+        Ok(ret_statestore)
+    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {
@@ -123,6 +194,24 @@ mod tests {
         println!("store {store}");
         assert!(store.len() == 2);
 
+        Ok(())
+    }
+
+    #[test]
+    fn new_from_string() -> Result<(), String> {
+        let stast1 = StateStore::new_from_string("[]")?;
+        println!("stast1 {stast1}");
+        assert!(format!("{stast1}") == "[]");
+
+        let stast2 = StateStore::new_from_string("[s1010]")?;
+        println!("stast2 {stast2}");
+        assert!(format!("{stast2}") == "[s1010]");
+
+        let stast3 = StateStore::new_from_string("[s1010, s1111]")?;
+        println!("stast3 {stast3}");
+        assert!(format!("{stast3}") == "[s1010, s1111]");
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

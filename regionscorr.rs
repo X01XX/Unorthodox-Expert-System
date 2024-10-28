@@ -13,10 +13,12 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.regions)
+        write!(f, "RSC{}", self.regions)
     }
 }
 #[readonly::make]
@@ -298,6 +300,60 @@ impl RegionsCorr {
         }
         true
     }
+
+    /// Return a regionscorr, given a string representation.
+    /// Like RSC[], RSC[r1010-0->0101], or RSC[r101-0->r000-1->r100].
+    pub fn new_from_string(regionscorr_str: &str) -> Result<Self, String> {
+        //println!("regionscorr::new_from_string: {regionscorr_str}");
+
+        let mut regionscorr_str2 = String::new();
+        let mut last_chr = false;
+
+        for (inx, chr) in regionscorr_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "R" {
+                    continue;
+                } else {
+                    return Err("Invalid string, should start with RSC[".to_string());
+                }
+            }
+            if inx == 1 {
+                if chr == "S" {
+                    continue;
+                } else {
+                    return Err("Invalid string, should start with RSC[".to_string());
+                }
+            }
+            if inx == 2 {
+                if chr == "C" {
+                    continue;
+                } else {
+                    return Err("Invalid string, should start with RSC[".to_string());
+                }
+            }
+            if chr == "]" {
+                last_chr = true;
+                regionscorr_str2.push_str(chr);
+                continue;
+            }
+
+            if last_chr {
+                return Err("Invalid string, should end with ]".to_string());
+            }
+            regionscorr_str2.push_str(chr);
+        }
+        if !last_chr {
+            return Err("Invalid string, should end with ]".to_string());
+        }
+
+        //println!("regionscorr_str2 {regionscorr_str2}");
+        let regions = RegionStore::new_from_string(&regionscorr_str2)?;
+
+        let ret_regionscorr = Self { regions };
+        //println!("ret_regionscorr {ret_regionscorr}");
+
+        Ok(ret_regionscorr)
+    }
 } // End impl RegionsCorr.
 
 impl Index<usize> for RegionsCorr {
@@ -336,27 +392,19 @@ impl AvecRef for RegionsCorr {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
-    use crate::state::SomeState;
 
     #[test]
     fn is_superset_states() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x00")?);
-        regstr1.push(SomeRegion::new_from_string("r1x1x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x00, r1x1x]")?;
 
-        let sta1 = SomeState::new(SomeBits::new_from_string("0x1")?);
-        let sta8 = SomeState::new(SomeBits::new_from_string("0x8")?);
-        let stas = StatesCorr::new(vec![sta1, sta8]);
+        let stas = StatesCorr::new_from_string("SSC[0x1, 0x8]")?;
 
         println!("regstr1 {}", regstr1);
         println!("stas    {}", stas);
 
         assert!(!regstr1.is_superset_states(&stas));
 
-        let sta4 = SomeState::new(SomeBits::new_from_string("0x4")?);
-        let sta10 = SomeState::new(SomeBits::new_from_string("0xa")?);
-        let stas2 = StatesCorr::new(vec![sta4, sta10]);
+        let stas2 = StatesCorr::new_from_string("SSC[0x4, 0xa]")?;
 
         println!("regstr1 {}", regstr1);
         println!("stas2   {}", stas2);
@@ -368,13 +416,9 @@ mod tests {
 
     #[test]
     fn distance_states() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x00")?);
-        regstr1.push(SomeRegion::new_from_string("r1x1x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x00, r1x1x]")?;
 
-        let sta1 = SomeState::new(SomeBits::new_from_string("0x1")?);
-        let sta8 = SomeState::new(SomeBits::new_from_string("0x8")?);
-        let stas = StatesCorr::new(vec![sta1, sta8]);
+        let stas = StatesCorr::new_from_string("SSC[0x1, 0x8]")?;
 
         let dist = regstr1.distance_states(&stas);
         println!("Distance = {dist}");
@@ -385,13 +429,9 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x0x]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r0101")?);
-        regstr2.push(SomeRegion::new_from_string("r1x01")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r0101, r1x01]")?;
 
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
@@ -404,13 +444,9 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x0x]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r0101")?);
-        regstr2.push(SomeRegion::new_from_string("r1x01")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r0101, r1x01]")?;
 
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
@@ -423,36 +459,22 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x0x")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x0x]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("rx1x1")?);
-        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[rx1x1, r1xx1]")?;
 
         let intreg = regstr1.intersection(&regstr2).expect("SNH");
         println!("int part {}", intreg);
 
-        assert!(
-            intreg
-                == RegionsCorr::new(vec![
-                    SomeRegion::new_from_string("r0101")?,
-                    SomeRegion::new_from_string("r1x01")?
-                ])
-        );
+        assert!(intreg == RegionsCorr::new_from_string("RSC[r0101, r1x01]")?);
         Ok(())
     }
 
     #[test]
     fn distance() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x00")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x00]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r11x1")?);
-        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r11x1, r1xx1]")?;
 
         let dist = regstr1.distance(&regstr2);
         println!("dist {}", dist);
@@ -463,22 +485,16 @@ mod tests {
 
     #[test]
     fn intersects() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x00")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x00]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r11x1")?);
-        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r11x1, r1xx1]")?;
 
         let intb = regstr1.intersects(&regstr2);
         println!("{regstr1} intersects {regstr2} is {intb}");
 
         assert!(!intb);
 
-        let mut regstr3 = RegionsCorr::with_capacity(2);
-        regstr3.push(SomeRegion::new_from_string("r010x")?);
-        regstr3.push(SomeRegion::new_from_string("rx10x")?);
+        let regstr3 = RegionsCorr::new_from_string("RSC[r010x, rx10x]")?;
 
         let intb = regstr1.intersects(&regstr3);
         println!("{regstr1} intersects {regstr3} is {intb}");
@@ -490,13 +506,9 @@ mod tests {
 
     #[test]
     fn translate_to() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("r0x0x")?);
-        regstr1.push(SomeRegion::new_from_string("r1x00").expect("SNH"));
+        let regstr1 = RegionsCorr::new_from_string("RSC[r0x0x, r1x00]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("r11x1")?);
-        regstr2.push(SomeRegion::new_from_string("r1xx1")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[r11x1, r1xx1]")?;
 
         let regstr3 = regstr1.translate_to(&regstr2);
         println!("{regstr1} transate_to {regstr2} is {regstr3}");
@@ -507,16 +519,12 @@ mod tests {
 
         assert!(regstr3 == regstrtmp);
 
-        let mut regstr4 = RegionsCorr::with_capacity(2);
-        regstr4.push(SomeRegion::new_from_string("r010x")?);
-        regstr4.push(SomeRegion::new_from_string("rx10x")?);
+        let regstr4 = RegionsCorr::new_from_string("RSC[r010x, rx10x]")?;
 
         let regstr5 = regstr1.translate_to(&regstr4);
         println!("{regstr1} transate_to {regstr4} is {regstr5}");
 
-        let mut regstrtmp = RegionsCorr::with_capacity(2);
-        regstrtmp.push(SomeRegion::new_from_string("r010x")?);
-        regstrtmp.push(SomeRegion::new_from_string("r1100")?);
+        let regstrtmp = RegionsCorr::new_from_string("RSC[r010x, r1100]")?;
 
         assert!(regstr5 == regstrtmp);
 
@@ -525,38 +533,46 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
-        let mut regstr1 = RegionsCorr::with_capacity(2);
-        regstr1.push(SomeRegion::new_from_string("rx_01xx")?);
-        regstr1.push(SomeRegion::new_from_string("rx_01xx")?);
+        let regstr1 = RegionsCorr::new_from_string("RSC[rx_01xx, rx_01xx]")?;
 
-        let mut regstr2 = RegionsCorr::with_capacity(2);
-        regstr2.push(SomeRegion::new_from_string("rx_0101")?);
-        regstr2.push(SomeRegion::new_from_string("r1_xxx0")?);
+        let regstr2 = RegionsCorr::new_from_string("RSC[rx_0101, r1_xxx0]")?;
 
         let regstrvec = regstr1.subtract(&regstr2);
-        println!("{regstr1} subtract {regstr2} is: ");
+        println!("{regstr1} subtract");
+        println!("{regstr2} is: ");
         for rscx in regstrvec.iter() {
-            println!("  {rscx}");
+            println!("{rscx}");
         }
 
         assert!(regstrvec.len() == 4);
-        assert!(regstrvec.contains(&RegionsCorr::new(vec![
-            SomeRegion::new_from_string("rx_01x0")?,
-            SomeRegion::new_from_string("rx_01xx")?
-        ])));
-        assert!(regstrvec.contains(&RegionsCorr::new(vec![
-            SomeRegion::new_from_string("rx_011x")?,
-            SomeRegion::new_from_string("rx_01xx")?
-        ])));
-        assert!(regstrvec.contains(&RegionsCorr::new(vec![
-            SomeRegion::new_from_string("rx_01xx")?,
-            SomeRegion::new_from_string("rx_01x1")?
-        ])));
-        assert!(regstrvec.contains(&RegionsCorr::new(vec![
-            SomeRegion::new_from_string("rx_01xx")?,
-            SomeRegion::new_from_string("r0_01xx")?
-        ])));
 
+        assert!(regstrvec.contains(&RegionsCorr::new_from_string("RSC[rx_01x0, rx_01xx]")?));
+
+        assert!(regstrvec.contains(&RegionsCorr::new_from_string("RSC[rx_011x, rx_01xx]")?));
+
+        assert!(regstrvec.contains(&RegionsCorr::new_from_string("RSC[rx_01xx, rx_01x1]")?));
+
+        assert!(regstrvec.contains(&RegionsCorr::new_from_string("RSC[rx_01xx, r0_01xx]")?));
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn new_from_string() -> Result<(), String> {
+        let regst1 = RegionsCorr::new_from_string("RSC[]")?;
+        println!("regst1 {regst1}");
+        assert!(format!("{regst1}") == "RSC[]");
+
+        let regst2 = RegionsCorr::new_from_string("RSC[r1010]")?;
+        println!("regst2 {regst2}");
+        assert!(format!("{regst2}") == "RSC[r1010]");
+
+        let regst3 = RegionsCorr::new_from_string("RSC[r1010, r1111]")?;
+        println!("regst3 {regst3}");
+        assert!(format!("{regst3}") == "RSC[r1010, r1111]");
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

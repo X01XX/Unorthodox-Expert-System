@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+extern crate unicode_segmentation;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -339,6 +341,75 @@ impl RegionStore {
     #[allow(dead_code)]
     pub fn is_superset_of(&self, other: &Self) -> bool {
         other.subtract(self).is_empty()
+    }
+
+    /// Return a regionstore, given a string representation.
+    /// Like [] or [r1010, r0101].
+    pub fn new_from_string(regionstore_str: &str) -> Result<Self, String> {
+        //println!("regionstore::new_from_string: {regionstore_str}");
+
+        let mut regionstore_str2 = String::new();
+        let mut last_chr = false;
+
+        for (inx, chr) in regionstore_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "[" {
+                    continue;
+                } else {
+                    return Err("Invalid string, should start with [".to_string());
+                }
+            }
+            if chr == "]" {
+                last_chr = true;
+                continue;
+            }
+
+            if last_chr {
+                return Err("Invalid string, should end with ]".to_string());
+            }
+            regionstore_str2.push_str(chr);
+        }
+        if !last_chr {
+            return Err("Invalid string, should end with ]".to_string());
+        }
+
+        if regionstore_str2.is_empty() {
+            return Ok(RegionStore::new(vec![]));
+        }
+
+        // Split string into <region> tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+
+        for chr in regionstore_str2.graphemes(true) {
+            if chr == "," || chr == " " {
+                if token.is_empty() {
+                } else {
+                    token_list.push(token);
+                    token = String::new();
+                }
+            } else {
+                token.push_str(chr);
+            }
+        }
+        if token.is_empty() {
+        } else {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        // println!("token_list2 {:?}", token_list2);
+
+        // Tally up tokens.
+        let mut regions = Vec::<SomeRegion>::new();
+
+        for tokenx in token_list.into_iter() {
+            regions.push(SomeRegion::new_from_string(&tokenx).expect("Invalid region token"));
+        }
+        let ret_regionstore = RegionStore::new(regions);
+        //println!("ret_regionstore {ret_regionstore}");
+
+        Ok(ret_regionstore)
     }
 } // end impl RegionStore.
 
@@ -689,6 +760,24 @@ mod tests {
         } else {
             println!("test 4 OK");
         }
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn new_from_string() -> Result<(), String> {
+        let regst1 = RegionStore::new_from_string("[]")?;
+        println!("regst1 {regst1}");
+        assert!(format!("{regst1}") == "[]");
+
+        let regst2 = RegionStore::new_from_string("[r1010]")?;
+        println!("regst2 {regst2}");
+        assert!(format!("{regst2}") == "[r1010]");
+
+        let regst3 = RegionStore::new_from_string("[r1010, r1111]")?;
+        println!("regst3 {regst3}");
+        assert!(format!("{regst3}") == "[r1010, r1111]");
+
         //assert!(1 == 2);
         Ok(())
     }

@@ -562,7 +562,11 @@ impl SomePlan {
         let ret_plan = SomePlan::new(steps);
         //println!("ret_plan {ret_plan}");
 
-        Ok(ret_plan)
+        if ret_plan.is_valid() {
+            Ok(ret_plan)
+        } else {
+            Err("plan is invalid".to_string())
+        }
     }
 
     // Return true if a plan is valid.
@@ -570,7 +574,13 @@ impl SomePlan {
         let mut last_step: Option<&SomeStep> = None;
         for stepx in self.iter() {
             if let Some(stepy) = last_step {
-                if stepy.result != stepx.initial {
+                if stepy.result != stepx.initial
+                    || stepy
+                        .result
+                        .edge_mask()
+                        .bitwise_and(&stepx.initial.x_mask())
+                        .is_not_low()
+                {
                     return false;
                 }
             }

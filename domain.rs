@@ -1823,30 +1823,7 @@ mod tests {
 
         println!("Acts: {}\n", dm0.actions);
 
-        let reg_0 = SomeRegion::new_from_string("r0000")?;
-        let reg_4 = SomeRegion::new_from_string("r0100")?;
-        let reg_8 = SomeRegion::new_from_string("r1000")?;
-        let reg_c = SomeRegion::new_from_string("r1100")?;
-
-        let step1 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_0, &reg_4),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step2 = SomeStep::new(
-            3,
-            SomeRule::new_region_to_region(&reg_4, &reg_c),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step3 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_c, &reg_8),
-            AltRuleHint::NoAlt {},
-        );
-
-        let pln1 = SomePlan::new(vec![step1, step2, step3]);
+        let pln1 = SomePlan::new_from_string("Plan[r0000-2->r0100-3->r1100-2->r1000]")?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -1926,51 +1903,9 @@ mod tests {
 
         println!("Acts: {}\n", dm0.actions);
 
-        let reg_2 = SomeRegion::new_from_string("r0010")?;
-        let reg_3 = SomeRegion::new_from_string("r0011")?;
-        let reg_4 = SomeRegion::new_from_string("r0100")?;
-        let reg_5 = SomeRegion::new_from_string("r0101")?;
-        let reg_6 = SomeRegion::new_from_string("r0110")?;
-        let reg_7 = SomeRegion::new_from_string("r0111")?;
-        let reg_b = SomeRegion::new_from_string("r1011")?;
-
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_4, &reg_5),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step2 = SomeStep::new(
-            1,
-            SomeRule::new_region_to_region(&reg_5, &reg_7),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step3 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_7, &reg_6),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step4 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_6, &reg_2),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step5 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_2, &reg_3),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step6 = SomeStep::new(
-            1,
-            SomeRule::new_region_to_region(&reg_3, &reg_b),
-            AltRuleHint::NoAlt {},
-        );
-
-        let pln1 = SomePlan::new(vec![step1, step2, step3, step4, step5, step6]);
+        let pln1 = SomePlan::new_from_string(
+            "Plan[r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]",
+        )?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -1987,7 +1922,6 @@ mod tests {
         } else {
             return Err("No shortcuts found".to_string());
         }
-
         Ok(())
     }
 
@@ -2055,37 +1989,7 @@ mod tests {
 
         println!("Acts: {}\n", dm0.actions);
 
-        let reg_6 = SomeRegion::new_from_string("r0110")?;
-        let reg_7 = SomeRegion::new_from_string("r0111")?;
-        let reg_b = SomeRegion::new_from_string("r1011")?;
-        let reg_e = SomeRegion::new_from_string("r1110")?;
-        let reg_f = SomeRegion::new_from_string("r1111")?;
-
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_b, &reg_f),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step2 = SomeStep::new(
-            1,
-            SomeRule::new_region_to_region(&reg_f, &reg_e),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step3 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_e, &reg_6),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step4 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_6, &reg_7),
-            AltRuleHint::NoAlt {},
-        );
-
-        let pln1 = SomePlan::new(vec![step1, step2, step3, step4]);
+        let pln1 = SomePlan::new_from_string("Plan[r1011-0->r1111-1->r1110-0->r0110-2->r0111]")?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -2170,64 +2074,11 @@ mod tests {
         println!("Acts: {}\n", dm0.actions);
 
         let reg_0 = SomeRegion::new_from_string("r0000")?;
-        let reg_1 = SomeRegion::new_from_string("r0001")?;
-        let reg_2 = SomeRegion::new_from_string("r0010")?;
-        let reg_3 = SomeRegion::new_from_string("r0011")?;
-        let reg_5 = SomeRegion::new_from_string("r0101")?;
-        let reg_6 = SomeRegion::new_from_string("r0110")?;
-        let reg_7 = SomeRegion::new_from_string("r0111")?;
-        let reg_d = SomeRegion::new_from_string("r1101")?;
         let reg_f = SomeRegion::new_from_string("r1111")?;
 
-        let step1 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_0, &reg_1),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step2 = SomeStep::new(
-            1,
-            SomeRule::new_region_to_region(&reg_1, &reg_3),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step3 = SomeStep::new(
-            0,
-            SomeRule::new_region_to_region(&reg_3, &reg_2),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step4 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_2, &reg_6),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step5 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_6, &reg_7),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step6 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_7, &reg_5),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step7 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_5, &reg_d),
-            AltRuleHint::NoAlt {},
-        );
-
-        let step8 = SomeStep::new(
-            2,
-            SomeRule::new_region_to_region(&reg_d, &reg_f),
-            AltRuleHint::NoAlt {},
-        );
-
-        let pln1 = SomePlan::new(vec![step1, step2, step3, step4, step5, step6, step7, step8]);
+        let pln1 = SomePlan::new_from_string(
+            "Plan[r0000-0->r0001-1->r0011-0->r0010-2->r0110-2->r0111-2->r0101-2->r1101-2->r1111]",
+        )?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::new_from_string("rXXXX")?) {
@@ -2256,7 +2107,6 @@ mod tests {
         } else {
             return Err("No shortcuts (1) found".to_string());
         }
-        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

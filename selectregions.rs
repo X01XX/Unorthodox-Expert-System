@@ -219,7 +219,7 @@ impl SelectRegions {
 impl StrLen for SelectRegions {
     fn strlen(&self) -> usize {
         // Regions
-        let mut ret = self.regions.strlen() + 8;
+        let mut ret = self.regions.strlen() + 11;
         ret += 1 + format!("{:+}", self.pos_value).len();
         ret += 1 + format!("{}", self.neg_value).len();
         ret += 1 + format!("{:+}", self.net_value).len();
@@ -234,50 +234,26 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let srs = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            0,
-        );
+        let srs = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r0x1x]")?, 0);
 
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
 
         assert!(rslt.len() == srs.strlen());
 
-        let srs = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            -19,
-        );
+        let srs = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r0x1x]")?, -19);
 
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
 
-        let srs = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            0,
-        );
+        let srs = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r0x1x]")?, 0);
 
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
 
-        let srs = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            -5,
-        );
+        let srs = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r0x1x]")?, -5);
 
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
@@ -288,42 +264,18 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let srs1 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r1x1x").expect("SNH"),
-            ]),
-            3,
-        );
+        let srs1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r1x1x]")?, 3);
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-                SomeRegion::new_from_string("r1xx1").expect("SNH"),
-            ]),
-            -5,
-        );
+        let srs2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x, r1xx1]")?, -5);
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            -5,
-        );
+        let srs3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x, r0x1x]")?, -5);
         println!("srs3 {srs3}");
 
         if let Some(srsint) = srs1.intersection(&srs2) {
             println!("srs1 int srs2 = {srsint}");
-            assert!(
-                srsint.regions
-                    == RegionsCorr::new(vec![
-                        SomeRegion::new_from_string("r0x11")?,
-                        SomeRegion::new_from_string("r1x11")?
-                    ])
-            );
+            assert!(srsint.regions == RegionsCorr::new_from_string("RSC[r0x11, r1x11]")?);
             assert!(srsint.pos_value == 3);
             assert!(srsint.neg_value == -5);
             assert!(srsint.net_value == -2);
@@ -340,31 +292,13 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
-        let srs1 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r1x1x").expect("SNH"),
-            ]),
-            3,
-        );
+        let srs1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r1x1x]")?, 3);
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-                SomeRegion::new_from_string("r1xx1").expect("SNH"),
-            ]),
-            -5,
-        );
+        let srs2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x, r1xx1]")?, -5);
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(
-            RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-                SomeRegion::new_from_string("r0x1x").expect("SNH"),
-            ]),
-            -5,
-        );
+        let srs3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x, r0x1x]")?, -5);
         println!("srs3 {srs3}");
 
         let srssub = srs1.subtract(&srs2);
@@ -374,10 +308,7 @@ mod tests {
         }
         assert!(srssub.len() == 2);
         let srsx = SelectRegions {
-            regions: RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0x01").expect("SNH"),
-                SomeRegion::new_from_string("r1x1x").expect("SNH"),
-            ]),
+            regions: RegionsCorr::new_from_string("RSC[r0x01, r1x1x]")?,
             pos_value: 3,
             neg_value: 0,
             net_value: 3,
@@ -385,10 +316,7 @@ mod tests {
         assert!(srssub.contains(&srsx));
 
         let srsy = SelectRegions {
-            regions: RegionsCorr::new(vec![
-                SomeRegion::new_from_string("r0xx1").expect("SNH"),
-                SomeRegion::new_from_string("r1x10").expect("SNH"),
-            ]),
+            regions: RegionsCorr::new_from_string("RSC[r0xx1, r1x10]")?,
             pos_value: 3,
             neg_value: 0,
             net_value: 3,
@@ -408,22 +336,13 @@ mod tests {
 
     #[test]
     fn subtract2() -> Result<(), String> {
-        let srs1 = SelectRegions::new(
-            RegionsCorr::new(vec![SomeRegion::new_from_string("rXXXX").expect("SNH")]),
-            3,
-        );
+        let srs1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rXXXX]")?, 3);
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(
-            RegionsCorr::new(vec![SomeRegion::new_from_string("r0xx1").expect("SNH")]),
-            -5,
-        );
+        let srs2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1]")?, -5);
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(
-            RegionsCorr::new(vec![SomeRegion::new_from_string("rxx0x").expect("SNH")]),
-            -5,
-        );
+        let srs3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x]")?, -5);
         println!("srs3 {srs3}");
 
         let srssub12 = SelectRegionsStore::new(srs1.subtract(&srs2));

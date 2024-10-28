@@ -227,171 +227,82 @@ impl StrLen for PlansCorr {
 mod tests {
     use super::*;
     use crate::region::SomeRegion;
-    use crate::rule::SomeRule;
-    use crate::step::{AltRuleHint, SomeStep};
-
-    #[test]
-    fn new() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/X0")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("00/X0/10")?,
-            AltRuleHint::NoAlt {},
-        );
-
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
-        println!("{plnsc1}");
-
-        //assert!(1 == 2);
-        Ok(())
-    }
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/X0")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("00/X0/10")?,
-            AltRuleHint::NoAlt {},
-        );
-
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new_from_string("Plan[r0X-0->r00]")?,
+            SomePlan::new_from_string("Plan[r0X1-1->r000]")?,
+        ]);
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
         println!("initial_regs {initial_regs}");
-        assert!(initial_regs[0] == SomeRegion::new_from_string("r0X")?);
-        assert!(initial_regs[1] == SomeRegion::new_from_string("r0X1")?);
+        assert!(initial_regs == RegionsCorr::new_from_string("RSC[r0X, r0X1]")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/X0")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("00/X0/10")?,
-            AltRuleHint::NoAlt {},
-        );
-
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new_from_string("Plan[r0X-0->r00-1->r11]")?,
+            SomePlan::new_from_string("Plan[r0X1-1->r000-4->r101]")?,
+        ]);
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
         println!("result_regs {result_regs}");
-        assert!(result_regs[0] == SomeRegion::new_from_string("r00")?);
-        assert!(result_regs[1] == SomeRegion::new_from_string("r000")?);
+        assert!(result_regs == RegionsCorr::new_from_string("RSC[r11, r101]")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("Xx/X0")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("00/X0/Xx")?,
-            AltRuleHint::NoAlt {},
-        );
-
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
+            SomePlan::new_from_string("Plan[r0X0x-1->r0x11-2->r1X11]")?,
+        ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new(vec![
-            SomeRegion::new_from_string("r11")?,
-            SomeRegion::new_from_string("rX10")?,
-        ]);
+        let restrict = RegionsCorr::new_from_string("RSC[r11, r0100]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_initial_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].initial_region() == SomeRegion::new_from_string("r11")?);
-            assert!(*plnsc2[1].initial_region() == SomeRegion::new_from_string("r010")?);
+            assert!(*plnsc2[0].result_region() == SomeRegion::new_from_string("r00")?);
+            assert!(*plnsc2[1].result_region() == SomeRegion::new_from_string("r1111")?);
         } else {
             return Err("restrict failed?".to_string());
         }
-
-        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("Xx/X0")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("00/X0/Xx")?,
-            AltRuleHint::NoAlt {},
-        );
-
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new(vec![stp1]), SomePlan::new(vec![stp2])]);
+        let plnsc1 = PlansCorr::new(vec![
+            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
+            SomePlan::new_from_string("Plan[r0X0x-1->r0x11-2->1X11]")?,
+        ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new(vec![
-            SomeRegion::new_from_string("r10")?,
-            SomeRegion::new_from_string("rXX1")?,
-        ]);
+        let restrict = RegionsCorr::new_from_string("RSC[r00, r1111]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_result_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].result_region() == SomeRegion::new_from_string("r10")?);
-            assert!(*plnsc2[1].result_region() == SomeRegion::new_from_string("r001")?);
+            assert!(*plnsc2[0].initial_region() == SomeRegion::new_from_string("r1X")?);
+            assert!(*plnsc2[1].initial_region() == SomeRegion::new_from_string("r010X")?);
         } else {
             return Err("restrict failed?".to_string());
         }
-
-        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn plans_range() -> Result<(), String> {
-        let stp1 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/10/00/01")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp2 = SomeStep::new(
-            0,
-            SomeRule::new_from_string("00/01/01/11")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp3 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("11/00/00/01")?,
-            AltRuleHint::NoAlt {},
-        );
-        let stp4 = SomeStep::new(
-            1,
-            SomeRule::new_from_string("11/00/01/11")?,
-            AltRuleHint::NoAlt {},
-        );
-
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new(vec![stp1, stp2]),
-            SomePlan::new(vec![stp3, stp4]),
+            SomePlan::new_from_string("Plan[r0100-0->r0001-0->r0111]")?,
+            SomePlan::new_from_string("Plan[r1000-1->r1001-1->r1011]")?,
         ]);
         println!("{plnsc1}");
 
@@ -402,7 +313,6 @@ mod tests {
         assert!(rng[0] == SomeRegion::new_from_string("r0XXX")?);
         assert!(rng[1] == SomeRegion::new_from_string("r10XX")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }
