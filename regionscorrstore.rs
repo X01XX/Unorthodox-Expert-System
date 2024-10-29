@@ -263,8 +263,8 @@ mod tests {
     #[test]
     fn new() -> Result<(), String> {
         let regs = vec![
-            RegionsCorr::new_from_string("RSC[rx101]")?,
-            RegionsCorr::new_from_string("RSC[rx101]")?,
+            RegionsCorr::new_from_string("RC[rx101]")?,
+            RegionsCorr::new_from_string("RC[rx101]")?,
         ];
         let regstr1 = RegionsCorrStore::new(regs);
         println!("regstr1 {regstr1}");
@@ -275,14 +275,14 @@ mod tests {
     #[test]
     fn is_superset_of() -> Result<(), String> {
         let regs = vec![
-            RegionsCorr::new_from_string("RSC[rx1X1]")?,
-            RegionsCorr::new_from_string("RSC[r1xx1]")?,
+            RegionsCorr::new_from_string("RC[rx1X1]")?,
+            RegionsCorr::new_from_string("RC[r1xx1]")?,
         ];
         let regstr1 = RegionsCorrStore::new(regs);
         println!("regstr1 {regstr1}");
 
         // Test single RegionsCorr superset.
-        let sub1 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RSC[r11x1]")?]);
+        let sub1 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RC[r11x1]")?]);
         println!("sub1 {sub1}");
 
         if regstr1.is_superset_of(&sub1) {
@@ -292,7 +292,7 @@ mod tests {
         }
 
         // Test intersections that add up to a superset.
-        let sub2 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RSC[r1x01]")?]);
+        let sub2 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RC[r1x01]")?]);
         println!("sub2 {sub2}");
 
         if regstr1.is_superset_of(&sub2) {
@@ -302,7 +302,7 @@ mod tests {
         }
 
         // Test intersections that do not add up to a superset.
-        let sub3 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RSC[r100x]")?]);
+        let sub3 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RC[r100x]")?]);
         println!("sub3 {sub3}");
 
         if regstr1.is_superset_of(&sub3) {
@@ -312,7 +312,7 @@ mod tests {
         }
 
         // Test no intersections.
-        let sub4 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RSC[r1x00]")?]);
+        let sub4 = RegionsCorrStore::new(vec![RegionsCorr::new_from_string("RC[r1x00]")?]);
         println!("sub4 {sub4}");
 
         if regstr1.is_superset_of(&sub4) {

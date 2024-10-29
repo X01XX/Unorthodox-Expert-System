@@ -581,13 +581,13 @@ mod tests {
     fn split_by_intersections4() -> Result<(), String> {
         // Try one level of intersection, two region select regions..
         let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0xx1, r1x1x]")?, -1);
+        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RC[r0xx1, r1x1x]")?, -1);
         srs1.push(regstr1);
 
-        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x, rx1x1]")?, 2);
+        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x, rx1x1]")?, 2);
         srs1.push(regstr2);
 
-        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxxxx, rxxxx]")?, 0);
+        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxxxx, rxxxx]")?, 0);
         srs1.push(regstr3);
 
         let frags = srs1.split_by_intersections();
@@ -660,61 +660,61 @@ mod tests {
         assert!(frags.len() == 10);
 
         // Check 3-level intersection.
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0111]")?, 9);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0111]")?, 9);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check 2-level intersection (1 of 4).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0101]")?, 6);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0101]")?, 6);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check 2-level intersection (2 of 4).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1111]")?, 5);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r1111]")?, 5);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check 2-level intersection (3 of 4).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r001x]")?, 7);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r001x]")?, 7);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check 2-level intersection (4 of 4).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x10]")?, 7);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x10]")?, 7);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check no intersection (1 of 5).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1101]")?, 2);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r1101]")?, 2);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check no intersection (2 of 5).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r000x]")?, 4);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r000x]")?, 4);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check no intersection (3 of 5).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x00]")?, 4);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x00]")?, 4);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check no intersection (4 of 5).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r101x]")?, 3);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r101x]")?, 3);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
 
         // Check no intersection (5 of 5).
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1x10]")?, 3);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r1x10]")?, 3);
         if !frags.contains(&selx) {
             return Err(format!("fragments {frags} does not contain {selx}"));
         }
@@ -768,11 +768,11 @@ mod tests {
     #[test]
     fn subtract_selectregions1() -> Result<(), String> {
         let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x]")?, 1);
+        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x]")?, 1);
         srs1.push(regstr1.clone());
 
         let mut srs2 = SelectRegionsStore::new(vec![]);
-        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx1x1]")?, 2);
+        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RC[rx1x1]")?, 2);
         srs2.push(regstr2.clone());
 
         // Try simple subtract_selectregions.
@@ -785,7 +785,7 @@ mod tests {
             } else {
                 return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
             }
-            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx00]")?, 1);
+            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx00]")?, 1);
             if srs3.contains(&srsexp) {
             } else {
                 return Err(format!(
@@ -793,7 +793,7 @@ mod tests {
                 ));
             }
 
-            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx00x]")?, 1);
+            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RC[rx00x]")?, 1);
             if srs3.contains(&srsexp) {
             } else {
                 return Err(format!(
@@ -812,7 +812,7 @@ mod tests {
             } else {
                 return Err(format!("{} - {} = {} ?", srs2, regstr1, srs3));
             }
-            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx111]")?, 2);
+            let srsexp = SelectRegions::new(RegionsCorr::new_from_string("RC[rx111]")?, 2);
             if srs3.contains(&srsexp) {
             } else {
                 return Err(format!(
@@ -823,7 +823,7 @@ mod tests {
 
         // Try subtract non-intersecting selectregions.
         let mut srs3 = SelectRegionsStore::new(vec![]);
-        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx101]")?, 0);
+        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RC[rx101]")?, 0);
         srs3.push(regstr3.clone());
         let srs4 = srs3.subtract_selectregions(&regstr1);
         if srs4.is_empty() {
@@ -839,11 +839,11 @@ mod tests {
     #[test]
     fn subtract_selectregions2() -> Result<(), String> {
         let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x, r01xx]")?, 1);
+        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x, r01xx]")?, 1);
         srs1.push(regstr1.clone());
 
         let mut srs2 = SelectRegionsStore::new(vec![]);
-        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx1x1, rxx11]")?, 2);
+        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RC[rx1x1, rxx11]")?, 2);
         srs2.push(regstr2.clone());
 
         // Try simple subtract_selectregions.
@@ -857,7 +857,7 @@ mod tests {
                 return Err(format!("{} - {} = {} ?", srs1, regstr2, srs3));
             }
 
-            let sr_tmp1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx00, r01xx]")?, 1);
+            let sr_tmp1 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx00, r01xx]")?, 1);
 
             if srs3.contains(&sr_tmp1) {
             } else {
@@ -866,7 +866,7 @@ mod tests {
                 ));
             }
 
-            let sr_tmp2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx00x, r01xx]")?, 1);
+            let sr_tmp2 = SelectRegions::new(RegionsCorr::new_from_string("RC[rx00x, r01xx]")?, 1);
 
             if srs3.contains(&sr_tmp2) {
             } else {
@@ -875,7 +875,7 @@ mod tests {
                 ));
             }
 
-            let sr_tmp3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x, r01x0]")?, 1);
+            let sr_tmp3 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x, r01x0]")?, 1);
 
             if srs3.contains(&sr_tmp3) {
             } else {
@@ -884,7 +884,7 @@ mod tests {
                 ));
             }
 
-            let sr_tmp4 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x, r010x]")?, 1);
+            let sr_tmp4 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x, r010x]")?, 1);
 
             if srs3.contains(&sr_tmp4) {
             } else {
@@ -901,28 +901,28 @@ mod tests {
     fn split_by_intersections6() -> Result<(), String> {
         // Try one level of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x0x]")?, 1);
+        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x0x]")?, 1);
         srs1.push(regstr1);
 
-        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x]")?, 2);
+        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x1x]")?, 2);
         srs1.push(regstr2);
 
-        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r01x1]")?, -1);
+        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RC[r01x1]")?, -1);
         srs1.push(regstr3);
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 6);
 
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0101]")?, 1);
-        let sely = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0101]")?, -1);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0101]")?, 1);
+        let sely = SelectRegions::new(RegionsCorr::new_from_string("RC[r0101]")?, -1);
         if let Some(selz) = sely.intersection(&selx) {
             if !frags.contains(&selz) {
                 return Err(format!("fragments {frags} does not contain {selz}"));
             }
         }
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0111]")?, 2);
-        let sely = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0111]")?, -1);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r0111]")?, 2);
+        let sely = SelectRegions::new(RegionsCorr::new_from_string("RC[r0111]")?, -1);
         if let Some(selz) = sely.intersection(&selx) {
             if !frags.contains(&selz) {
                 return Err(format!("fragments {frags} does not contain {selz}"));
@@ -978,61 +978,61 @@ mod tests {
     fn split_by_intersections7() -> Result<(), String> {
         // Try one level of intersection.
         let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx0x]")?, 1);
+        let regstr1 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx0x]")?, 1);
         srs1.push(regstr1);
 
-        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx1x]")?, 2);
+        let regstr2 = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx1x]")?, 2);
         srs1.push(regstr2);
 
-        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RSC[r11x1]")?, -1);
+        let regstr3 = SelectRegions::new(RegionsCorr::new_from_string("RC[r11x1]")?, -1);
         srs1.push(regstr3);
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 8);
 
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1111]")?, 2);
-        let sely = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1111]")?, -1);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r1111]")?, 2);
+        let sely = SelectRegions::new(RegionsCorr::new_from_string("RC[r1111]")?, -1);
         if let Some(selz) = sely.intersection(&selx) {
             if !frags.contains(&selz) {
                 return Err(format!("fragments {frags} does not contain {selz}"));
             }
         }
 
-        let selx = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1101]")?, 1);
-        let sely = SelectRegions::new(RegionsCorr::new_from_string("RSC[r1101]")?, -1);
+        let selx = SelectRegions::new(RegionsCorr::new_from_string("RC[r1101]")?, 1);
+        let sely = SelectRegions::new(RegionsCorr::new_from_string("RC[r1101]")?, -1);
         if let Some(selz) = sely.intersection(&selx) {
             if !frags.contains(&selz) {
                 return Err(format!("fragments {frags} does not contain {selz}"));
             }
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx00]")?, 1);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx00]")?, 1);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx00x]")?, 1);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[rx00x]")?, 1);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x0x]")?, 1);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x0x]")?, 1);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[rxx10]")?, 2);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[rxx10]")?, 2);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[rx01x]")?, 2);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[rx01x]")?, 2);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }
 
-        let selz = SelectRegions::new(RegionsCorr::new_from_string("RSC[r0x1x]")?, 2);
+        let selz = SelectRegions::new(RegionsCorr::new_from_string("RC[r0x1x]")?, 2);
         if !frags.contains(&selz) {
             return Err(format!("fragments {frags} does not contain {selz}"));
         }

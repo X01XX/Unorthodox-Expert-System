@@ -238,7 +238,7 @@ mod tests {
 
         let initial_regs = plnsc1.initial_regions();
         println!("initial_regs {initial_regs}");
-        assert!(initial_regs == RegionsCorr::new_from_string("RSC[r0X, r0X1]")?);
+        assert!(initial_regs == RegionsCorr::new_from_string("RC[r0X, r0X1]")?);
 
         Ok(())
     }
@@ -253,7 +253,7 @@ mod tests {
 
         let result_regs = plnsc1.result_regions();
         println!("result_regs {result_regs}");
-        assert!(result_regs == RegionsCorr::new_from_string("RSC[r11, r101]")?);
+        assert!(result_regs == RegionsCorr::new_from_string("RC[r11, r101]")?);
 
         Ok(())
     }
@@ -266,7 +266,7 @@ mod tests {
         ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new_from_string("RSC[r11, r0100]")?;
+        let restrict = RegionsCorr::new_from_string("RC[r11, r0100]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_initial_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
@@ -286,7 +286,7 @@ mod tests {
         ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new_from_string("RSC[r00, r1111]")?;
+        let restrict = RegionsCorr::new_from_string("RC[r00, r1111]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_result_regions(&restrict) {
             println!("plnsc2 {plnsc2}");

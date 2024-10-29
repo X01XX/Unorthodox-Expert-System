@@ -358,11 +358,10 @@ impl NumBits for SomeGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rule::SomeRule;
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
+        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
@@ -380,7 +379,7 @@ mod tests {
     #[test]
     fn check_subset_square() -> Result<(), String> {
         // Test if sqrx.pn > self.pn
-        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
+        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::One
@@ -399,10 +398,7 @@ mod tests {
         }
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
-        let rules = RuleStore::new(vec![
-            SomeRule::new_from_string("10/x1/x0/00")?,
-            SomeRule::new_from_string("10/x1/x0/01")?,
-        ]);
+        let rules = RuleStore::new_from_string("[10/x1/x0/00, 10/x1/x0/01]")?;
 
         let regx = SomeRegion::new_from_string("r1xx0")?;
 
@@ -443,7 +439,7 @@ mod tests {
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let rules = RuleStore::new(vec![SomeRule::new_from_string("10/x1/x0/00")?]);
+        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
 
         let regx = SomeRegion::new_from_string("r1xx0")?;
 

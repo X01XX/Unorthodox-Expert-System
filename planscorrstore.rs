@@ -255,13 +255,7 @@ mod tests {
         let initial_regs = plnscstr.initial_regions();
         println!("initial_regs {initial_regs}");
 
-        assert!(
-            initial_regs
-                == RegionsCorr::new(vec![
-                    SomeRegion::new_from_string("r0X")?,
-                    SomeRegion::new_from_string("r0X1")?
-                ])
-        );
+        assert!(initial_regs == RegionsCorr::new_from_string("RC[r0X, r0X1]")?);
         Ok(())
     }
 
@@ -279,13 +273,7 @@ mod tests {
         let result_regs = plnscstr.result_regions();
         println!("result_regs {result_regs}");
 
-        assert!(
-            result_regs
-                == RegionsCorr::new(vec![
-                    SomeRegion::new_from_string("r00")?,
-                    SomeRegion::new_from_string("r000")?
-                ])
-        );
+        assert!(result_regs == RegionsCorr::new_from_string("RC[r00, r000]")?);
         Ok(())
     }
 
@@ -300,28 +288,13 @@ mod tests {
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
         println!("plnscstr {plnscstr}");
 
-        let restrict_regs = RegionsCorr::new(vec![
-            SomeRegion::new_from_string("r00")?,
-            SomeRegion::new_from_string("r000")?,
-        ]);
+        let restrict_regs = RegionsCorr::new_from_string("RC[r00, r000]")?;
 
         if let Some(restricted) = plnscstr.restrict_initial_regions(&restrict_regs) {
             println!("resricted {restricted}");
             let result_regs = restricted.result_regions();
-            assert!(
-                result_regs
-                    == RegionsCorr::new(vec![
-                        SomeRegion::new_from_string("r10")?,
-                        SomeRegion::new_from_string("r010")?
-                    ])
-            );
-            assert!(
-                restricted.initial_regions()
-                    == RegionsCorr::new(vec![
-                        SomeRegion::new_from_string("r00")?,
-                        SomeRegion::new_from_string("r000")?
-                    ])
-            )
+            assert!(result_regs == RegionsCorr::new_from_string("RC[r10, r010]")?);
+            assert!(restricted.initial_regions() == RegionsCorr::new_from_string("RC[r00, r000]")?)
         } else {
             return Err("restrict_initial_regs failed".to_string());
         }
@@ -339,29 +312,14 @@ mod tests {
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
         println!("plnscstr {plnscstr}");
 
-        let restrict_regs = RegionsCorr::new(vec![
-            SomeRegion::new_from_string("r0X")?,
-            SomeRegion::new_from_string("r00X")?,
-        ]);
+        let restrict_regs = RegionsCorr::new_from_string("RC[r0X, r00X]")?;
 
         if let Some(restricted) = plnscstr.restrict_result_regions(&restrict_regs) {
             println!("resricted {restricted}");
             let initial_regs = restricted.initial_regions();
             println!("initial regs {initial_regs}");
-            assert!(
-                initial_regs
-                    == RegionsCorr::new(vec![
-                        SomeRegion::new_from_string("r1X")?,
-                        SomeRegion::new_from_string("rX1X")?
-                    ])
-            );
-            assert!(
-                restricted.result_regions()
-                    == RegionsCorr::new(vec![
-                        SomeRegion::new_from_string("r00")?,
-                        SomeRegion::new_from_string("r000")?
-                    ])
-            )
+            assert!(initial_regs == RegionsCorr::new_from_string("RC[r1X, rX1X]")?);
+            assert!(restricted.result_regions() == RegionsCorr::new_from_string("RC[r00, r000]")?)
         } else {
             return Err("restrict_result_regs failed".to_string());
         }
@@ -391,8 +349,8 @@ mod tests {
         // Calc link.
         if let Ok(plnscstr3) = plnscstr1.link(&plnscstr2) {
             println!("plnscstr3 {plnscstr3}");
-            assert!(plnscstr3.initial_regions() == RegionsCorr::new_from_string("RSC[r0001]")?);
-            assert!(plnscstr3.result_regions() == RegionsCorr::new_from_string("RSC[r0100]")?);
+            assert!(plnscstr3.initial_regions() == RegionsCorr::new_from_string("RC[r0001]")?);
+            assert!(plnscstr3.result_regions() == RegionsCorr::new_from_string("RC[r0100]")?);
         } else {
             return Err("link failed".to_string());
         }
@@ -407,10 +365,9 @@ mod tests {
         ])]);
         println!("plcstr {plcstr}");
 
-        if let Some(rslts) = plcstr.result_from_initial_regions(&RegionsCorr::new(vec![
-            SomeRegion::new_from_string("r00")?,
-            SomeRegion::new_from_string("r001")?,
-        ])) {
+        if let Some(rslts) =
+            plcstr.result_from_initial_regions(&RegionsCorr::new_from_string("RC[r00, r001]")?)
+        {
             println!("rslts {rslts}");
             assert!(rslts[0] == SomeRegion::new_from_string("r11")?);
             assert!(rslts[1] == SomeRegion::new_from_string("r110")?);

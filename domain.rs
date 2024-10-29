@@ -1081,10 +1081,7 @@ mod tests {
         // Create a domain that uses four bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![
-            SomeRule::new_from_string("00/11/01/11").expect("SNH"),
-            SomeRule::new_from_string("00/11/00/10").expect("SNH"),
-        ])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[00/11/01/11, 00/11/00/10]")?];
         dm0.add_action(ruls0);
 
         let sta_5 = SomeState::new_from_string("0b0101")?;
@@ -1154,10 +1151,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
 
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "00/XX/01/XX",
-        )
-        .expect("SNH")])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[00/XX/01/XX]").expect("SNH")];
         dm0.add_action(ruls0);
 
         // Form first group.
@@ -1766,31 +1760,19 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/XX/Xx",
-        )
-        .expect("SNH")])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/XX/Xx]").expect("SNH")];
         dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/Xx/XX",
-        )
-        .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/Xx/XX]").expect("SNH")];
         dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/Xx/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/Xx/XX/XX]").expect("SNH")];
         dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "Xx/XX/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new_from_string("[Xx/XX/XX/XX]").expect("SNH")];
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
@@ -1846,31 +1828,19 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/XX/Xx",
-        )
-        .expect("SNH")])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/XX/Xx]").expect("SNH")];
         dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/Xx/XX",
-        )
-        .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/Xx/XX]").expect("SNH")];
         dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/Xx/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/Xx/XX/XX]").expect("SNH")];
         dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "Xx/XX/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new_from_string("[Xx/XX/XX/XX]").expect("SNH")];
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
@@ -1932,31 +1902,19 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/XX/Xx",
-        )
-        .expect("SNH")])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/XX/Xx]").expect("SNH")];
         dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/Xx/XX",
-        )
-        .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/Xx/XX]").expect("SNH")];
         dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/Xx/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/Xx/XX/XX]").expect("SNH")];
         dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "Xx/XX/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new_from_string("[Xx/XX/XX/XX]").expect("SNH")];
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.
@@ -2016,31 +1974,19 @@ mod tests {
         dm0.cur_state = SomeState::new_from_string("0b0011")?;
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/XX/Xx",
-        )
-        .expect("SNH")])];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/XX/Xx]").expect("SNH")];
         dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/XX/Xx/XX",
-        )
-        .expect("SNH")])];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/XX/Xx/XX]").expect("SNH")];
         dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "XX/Xx/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::new_from_string("[XX/Xx/XX/XX]").expect("SNH")];
         dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::new(vec![SomeRule::new_from_string(
-            "Xx/XX/XX/XX",
-        )
-        .expect("SNH")])];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::new_from_string("[Xx/XX/XX/XX]").expect("SNH")];
         dm0.add_action(ruls3);
 
         // Create states for setting up groups.

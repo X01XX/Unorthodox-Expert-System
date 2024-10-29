@@ -206,6 +206,14 @@ impl SomeSquare {
             return Compatibility::MoreSamplesNeeded;
         }
 
+        // Both squares are Pn::One, Pn::Two, or one of each.
+        if self.pn == Pn::One && other.pn == Pn::Two && self.num_results() > 1 {
+            return Compatibility::NotCompatible;
+        }
+        if self.pn == Pn::Two && other.pn == Pn::One && other.num_results() > 1 {
+            return Compatibility::NotCompatible;
+        }
+
         // Get rules refs.
         let s_rules = self.rules.as_ref().expect("SNH");
         let o_rules = other.rules.as_ref().expect("SNH");
