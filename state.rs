@@ -47,7 +47,7 @@ impl SomeState {
     /// Return a State from a string.
     /// Each bit must be specified.
     ///
-    /// if let Ok(sta) = SomeState::new_from_string("0b0101")) {
+    /// if let Ok(sta) = SomeState::from("0b0101")) {
     ///    println!("State {sta}");
     /// } else {
     ///    panic!("Invalid State");
@@ -55,26 +55,26 @@ impl SomeState {
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// A first character of "s" is supported for cut-and-paste from output on console.
-    pub fn new_from_string(str: &str) -> Result<Self, String> {
+    pub fn from(str: &str) -> Result<Self, String> {
         // Check for first character.
         if let Some(char0) = str.graphemes(true).nth(0) {
             // Check the first character.
             if char0 == "s" || char0 == "S" {
                 // Create the result from the not-first characters.
-                match SomeBits::new_from_string(&str.to_string()[1..]) {
+                match SomeBits::from(&str.to_string()[1..]) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(error),
+                    Err(error) => Err(format!("SomeState::from {error}")),
                 }
             } else {
-                match SomeBits::new_from_string(str) {
+                match SomeBits::from(str) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(error),
+                    Err(error) => Err(format!("SomeState::from {error}")),
                 }
             }
         } else {
-            Err("SomeState::new_from_string: Empty string?".to_string())
+            Err("SomeState::from: Empty string?".to_string())
         }
-    } // end new_from_string
+    } // end from
 
     /// Return a new state, all zeros.
     pub fn new_low(&self) -> Self {
@@ -266,7 +266,7 @@ mod tests {
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new_from_string("0")?);
+        let tmp_sta = SomeState::new(SomeBits::from("0")?);
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
@@ -299,13 +299,13 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("0b1010")?;
-        let sta2 = SomeState::new_from_string("0b1010")?;
+        let sta1 = SomeState::from("0b1010")?;
+        let sta2 = SomeState::from("0b1010")?;
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
         assert!(sta1 == sta2);
 
-        let sta3 = SomeState::new_from_string("0b1001")?;
+        let sta3 = SomeState::from("0b1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
 

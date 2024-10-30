@@ -308,9 +308,9 @@ impl SomePlan {
     /// Return a String representation of SomePlan.
     fn formatted_string(&self) -> String {
         if self.is_empty() {
-            return String::from("Plan[]");
+            return String::from("P[]");
         }
-        let mut str = format!("Plan[{}", self.initial_region());
+        let mut str = format!("P[{}", self.initial_region());
         for stpx in self.iter() {
             if let Some(act_id) = stpx.act_id {
                 str.push_str(&format!("-{}->{}", act_id, stpx.result));
@@ -426,8 +426,8 @@ impl SomePlan {
 
     /// Return a plan, given a string representation.
     /// Like Plan[], Plan[r1010-0->0101], or Plan[r101-0->r000-1->r100].
-    pub fn new_from_string(plan_str: &str) -> Result<Self, String> {
-        //println!("plan::new_from_string: {plan_str}");
+    pub fn from(plan_str: &str) -> Result<Self, String> {
+        //println!("plan::from: {plan_str}");
 
         let mut plan_str2 = String::new();
         let mut last_chr = false;
@@ -437,35 +437,14 @@ impl SomePlan {
                 if chr == "P" {
                     continue;
                 } else {
-                    return Err("Invalid string, should start with Plan[".to_string());
+                    return Err("SomePlan::from: Invalid string, should start with P[".to_string());
                 }
             }
             if inx == 1 {
-                if chr == "l" {
-                    continue;
-                } else {
-                    return Err("Invalid string, should start with Plan[".to_string());
-                }
-            }
-            if inx == 2 {
-                if chr == "a" {
-                    continue;
-                } else {
-                    return Err("Invalid string, should start with Plan[".to_string());
-                }
-            }
-            if inx == 3 {
-                if chr == "n" {
-                    continue;
-                } else {
-                    return Err("Invalid string, should start with Plan[".to_string());
-                }
-            }
-            if inx == 4 {
                 if chr == "[" {
                     continue;
                 } else {
-                    return Err("Invalid string, should start with Plan[".to_string());
+                    return Err("SomePlan::from: Invalid string, should start with P[".to_string());
                 }
             }
             if chr == "]" {
@@ -474,12 +453,12 @@ impl SomePlan {
             }
 
             if last_chr {
-                return Err("Invalid string, should end with ]".to_string());
+                return Err("SomePlan::from: Invalid string, {plan_str} should end with ]".to_string());
             }
             plan_str2.push_str(chr);
         }
         if !last_chr {
-            return Err("Invalid string, should end with ]".to_string());
+            return Err("SomePlan::from: Invalid string, {plan_str} should end with ]".to_string());
         }
 
         if plan_str2.is_empty() {
@@ -502,7 +481,7 @@ impl SomePlan {
         //println!("token_list {:?}", token_list);
 
         if token_list.len() < 2 {
-            panic!("plan::new_from_string: invalid string");
+            panic!("plan::from: invalid string {plan_str}");
         }
 
         // Split tokens between region and action, plus region at end.
@@ -530,15 +509,17 @@ impl SomePlan {
 
         for (inx, tokenx) in token_list2.into_iter().enumerate() {
             if inx % 2 == 0 {
-                regions.push(SomeRegion::new_from_string(&tokenx).expect("Invalid region token"));
+                match SomeRegion::from(&tokenx) {
+                    Ok(regx)    =>regions.push(regx),
+                    Err(errstr) => { return Err(format!("SomePlan::from: {errstr}")); }
+                }
             } else if tokenx == "no" {
                 actions.push(None);
             } else {
-                let act_id = match tokenx.parse::<usize>() {
-                    Ok(act_id) => act_id,
-                    Err(error) => return Err(format!("Invalid action token {error}")),
+                match tokenx.parse::<usize>() {
+                    Ok(act_id) => actions.push(Some(act_id)),
+                    Err(error) => return Err(format!("SomePlan::from: {error}")),
                 };
-                actions.push(Some(act_id));
             }
 
             // Check if enough data to form a step.
@@ -562,31 +543,24 @@ impl SomePlan {
         let ret_plan = SomePlan::new(steps);
         //println!("ret_plan {ret_plan}");
 
-        if ret_plan.is_valid() {
-            Ok(ret_plan)
-        } else {
-            Err("plan is invalid".to_string())
+        match ret_plan.is_valid() {
+            Ok(()) => Ok(ret_plan),
+            Err(errstr) => Err(format!("SomePlan::from: {errstr}"))
         }
     }
 
     // Return true if a plan is valid.
-    pub fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> Result<(), String> {
         let mut last_step: Option<&SomeStep> = None;
         for stepx in self.iter() {
             if let Some(stepy) = last_step {
-                if stepy.result != stepx.initial
-                    || stepy
-                        .result
-                        .edge_mask()
-                        .bitwise_and(&stepx.initial.x_mask())
-                        .is_not_low()
-                {
-                    return false;
+                if stepy.result != stepx.initial {
+                    return Err(format!("SomePlan::is_valid: step result {} != following step initial {}", stepy.result, stepx.initial));
                 }
             }
             last_step = Some(stepx);
         }
-        true
+        Ok(())
     }
 } // end impl SomePlan
 
@@ -601,10 +575,10 @@ impl Index<usize> for SomePlan {
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
         if self.is_empty() {
-            return 6;
+            return 3;
         }
         let reg_len = self.initial_region().strlen();
-        reg_len * (self.len() + 1) + (4 * self.len()) + 6
+        reg_len * (self.len() + 1) + (4 * self.len()) + 3
     }
 }
 
@@ -614,7 +588,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_pln = SomePlan::new_from_string("Plan[]")?;
+        let tmp_pln = SomePlan::from("P[]")?;
         println!("tmp_pln {tmp_pln}");
 
         let str_len = format!("{tmp_pln}").len();
@@ -622,7 +596,7 @@ mod tests {
         println!("str {tmp_pln} len {str_len} calculated len {calc_len}");
         assert!(str_len == calc_len);
 
-        let tmp_pln = SomePlan::new_from_string("Plan[r0000-0->r1111-0->r0011]")?;
+        let tmp_pln = SomePlan::from("P[r0000-0->r1111-0->r0011]")?;
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -638,10 +612,10 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let pln1 = SomePlan::new_from_string("Plan[r0x0x-0->r0x1x-1->r1x1x]")?;
+        let pln1 = SomePlan::from("P[r0x0x-0->r0x1x-1->r1x1x]")?;
         println!("pln1 {}", pln1);
 
-        let pln2 = SomePlan::new_from_string("Plan[r111x-2->r101x-3->r000x]")?;
+        let pln2 = SomePlan::from("P[r111x-2->r101x-3->r000x]")?;
         println!("pln2 {}", pln2);
 
         let Ok(pln3) = pln1.link(&pln2) else {
@@ -649,31 +623,31 @@ mod tests {
         };
         println!("pln3 {}", pln3);
 
-        assert!(format!("{pln3}") == "Plan[r010X-0->r011X-1->r111X-2->r101X-3->r000X]");
+        assert!(format!("{pln3}") == "P[r010X-0->r011X-1->r111X-2->r101X-3->r000X]");
 
         Ok(())
     }
 
     #[test]
     fn nop() -> Result<(), String> {
-        let pln1 = SomePlan::new_from_string("Plan[r0X0X-no->r0X0X]")?;
+        let pln1 = SomePlan::from("P[r0X0X-no->r0X0X]")?;
         println!("pln1 {pln1}");
 
         Ok(())
     }
 
     #[test]
-    fn new_from_string() -> Result<(), String> {
-        let plan1_str = "Plan[]";
-        let plan1 = match SomePlan::new_from_string(plan1_str) {
+    fn from() -> Result<(), String> {
+        let plan1_str = "P[]";
+        let plan1 = match SomePlan::from(plan1_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
         };
         println!("plan1 {plan1}");
         assert!(format!("{plan1}") == plan1_str);
 
-        let plan2_str = "Plan[r01X-0->r101-1->r011]";
-        let plan2 = match SomePlan::new_from_string(plan2_str) {
+        let plan2_str = "P[r01X-0->r101-1->r011]";
+        let plan2 = match SomePlan::from(plan2_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
         };

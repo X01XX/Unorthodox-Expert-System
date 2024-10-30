@@ -2614,26 +2614,26 @@ mod tests {
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
         // 0->1 and 0->1, in the fourth bit.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b1001")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b1001")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b0101")?);
 
         // Set up first two_result square.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b1000")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b1000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b1000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b1000")?);
 
         // Set up second two_result square.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b0111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b0111")?);
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 1);
@@ -2645,37 +2645,37 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Eval sample that other samples will be incompatible with.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0111->0b0111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b0111")?);
 
         // Process three similar samples.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1011->0b1010")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1011->0b1010")?);
 
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1101->0b1100")?);
 
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b0000")?);
 
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 4);
 
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r0111")?)
+            .find(&SomeRegion::from("r0111")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r1xx1")?)
+            .find(&SomeRegion::from("r1xx1")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("rxx01")?)
+            .find(&SomeRegion::from("rxx01")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("rx0x1")?)
+            .find(&SomeRegion::from("rx0x1")?)
             .is_some());
         Ok(())
     }
@@ -2684,23 +2684,23 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
-        let max_reg = SomeRegion::new_from_string("rXXXX")?;
+        let max_reg = SomeRegion::from("rXXXX")?;
 
         // Set up 2-result square sf.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1110")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1111->0b1110")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1111->0b1110")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1111->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1111->0b1110")?);
 
         // Set up 2-result square s1.
-        let s1 = SomeState::new_from_string("0b0001")?;
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0001")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0001->0b0000")?);
+        let s1 = SomeState::from("0b0001")?;
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b0001")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b0001")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0001->0b0000")?);
 
         let nds = act0.get_needs(&s1, &max_reg);
         println!("Act: {}", act0);
@@ -2716,24 +2716,24 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
 
         // Set up square 3.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0011->0b0011")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0011->0b0011")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 1);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r0xxx")?)
+            .find(&SomeRegion::from("r0xxx")?)
             .is_some());
 
         Ok(())
@@ -2743,35 +2743,35 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0000->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
 
         // Set up square 3.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0011->0b0011")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0011->0b0011")?);
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0100->0b0000")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 3);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r0x00")?)
+            .find(&SomeRegion::from("r0x00")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r00xx")?)
+            .find(&SomeRegion::from("r00xx")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r0xx1")?)
+            .find(&SomeRegion::from("r0xx1")?)
             .is_some());
 
         Ok(())
@@ -2782,28 +2782,28 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
 
         // Set up square b.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b1011->0b1011")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b1011->0b1011")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b0101")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b0101")?);
 
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 2);
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("r0xxx")?)
+            .find(&SomeRegion::from("r0xxx")?)
             .is_some());
         assert!(act0
             .groups
-            .find(&SomeRegion::new_from_string("rxxx1")?)
+            .find(&SomeRegion::from("rxxx1")?)
             .is_some());
 
         Ok(())
@@ -2812,60 +2812,60 @@ mod tests {
     #[test]
     fn aggregate_changes() -> Result<(), String> {
         // Init action.
-        let sx = SomeState::new_from_string("0b0000")?;
+        let sx = SomeState::from("0b0000")?;
         let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
 
         assert!(act0.groups.len() == 1);
         // Group is not yet pnc, so no aggregate changes.
         assert!(act0.aggregate_changes.is_none());
 
         // Confirm group 2.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
 
         if let Some(cngs) = act0.aggregate_changes() {
             println!("agg cncs (1) {cngs}");
         } else {
             println!("agg cncs (1) None");
         }
-        assert!(act0.aggregate_changes() == Some(&SomeChange::new_from_string("00/00/10/00")?));
+        assert!(act0.aggregate_changes() == Some(&SomeChange::from("00/00/10/00")?));
 
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0010->0b0000")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
 
         if let Some(change2) = act0.aggregate_changes() {
             println!("change2 {change2}");
-            assert!(*change2 == SomeChange::new_from_string("00/00/10/00")?);
+            assert!(*change2 == SomeChange::from("00/00/10/00")?);
         } else {
             return Err("Test 2 failed".to_string());
         }
 
         // Make group 45, pnc.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0100->0b1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0100->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b1100")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b1100")?);
 
         assert!(act0.groups.len() == 2);
 
         if let Some(change3) = act0.aggregate_changes() {
             println!("change3 {change3}");
-            assert!(*change3 == SomeChange::new_from_string("01/00/10/10")?);
+            assert!(*change3 == SomeChange::from("01/00/10/10")?);
         } else {
             return Err("Test 3 failed".to_string());
         }
 
         // Make square 5 unpredictable.
-        act0.eval_sample_arbitrary(&SomeSample::new_from_string("0b0101->0b1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from("0b0101->0b1111")?);
 
         assert!(act0.groups.len() == 3); // groups 0010, 0100, 0101 (unpredictable).
 
         if let Some(change4) = act0.aggregate_changes() {
             println!("change4 {change4}");
-            assert!(*change4 == SomeChange::new_from_string("01/00/10/00")?);
+            assert!(*change4 == SomeChange::from("01/00/10/00")?);
         } else {
             return Err("Test 4 failed".to_string());
         }

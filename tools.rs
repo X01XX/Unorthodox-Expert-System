@@ -229,10 +229,10 @@ mod tests {
         assert!(options.contains(&vec![&2]));
         assert!(options.contains(&vec![&3]));
 
-        let sta1 = SomeState::new_from_string("0x1")?;
-        let sta2 = SomeState::new_from_string("0x2")?;
-        let sta4 = SomeState::new_from_string("0x4")?;
-        let sta7 = SomeState::new_from_string("0x7")?;
+        let sta1 = SomeState::from("0x1")?;
+        let sta2 = SomeState::from("0x2")?;
+        let sta4 = SomeState::from("0x4")?;
+        let sta7 = SomeState::from("0x7")?;
 
         let vals = vec![&sta1, &sta2, &sta4, &sta7];
         let options: Vec<Vec<&SomeState>> = super::anyxofn(2, &vals);

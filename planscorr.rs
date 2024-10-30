@@ -231,14 +231,14 @@ mod tests {
     #[test]
     fn initial_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0X-0->r00]")?,
-            SomePlan::new_from_string("Plan[r0X1-1->r000]")?,
+            SomePlan::from("P[r0X-0->r00]")?,
+            SomePlan::from("P[r0X1-1->r000]")?,
         ]);
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
         println!("initial_regs {initial_regs}");
-        assert!(initial_regs == RegionsCorr::new_from_string("RC[r0X, r0X1]")?);
+        assert!(initial_regs == RegionsCorr::from("RC[r0X, r0X1]")?);
 
         Ok(())
     }
@@ -246,14 +246,14 @@ mod tests {
     #[test]
     fn result_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0X-0->r00-1->r11]")?,
-            SomePlan::new_from_string("Plan[r0X1-1->r000-4->r101]")?,
+            SomePlan::from("P[r0X-0->r00-1->r11]")?,
+            SomePlan::from("P[r0X1-1->r000-4->r101]")?,
         ]);
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
         println!("result_regs {result_regs}");
-        assert!(result_regs == RegionsCorr::new_from_string("RC[r11, r101]")?);
+        assert!(result_regs == RegionsCorr::from("RC[r11, r101]")?);
 
         Ok(())
     }
@@ -261,17 +261,17 @@ mod tests {
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
-            SomePlan::new_from_string("Plan[r0X0x-1->r0x11-2->r1X11]")?,
+            SomePlan::from("P[rXX-0->rx0]")?,
+            SomePlan::from("P[r0X0x-1->r0x11-2->r1X11]")?,
         ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new_from_string("RC[r11, r0100]")?;
+        let restrict = RegionsCorr::from("RC[r11, r0100]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_initial_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].result_region() == SomeRegion::new_from_string("r00")?);
-            assert!(*plnsc2[1].result_region() == SomeRegion::new_from_string("r1111")?);
+            assert!(*plnsc2[0].result_region() == SomeRegion::from("r00")?);
+            assert!(*plnsc2[1].result_region() == SomeRegion::from("r1111")?);
         } else {
             return Err("restrict failed?".to_string());
         }
@@ -281,17 +281,17 @@ mod tests {
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
-            SomePlan::new_from_string("Plan[r0X0x-1->r0x11-2->1X11]")?,
+            SomePlan::from("P[rXX-0->rx0]")?,
+            SomePlan::from("P[r0X0x-1->r0x11-2->1X11]")?,
         ]);
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::new_from_string("RC[r00, r1111]")?;
+        let restrict = RegionsCorr::from("RC[r00, r1111]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_result_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].initial_region() == SomeRegion::new_from_string("r1X")?);
-            assert!(*plnsc2[1].initial_region() == SomeRegion::new_from_string("r010X")?);
+            assert!(*plnsc2[0].initial_region() == SomeRegion::from("r1X")?);
+            assert!(*plnsc2[1].initial_region() == SomeRegion::from("r010X")?);
         } else {
             return Err("restrict failed?".to_string());
         }
@@ -301,8 +301,8 @@ mod tests {
     #[test]
     fn plans_range() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0100-0->r0001-0->r0111]")?,
-            SomePlan::new_from_string("Plan[r1000-1->r1001-1->r1011]")?,
+            SomePlan::from("P[r0100-0->r0001-0->r0111]")?,
+            SomePlan::from("P[r1000-1->r1001-1->r1011]")?,
         ]);
         println!("{plnsc1}");
 
@@ -310,8 +310,8 @@ mod tests {
         println!("range {rng}");
 
         assert!(rng.len() == 2);
-        assert!(rng[0] == SomeRegion::new_from_string("r0XXX")?);
-        assert!(rng[1] == SomeRegion::new_from_string("r10XX")?);
+        assert!(rng[0] == SomeRegion::from("r0XXX")?);
+        assert!(rng[1] == SomeRegion::from("r10XX")?);
 
         Ok(())
     }

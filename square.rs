@@ -344,64 +344,64 @@ mod tests {
     // Test multiple additions to a square, cycle through all pn and pnc values.
     #[test]
     fn cycle_through_pn_pnc_values() -> Result<(), String> {
-        let mut sqrx = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let mut sqrx = SomeSquare::new(&SomeSample::from("0b0101->0b0101")?);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(!sqrx.pnc);
 
         // Second result, same as the first.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(!changed);
         // Third result, same as the first.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
 
         // Third result, same as the first two.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
 
         // Fourth result, different from the first three, square becomes Unpredictable.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0100")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0100")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Fifth result, same as the first, square remains Unpredictable.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Sixth result, same as the second most recent, square becomes Pn::Two.
         println!("sqrx {sqrx}");
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0100")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0100")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Two);
         assert!(sqrx.pnc);
 
         // Seventh result, same as the second most recent, square stays Pn::Two.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Two);
         assert!(sqrx.pnc);
 
         // Eighth result, same as the most recent, square becomes Pn::Unpredictable.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Nineth result, same as the most recent, square remains Pn::Unpredictable.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(!changed);
         assert_eq!(sqrx.pn, Pn::Unpredictable);
         assert!(sqrx.pnc);
 
         // Tenth result, same as the most recent, square becomes Pn::One.
-        let changed = sqrx.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let changed = sqrx.add_sample(&SomeSample::from("0b0101->0b0101")?);
         assert!(changed);
         assert_eq!(sqrx.pn, Pn::One);
         assert!(sqrx.pnc);
@@ -416,11 +416,11 @@ mod tests {
         // Allow a true result for bootstrapping.
 
         // Create square 5.
-        let sqr_5 = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let sqr_5 = SomeSquare::new(&SomeSample::from("0b0101->0b0101")?);
         println!("sqr_5: {sqr_5}");
 
         // Create square d, compatible to square 5.
-        let sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->0b1101")?);
+        let sqr_d = SomeSquare::new(&SomeSample::from("0b1101->0b1101")?);
         println!("sqr_d: {sqr_d}");
 
         // Test compatible.
@@ -429,7 +429,7 @@ mod tests {
         assert!(rslt == Compatibility::Compatible);
 
         // Create square d, not compatible to square 5.
-        let sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->0b1001")?);
+        let sqr_d = SomeSquare::new(&SomeSample::from("0b1101->0b1001")?);
         println!("sqr_d: {sqr_d}");
 
         // Test compatible.
@@ -444,15 +444,15 @@ mod tests {
     #[test]
     fn compatible_pn_2_2() -> Result<(), String> {
         // Create sqr_d pn 2.
-        let mut sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->0b1101")?);
+        let mut sqr_d = SomeSquare::new(&SomeSample::from("0b1101->0b1101")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1100")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1100")?);
         println!("sqr_d {sqr_d}");
 
         // Create sqr_5 pn 2.
-        let mut sqr_5 = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let mut sqr_5 = SomeSquare::new(&SomeSample::from("0b0101->0b0101")?);
 
-        sqr_5.add_sample(&SomeSample::new_from_string("0b0101->0b0100")?); //(sta_5.clone(), sta_4.clone()));
+        sqr_5.add_sample(&SomeSample::from("0b0101->0b0100")?); //(sta_5.clone(), sta_4.clone()));
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
@@ -460,9 +460,9 @@ mod tests {
         assert!(rslt == Compatibility::Compatible);
 
         // Create sqr_5 pn 2, reverse order of results.
-        let mut sqr_5 = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0100")?);
+        let mut sqr_5 = SomeSquare::new(&SomeSample::from("0b0101->0b0100")?);
 
-        sqr_5.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        sqr_5.add_sample(&SomeSample::from("0b0101->0b0101")?);
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
@@ -470,9 +470,9 @@ mod tests {
         assert!(rslt == Compatibility::Compatible);
 
         // Create sqr_5 pn 2, not compatible to sqr_d.
-        let mut sqr_5 = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0110")?);
+        let mut sqr_5 = SomeSquare::new(&SomeSample::from("0b0101->0b0110")?);
 
-        sqr_5.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        sqr_5.add_sample(&SomeSample::from("0b0101->0b0101")?);
         println!("sqr_5 {sqr_5}");
 
         let rslt = sqr_d.compatible(&sqr_5);
@@ -487,14 +487,14 @@ mod tests {
     #[test]
     fn compatible_only_one_pn_u() -> Result<(), String> {
         // Create sqr_d, pn U.
-        let mut sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->0b1101")?);
+        let mut sqr_d = SomeSquare::new(&SomeSample::from("0b1101->0b1101")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1100")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1100")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1000")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1000")?);
 
         // Create sqr_5 pn 1 pnc f.
-        let mut sqr_5 = SomeSquare::new(&SomeSample::new_from_string("0b0101->0b0101")?);
+        let mut sqr_5 = SomeSquare::new(&SomeSample::from("0b0101->0b0101")?);
         println!("sqr_d {sqr_d}");
         println!("sqr_5 {sqr_5}");
 
@@ -509,8 +509,8 @@ mod tests {
         assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Update sqr_5, to pn 1, pnc t.
-        sqr_5.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
-        sqr_5.add_sample(&SomeSample::new_from_string("0b0101->0b0101")?);
+        sqr_5.add_sample(&SomeSample::from("0b0101->0b0101")?);
+        sqr_5.add_sample(&SomeSample::from("0b0101->0b0101")?);
         println!("sqr_d {sqr_d}");
         println!("sqr_5 {sqr_5}");
 
@@ -531,20 +531,20 @@ mod tests {
     #[test]
     fn compatible_pn_u_u() -> Result<(), String> {
         // Create sqr_d pn U pnc T.
-        let mut sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->0b1101")?);
+        let mut sqr_d = SomeSquare::new(&SomeSample::from("0b1101->0b1101")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1100")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1100")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1000")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1000")?);
 
         println!("sqr_d {sqr_d}");
 
         // Create sqr_1 pn U pnc T.
-        let mut sqr_1 = SomeSquare::new(&SomeSample::new_from_string("0b0001->0b0001")?);
+        let mut sqr_1 = SomeSquare::new(&SomeSample::from("0b0001->0b0001")?);
 
-        sqr_1.add_sample(&SomeSample::new_from_string("0b0001->0b0010")?);
+        sqr_1.add_sample(&SomeSample::from("0b0001->0b0010")?);
 
-        sqr_1.add_sample(&SomeSample::new_from_string("0b0001->0b0100")?);
+        sqr_1.add_sample(&SomeSample::from("0b0001->0b0100")?);
         println!("sqr_1 {sqr_1}");
 
         // Test sqr_d pn U pnc t, sqr_1 pn U pnc t.
@@ -560,13 +560,13 @@ mod tests {
     #[test]
     fn compatible_pn_2_1() -> Result<(), String> {
         // Create sqr_d pn 2 pnc f.
-        let mut sqr_d = SomeSquare::new(&SomeSample::new_from_string("0b1101->1101")?);
+        let mut sqr_d = SomeSquare::new(&SomeSample::from("0b1101->1101")?);
 
-        sqr_d.add_sample(&SomeSample::new_from_string("0b1101->0b1100")?);
+        sqr_d.add_sample(&SomeSample::from("0b1101->0b1100")?);
         println!("sqr_d {sqr_d}");
 
         // Create sqr_1 pn 1, not compatible with sqr_d, pnc f.
-        let sqr_1 = SomeSquare::new(&SomeSample::new_from_string("0b0001->0b0011")?);
+        let sqr_1 = SomeSquare::new(&SomeSample::from("0b0001->0b0011")?);
 
         println!("sqr_1 {sqr_1}");
 
@@ -581,7 +581,7 @@ mod tests {
         assert!(rslt == Compatibility::NotCompatible);
 
         // Create sqr_1 pn 1, compatible with sqr_d, pnc f.
-        let mut sqr_1 = SomeSquare::new(&SomeSample::new_from_string("0b0001->0b0001")?);
+        let mut sqr_1 = SomeSquare::new(&SomeSample::from("0b0001->0b0001")?);
         println!("sqr_1 {sqr_1}");
 
         // Try Pn::Two, Pn::One.
@@ -595,8 +595,8 @@ mod tests {
         assert!(rslt == Compatibility::MoreSamplesNeeded);
 
         // Update sqr_1 to pnc t.
-        sqr_1.add_sample(&SomeSample::new_from_string("0b0001->0b0001")?);
-        sqr_1.add_sample(&SomeSample::new_from_string("0b0001->0b0001")?);
+        sqr_1.add_sample(&SomeSample::from("0b0001->0b0001")?);
+        sqr_1.add_sample(&SomeSample::from("0b0001->0b0001")?);
         println!("sqr_1 {sqr_1}");
 
         // Try Pn::Two, Pn::One.

@@ -57,7 +57,7 @@ impl SomeMask {
     /// Return a Mask from a string.
     /// All characters must be specified.
     ///
-    /// if let Ok(msk) = SomeMask::new_from_string("0b0101")) {
+    /// if let Ok(msk) = SomeMask::from("0b0101")) {
     ///    println!("Mask {}", msk);
     /// } else {
     ///    panic!("Invalid Mask");
@@ -65,26 +65,26 @@ impl SomeMask {
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// A first character of "m" is supported for cut-and-paste from output on console.
-    pub fn new_from_string(str: &str) -> Result<Self, String> {
+    pub fn from(str: &str) -> Result<Self, String> {
         // Check for first character.
         if let Some(char0) = str.graphemes(true).nth(0) {
             // Check the first character.
             if char0 == "m" || char0 == "M" {
                 // Create the result from the not-first characters.
-                match SomeBits::new_from_string(&str.to_string()[1..]) {
+                match SomeBits::from(&str.to_string()[1..]) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(error),
+                    Err(error) => Err(format!("SomeMask::from: {error}")),
                 }
             } else {
-                match SomeBits::new_from_string(str) {
+                match SomeBits::from(str) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(error),
+                    Err(error) => Err(format!("SomeMask::from: {error}")),
                 }
             }
         } else {
-            Err("SomeMask::new_from_string: Empty string?".to_string())
+            Err("SomeMask::from: Empty string?".to_string())
         }
-    } // end new_from_string
+    } // end from
 
     /// Return true if the mask is all zeros.
     pub fn is_low(&self) -> bool {
@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::new_from_string("0")?);
+        let tmp_msk = SomeMask::new(SomeBits::from("0")?);
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
@@ -269,12 +269,12 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let msk1 = SomeMask::new_from_string("0b1010")?;
-        let msk2 = SomeMask::new_from_string("0b1010")?;
+        let msk1 = SomeMask::from("0b1010")?;
+        let msk2 = SomeMask::from("0b1010")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = SomeMask::new_from_string("0b1001")?;
+        let msk3 = SomeMask::from("0b1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 

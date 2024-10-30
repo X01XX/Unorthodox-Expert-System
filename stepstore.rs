@@ -373,7 +373,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000_0000->0b0000_0000")?);
+        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000_0000->0b0000_0000")?);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);

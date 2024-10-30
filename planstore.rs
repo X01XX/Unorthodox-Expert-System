@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_pln = SomePlan::new_from_string("Plan[]")?;
+        let tmp_pln = SomePlan::from("P[]")?;
 
         let mut plnstr = PlanStore::new(vec![tmp_pln]);
         let fstr = plnstr.formatted_string();
@@ -228,7 +228,7 @@ mod tests {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
 
-        plnstr.push(SomePlan::new_from_string("Plan[r0000_0000-0->r0000_0000]")?);
+        plnstr.push(SomePlan::from("P[r0000_0000-0->r0000_0000]")?);
         let fstr = plnstr.formatted_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);

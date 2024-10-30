@@ -69,49 +69,47 @@ impl StatesCorr {
 
     /// Return a statescorr, given a string representation.
     /// Like SC[], SC[s1010], or SC[s101, s100].
-    pub fn new_from_string(statescorr_str: &str) -> Result<Self, String> {
-        //println!("statescorr::new_from_string: {statescorr_str}");
+    pub fn from(sc_str: &str) -> Result<Self, String> {
+        //println!("statescorr::from: {sc_str}");
 
-        let mut statescorr_str2 = String::new();
+        let mut sc_str2 = String::new();
         let mut last_chr = false;
 
-        for (inx, chr) in statescorr_str.graphemes(true).enumerate() {
+        for (inx, chr) in sc_str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "S" {
                     continue;
                 } else {
-                    return Err("Invalid string, should start with SC[".to_string());
+                    return Err(format!("StatesCorr::from: Invalid string, {sc_str} should start with SC["));
                 }
             }
             if inx == 1 {
                 if chr == "C" {
                     continue;
                 } else {
-                    return Err("Invalid string, should start with SC[".to_string());
+                    return Err(format!("StatesCorr::from: Invalid string, {sc_str} should start with SC["));
                 }
             }
             if chr == "]" {
                 last_chr = true;
-                statescorr_str2.push_str(chr);
+                sc_str2.push_str(chr);
                 continue;
             }
 
             if last_chr {
-                return Err("Invalid string, should end with ]".to_string());
+                return Err(format!("StatesCorr::from: Invalid string, {sc_str} should end with ]"));
             }
-            statescorr_str2.push_str(chr);
+            sc_str2.push_str(chr);
         }
         if !last_chr {
-            return Err("Invalid string, should end with ]".to_string());
+            return Err(format!("StatesCorr::from: Invalid string, {sc_str} should end with ]"));
         }
 
-        //println!("statescorr_str2 {statescorr_str2}");
-        let states = StateStore::new_from_string(&statescorr_str2)?;
-
-        let ret_statescorr = Self { states };
-        //println!("ret_statescorr {ret_statescorr}");
-
-        Ok(ret_statescorr)
+        //println!("sc_str2 {sc_str2}");
+        match StateStore::from(&sc_str2) {
+            Ok(states) => Ok(Self { states }),
+            Err(errstr) => Err(format!("StatesCorr::from: {errstr}"))
+        }
     }
 } // end impl StatesCorr
 
@@ -139,16 +137,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_from_string() -> Result<(), String> {
-        let stast1 = StatesCorr::new_from_string("SC[]")?;
+    fn from() -> Result<(), String> {
+        let stast1 = StatesCorr::from("SC[]")?;
         println!("stast1 {stast1}");
         assert!(format!("{stast1}") == "SC[]");
 
-        let stast2 = StatesCorr::new_from_string("SC[s1010]")?;
+        let stast2 = StatesCorr::from("SC[s1010]")?;
         println!("stast2 {stast2}");
         assert!(format!("{stast2}") == "SC[s1010]");
 
-        let stast3 = StatesCorr::new_from_string("SC[s1010, s1111]")?;
+        let stast3 = StatesCorr::from("SC[s1010, s1111]")?;
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == "SC[s1010, s1111]");
 

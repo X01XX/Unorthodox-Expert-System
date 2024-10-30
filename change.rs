@@ -139,10 +139,10 @@ impl SomeChange {
 
     /// Return a sample from a rule string.
     /// Like "Xx/XX/01/10/00/11".
-    pub fn new_from_string(str: &str) -> Result<Self, String> {
-        match SomeRule::new_from_string(str) {
+    pub fn from(str: &str) -> Result<Self, String> {
+        match SomeRule::from(str) {
             Ok(ruls) => Ok(ruls.to_change()),
-            Err(errstr) => Err(errstr),
+            Err(errstr) => Err(format!("SomeChange::from: {errstr}")),
         }
     }
 
@@ -187,16 +187,16 @@ mod tests {
         // Create a mask that uses one integer for bits.
 
         let cng1 = SomeChange {
-            b01: SomeMask::new_from_string("0b1010")?,
-            b10: SomeMask::new_from_string("0b1010")?,
+            b01: SomeMask::from("0b1010")?,
+            b10: SomeMask::from("0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: SomeMask::new_from_string("0b1001")?,
-            b10: SomeMask::new_from_string("0b0110")?,
+            b01: SomeMask::from("0b1001")?,
+            b10: SomeMask::from("0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: SomeMask::new_from_string("0b1000")?,
-            b10: SomeMask::new_from_string("0b0010")?,
+            b01: SomeMask::from("0b1000")?,
+            b10: SomeMask::from("0b0010")?,
         };
         let cng4 = cng1.intersection(&cng2);
         println!("cng4 {cng4}");
@@ -211,16 +211,16 @@ mod tests {
         // Create a mask that uses one integer for bits.
 
         let cng1 = SomeChange {
-            b01: SomeMask::new_from_string("0b1010")?,
-            b10: SomeMask::new_from_string("0b1010")?,
+            b01: SomeMask::from("0b1010")?,
+            b10: SomeMask::from("0b1010")?,
         };
         let cng2 = SomeChange {
-            b01: SomeMask::new_from_string("0b1001")?,
-            b10: SomeMask::new_from_string("0b0110")?,
+            b01: SomeMask::from("0b1001")?,
+            b10: SomeMask::from("0b0110")?,
         };
         let cng3 = SomeChange {
-            b01: SomeMask::new_from_string("0b1011")?,
-            b10: SomeMask::new_from_string("0b1110")?,
+            b01: SomeMask::from("0b1011")?,
+            b10: SomeMask::from("0b1110")?,
         };
         let cng4 = cng1.union(&cng2);
         println!("cng4 {cng4}");
@@ -235,26 +235,26 @@ mod tests {
         // Create a domain that uses one integer for bits.
 
         let wanted_changes = SomeChange::new(
-            SomeMask::new_from_string("0b1100")?,
-            SomeMask::new_from_string("0b0011")?,
+            SomeMask::from("0b1100")?,
+            SomeMask::from("0b0011")?,
         );
         println!("wanted_changes    {wanted_changes}");
 
-        let sta1 = SomeState::new_from_string("0b0011")?;
+        let sta1 = SomeState::from("0b0011")?;
         let sta2 = wanted_changes.apply_changes(&sta1);
 
         println!("Sta1 {sta1} changed by {wanted_changes} is {sta2}");
-        assert!(sta2 == SomeState::new_from_string("0b1100")?);
+        assert!(sta2 == SomeState::from("0b1100")?);
 
         Ok(())
     }
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let cng1 = SomeChange::new_from_string("X1/X0/XX/Xx_00/01/11/10")?;
+        let cng1 = SomeChange::from("X1/X0/XX/Xx_00/01/11/10")?;
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::new_from_string("11/X0/XX/01_00/01/11/10")?;
+        let cng2 = SomeChange::from("11/X0/XX/01_00/01/11/10")?;
         println!("cng2 {cng2}");
 
         assert!(cng2.is_subset_of(&cng1));
@@ -265,16 +265,16 @@ mod tests {
 
     #[test]
     fn difference() -> Result<(), String> {
-        let cng1 = SomeChange::new_from_string("X1/X0/XX/Xx_00/01/11/10")?;
+        let cng1 = SomeChange::from("X1/X0/XX/Xx_00/01/11/10")?;
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::new_from_string("11/X0/XX/01_00/01/11/10")?;
+        let cng2 = SomeChange::from("11/X0/XX/01_00/01/11/10")?;
         println!("cng2 {cng2}");
 
         let cng3 = cng1.difference(&cng2);
         println!("cng3 {cng3}");
 
-        let cng4 = SomeChange::new_from_string("01/00/00/10_00/00/11/11")?;
+        let cng4 = SomeChange::from("01/00/00/10_00/00/11/11")?;
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
@@ -284,16 +284,16 @@ mod tests {
 
     #[test]
     fn new_state_to_region() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("0b01_0110")?;
+        let sta1 = SomeState::from("0b01_0110")?;
         println!("sta1 {sta1}");
 
-        let reg1 = SomeRegion::new_from_string("xx_1010")?;
+        let reg1 = SomeRegion::from("xx_1010")?;
         println!("reg1 {reg1}");
 
         let cng1 = SomeChange::new_state_to_region(&sta1, &reg1);
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::new_from_string("00/11_/01/10/11/00")?;
+        let cng2 = SomeChange::from("00/11_/01/10/11/00")?;
         println!("cng2 {cng2}");
 
         assert!(cng1 == cng2);

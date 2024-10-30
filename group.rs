@@ -361,13 +361,13 @@ mod tests {
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
-        let regx = SomeRegion::new_from_string("r1xx0")?;
+        let rules = RuleStore::from("[10/x1/x0/00]")?;
+        let regx = SomeRegion::from("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
-        let initial = SomeState::new_from_string("0b1100")?;
-        let result = SomeState::new_from_string("0b0100")?;
+        let initial = SomeState::from("0b1100")?;
+        let result = SomeState::from("0b0100")?;
 
         if !grpx.check_sample(&SomeSample::new(initial, result)) {
             return Err(format!("check_subset_sample: test 1 failed!"));
@@ -379,18 +379,18 @@ mod tests {
     #[test]
     fn check_subset_square() -> Result<(), String> {
         // Test if sqrx.pn > self.pn
-        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
-        let regx = SomeRegion::new_from_string("r1xx0")?;
+        let rules = RuleStore::from("[10/x1/x0/00]")?;
+        let regx = SomeRegion::from("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::One
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("0b1100")?,
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b1100")?,
+            SomeState::from("0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("0b0101")?,
+            SomeState::from("0b0101")?,
         )); // Pn::Two, pnc == false.
 
         if grpx.check_square(&sqrx) {
@@ -398,24 +398,24 @@ mod tests {
         }
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
-        let rules = RuleStore::new_from_string("[10/x1/x0/00, 10/x1/x0/01]")?;
+        let rules = RuleStore::from("[10/x1/x0/00, 10/x1/x0/01]")?;
 
-        let regx = SomeRegion::new_from_string("r1xx0")?;
+        let regx = SomeRegion::from("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::Two
 
         let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("0b1100")?,
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b1100")?,
+            SomeState::from("0b0100")?,
         ));
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
         sqrx.add_sample(&SomeSample::new(
             sqrx.state.clone(),
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b0100")?,
         )); // pn = Pn::One, pnc = true.
 
         if grpx.check_square(&sqrx) {
@@ -425,13 +425,13 @@ mod tests {
         // Test if self.pn == Pn::Unpredictable
         let rules = None;
 
-        let regx = SomeRegion::new_from_string("r1xx0")?;
+        let regx = SomeRegion::from("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, rules, false);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("0b1100")?,
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b1100")?,
+            SomeState::from("0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -439,15 +439,15 @@ mod tests {
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let rules = RuleStore::new_from_string("[10/x1/x0/00]")?;
+        let rules = RuleStore::from("[10/x1/x0/00]")?;
 
-        let regx = SomeRegion::new_from_string("r1xx0")?;
+        let regx = SomeRegion::from("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("0b1100")?,
-            SomeState::new_from_string("0b0100")?,
+            SomeState::from("0b1100")?,
+            SomeState::from("0b0100")?,
         ));
 
         if !grpx.check_square(&sqrx) {
@@ -455,8 +455,8 @@ mod tests {
         }
 
         let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::new_from_string("0b1100")?,
-            SomeState::new_from_string("0b0101")?,
+            SomeState::from("0b1100")?,
+            SomeState::from("0b0101")?,
         ));
 
         if grpx.check_square(&sqrx) {

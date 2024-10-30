@@ -79,6 +79,8 @@ impl SomeStep {
             AltRuleHint::AltNoChange {} => true,
             AltRuleHint::AltRule { rule } => rule.num_bits() == rule.num_bits(),
         });
+        debug_assert!(rule.is_valid_union());
+        debug_assert!(rule.is_valid_intersection());
 
         let initial = rule.initial_region();
 
@@ -224,7 +226,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::new_from_string("0b0000->0b0010")?);
+        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000->0b0010")?);
         let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {});
 
         let strrep = format!("{tmp_stp}");
@@ -241,7 +243,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_alt = SomeRule::new(&SomeSample::new_from_string("0b0010->0b0000")?); //(tmp_sta2.clone(), tmp_sta));
+        let tmp_alt = SomeRule::new(&SomeSample::from("0b0010->0b0000")?); //(tmp_sta2.clone(), tmp_sta));
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt });
 
         let strrep = format!("{tmp_stp}");
@@ -255,17 +257,17 @@ mod tests {
 
     #[test]
     fn nop() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new_from_string("r0X0X")?;
+        let tmp_reg = SomeRegion::from("r0X0X")?;
         let tmp_stp = SomeStep::new_no_op(&tmp_reg);
         println!("nop stop {tmp_stp}");
 
-        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::new_from_string("r0XX1")?);
+        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::from("r0XX1")?);
         println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::new_from_string("r0X01")?);
+        assert!(stpx.initial == SomeRegion::from("r0X01")?);
 
-        let stpx = tmp_stp.restrict_result_region(&SomeRegion::new_from_string("rX00X")?);
+        let stpx = tmp_stp.restrict_result_region(&SomeRegion::from("rX00X")?);
         println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::new_from_string("r000X")?);
+        assert!(stpx.initial == SomeRegion::from("r000X")?);
 
         //assert!(1 == 2);
         Ok(())

@@ -230,8 +230,8 @@ mod tests {
     #[test]
     fn new() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0X-0->r00]")?,
-            SomePlan::new_from_string("Plan[r0X1-1->r000]")?,
+            SomePlan::from("P[r0X-0->r00]")?,
+            SomePlan::from("P[r0X1-1->r000]")?,
         ]);
         println!("{plnsc1}");
 
@@ -244,8 +244,8 @@ mod tests {
     #[test]
     fn initial_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0X-0->r00]")?,
-            SomePlan::new_from_string("Plan[r0X1-1->r000]")?,
+            SomePlan::from("P[r0X-0->r00]")?,
+            SomePlan::from("P[r0X1-1->r000]")?,
         ]);
         println!("{plnsc1}");
 
@@ -255,15 +255,15 @@ mod tests {
         let initial_regs = plnscstr.initial_regions();
         println!("initial_regs {initial_regs}");
 
-        assert!(initial_regs == RegionsCorr::new_from_string("RC[r0X, r0X1]")?);
+        assert!(initial_regs == RegionsCorr::from("RC[r0X, r0X1]")?);
         Ok(())
     }
 
     #[test]
     fn result_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[r0X-0->r00]")?,
-            SomePlan::new_from_string("Plan[r0X1-1->r000]")?,
+            SomePlan::from("P[r0X-0->r00]")?,
+            SomePlan::from("P[r0X1-1->r000]")?,
         ]);
         println!("{plnsc1}");
 
@@ -273,28 +273,28 @@ mod tests {
         let result_regs = plnscstr.result_regions();
         println!("result_regs {result_regs}");
 
-        assert!(result_regs == RegionsCorr::new_from_string("RC[r00, r000]")?);
+        assert!(result_regs == RegionsCorr::from("RC[r00, r000]")?);
         Ok(())
     }
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
-            SomePlan::new_from_string("Plan[rXXX-1->r0x0]")?,
+            SomePlan::from("P[rXX-0->rx0]")?,
+            SomePlan::from("P[rXXX-1->r0x0]")?,
         ]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
         println!("plnscstr {plnscstr}");
 
-        let restrict_regs = RegionsCorr::new_from_string("RC[r00, r000]")?;
+        let restrict_regs = RegionsCorr::from("RC[r00, r000]")?;
 
         if let Some(restricted) = plnscstr.restrict_initial_regions(&restrict_regs) {
             println!("resricted {restricted}");
             let result_regs = restricted.result_regions();
-            assert!(result_regs == RegionsCorr::new_from_string("RC[r10, r010]")?);
-            assert!(restricted.initial_regions() == RegionsCorr::new_from_string("RC[r00, r000]")?)
+            assert!(result_regs == RegionsCorr::from("RC[r10, r010]")?);
+            assert!(restricted.initial_regions() == RegionsCorr::from("RC[r00, r000]")?)
         } else {
             return Err("restrict_initial_regs failed".to_string());
         }
@@ -304,22 +304,22 @@ mod tests {
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
         let plnsc1 = PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[rXX-0->rx0]")?,
-            SomePlan::new_from_string("Plan[rXXX-1->r0x0]")?,
+            SomePlan::from("P[rXX-0->rx0]")?,
+            SomePlan::from("P[rXXX-1->r0x0]")?,
         ]);
         println!("{plnsc1}");
 
         let plnscstr = PlansCorrStore::new(vec![plnsc1]);
         println!("plnscstr {plnscstr}");
 
-        let restrict_regs = RegionsCorr::new_from_string("RC[r0X, r00X]")?;
+        let restrict_regs = RegionsCorr::from("RC[r0X, r00X]")?;
 
         if let Some(restricted) = plnscstr.restrict_result_regions(&restrict_regs) {
             println!("resricted {restricted}");
             let initial_regs = restricted.initial_regions();
             println!("initial regs {initial_regs}");
-            assert!(initial_regs == RegionsCorr::new_from_string("RC[r1X, rX1X]")?);
-            assert!(restricted.result_regions() == RegionsCorr::new_from_string("RC[r00, r000]")?)
+            assert!(initial_regs == RegionsCorr::from("RC[r1X, rX1X]")?);
+            assert!(restricted.result_regions() == RegionsCorr::from("RC[r00, r000]")?)
         } else {
             return Err("restrict_result_regs failed".to_string());
         }
@@ -329,14 +329,14 @@ mod tests {
     #[test]
     fn link() -> Result<(), String> {
         // Set up first PlansCorrStore.
-        let plnsc1 = PlansCorr::new(vec![SomePlan::new_from_string(
-            "Plan[r000X-0->r001X-0->r011X]",
+        let plnsc1 = PlansCorr::new(vec![SomePlan::from(
+            "P[r000X-0->r001X-0->r011X]",
         )?]);
         let plnscstr1 = PlansCorrStore::new(vec![plnsc1]);
 
         // Set up second PlansCorrStore.
-        let plnsc2 = PlansCorr::new(vec![SomePlan::new_from_string(
-            "Plan[rX111-0->X101-0->rX100]",
+        let plnsc2 = PlansCorr::new(vec![SomePlan::from(
+            "P[rX111-0->X101-0->rX100]",
         )?]);
         let plnscstr2 = PlansCorrStore::new(vec![plnsc2]);
 
@@ -349,8 +349,8 @@ mod tests {
         // Calc link.
         if let Ok(plnscstr3) = plnscstr1.link(&plnscstr2) {
             println!("plnscstr3 {plnscstr3}");
-            assert!(plnscstr3.initial_regions() == RegionsCorr::new_from_string("RC[r0001]")?);
-            assert!(plnscstr3.result_regions() == RegionsCorr::new_from_string("RC[r0100]")?);
+            assert!(plnscstr3.initial_regions() == RegionsCorr::from("RC[r0001]")?);
+            assert!(plnscstr3.result_regions() == RegionsCorr::from("RC[r0100]")?);
         } else {
             return Err("link failed".to_string());
         }
@@ -360,17 +360,17 @@ mod tests {
     #[test]
     fn result_from_initial_regions() -> Result<(), String> {
         let plcstr = PlansCorrStore::new(vec![PlansCorr::new(vec![
-            SomePlan::new_from_string("Plan[rXX-0->r0X-0->r11]")?,
-            SomePlan::new_from_string("Plan[rXXX-1->r0x1-1->1x0]")?,
+            SomePlan::from("P[rXX-0->r0X-0->r11]")?,
+            SomePlan::from("P[rXXX-1->r0x1-1->1x0]")?,
         ])]);
         println!("plcstr {plcstr}");
 
         if let Some(rslts) =
-            plcstr.result_from_initial_regions(&RegionsCorr::new_from_string("RC[r00, r001]")?)
+            plcstr.result_from_initial_regions(&RegionsCorr::from("RC[r00, r001]")?)
         {
             println!("rslts {rslts}");
-            assert!(rslts[0] == SomeRegion::new_from_string("r11")?);
-            assert!(rslts[1] == SomeRegion::new_from_string("r110")?);
+            assert!(rslts[0] == SomeRegion::from("r11")?);
+            assert!(rslts[1] == SomeRegion::from("r110")?);
         } else {
             return Err("result_from_initial_regions failed".to_string());
         }

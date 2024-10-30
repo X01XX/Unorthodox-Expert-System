@@ -46,27 +46,27 @@ impl SomeSample {
 
     /// Return a sample from a string.
     /// Like "0101->1010".
-    pub fn new_from_string(str: &str) -> Result<Self, String> {
+    pub fn from(s_str: &str) -> Result<Self, String> {
         let mut initial_str = String::new();
         let mut result_str = String::new();
 
         let mut dash_flag = false;
         let mut arrow_flag = false;
 
-        for chr in str.graphemes(true) {
+        for chr in s_str.graphemes(true) {
             if chr == " " {
                 continue;
             }
             if chr == "-" {
                 if dash_flag || arrow_flag {
-                    return Err("Did not understand string".to_string());
+                    return Err(format!("SomeSample::from: Did not understand {s_str}"));
                 }
                 dash_flag = true;
                 continue;
             }
             if chr == ">" {
                 if !dash_flag || arrow_flag {
-                    return Err("Did not understand string".to_string());
+                    return Err(format!("SomeSample::from: Did not understand {s_str}"));
                 }
                 arrow_flag = true;
                 continue;
@@ -79,21 +79,21 @@ impl SomeSample {
         }
 
         if !dash_flag || !arrow_flag {
-            return Err("Did not understand string".to_string());
+            return Err(format!("SomeSample::from: Did not understand {s_str}"));
         }
 
-        if let Ok(initial_sta) = SomeState::new_from_string(&initial_str) {
-            if let Ok(result_sta) = SomeState::new_from_string(&result_str) {
+        if let Ok(initial_sta) = SomeState::from(&initial_str) {
+            if let Ok(result_sta) = SomeState::from(&result_str) {
                 if initial_sta.num_bits() == result_sta.num_bits() {
                     return Ok(Self::new(initial_sta, result_sta));
                 } else {
-                    return Err("Number bits of initial and result do not match".to_string());
+                    return Err(format!("SomeSample::from: Number bits of initial and result do not match in {s_str}"));
                 }
             } else {
-                return Err("Did not understand result state".to_string());
+                return Err(format!("SomeSample::from: Did not understand result state in {s_str}"));
             }
         }
-        Err("Did not understand initial state".to_string())
+        Err(format!("SomeSample::from: Did not understand initial state in {s_str}"))
     }
 }
 
@@ -102,94 +102,94 @@ mod tests {
     use super::*;
 
     #[test]
-    fn new_from_string() -> Result<(), String> {
-        match SomeSample::new_from_string("0101->1010") {
+    fn from() -> Result<(), String> {
+        match SomeSample::from("0101->1010") {
             Ok(asample) => {
-                assert!(asample.initial == SomeState::new_from_string("0101")?);
-                assert!(asample.result == SomeState::new_from_string("1010")?);
+                assert!(asample.initial == SomeState::from("0101")?);
+                assert!(asample.result == SomeState::from("1010")?);
             }
             Err(errstr) => {
                 return Err(errstr);
             }
         }
 
-        match SomeSample::new_from_string("01010->1010") {
+        match SomeSample::from("01010->1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Number bits of initial and result do not match".to_string());
+                assert!(errstr == "SomeSample::from: Number bits of initial and result do not match in 01010->1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101x->1010") {
+        match SomeSample::from("0101x->1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand initial state".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand initial state in 0101x->1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101->1x10") {
+        match SomeSample::from("0101->1x10") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand result state".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand result state in 0101->1x10".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101-1010") {
+        match SomeSample::from("0101-1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand string".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand 0101-1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101-->1010") {
+        match SomeSample::from("0101-->1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand string".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand 0101-->1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101>1010") {
+        match SomeSample::from("0101>1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand string".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand 0101>1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101>>1010") {
+        match SomeSample::from("0101>>1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand string".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand 0101>>1010".to_string());
             }
         }
 
-        match SomeSample::new_from_string("0101>-1010") {
+        match SomeSample::from("0101>-1010") {
             Ok(_asample) => {
                 return Err("SNH".to_string());
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "Did not understand string".to_string());
+                assert!(errstr == "SomeSample::from: Did not understand 0101>-1010".to_string());
             }
         }
 

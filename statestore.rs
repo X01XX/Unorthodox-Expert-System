@@ -87,8 +87,8 @@ impl StateStore {
 
     /// Return a statestore, given a string representation.
     /// Like [] or [s1010, s0101].
-    pub fn new_from_string(statestore_str: &str) -> Result<Self, String> {
-        //println!("statestore::new_from_string: {statestore_str}");
+    pub fn from(statestore_str: &str) -> Result<Self, String> {
+        //println!("statestore::from: {statestore_str}");
 
         let mut statestore_str2 = String::new();
         let mut last_chr = false;
@@ -146,7 +146,7 @@ impl StateStore {
         let mut regions = Vec::<SomeState>::new();
 
         for tokenx in token_list.into_iter() {
-            regions.push(SomeState::new_from_string(&tokenx).expect("Invalid region token"));
+            regions.push(SomeState::from(&tokenx).expect("Invalid region token"));
         }
         let ret_statestore = StateStore::new(regions);
         //println!("ret_statestore {ret_statestore}");
@@ -180,9 +180,9 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let sta1 = SomeState::new_from_string("0b0001")?;
+        let sta1 = SomeState::from("0b0001")?;
 
-        let sta2 = SomeState::new_from_string("0b0010")?;
+        let sta2 = SomeState::from("0b0010")?;
 
         // Create a one-state store.
         let store = StateStore::new(vec![sta1.clone()]);
@@ -198,16 +198,16 @@ mod tests {
     }
 
     #[test]
-    fn new_from_string() -> Result<(), String> {
-        let stast1 = StateStore::new_from_string("[]")?;
+    fn from() -> Result<(), String> {
+        let stast1 = StateStore::from("[]")?;
         println!("stast1 {stast1}");
         assert!(format!("{stast1}") == "[]");
 
-        let stast2 = StateStore::new_from_string("[s1010]")?;
+        let stast2 = StateStore::from("[s1010]")?;
         println!("stast2 {stast2}");
         assert!(format!("{stast2}") == "[s1010]");
 
-        let stast3 = StateStore::new_from_string("[s1010, s1111]")?;
+        let stast3 = StateStore::from("[s1010, s1111]")?;
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == "[s1010, s1111]");
 

@@ -112,7 +112,7 @@ impl SomeBits {
     /// A prefix, 0b or 0x, may be provided.
     /// Base 2 is assumed, unless a "0x" prefix is given, or a hexadecimal digit, 2..F, is used.
     ///
-    /// if let Ok(bts) = SomeBits::new_from_string("0b0101")) {
+    /// if let Ok(bts) = SomeBits::from("0b0101")) {
     ///    println!("bts {}", &bts);
     /// } else {
     ///    panic!("Invalid bits string");
@@ -124,8 +124,8 @@ impl SomeBits {
     /// a number that is too big for the standard methods of converting a string to an integer.
     ///
     /// A "_" character can be used as a visual separator, and is ignored.
-    pub fn new_from_string(str: &str) -> Result<Self, String> {
-        // println!("SomeBits::new_from_string: {str}");
+    pub fn from(str: &str) -> Result<Self, String> {
+        // println!("SomeBits::from: {str}");
         // Calc base.
         // Binary is assumed, but can be changed to hexadecimal by a prefix or the use of a hexadecimal
         // digit greater than 1.
@@ -145,7 +145,7 @@ impl SomeBits {
                 }
             }
         } else {
-            return Err("SomeBits::new_from_string: Empty string?".to_string());
+            return Err("SomeBits::from: Empty string?".to_string());
         }
 
         // Check base-unspecified string for a base 16 digit.
@@ -158,7 +158,7 @@ impl SomeBits {
 
                 let Ok(digit) = Bitint::from_str_radix(chr, 16) else {
                     return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid digit {chr}?"
+                        "SomeBits::from: String {str}, invalid digit {chr}?"
                     ));
                 };
                 if digit > 1 {
@@ -193,7 +193,7 @@ impl SomeBits {
 
         if num_bits == 0 {
             return Err(format!(
-                "SomeBits::new_from_string: String {str}, no valid digits?"
+                "SomeBits::from: String {str}, no valid digits?"
             ));
         }
 
@@ -225,7 +225,7 @@ impl SomeBits {
                     cur_bits += 1;
                 } else {
                     return Err(format!(
-                        "SomeBits::new_from_string: String {str}, invalid binary digit {chr}?"
+                        "SomeBits::from: String {str}, invalid binary digit {chr}?"
                     ));
                 }
             } else if let Ok(digit) = Bitint::from_str_radix(chr, 16) {
@@ -233,7 +233,7 @@ impl SomeBits {
                 cur_bits += 4;
             } else {
                 return Err(format!(
-                    "SomeBits::new_from_string: String {str}, invalid hexadecimal digit {chr}?"
+                    "SomeBits::from: String {str}, invalid hexadecimal digit {chr}?"
                 ));
             }
 
@@ -567,9 +567,9 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let bits1 = SomeBits::new_from_string("0x5")?;
+        let bits1 = SomeBits::from("0x5")?;
         println!("bits1 {bits1}");
-        let bits2 = SomeBits::new_from_string("0b0101")?;
+        let bits2 = SomeBits::from("0b0101")?;
         println!("bits2 {bits2}");
         assert!(bits1 == bits2);
 
@@ -687,16 +687,16 @@ mod tests {
     }
 
     #[test]
-    fn new_from_string() -> Result<(), String> {
+    fn from() -> Result<(), String> {
         // Test empty string.
-        match SomeBits::new_from_string("") {
+        match SomeBits::from("") {
             Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Returned region {regx}?"
+                    "SomeBits::from: Returned region {regx}?"
                 ));
             }
             Err(error) => {
-                if error == "SomeBits::new_from_string: Empty string?" {
+                if error == "SomeBits::from: Empty string?" {
                     println!("{error}");
                 } else {
                     return Err(error);
@@ -705,14 +705,14 @@ mod tests {
         }
 
         // Test invalid digit.
-        match SomeBits::new_from_string("01z") {
+        match SomeBits::from("01z") {
             Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Returned region {regx}?"
+                    "SomeBits::from: Returned region {regx}?"
                 ));
             }
             Err(error) => {
-                if error == "SomeBits::new_from_string: String 01z, invalid digit z?" {
+                if error == "SomeBits::from: String 01z, invalid digit z?" {
                     println!("{error}");
                 } else {
                     return Err(error);
@@ -721,14 +721,14 @@ mod tests {
         }
 
         // Test no valid digits.
-        match SomeBits::new_from_string("__") {
+        match SomeBits::from("__") {
             Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Returned region {regx}?"
+                    "SomeBits::from: Returned region {regx}?"
                 ));
             }
             Err(error) => {
-                if error == "SomeBits::new_from_string: String __, no valid digits?" {
+                if error == "SomeBits::from: String __, no valid digits?" {
                     println!("{error}");
                 } else {
                     return Err(error);
@@ -737,14 +737,14 @@ mod tests {
         }
 
         // Test invalid binary digit.
-        match SomeBits::new_from_string("0b012") {
+        match SomeBits::from("0b012") {
             Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Returned region {regx}?"
+                    "SomeBits::from: Returned region {regx}?"
                 ));
             }
             Err(error) => {
-                if error == "SomeBits::new_from_string: String 0b012, invalid binary digit 2?" {
+                if error == "SomeBits::from: String 0b012, invalid binary digit 2?" {
                     println!("{error}");
                 } else {
                     return Err(error);
@@ -753,14 +753,14 @@ mod tests {
         }
 
         // Test invalid hexadecimal digit.
-        match SomeBits::new_from_string("0x012g") {
+        match SomeBits::from("0x012g") {
             Ok(regx) => {
                 return Err(format!(
-                    "SomeBits::new_from_string: Returned region {regx}?"
+                    "SomeBits::from: Returned region {regx}?"
                 ));
             }
             Err(error) => {
-                if error == "SomeBits::new_from_string: String 0x012g, invalid hexadecimal digit g?"
+                if error == "SomeBits::from: String 0x012g, invalid hexadecimal digit g?"
                 {
                     println!("{error}");
                 } else {
@@ -770,7 +770,7 @@ mod tests {
         }
 
         // Test no base, hexadecimal digits.
-        match SomeBits::new_from_string("1102") {
+        match SomeBits::from("1102") {
             Ok(regx) => {
                 assert!(regx.num_bits == 16);
                 assert!(regx == build_from_num(16, 0x1102));
@@ -781,7 +781,7 @@ mod tests {
         }
 
         // Test no base, binary digits.
-        match SomeBits::new_from_string("1101") {
+        match SomeBits::from("1101") {
             Ok(regx) => {
                 assert!(regx.num_bits == 4);
                 assert!(regx == build_from_num(4, 0b1101));
@@ -792,7 +792,7 @@ mod tests {
         }
 
         // Test hexadecimal base.
-        match SomeBits::new_from_string("0x1102") {
+        match SomeBits::from("0x1102") {
             Ok(regx) => {
                 assert!(regx.num_bits == 16);
                 assert!(regx == build_from_num(16, 0x1102));
@@ -803,7 +803,7 @@ mod tests {
         }
 
         // Test binary base.
-        match SomeBits::new_from_string("0b1101") {
+        match SomeBits::from("0b1101") {
             Ok(regx) => {
                 assert!(regx.num_bits == 4);
                 assert!(regx == build_from_num(4, 0b1101));
@@ -1095,7 +1095,7 @@ mod tests {
         assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0, 0x4])));
         assert!(avec.contains(&build_from_vec(Bitint::BITS as usize + 8, vec![0, 1])));
 
-        let bitsx = SomeBits::new_from_string("0x010")?;
+        let bitsx = SomeBits::from("0x010")?;
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.split();
@@ -1103,7 +1103,7 @@ mod tests {
 
         assert!(avec.len() == 1);
 
-        let bitsx = SomeBits::new_from_string("0x00")?;
+        let bitsx = SomeBits::from("0x00")?;
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.split();
