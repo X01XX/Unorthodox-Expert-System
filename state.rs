@@ -259,35 +259,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::new(SomeBits::new(8));
+        let tmp_sta = SomeState::from("0x00")?; //new(SomeBits::new(8));
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::from("0")?);
+        let tmp_sta = SomeState::from("0")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(6));
+        let tmp_sta = SomeState::from("00_0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(5));
+        let tmp_sta = SomeState::from("0_0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::new(SomeBits::new(4));
+        let tmp_sta = SomeState::from("0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();

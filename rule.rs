@@ -139,9 +139,7 @@ impl SomeRule {
                     b11.push('0');
                     b10.push('0');
                 } else {
-                    return Err(format!(
-                        "SomeRule::from: Unrecognized token {token}"
-                    ));
+                    return Err(format!("SomeRule::from: Unrecognized token {token}"));
                 }
                 token.clear();
             }
@@ -149,9 +147,7 @@ impl SomeRule {
         // Check for unfinished token.
         if token.is_empty() {
         } else {
-            return Err(format!(
-                "SomeRule::from: Did not understand token {token}"
-            ));
+            return Err(format!("SomeRule::from: Did not understand token {token}"));
         }
 
         // Get mask instances from bit strings.

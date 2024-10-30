@@ -712,35 +712,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(8))]);
+        let tmp_reg = SomeRegion::from("0x00")?;
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(16))]);
+        let tmp_reg = SomeRegion::from("0x0000")?;
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(6))]);
+        let tmp_reg = SomeRegion::from("00_0000")?;
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(5))]);
+        let tmp_reg = SomeRegion::from("0_0000")?;
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
         println!("str {tmp_reg} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_reg = SomeRegion::new(vec![SomeState::new(SomeBits::new(4))]);
+        let tmp_reg = SomeRegion::from("0x0")?;
         let strrep = format!("{tmp_reg}");
         let len = strrep.len();
         let calc_len = tmp_reg.strlen();
@@ -806,10 +806,7 @@ mod tests {
         let reg0 = SomeRegion::from("r00101XX0")?;
         let edges = reg0.edge_mask();
         println!("Edges of {reg0} are {edges}");
-        assert!(
-            edges.bitwise_and(&SomeBits::from("0xff")?)
-                == SomeMask::from("0b1111_1001")?
-        );
+        assert!(edges.bitwise_and(&SomeBits::from("0xff")?) == SomeMask::from("0b1111_1001")?);
         Ok(())
     }
 
@@ -880,14 +877,8 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let reg1 = SomeRegion::new(vec![
-            SomeState::from("0b1010")?,
-            SomeState::from("0b0101")?,
-        ]);
-        let reg2 = SomeRegion::new(vec![
-            SomeState::from("0b0001")?,
-            SomeState::from("0b1110")?,
-        ]);
+        let reg1 = SomeRegion::new(vec![SomeState::from("0b1010")?, SomeState::from("0b0101")?]);
+        let reg2 = SomeRegion::new(vec![SomeState::from("0b0001")?, SomeState::from("0b1110")?]);
         println!("{reg1} should equal {reg2}");
         assert!(reg1.eq(&reg2));
 
@@ -958,10 +949,7 @@ mod tests {
         let reg0 = SomeRegion::from("r00XX0101")?;
         let m1 = reg0.edge_zeros_mask();
         println!("edge_zeros_mask is {m1}");
-        assert!(
-            m1.bitwise_and(&SomeBits::from("0xff")?)
-                == SomeMask::from("0b11001010")?
-        );
+        assert!(m1.bitwise_and(&SomeBits::from("0xff")?) == SomeMask::from("0b11001010")?);
         Ok(())
     }
 

@@ -1873,9 +1873,8 @@ mod tests {
 
         println!("Acts: {}\n", dm0.actions);
 
-        let pln1 = SomePlan::from(
-            "P[r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]",
-        )?;
+        let pln1 =
+            SomePlan::from("P[r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]")?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::from("rXXXX")?) {

@@ -80,14 +80,18 @@ impl StatesCorr {
                 if chr == "S" {
                     continue;
                 } else {
-                    return Err(format!("StatesCorr::from: Invalid string, {sc_str} should start with SC["));
+                    return Err(format!(
+                        "StatesCorr::from: Invalid string, {sc_str} should start with SC["
+                    ));
                 }
             }
             if inx == 1 {
                 if chr == "C" {
                     continue;
                 } else {
-                    return Err(format!("StatesCorr::from: Invalid string, {sc_str} should start with SC["));
+                    return Err(format!(
+                        "StatesCorr::from: Invalid string, {sc_str} should start with SC["
+                    ));
                 }
             }
             if chr == "]" {
@@ -97,18 +101,22 @@ impl StatesCorr {
             }
 
             if last_chr {
-                return Err(format!("StatesCorr::from: Invalid string, {sc_str} should end with ]"));
+                return Err(format!(
+                    "StatesCorr::from: Invalid string, {sc_str} should end with ]"
+                ));
             }
             sc_str2.push_str(chr);
         }
         if !last_chr {
-            return Err(format!("StatesCorr::from: Invalid string, {sc_str} should end with ]"));
+            return Err(format!(
+                "StatesCorr::from: Invalid string, {sc_str} should end with ]"
+            ));
         }
 
         //println!("sc_str2 {sc_str2}");
         match StateStore::from(&sc_str2) {
             Ok(states) => Ok(Self { states }),
-            Err(errstr) => Err(format!("StatesCorr::from: {errstr}"))
+            Err(errstr) => Err(format!("StatesCorr::from: {errstr}")),
         }
     }
 } // end impl StatesCorr

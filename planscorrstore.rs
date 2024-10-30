@@ -329,15 +329,11 @@ mod tests {
     #[test]
     fn link() -> Result<(), String> {
         // Set up first PlansCorrStore.
-        let plnsc1 = PlansCorr::new(vec![SomePlan::from(
-            "P[r000X-0->r001X-0->r011X]",
-        )?]);
+        let plnsc1 = PlansCorr::new(vec![SomePlan::from("P[r000X-0->r001X-0->r011X]")?]);
         let plnscstr1 = PlansCorrStore::new(vec![plnsc1]);
 
         // Set up second PlansCorrStore.
-        let plnsc2 = PlansCorr::new(vec![SomePlan::from(
-            "P[rX111-0->X101-0->rX100]",
-        )?]);
+        let plnsc2 = PlansCorr::new(vec![SomePlan::from("P[rX111-0->X101-0->rX100]")?]);
         let plnscstr2 = PlansCorrStore::new(vec![plnsc2]);
 
         println!(

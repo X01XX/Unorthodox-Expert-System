@@ -314,14 +314,18 @@ impl RegionsCorr {
                 if chr == "R" {
                     continue;
                 } else {
-                    return Err(format!("RegionsCorr::from: Invalid string, {rc_str} should start with RC["));
+                    return Err(format!(
+                        "RegionsCorr::from: Invalid string, {rc_str} should start with RC["
+                    ));
                 }
             }
             if inx == 1 {
                 if chr == "C" {
                     continue;
                 } else {
-                    return Err(format!("RegionsCorr::from: Invalid string, {rc_str} should start with RC["));
+                    return Err(format!(
+                        "RegionsCorr::from: Invalid string, {rc_str} should start with RC["
+                    ));
                 }
             }
             if chr == "]" {
@@ -331,12 +335,16 @@ impl RegionsCorr {
             }
 
             if last_chr {
-                return Err(format!("RegionsCorr::from: Invalid string, {rc_str} should end with ]"));
+                return Err(format!(
+                    "RegionsCorr::from: Invalid string, {rc_str} should end with ]"
+                ));
             }
             rc_str2.push_str(chr);
         }
         if !last_chr {
-            return Err(format!("RegionsCorr::from: Invalid string, {rc_str} should end with ]"));
+            return Err(format!(
+                "RegionsCorr::from: Invalid string, {rc_str} should end with ]"
+            ));
         }
 
         let regions = RegionStore::from(&rc_str2)?;

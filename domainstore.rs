@@ -371,6 +371,28 @@ impl DomainStore {
             return;
         }
 
+        let mut can = Vec::<InxPlan>::new();
+
+        for (inx, ndx) in self.needs.iter().enumerate() {
+            if let Some(dom_id) = ndx.dom_id() {
+                if ndx.satisfied_by(&self.items[dom_id].cur_state) {
+                    //println!("need {ndx} At Target");
+                    can.push(InxPlan {
+                        inx,
+                        plans: NeedPlan::AtTarget {},
+                        rate: 0,
+                        desired_num_bits_changed: 0,
+                        process_num_bits_changed: 0,
+                    });
+                }
+            }
+        }
+
+        if !can.is_empty() {
+            self.can_do = can;
+            return;
+        }
+
         let mut cur_pri = self.needs[0].priority();
         let mut count = 0;
         print!("\nNumber needs: {}, priority(count): ", self.needs.len());
@@ -437,7 +459,7 @@ impl DomainStore {
 
             // See if any plans have been found.
             let mut cant = Vec::<usize>::new();
-            let mut can = Vec::<InxPlan>::new();
+            //let mut can = Vec::<InxPlan>::new();
 
             for (inx, ndplnx) in inx_ndpln {
                 if let Ok(ndplnx) = ndplnx {
@@ -628,7 +650,9 @@ impl DomainStore {
         let mut rts = vec![];
         for inxpln in self.can_do.iter() {
             match &inxpln.plans {
-                NeedPlan::AtTarget {} => rts.push(0),
+                NeedPlan::AtTarget {} => {
+                    rts.push(2000 - self.needs[inxpln.inx].priority() as isize)
+                } // change lower priority to higher rate.
                 NeedPlan::PlanFound { plan: plnx } => rts.push(plnx.value),
             };
         }
@@ -1601,7 +1625,12 @@ impl DomainStore {
             }
         } // next domain
 
-        //println!("domainstore: make_plans2: from {from} goal {goal} returning {plans_per_target}");
+        if plans_per_target.len() != from.len() {
+            // work-around for infrequent logic error.
+            return Err(vec![format!(
+                "domainstore: make_plans2: from {from} goal {goal} returning {plans_per_target}?"
+            )]);
+        }
         Ok(plans_per_target)
     }
 } // end impl DomainStore
@@ -1682,7 +1711,7 @@ mod tests {
         dmxs[0].get_needs(); // set aggregate changes
 
         let start_region = RegionsCorr::from("RC[0x1]")?;
-        let goal_region  = RegionsCorr::from("RC[0xf]")?;
+        let goal_region = RegionsCorr::from("RC[0xf]")?;
 
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(ndpln) => {
@@ -1749,7 +1778,7 @@ mod tests {
         println!("Select Regions: {}\n", dmxs.select);
 
         let start_region = RegionsCorr::from("RC[0x1]")?;
-        let goal_region  = RegionsCorr::from("RC[0xd]")?;
+        let goal_region = RegionsCorr::from("RC[0xd]")?;
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1815,7 +1844,7 @@ mod tests {
         println!("Select Regions: {}\n", dmxs.select);
 
         let start_region = RegionsCorr::from("RC[0x1]")?;
-        let goal_region  = RegionsCorr::from("RC[0xd]")?;
+        let goal_region = RegionsCorr::from("RC[0xd]")?;
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1872,7 +1901,7 @@ mod tests {
         println!("Select Regions: {}\n", dmxs.select);
 
         let start_region = RegionsCorr::from("RC[0x1]")?;
-        let goal_region  = RegionsCorr::from("RC[0xd]")?;
+        let goal_region = RegionsCorr::from("RC[0xd]")?;
 
         dmxs[0].get_needs(); // set aggregate changes
 
@@ -1960,7 +1989,7 @@ mod tests {
         dmxs[0].set_cur_state(s0.clone());
 
         let start_region = RegionsCorr::from("RC[0x0]")?;
-        let goal_region  = RegionsCorr::from("RC[0xd]")?;
+        let goal_region = RegionsCorr::from("RC[0xd]")?;
 
         // Try making plans.
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
@@ -2213,11 +2242,11 @@ mod tests {
             Ok(ndpln) => match ndpln {
                 NeedPlan::PlanFound { plan: plans } => {
                     println!("Plans {}", plans);
-                    Ok(())
+                    return Ok(());
                 }
-                _ => Err(format!("{:?}", ndpln)),
+                _ => return Err("No plan found".to_string()),
             },
-            Err(errvec) => Err(format!("{:?}", errvec))
+            Err(errvec) => return Err(format!("{:?}", errvec)),
         }
     }
 
@@ -2375,40 +2404,32 @@ mod tests {
         dmxs.calc_select();
 
         assert!(dmxs.select_positive.len() == 4);
-        assert!(dmxs.select_positive.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[rx100]")?,
-            4
-        )));
-        assert!(dmxs.select_positive.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r0x00]")?,
-            4
-        )));
-        assert!(dmxs.select_positive.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r010x]")?,
-            4
-        )));
-        assert!(dmxs.select_positive.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r1001]")?,
-            4
-        )));
+        assert!(dmxs
+            .select_positive
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[rx100]")?, 4)));
+        assert!(dmxs
+            .select_positive
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r0x00]")?, 4)));
+        assert!(dmxs
+            .select_positive
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r010x]")?, 4)));
+        assert!(dmxs
+            .select_positive
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r1001]")?, 4)));
 
         assert!(dmxs.select_non_negative.len() == 4);
-        assert!(dmxs.select_non_negative.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[rx1x0]")?,
-            0
-        )));
-        assert!(dmxs.select_non_negative.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r0xx0]")?,
-            0
-        )));
-        assert!(dmxs.select_non_negative.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r01xx]")?,
-            0
-        )));
-        assert!(dmxs.select_non_negative.contains(&SelectRegions::new(
-            RegionsCorr::from("RC[r10x1]")?,
-            0
-        )));
+        assert!(dmxs
+            .select_non_negative
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[rx1x0]")?, 0)));
+        assert!(dmxs
+            .select_non_negative
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r0xx0]")?, 0)));
+        assert!(dmxs
+            .select_non_negative
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r01xx]")?, 0)));
+        assert!(dmxs
+            .select_non_negative
+            .contains(&SelectRegions::new(RegionsCorr::from("RC[r10x1]")?, 0)));
 
         Ok(())
     }
@@ -2611,7 +2632,7 @@ mod tests {
 
         let within = RegionsCorrStore::new(vec![
             RegionsCorr::from("RC[r0XXX]")?,
-            RegionsCorr::from("RC[rX1XX]")?
+            RegionsCorr::from("RC[rX1XX]")?,
         ]);
 
         let path = dmxs.get_path_through_select_regions(&start_regs, &goal_regs, &within);
@@ -2622,9 +2643,7 @@ mod tests {
             }
             println!(" ");
             assert!(pathx[0] == RegionsCorr::from("RC[r1111]")?);
-            assert!(
-                pathx[pathx.len() - 1] == RegionsCorr::from("RC[r0000]")?
-            );
+            assert!(pathx[pathx.len() - 1] == RegionsCorr::from("RC[r0000]")?);
         } else {
             return Err("No path found?".to_string());
         }

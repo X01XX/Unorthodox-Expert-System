@@ -2661,22 +2661,10 @@ mod tests {
         println!("Groups {}", act0.groups);
         assert!(act0.groups.len() == 4);
 
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r0111")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r1xx1")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("rxx01")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("rx0x1")?)
-            .is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r0111")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r1xx1")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("rxx01")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("rx0x1")?).is_some());
         Ok(())
     }
 
@@ -2731,10 +2719,7 @@ mod tests {
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 1);
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r0xxx")?)
-            .is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r0xxx")?).is_some());
 
         Ok(())
     }
@@ -2761,18 +2746,9 @@ mod tests {
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 3);
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r0x00")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r00xx")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r0xx1")?)
-            .is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r0x00")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r00xx")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r0xx1")?).is_some());
 
         Ok(())
     }
@@ -2797,14 +2773,8 @@ mod tests {
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 2);
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("r0xxx")?)
-            .is_some());
-        assert!(act0
-            .groups
-            .find(&SomeRegion::from("rxxx1")?)
-            .is_some());
+        assert!(act0.groups.find(&SomeRegion::from("r0xxx")?).is_some());
+        assert!(act0.groups.find(&SomeRegion::from("rxxx1")?).is_some());
 
         Ok(())
     }

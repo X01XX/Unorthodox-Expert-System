@@ -356,7 +356,9 @@ impl RegionStore {
                 if chr == "[" {
                     continue;
                 } else {
-                    return Err(format!("RegionsStore::from: Invalid string, {rs_str} should start with ["));
+                    return Err(format!(
+                        "RegionsStore::from: Invalid string, {rs_str} should start with ["
+                    ));
                 }
             }
             if chr == "]" {
@@ -365,12 +367,16 @@ impl RegionStore {
             }
 
             if last_chr {
-                return Err(format!("RegionsStore::from: Invalid string, {rs_str} should end with ]"));
+                return Err(format!(
+                    "RegionsStore::from: Invalid string, {rs_str} should end with ]"
+                ));
             }
             rs_str2.push_str(chr);
         }
         if !last_chr {
-            return Err(format!("RegionsStore::from: Invalid string, {rs_str} should end with ]"));
+            return Err(format!(
+                "RegionsStore::from: Invalid string, {rs_str} should end with ]"
+            ));
         }
 
         if rs_str2.is_empty() {
@@ -406,7 +412,7 @@ impl RegionStore {
         for tokenx in token_list.into_iter() {
             match SomeRegion::from(&tokenx) {
                 Ok(regx) => regions.push(regx),
-                Err(errstr) => return Err(format!("RegionsStore::from: {errstr}"))
+                Err(errstr) => return Err(format!("RegionsStore::from: {errstr}")),
             }
         }
         let ret_regionstore = RegionStore::new(regions);
@@ -460,7 +466,6 @@ impl StrLen for RegionStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
 
     #[test]
     fn possible_regions_by_negative_inference() -> Result<(), String> {
@@ -656,10 +661,7 @@ mod tests {
     // Test calculation of two dissimilar pairs of states effect on possible regions.
     #[test]
     fn two_dissimilar_pairs() -> Result<(), String> {
-        let max_reg = SomeRegion::new(vec![
-            SomeState::from("0b1111")?,
-            SomeState::from("0b0000")?,
-        ]);
+        let max_reg = SomeRegion::new(vec![SomeState::from("0b1111")?, SomeState::from("0b0000")?]);
 
         let rslt = RegionStore::new(vec![max_reg.clone()]);
 
@@ -691,8 +693,8 @@ mod tests {
                 }
 
                 let regx = SomeRegion::new(vec![
-                    SomeState::new(SomeBits::from(&format!("0x{:x}", x))?),
-                    SomeState::new(SomeBits::from(&format!("0x{:x}", y))?),
+                    SomeState::from(&format!("0x{:x}", x))?,
+                    SomeState::from(&format!("0x{:x}", y))?,
                 ]);
 
                 if (regx.is_superset_of(&state_6) && regx.is_superset_of(&state_a))
@@ -716,10 +718,7 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let regs = vec![
-            SomeRegion::from("rx1X1")?,
-            SomeRegion::from("r1xx1")?,
-        ];
+        let regs = vec![SomeRegion::from("rx1X1")?, SomeRegion::from("r1xx1")?];
         let regstr1 = RegionStore::new(regs);
         println!("regstr1 {regstr1}");
 

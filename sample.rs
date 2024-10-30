@@ -90,10 +90,14 @@ impl SomeSample {
                     return Err(format!("SomeSample::from: Number bits of initial and result do not match in {s_str}"));
                 }
             } else {
-                return Err(format!("SomeSample::from: Did not understand result state in {s_str}"));
+                return Err(format!(
+                    "SomeSample::from: Did not understand result state in {s_str}"
+                ));
             }
         }
-        Err(format!("SomeSample::from: Did not understand initial state in {s_str}"))
+        Err(format!(
+            "SomeSample::from: Did not understand initial state in {s_str}"
+        ))
     }
 }
 
@@ -129,7 +133,11 @@ mod tests {
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "SomeSample::from: Did not understand initial state in 0101x->1010".to_string());
+                assert!(
+                    errstr
+                        == "SomeSample::from: Did not understand initial state in 0101x->1010"
+                            .to_string()
+                );
             }
         }
 
@@ -139,7 +147,11 @@ mod tests {
             }
             Err(errstr) => {
                 println!("{errstr}");
-                assert!(errstr == "SomeSample::from: Did not understand result state in 0101->1x10".to_string());
+                assert!(
+                    errstr
+                        == "SomeSample::from: Did not understand result state in 0101->1x10"
+                            .to_string()
+                );
             }
         }
 

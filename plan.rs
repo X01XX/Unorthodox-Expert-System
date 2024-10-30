@@ -453,7 +453,9 @@ impl SomePlan {
             }
 
             if last_chr {
-                return Err("SomePlan::from: Invalid string, {plan_str} should end with ]".to_string());
+                return Err(
+                    "SomePlan::from: Invalid string, {plan_str} should end with ]".to_string(),
+                );
             }
             plan_str2.push_str(chr);
         }
@@ -510,8 +512,10 @@ impl SomePlan {
         for (inx, tokenx) in token_list2.into_iter().enumerate() {
             if inx % 2 == 0 {
                 match SomeRegion::from(&tokenx) {
-                    Ok(regx)    =>regions.push(regx),
-                    Err(errstr) => { return Err(format!("SomePlan::from: {errstr}")); }
+                    Ok(regx) => regions.push(regx),
+                    Err(errstr) => {
+                        return Err(format!("SomePlan::from: {errstr}"));
+                    }
                 }
             } else if tokenx == "no" {
                 actions.push(None);
@@ -545,7 +549,7 @@ impl SomePlan {
 
         match ret_plan.is_valid() {
             Ok(()) => Ok(ret_plan),
-            Err(errstr) => Err(format!("SomePlan::from: {errstr}"))
+            Err(errstr) => Err(format!("SomePlan::from: {errstr}")),
         }
     }
 
@@ -555,7 +559,10 @@ impl SomePlan {
         for stepx in self.iter() {
             if let Some(stepy) = last_step {
                 if stepy.result != stepx.initial {
-                    return Err(format!("SomePlan::is_valid: step result {} != following step initial {}", stepy.result, stepx.initial));
+                    return Err(format!(
+                        "SomePlan::is_valid: step result {} != following step initial {}",
+                        stepy.result, stepx.initial
+                    ));
                 }
             }
             last_step = Some(stepx);

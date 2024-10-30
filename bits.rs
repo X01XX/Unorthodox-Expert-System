@@ -192,9 +192,7 @@ impl SomeBits {
         }
 
         if num_bits == 0 {
-            return Err(format!(
-                "SomeBits::from: String {str}, no valid digits?"
-            ));
+            return Err(format!("SomeBits::from: String {str}, no valid digits?"));
         }
 
         let mut ints = Vec::<Bitint>::with_capacity(Self::number_bits_to_ints(num_bits));
@@ -691,9 +689,7 @@ mod tests {
         // Test empty string.
         match SomeBits::from("") {
             Ok(regx) => {
-                return Err(format!(
-                    "SomeBits::from: Returned region {regx}?"
-                ));
+                return Err(format!("SomeBits::from: Returned region {regx}?"));
             }
             Err(error) => {
                 if error == "SomeBits::from: Empty string?" {
@@ -707,9 +703,7 @@ mod tests {
         // Test invalid digit.
         match SomeBits::from("01z") {
             Ok(regx) => {
-                return Err(format!(
-                    "SomeBits::from: Returned region {regx}?"
-                ));
+                return Err(format!("SomeBits::from: Returned region {regx}?"));
             }
             Err(error) => {
                 if error == "SomeBits::from: String 01z, invalid digit z?" {
@@ -723,9 +717,7 @@ mod tests {
         // Test no valid digits.
         match SomeBits::from("__") {
             Ok(regx) => {
-                return Err(format!(
-                    "SomeBits::from: Returned region {regx}?"
-                ));
+                return Err(format!("SomeBits::from: Returned region {regx}?"));
             }
             Err(error) => {
                 if error == "SomeBits::from: String __, no valid digits?" {
@@ -739,9 +731,7 @@ mod tests {
         // Test invalid binary digit.
         match SomeBits::from("0b012") {
             Ok(regx) => {
-                return Err(format!(
-                    "SomeBits::from: Returned region {regx}?"
-                ));
+                return Err(format!("SomeBits::from: Returned region {regx}?"));
             }
             Err(error) => {
                 if error == "SomeBits::from: String 0b012, invalid binary digit 2?" {
@@ -755,13 +745,10 @@ mod tests {
         // Test invalid hexadecimal digit.
         match SomeBits::from("0x012g") {
             Ok(regx) => {
-                return Err(format!(
-                    "SomeBits::from: Returned region {regx}?"
-                ));
+                return Err(format!("SomeBits::from: Returned region {regx}?"));
             }
             Err(error) => {
-                if error == "SomeBits::from: String 0x012g, invalid hexadecimal digit g?"
-                {
+                if error == "SomeBits::from: String 0x012g, invalid hexadecimal digit g?" {
                     println!("{error}");
                 } else {
                     return Err(error);

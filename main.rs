@@ -270,10 +270,8 @@ fn domainstore_init() -> DomainStore {
         RuleStore::from("[XX_XX/11/XX/10]").expect("SNH"),
         RuleStore::from("[XX_11/00/10/XX, XX_11/01/11/XX]").expect("SNH"),
         RuleStore::from("[XX_11/XX/10/00, XX_11/Xx/11/00]").expect("SNH"),
-        RuleStore::from("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]")
-            .expect("SNH"),
-        RuleStore::from("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]")
-            .expect("SNH"),
+        RuleStore::from("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]").expect("SNH"),
+        RuleStore::from("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls0);
 
@@ -306,54 +304,33 @@ fn domainstore_init() -> DomainStore {
 
     // Add actions 0 through 6 to domain 1.
     let ruls0: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls0);
 
     let ruls1: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls1);
 
     let ruls2: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls2);
 
     let ruls3: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls3);
 
     let ruls4: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls4);
 
     let ruls5: Vec<RuleStore> =
-        vec![
-            RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]")
-                .expect("SNH"),
-        ];
+        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[1].add_action(ruls5);
 
     let ruls6: Vec<RuleStore> = vec![
-        RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]")
-            .expect("SNH"),
-        RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]")
-            .expect("SNH"),
-        RuleStore::from("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]")
-            .expect("SNH"),
+        RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]").expect("SNH"),
+        RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]").expect("SNH"),
+        RuleStore::from("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]").expect("SNH"),
     ];
     dmxs[1].add_action(ruls6);
 

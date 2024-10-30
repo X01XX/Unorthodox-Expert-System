@@ -173,10 +173,18 @@ impl SomeGroup {
             return false;
         }
 
-        self.rules
-            .as_ref()
-            .expect("SNH")
-            .is_superset_of(sqrx.rules.as_ref().expect("SNH"))
+        if self.pn == sqrx.pn {
+            self.rules
+                .as_ref()
+                .expect("SNH")
+                .is_superset_of(sqrx.rules.as_ref().expect("SNH"))
+        } else {
+            self.rules
+                .as_ref()
+                .expect("SNH")
+                .subcompatible_index(sqrx.rules.as_ref().expect("SNH"))
+                .is_some()
+        }
     }
 
     /// Return false if a sample is incompatible with a group.

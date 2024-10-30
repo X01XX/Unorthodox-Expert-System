@@ -494,7 +494,9 @@ impl RuleStore {
                 if chr == "[" {
                     continue;
                 } else {
-                    return Err(format!("RuleStore::from: Invalid string, {rs_str} should start with ["));
+                    return Err(format!(
+                        "RuleStore::from: Invalid string, {rs_str} should start with ["
+                    ));
                 }
             }
             if chr == "]" {
@@ -503,12 +505,16 @@ impl RuleStore {
             }
 
             if last_chr {
-                return Err(format!("RuleStore::from: Invalid string, {rs_str} should end with ]"));
+                return Err(format!(
+                    "RuleStore::from: Invalid string, {rs_str} should end with ]"
+                ));
             }
             rs_str2.push_str(chr);
         }
         if !last_chr {
-            return Err(format!("RuleStore::from: Invalid string, {rs_str} should end with ]"));
+            return Err(format!(
+                "RuleStore::from: Invalid string, {rs_str} should end with ]"
+            ));
         }
 
         if rs_str2.is_empty() {
@@ -541,7 +547,7 @@ impl RuleStore {
         for tokenx in token_list.into_iter() {
             match SomeRule::from(&tokenx) {
                 Ok(rulx) => rules.push(rulx),
-                Err(errstr) => return Err(format!("RuleStore::from: {errstr}"))
+                Err(errstr) => return Err(format!("RuleStore::from: {errstr}")),
             }
         }
         let ret_rulestore = RuleStore::new(rules);
