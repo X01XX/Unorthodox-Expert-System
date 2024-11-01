@@ -17,7 +17,6 @@ use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::tools::StrLen;
 
-extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};

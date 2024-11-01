@@ -21,7 +21,6 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
 
-extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]

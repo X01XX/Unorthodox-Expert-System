@@ -10,6 +10,7 @@ use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
 use crate::tools::StrLen;
+use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -18,11 +19,8 @@ use std::ops::Index;
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.to_string();
-        str.push_str(&format!(
-            ", value: {:+} {} {:+}",
-            self.pos_value, self.neg_value, self.net_value
-        ));
-        write!(f, "{}", str)
+        str.push_str(&format!(", {:+}", self.net_value));
+        write!(f, "SR[{}]", str)
     }
 }
 
@@ -75,6 +73,9 @@ impl Index<usize> for SelectRegions {
 impl SelectRegions {
     /// Return a new SelectRegions instance.
     pub fn new(regions: RegionsCorr, value: isize) -> Self {
+        debug_assert!(!regions.is_empty());
+        debug_assert!(value != 0);
+
         if value < 0 {
             Self {
                 regions,
@@ -213,16 +214,129 @@ impl SelectRegions {
         //println!(" ");
         ret_vec
     }
+
+    /// Return a SelectRegions instance, given a string representation.
+    /// Like SR[RC[r1010], 1], or SR[RC[r101, r100], -1].
+    pub fn from(sr_str: &str) -> Result<Self, String> {
+        //println!("selectregions::from: {sr_str}");
+
+        // Unwrap inner tokens.
+        let mut inner_tokens = String::new();
+
+        let mut last_chr = String::new();
+
+        for (inx, chr) in sr_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "S" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "SelectRegions::from: Invalid string, {sr_str} should start with SR["
+                    ));
+                }
+            }
+            if inx == 1 {
+                if chr == "R" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "SelectRegions::from: Invalid string, {sr_str} should start with SR["
+                    ));
+                }
+            }
+            if inx == 2 {
+                if chr == "[" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "SelectRegions::from: Invalid string, {sr_str} should start with SR["
+                    ));
+                }
+            }
+
+            // Accumulate token value.
+            inner_tokens.push_str(chr);
+            last_chr = chr.to_string();
+        } // next inx, chr
+
+        if last_chr != "]" {
+            return Err(format!(
+                "SelectRegions::from: Invalid string, {sr_str} should end with ]"
+            ));
+        }
+
+        inner_tokens.remove(inner_tokens.len() - 1); // Remove trailing "]" character.
+
+        // Process inner tokens, into a RegionsCorr and value token.
+
+        // Find last comma.
+        let mut comma = 0;
+        for (inx, chr) in inner_tokens.chars().enumerate() {
+            if chr == ',' {
+                comma = inx;
+            }
+        }
+        if comma == 0 {
+            return Err(format!(
+                "SelectRegions::from: Invalid string, {sr_str} no comma found"
+            ));
+        }
+
+        let mut rc_token = String::new();
+        let mut tmp_token = String::new();
+
+        for (inx, chr) in inner_tokens.chars().enumerate() {
+            if chr == ' ' {
+                continue;
+            }
+            if inx == comma {
+                if !rc_token.is_empty() {
+                    return Err(format!(
+                        "SelectRegions::from: Invalid string, {sr_str} rc_token {rc_token}"
+                    ));
+                }
+                rc_token = tmp_token;
+                tmp_token = String::new();
+                continue;
+            }
+
+            tmp_token.push(chr);
+        }
+        let val_token = tmp_token;
+
+        // Check that there are two tokens.
+        if rc_token.is_empty() || val_token.is_empty() {
+            return Err(format!("SelectRegions::from: Invalid string, {sr_str}"));
+        }
+
+        println!("rc {rc_token} val {val_token}");
+
+        // Get the regionscorr token value.
+        let rcx = match RegionsCorr::from(&rc_token) {
+            Ok(rcx) => rcx,
+            Err(errstr) => return Err(format!("SelectRegions::from: {errstr}")),
+        };
+
+        // Get the value token value.
+        let val = match val_token.parse::<isize>() {
+            Ok(val) => val,
+            Err(errstr) => return Err(format!("SelectRegions::from: {errstr}")),
+        };
+
+        Ok(Self::new(rcx, val))
+    }
 }
 
 /// Implement the trait StrLen for SomeRegion.
 impl StrLen for SelectRegions {
     fn strlen(&self) -> usize {
-        // Regions
-        let mut ret = self.regions.strlen() + 11;
-        ret += 1 + format!("{:+}", self.pos_value).len();
-        ret += 1 + format!("{}", self.neg_value).len();
-        ret += 1 + format!("{:+}", self.net_value).len();
+        let mut ret = 4;
+        // Add Regions.
+        ret += self.regions.strlen();
+        // Add separator.
+        ret += 2;
+        // Add value len.
+        ret += if self.net_value.abs() < 10 { 2 } else { 3 };
         ret
     }
 }
@@ -234,27 +348,22 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let srs = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r0x1x]")?, 0);
-
-        let rslt = format!("{}", srs);
-        println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
-
-        assert!(rslt.len() == srs.strlen());
-
-        let srs = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r0x1x]")?, -19);
-
+        let srs = SelectRegions::from("SR[RC[r0xx1, r0x1x], 1]")?;
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
 
-        let srs = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r0x1x]")?, 0);
-
+        let srs = SelectRegions::from("SR[RC[r0xx1, r0x1x], -19]")?;
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
 
-        let srs = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r0x1x]")?, -5);
+        let srs = SelectRegions::from("SR[RC[r0xx1, r0x1x], 1]")?;
+        let rslt = format!("{}", srs);
+        println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
+        assert!(rslt.len() == srs.strlen());
 
+        let srs = SelectRegions::from("SR[RC[r0xx1, r0x1x], -5]")?;
         let rslt = format!("{}", srs);
         println!("str {rslt} len {} calced {}", rslt.len(), srs.strlen());
         assert!(rslt.len() == srs.strlen());
@@ -264,13 +373,13 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let srs1 = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r1x1x]")?, 3);
+        let srs1 = SelectRegions::from("SR[RC[r0xx1, r1x1x], 3]")?;
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(RegionsCorr::from("RC[r0x1x, r1xx1]")?, -5);
+        let srs2 = SelectRegions::from("SR[RC[r0x1x, r1xx1], -5]")?;
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(RegionsCorr::from("RC[r0x1x, r0x1x]")?, -5);
+        let srs3 = SelectRegions::from("SR[RC[r0x1x, r0x1x], -5]")?;
         println!("srs3 {srs3}");
 
         if let Some(srsint) = srs1.intersection(&srs2) {
@@ -292,13 +401,13 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
-        let srs1 = SelectRegions::new(RegionsCorr::from("RC[r0xx1, r1x1x]")?, 3);
+        let srs1 = SelectRegions::from("SR[RC[r0xx1, r1x1x], 3]")?;
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(RegionsCorr::from("RC[r0x1x, r1xx1]")?, -5);
+        let srs2 = SelectRegions::from("SR[RC[r0x1x, r1xx1], -5]")?;
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(RegionsCorr::from("RC[r0x1x, r0x1x]")?, -5);
+        let srs3 = SelectRegions::from("SR[RC[r0x1x, r0x1x], -5]")?;
         println!("srs3 {srs3}");
 
         let srssub = srs1.subtract(&srs2);
@@ -336,13 +445,13 @@ mod tests {
 
     #[test]
     fn subtract2() -> Result<(), String> {
-        let srs1 = SelectRegions::new(RegionsCorr::from("RC[rXXXX]")?, 3);
+        let srs1 = SelectRegions::from("SR[RC[rXXXX], 3]")?;
         println!("srs1 {srs1}");
 
-        let srs2 = SelectRegions::new(RegionsCorr::from("RC[r0xx1]")?, -5);
+        let srs2 = SelectRegions::from("SR[RC[r0xx1], -5]")?;
         println!("srs2 {srs2}");
 
-        let srs3 = SelectRegions::new(RegionsCorr::from("RC[rxx0x]")?, -5);
+        let srs3 = SelectRegions::from("SR[RC[rxx0x], -5]")?;
         println!("srs3 {srs3}");
 
         let srssub12 = SelectRegionsStore::new(srs1.subtract(&srs2));

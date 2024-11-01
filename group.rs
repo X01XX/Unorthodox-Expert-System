@@ -125,20 +125,17 @@ impl SomeGroup {
             }
         }
 
-        match &self.anchor {
-            Some(sta1) => {
-                if self.limited {
-                    rc_str.push_str(&format!(", limited using {sta1}"));
-                    if let Some(anchor_mask) = &self.anchor_mask {
-                        if anchor_mask.is_not_low() {
-                            rc_str.push_str(&format!(" adj mask {}", anchor_mask));
-                        }
+        if let Some(sta1) = &self.anchor {
+            if self.limited {
+                rc_str.push_str(&format!(", limited using {sta1}"));
+                if let Some(anchor_mask) = &self.anchor_mask {
+                    if anchor_mask.is_not_low() {
+                        rc_str.push_str(&format!(" adj mask {}", anchor_mask));
                     }
-                } else {
-                    rc_str.push_str(&format!(", limiting using {sta1}"));
                 }
+            } else {
+                rc_str.push_str(&format!(", limiting using {sta1}"));
             }
-            None => (),
         }
 
         rc_str.push(')');

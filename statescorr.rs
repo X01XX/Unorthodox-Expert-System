@@ -14,7 +14,7 @@ use std::slice::Iter;
 use tools::AvecRef;
 
 use std::fmt;
-extern crate unicode_segmentation;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for StatesCorr {

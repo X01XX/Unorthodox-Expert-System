@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-extern crate unicode_segmentation;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorr {
@@ -301,8 +301,8 @@ impl RegionsCorr {
         true
     }
 
-    /// Return a regionscorr, given a string representation.
-    /// Like RC[], RC[r1010-0->0101], or RC[r101-0->r000-1->r100].
+    /// Return a RegionsCorr instance, given a string representation.
+    /// Like RC[], RC[r1010], or RC[r101, r1000].
     pub fn from(rc_str: &str) -> Result<Self, String> {
         //println!("regionscorr::from: {rc_str}");
 
@@ -369,7 +369,7 @@ impl IndexMut<usize> for RegionsCorr {
 /// Implement the trait StrLen for RegionsCorr.
 impl StrLen for RegionsCorr {
     fn strlen(&self) -> usize {
-        let mut rc_len = 1;
+        let mut rc_len = 4;
 
         if self.is_not_empty() {
             rc_len += self.regions.len() * self.regions[0].strlen();
@@ -389,6 +389,18 @@ impl AvecRef for RegionsCorr {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strlen() -> Result<(), String> {
+        let regs1_str = "RC[r0x00, r1x1x]";
+        let regs1 = RegionsCorr::from(&regs1_str)?;
+        let len = regs1.strlen();
+        println!("len of {regs1_str} = {len}");
+
+        assert!(len == regs1_str.len());
+
+        Ok(())
+    }
 
     #[test]
     fn is_superset_states() -> Result<(), String> {

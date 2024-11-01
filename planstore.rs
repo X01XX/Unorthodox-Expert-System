@@ -74,9 +74,7 @@ impl PlanStore {
 
     /// Add a plan to the PlanStore.
     pub fn push(&mut self, planx: SomePlan) {
-        if !self.contains(&planx) {
-            self.items.push(planx);
-        }
+        self.items.push(planx);
     }
 
     /// Return a vector iterator.

@@ -9,7 +9,6 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::tools::StrLen;
 
-extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};

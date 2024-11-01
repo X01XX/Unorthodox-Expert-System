@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
-extern crate unicode_segmentation;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]

@@ -28,7 +28,6 @@ use std::ops::Index;
 use std::slice::Iter;
 
 use std::fmt;
-extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SomePlan {

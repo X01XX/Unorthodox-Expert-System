@@ -17,7 +17,6 @@ use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
-extern crate unicode_segmentation;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]

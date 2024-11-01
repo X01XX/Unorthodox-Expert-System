@@ -9,12 +9,11 @@
 /// The unsigned integer type used in a vector of bits, for all domains.
 type Bitint = u8;
 
+use crate::tools::StrLen;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
-extern crate unicode_segmentation;
-use crate::tools::StrLen;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Display trait for SomeBits

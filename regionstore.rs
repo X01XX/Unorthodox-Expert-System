@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-extern crate unicode_segmentation;
+
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionStore {
