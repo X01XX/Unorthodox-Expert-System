@@ -68,12 +68,11 @@ mod actioninterface;
 mod planstore;
 mod selectregions;
 use crate::selectregions::SelectRegions;
-mod selectregionsstore;
-mod target;
-use crate::regionscorr::RegionsCorr;
 mod planscorr;
 mod planscorrstore;
 mod regionscorrstore;
+mod selectregionsstore;
+mod target;
 use crate::target::ATarget;
 
 extern crate unicode_segmentation;
@@ -334,38 +333,18 @@ fn domainstore_init() -> DomainStore {
     ];
     dmxs[1].add_action(ruls6);
 
-    // Load optimal regions
-    let mut regstr1 = RegionsCorr::with_capacity(2);
-    regstr1.push(SomeRegion::from("rx0x0x").expect("SNH"));
-    regstr1.push(SomeRegion::from("rXXXX_XX1X_1XXX_XXXX").expect("SNH"));
+    // Add select regions.
+    dmxs.add_select(SelectRegions::from("SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3]").expect("SNH"));
 
-    let mut regstr2 = RegionsCorr::with_capacity(2);
-    regstr2.push(SomeRegion::from("rx0xx1").expect("SNH"));
-    regstr2.push(SomeRegion::from("rXXXX_XXX1_1XXX_XXXX").expect("SNH"));
+    dmxs.add_select(SelectRegions::from("SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2]").expect("SNH"));
 
-    let mut regstr3 = RegionsCorr::with_capacity(2);
-    regstr3.push(SomeRegion::from("rxx1x1").expect("SNH"));
-    regstr3.push(SomeRegion::from("rXXXX_XX00_0XXX_XXXX").expect("SNH"));
+    dmxs.add_select(SelectRegions::from("SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3]").expect("SNH"));
 
-    let mut regstr4 = RegionsCorr::with_capacity(2);
-    regstr4.push(SomeRegion::from("rx1110").expect("SNH"));
-    regstr4.push(SomeRegion::from("rXXXX_XXX0_0XXX_XXXX").expect("SNH"));
+    dmxs.add_select(SelectRegions::from("SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1]").expect("SNH"));
 
-    let mut regstr5 = RegionsCorr::with_capacity(2);
-    regstr5.push(SomeRegion::from("rxXX00").expect("SNH"));
-    regstr5.push(SomeRegion::from("rXXXX_XXx1_0xXX_XXXX").expect("SNH"));
+    dmxs.add_select(SelectRegions::from("SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1]").expect("SNH"));
 
-    let mut regstr6 = RegionsCorr::with_capacity(2);
-    regstr6.push(SomeRegion::from("rxX10X").expect("SNH"));
-    regstr6.push(SomeRegion::from("rXXXX_XX1x_x0XX_XXXX").expect("SNH"));
-
-    // Add select regionstores.
-    dmxs.add_select(SelectRegions::new(regstr1, 3));
-    dmxs.add_select(SelectRegions::new(regstr2, 2));
-    dmxs.add_select(SelectRegions::new(regstr3, 3));
-    dmxs.add_select(SelectRegions::new(regstr4, 1));
-    dmxs.add_select(SelectRegions::new(regstr5, -1));
-    dmxs.add_select(SelectRegions::new(regstr6, -1));
+    dmxs.add_select(SelectRegions::from("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -1]").expect("SNH"));
 
     dmxs.calc_select();
 
@@ -663,8 +642,11 @@ fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
 
     // Take action after the desired state is reached.
     match &dmxs.needs[nd_inx] {
-        SomeNeed::ToSelectRegion { target_regions, .. } => {
-            if target_regions.is_superset_states(&dmxs.all_current_states()) {
+        SomeNeed::ToSelectRegion { target_select, .. } => {
+            if target_select
+                .regions
+                .is_superset_states(&dmxs.all_current_states())
+            {
                 if dmxs.set_boredom_limit() {
                     dmxs.update_times_visited();
                 }

@@ -9,11 +9,14 @@
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::rulestore::RuleStore;
+use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
 use crate::target::ATarget;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+
+pub const TO_SELECT_REGION_PRIORITY: usize = 900;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -94,17 +97,16 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
     },
-    /// Move all current domain states from the corresponding regions of a SelectRegion.
+    /// Move all current domain states out of a SelectRegion, to non-negative regions.
     ExitSelectRegion {
         target_regions: RegionsCorr,
         priority: usize,
     },
-    /// Move all current domain states to the corresponding regions of an SelectRegion.
+    /// Move all current domain states to a SelectRegion.
     ToSelectRegion {
-        target_regions: RegionsCorr,
+        target_select: SelectRegions,
         priority: usize,
         times_visited: usize,
-        value: usize,
     },
     /// Housekeeping, add a group.
     AddGroup {
@@ -145,7 +147,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::SampleInRegion { priority, .. } => *priority += 850,
-            Self::ToSelectRegion { priority, .. } => *priority += 900,
+            Self::ToSelectRegion { priority, .. } => *priority += TO_SELECT_REGION_PRIORITY,
             // Some needs should have a higher priority number compared to ToSelectRegion.
             Self::StateInRemainder { priority, .. } => *priority = 1000,
             _ => panic!(
@@ -296,8 +298,8 @@ impl SomeNeed {
                 region: target_region,
             },
 
-            Self::ToSelectRegion { target_regions, .. } => ATarget::DomainRegions {
-                regions: target_regions,
+            Self::ToSelectRegion { target_select, .. } => ATarget::DomainRegions {
+                regions: &target_select.regions,
             },
 
             Self::ExitSelectRegion { target_regions, .. } => ATarget::DomainRegions {
@@ -429,12 +431,11 @@ impl SomeNeed {
                 )
             }
             Self::ToSelectRegion {
-                target_regions,
+                target_select,
                 priority,
                 times_visited,
-                value,
             } => {
-                format!("N(Pri {priority} To Select Regions {target_regions}, value {value}, times visited: {times_visited})")
+                format!("N(Pri {priority} To Select Regions {target_select}, times visited: {times_visited})")
             }
             Self::ExitSelectRegion {
                 target_regions,

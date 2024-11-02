@@ -2,7 +2,7 @@
 //! and values/methods that manage the domains.
 
 use crate::domain::SomeDomain;
-use crate::need::SomeNeed;
+use crate::need::{SomeNeed, TO_SELECT_REGION_PRIORITY};
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
@@ -413,14 +413,7 @@ impl DomainStore {
 
         let select_priority = if in_select && self.boredom < self.boredom_limit {
             // Make fake need, to get priority.
-            let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: RegionsCorr::with_capacity(1),
-                priority: 0,
-                times_visited: 0,
-                value: 0,
-            };
-            needx.add_priority_base();
-            needx.priority()
+            TO_SELECT_REGION_PRIORITY
         } else {
             usize::MAX
         };
@@ -831,10 +824,9 @@ impl DomainStore {
             }
             let adjust = (self.max_pos_value - psupx.net_value) + self.times_visited[inx] as isize;
             let mut needx = SomeNeed::ToSelectRegion {
-                target_regions: (psupx.regions.clone()),
+                target_select: psupx.clone(),
                 priority: adjust as usize,
                 times_visited: self.times_visited[inx],
-                value: psupx.net_value as usize,
             };
             needx.add_priority_base();
             ret_str.push(needx);
