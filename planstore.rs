@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlanStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -178,6 +179,78 @@ impl PlanStore {
         self.items.swap(inx, last_inx);
         self.items.pop().unwrap()
     }
+
+    /// Return a planstore, given a string representation.
+    /// Like [], [P[r001-0>r101]] or [P[r001-0>r101], P[r101-0>r101]].
+    pub fn from(ps_str: &str) -> Result<Self, String> {
+        //println!("planstore::from: {ps_str}");
+
+        let mut ps_str2 = String::new();
+        let mut last_chr = String::new();
+
+        for (inx, chr) in ps_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "[" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "PlanStore::from: Invalid string, {ps_str} should start with ["
+                    ));
+                }
+            }
+
+            last_chr = chr.to_string();
+            ps_str2.push_str(chr);
+        }
+        if last_chr != "]" {
+            return Err(format!(
+                "PlanStore::from: Invalid string, {ps_str} should end with ]"
+            ));
+        }
+
+        if ps_str2.is_empty() {
+            return Ok(PlanStore::new(vec![]));
+        }
+
+        // Remove last ] character.
+        ps_str2.remove(ps_str2.len() - 1);
+
+        // Split string into <plan> tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+
+        for chr in ps_str2.graphemes(true) {
+            if chr == "," || chr == " " {
+                if token.is_empty() {
+                } else {
+                    token_list.push(token);
+                    token = String::new();
+                }
+            } else {
+                token.push_str(chr);
+            }
+        }
+        if token.is_empty() {
+        } else {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        // println!("token_list2 {:?}", token_list2);
+
+        // Tally up tokens.
+        let mut plans = Vec::<SomePlan>::new();
+
+        for tokenx in token_list.into_iter() {
+            match SomePlan::from(&tokenx) {
+                Ok(regx) => plans.push(regx),
+                Err(errstr) => return Err(format!("PlanStore::from: {errstr}")),
+            }
+        }
+        let ret_planstore = PlanStore::new(plans);
+
+        Ok(ret_planstore)
+    }
 } // end impl PlanStore
 
 impl Index<usize> for PlanStore {
@@ -216,9 +289,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_pln = SomePlan::from("P[]")?;
-
-        let mut plnstr = PlanStore::new(vec![tmp_pln]);
+        let mut plnstr = PlanStore::from("[]")?;
         let fstr = plnstr.formatted_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);
@@ -233,6 +304,23 @@ mod tests {
         if fstr.len() != sb {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn from() -> Result<(), String> {
+        let plnst1 = PlanStore::from("[]")?;
+        println!("plnst1 {plnst1}");
+        assert!(format!("{plnst1}") == "[]");
+
+        let plnst2 = PlanStore::from("[P[r0000-0->r1111]]")?;
+        println!("plnst2 {plnst2}");
+        assert!(format!("{plnst2}") == "[P[r0000-0->r1111]]");
+
+        let plnst3 = PlanStore::from("[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        println!("plnst3 {plnst3}");
+        assert!(format!("{plnst3}") == "[P[r0000-0->r1111], P[r0000-0->r1100]]");
+
         Ok(())
     }
 }

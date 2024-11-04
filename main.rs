@@ -259,8 +259,8 @@ fn domainstore_init() -> DomainStore {
     // Start a DomainStore
     let mut dmxs = DomainStore::new();
 
-    dmxs.add_domain(SomeState::new(SomeBits::new(5).new_random()));
-    dmxs.add_domain(SomeState::new(SomeBits::new(16).new_random()));
+    dmxs.add_domain(SomeState::new(SomeBits::new_random(5)));
+    dmxs.add_domain(SomeState::new(SomeBits::new_random(16)));
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![

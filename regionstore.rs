@@ -357,7 +357,7 @@ impl RegionStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsStore::from: Invalid string, {rs_str} should start with ["
+                        "RegionStore::from: Invalid string, {rs_str} should start with ["
                     ));
                 }
             }
@@ -368,14 +368,14 @@ impl RegionStore {
 
             if last_chr {
                 return Err(format!(
-                    "RegionsStore::from: Invalid string, {rs_str} should end with ]"
+                    "RegionStore::from: Invalid string, {rs_str} should end with ]"
                 ));
             }
             rs_str2.push_str(chr);
         }
         if !last_chr {
             return Err(format!(
-                "RegionsStore::from: Invalid string, {rs_str} should end with ]"
+                "RegionStore::from: Invalid string, {rs_str} should end with ]"
             ));
         }
 
@@ -412,7 +412,7 @@ impl RegionStore {
         for tokenx in token_list.into_iter() {
             match SomeRegion::from(&tokenx) {
                 Ok(regx) => regions.push(regx),
-                Err(errstr) => return Err(format!("RegionsStore::from: {errstr}")),
+                Err(errstr) => return Err(format!("RegionStore::from: {errstr}")),
             }
         }
         let ret_regionstore = RegionStore::new(regions);
@@ -661,7 +661,7 @@ mod tests {
     // Test calculation of two dissimilar pairs of states effect on possible regions.
     #[test]
     fn two_dissimilar_pairs() -> Result<(), String> {
-        let max_reg = SomeRegion::new(vec![SomeState::from("0b1111")?, SomeState::from("0b0000")?]);
+        let max_reg = SomeRegion::from("rXXXX")?;
 
         let rslt = RegionStore::new(vec![max_reg.clone()]);
 
@@ -723,7 +723,7 @@ mod tests {
         println!("regstr1 {regstr1}");
 
         // Test single SomeRegion superset.
-        let sub1 = RegionStore::new(vec![SomeRegion::from("r11x1")?]);
+        let sub1 = RegionStore::from("[r11x1]")?;
         println!("sub1 {sub1}");
 
         if regstr1.is_superset_of(&sub1) {
@@ -733,7 +733,7 @@ mod tests {
         }
 
         // Test intersections that add up to a superset.
-        let sub2 = RegionStore::new(vec![SomeRegion::from("r1x01")?]);
+        let sub2 = RegionStore::from("[r1x01]")?;
         println!("sub2 {sub2}");
 
         if regstr1.is_superset_of(&sub2) {
@@ -743,7 +743,7 @@ mod tests {
         }
 
         // Test intersections that do not add up to a superset.
-        let sub3 = RegionStore::new(vec![SomeRegion::from("r100x")?]);
+        let sub3 = RegionStore::from("[r100x]")?;
         println!("sub3 {sub3}");
 
         if regstr1.is_superset_of(&sub3) {
@@ -753,7 +753,7 @@ mod tests {
         }
 
         // Test no intersections.
-        let sub4 = RegionStore::new(vec![SomeRegion::from("r1x00")?]);
+        let sub4 = RegionStore::from("[r1x00]")?;
         println!("sub4 {sub4}");
 
         if regstr1.is_superset_of(&sub4) {

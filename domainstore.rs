@@ -1630,7 +1630,6 @@ impl IndexMut<usize> for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
 
@@ -1648,7 +1647,7 @@ mod tests {
     fn avoidance1x() -> Result<(), String> {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
@@ -1717,7 +1716,7 @@ mod tests {
     fn avoidance2() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
@@ -1777,7 +1776,7 @@ mod tests {
     fn avoidance3() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
@@ -1842,7 +1841,7 @@ mod tests {
     fn avoidance5() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
@@ -1900,8 +1899,8 @@ mod tests {
         // Domain 0 uses 1 integer for bits.
         // Domain 1 uses 2 integers for bits.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(16)));
+        dmxs.add_domain(SomeState::from("0x00")?);
+        dmxs.add_domain(SomeState::from("0x0000")?);
 
         // Set state for domain 0, using 1 integer for bits.
         let init_first_state = SomeState::from("0x12")?;
@@ -1926,7 +1925,7 @@ mod tests {
     fn avoidance6() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
 
         // Add actions.
         dmxs[0].add_action(vec![]);
@@ -1986,8 +1985,8 @@ mod tests {
     fn avoidance7() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2069,8 +2068,8 @@ mod tests {
     fn avoidance8() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
+        dmxs.add_domain(SomeState::from("0x0")?);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2156,8 +2155,8 @@ mod tests {
     fn avoidance9() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2203,10 +2202,10 @@ mod tests {
         // Calc non-negative RegionSores.
         dmxs.calc_select();
 
-        let s5 = SomeState::from("0b0101")?;
+        let s5 = SomeState::from("s0b0101")?;
         dmxs[0].set_cur_state(s5.clone());
 
-        let s7 = SomeState::from("0b0111")?;
+        let s7 = SomeState::from("s0b0111")?;
         dmxs[1].set_cur_state(s7.clone());
 
         let start_regions = RegionsCorr::from("RC[r0101, r0111]")?;
@@ -2233,8 +2232,8 @@ mod tests {
     fn check_select() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(8)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(16)));
+        dmxs.add_domain(SomeState::from("s0x00")?);
+        dmxs.add_domain(SomeState::from("s0x0000")?);
 
         // Add action to domain 0.
         dmxs[0].add_action(vec![]);
@@ -2259,11 +2258,11 @@ mod tests {
         dmxs.calc_select();
 
         // Set state for domain 0.
-        let first_state = SomeState::from("0x12")?;
+        let first_state = SomeState::from("s0x12")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
-        let state2 = SomeState::from("0xabcd")?;
+        let state2 = SomeState::from("s0xabcd")?;
         dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
@@ -2283,11 +2282,11 @@ mod tests {
         }
 
         // Set state for domain 0.
-        let first_state = SomeState::from("0x05")?;
+        let first_state = SomeState::from("s0x05")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Set state for domain 1.
-        let state2 = SomeState::from("0xa28d")?;
+        let state2 = SomeState::from("s0xa28d")?;
         dmxs[1].set_cur_state(state2.clone());
 
         dmxs.boredom = 0;
@@ -2317,7 +2316,7 @@ mod tests {
     fn exit_select_needs() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         let regstr1 = RegionsCorr::from("RC[rX1XX]")?;
 
@@ -2330,7 +2329,7 @@ mod tests {
         dmxs.add_select(SelectRegions::new(regstr2.clone(), -1));
 
         // Set state for domain 0, using 1 integer for bits.
-        let first_state = SomeState::from("0xd")?;
+        let first_state = SomeState::from("s0xd")?;
         dmxs[0].set_cur_state(first_state.clone());
 
         // Finish select regions setup.
@@ -2361,7 +2360,7 @@ mod tests {
     fn calc_select() -> Result<(), String> {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         // Add action to domain 0.
         dmxs[0].add_action(vec![]);
@@ -2418,7 +2417,7 @@ mod tests {
     fn avoidance10() -> Result<(), String> {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         dmxs[0].add_action(vec![]);
         dmxs[0].add_action(vec![]);
@@ -2479,9 +2478,9 @@ mod tests {
         let mut dmxs = DomainStore::new();
 
         // Add domains.
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(3)));
-        dmxs.add_domain(SomeState::new(SomeBits::new(2)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
+        dmxs.add_domain(SomeState::from("s0b000")?);
+        dmxs.add_domain(SomeState::from("s0b00")?);
 
         // Add an action for each domain.
         dmxs[0].add_action(vec![RuleStore::from("[XX/XX/XX/Xx]")?]);
@@ -2489,21 +2488,12 @@ mod tests {
         dmxs[2].add_action(vec![RuleStore::from("[XX/Xx]")?]);
 
         // Set domain starting states.
-        dmxs[0].set_cur_state(SomeState::from("0b0000")?);
-        dmxs[1].set_cur_state(SomeState::from("0b001")?);
-        dmxs[2].set_cur_state(SomeState::from("0b10")?);
-
-        // Set up plan for domain 0, action 0.
-        let plan0 = SomePlan::from("P[r0000-0->r0001]")?;
-
-        // Set up plan for domain 1, action 0, no-op.
-        let plan1 = SomePlan::from("P[r001-no->r001]")?;
-
-        // Set up plan for domain 2, action 0.
-        let plan2 = SomePlan::from("P[r10-0->11]")?;
+        dmxs[0].set_cur_state(SomeState::from("s0b0000")?);
+        dmxs[1].set_cur_state(SomeState::from("s0b001")?);
+        dmxs[2].set_cur_state(SomeState::from("s0b10")?);
 
         // Set up PlansCorr.
-        let plnsc1 = PlansCorr::new(vec![plan0, plan1, plan2]);
+        let plnsc1 = PlansCorr::from("PC[P[r0000-0->r0001], P[r001-no->r001], P[r10-0->11]]")?;
         println!("{plnsc1}");
 
         let before = dmxs.all_current_states();
@@ -2517,9 +2507,9 @@ mod tests {
         let after = dmxs.all_current_states();
         println!("After:  {after}");
 
-        assert!(after[0] == SomeState::from("0b0001")?);
-        assert!(after[1] == SomeState::from("0b001")?);
-        assert!(after[2] == SomeState::from("0b11")?);
+        assert!(after[0] == SomeState::from("s0b0001")?);
+        assert!(after[1] == SomeState::from("s0b001")?);
+        assert!(after[2] == SomeState::from("s0b11")?);
 
         //assert!(1 == 2);
         Ok(())
@@ -2532,7 +2522,7 @@ mod tests {
         let mut dmxs = DomainStore::new();
 
         // Add domain 0.
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
 
         // Add domain 0 actions.
         dmxs[0].add_action(vec![RuleStore::from("[XX/XX/XX/Xx]")?]);
@@ -2541,10 +2531,10 @@ mod tests {
         dmxs[0].add_action(vec![RuleStore::from("[Xx/XX/XX/XX]")?]);
 
         // Set domain 0 starting state.
-        dmxs[0].set_cur_state(SomeState::from("0b0000")?);
+        dmxs[0].set_cur_state(SomeState::from("s0b0000")?);
 
         // Add domain 1.
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("s0x0")?);
 
         // Add domain 1 actions.
         dmxs[1].add_action(vec![RuleStore::from("[XX/XX/XX/Xx]")?]);
@@ -2553,32 +2543,11 @@ mod tests {
         dmxs[1].add_action(vec![RuleStore::from("[Xx/XX/XX/XX]")?]);
 
         // Set domain 1 starting state.
-        dmxs[1].set_cur_state(SomeState::from("0b1111")?);
-
-        // Set up plan for domain 0, action 2.
-        let plan0 = SomePlan::from("P[r0000-2->r0100]")?;
-
-        // Set up plan for domain 1, action 0.
-        let plan1 = SomePlan::from("P[r1111-0->r1110]")?;
-
-        // Set up PlansCorr.
-        let plnsc1 = PlansCorr::new(vec![plan0, plan1]);
-        println!("plnsc1 {plnsc1}");
-
-        // So 0000->0100, 1111->1110.
-
-        // Set up plan for domain 0, action 0.
-        let plan0 = SomePlan::from("P[r0100-0->0101]")?;
-
-        // Set up plan for domain 1, action 1.
-        let plan1 = SomePlan::from("P[r1110-1->r1100]")?; //(vec![stp1]);
-
-        // Set up PlansCorr.
-        let plnsc2 = PlansCorr::new(vec![plan0, plan1]);
-        println!("plnsc2 {plnsc2}");
+        dmxs[1].set_cur_state(SomeState::from("s0b1111")?);
 
         // Set up PlansCorrStore.
-        let plnscrstr = PlansCorrStore::new(vec![plnsc1, plnsc2]);
+        let plnscrstr = PlansCorrStore::from("PCS[PC[P[r0000-2->r0100], P[r1111-0->r1110]], PC[P[r0100-0->0101], P[r1110-1->r1100]]]")?;
+        println!("plnscrstr {plnscrstr}");
 
         let before = dmxs.all_current_states();
         println!("Before: {before}");

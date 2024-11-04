@@ -452,14 +452,16 @@ impl SomePlan {
             }
 
             if last_chr {
-                return Err(
-                    "SomePlan::from: Invalid string, {plan_str} should end with ]".to_string(),
-                );
+                return Err(format!(
+                    "SomePlan::from: Invalid string, {plan_str} should end with ]"
+                ));
             }
             plan_str2.push_str(chr);
         }
         if !last_chr {
-            return Err("SomePlan::from: Invalid string, {plan_str} should end with ]".to_string());
+            return Err(format!(
+                "SomePlan::from: Invalid string, {plan_str} should end with ]"
+            ));
         }
 
         if plan_str2.is_empty() {

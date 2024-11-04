@@ -621,24 +621,6 @@ impl SomeDomain {
             .link(&from_step_plan)
     }
 
-    // Make a plan to change the current state to another region.
-    // Since there are some random choices, it may be useful to try
-    // running make_plan more than once.
-    //    pub fn _make_plans(&self, goal_reg: &SomeRegion) -> Option<PlanStore> {
-    //        //println!("dom: {} make_plan start cur {} goal {}", self.num, self.cur_state, goal_reg);
-    //        debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
-    //
-    //        // Return no-op plan if the goal is already met.
-    //        if goal_reg.is_superset_of(&self.cur_state) {
-    //            //println!("no plan needed from {} to {} ?", self.cur_state, goal_reg);
-    //            return Some(PlanStore::new(vec![SomePlan::new(self.id, vec![])]));
-    //        }
-    //
-    //        let cur_reg = SomeRegion::new(vec![self.cur_state.clone()]);
-    //
-    //        self.make_plans2(&cur_reg, goal_reg, None)
-    //    }
-
     /// Make a plan to change from a region to another region.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     pub fn make_plans(
@@ -691,16 +673,14 @@ impl SomeDomain {
         debug_assert!(within.num_bits() == self.num_bits());
         debug_assert!(within.is_superset_of(from_reg));
         debug_assert!(within.is_superset_of(goal_reg));
+        debug_assert!(!goal_reg.is_superset_of(from_reg));
 
-        if goal_reg.is_superset_of(from_reg) {
-            return Ok(PlanStore::new(vec![SomePlan::new(vec![])]));
-        }
         // Figure the required change.
         let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
         let change_to_goal = rule_to_goal.wanted_changes();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
-        let num_depth = 4 * change_to_goal.number_changes();
+        let num_depth = 3 * change_to_goal.number_changes();
 
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&rule_to_goal, within);
@@ -740,7 +720,7 @@ impl SomeDomain {
         }
 
         // Check for plans.
-        let mut plans2 = Vec::<SomePlan>::new();
+        let mut plans2 = PlanStore::new(vec![]);
         let mut problems = Vec::<String>::new();
         for rslt in plans {
             match rslt {
@@ -761,7 +741,7 @@ impl SomeDomain {
         if plans2.is_empty() {
             Err(problems)
         } else {
-            Ok(PlanStore::new(plans2))
+            Ok(plans2)
         }
         //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
     } // end make_plans2
@@ -899,14 +879,14 @@ impl SomeDomain {
             return None;
         }
         //println!("shortcuts: plan {planx}");
-        self.shortcuts2(planx, 0, within)
+        self.shortcuts2(planx, 5, within)
     }
 
     /// Try to get multiple plan shortcuts.
     /// Return a plan shortcut, or None.
     fn shortcuts2(&self, planx: &SomePlan, depth: usize, within: &SomeRegion) -> Option<PlanStore> {
         //println!("shortcuts2: plan {planx} depth {depth}");
-        if depth > 5 {
+        if depth == 0 {
             return None;
         }
         if let Some(plany) = self.shortcuts3(planx, within) {
@@ -915,7 +895,7 @@ impl SomeDomain {
                 inx = rand::thread_rng().gen_range(0..plany.len());
             }
             if plany[inx].len() < planx.len() {
-                return self.shortcuts2(&plany[inx], depth + 1, within);
+                return self.shortcuts2(&plany[inx], depth - 1, within);
             }
         }
         if depth == 0 {
@@ -1051,7 +1031,6 @@ impl SomeDomain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::domainstore::DomainStore;
     use crate::target::ATarget;
 
@@ -1079,7 +1058,7 @@ mod tests {
     #[test]
     fn alt_rule1() -> Result<(), String> {
         // Create a domain that uses four bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[00/11/01/11, 00/11/00/10]")?];
         dm0.add_action(ruls0);
@@ -1149,7 +1128,7 @@ mod tests {
     #[test]
     fn within1() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[00/XX/01/XX]").expect("SNH")];
         dm0.add_action(ruls0);
@@ -1194,7 +1173,7 @@ mod tests {
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let dm0 = &mut dmxs[0];
 
         dm0.cur_state = SomeState::from("0b0001")?;
@@ -1239,7 +1218,7 @@ mod tests {
     fn make_plans_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
         let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::new(SomeBits::new(4)));
+        dmxs.add_domain(SomeState::from("0x0")?);
         let dm0 = &mut dmxs[0];
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
@@ -1288,7 +1267,7 @@ mod tests {
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1345,7 +1324,7 @@ mod tests {
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1436,7 +1415,7 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1469,7 +1448,7 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1543,7 +1522,7 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1596,7 +1575,7 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
         dm0.add_action(vec![]);
 
@@ -1637,7 +1616,7 @@ mod tests {
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(16)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0000")?);
         dm0.cur_state = SomeState::from("0b0000000000000001")?;
         dm0.add_action(vec![]);
 
@@ -1673,7 +1652,7 @@ mod tests {
         let act0: usize = 0;
 
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
         dm0.add_action(vec![]); // Act 0
 
@@ -1756,7 +1735,7 @@ mod tests {
     #[test]
     fn shortcuts3() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
 
         // Set up action 0, changing bit 0.
@@ -1824,7 +1803,7 @@ mod tests {
     #[test]
     fn shortcuts5() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
 
         // Set up action 0, changing bit 0.
@@ -1897,7 +1876,7 @@ mod tests {
     #[test]
     fn shortcuts6() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
 
         // Set up action 0, changing bit 0.
@@ -1969,7 +1948,7 @@ mod tests {
     #[test]
     fn shortcuts7() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::new(SomeBits::new(4)));
+        let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
 
         // Set up action 0, changing bit 0.

@@ -258,7 +258,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::from("0x00")?; //new(SomeBits::new(8));
+        let tmp_sta = SomeState::from("0x00")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();

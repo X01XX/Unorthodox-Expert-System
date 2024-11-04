@@ -234,7 +234,7 @@ mod tests {
     fn apply_changes() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
 
-        let wanted_changes = SomeChange::new(SomeMask::from("0b1100")?, SomeMask::from("0b0011")?);
+        let wanted_changes = SomeChange::from("01/01/10/10")?;
         println!("wanted_changes    {wanted_changes}");
 
         let sta1 = SomeState::from("0b0011")?;

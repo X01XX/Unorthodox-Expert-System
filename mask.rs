@@ -228,35 +228,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_msk = SomeMask::new(SomeBits::from("0")?);
+        let tmp_msk = SomeMask::from("0")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::new(SomeBits::new(16));
+        let tmp_msk = SomeMask::from("0x0000")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::new(SomeBits::new(6));
+        let tmp_msk = SomeMask::from("0b00_0000")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::new(SomeBits::new(5));
+        let tmp_msk = SomeMask::from("0b0_0000")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::new(SomeBits::new(4));
+        let tmp_msk = SomeMask::from("0x0")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();

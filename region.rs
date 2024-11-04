@@ -876,8 +876,8 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let reg1 = SomeRegion::new(vec![SomeState::from("0b1010")?, SomeState::from("0b0101")?]);
-        let reg2 = SomeRegion::new(vec![SomeState::from("0b0001")?, SomeState::from("0b1110")?]);
+        let reg1 = SomeRegion::from("rXxXx")?;
+        let reg2 = SomeRegion::from("rxxxX")?;
         println!("{reg1} should equal {reg2}");
         assert!(reg1.eq(&reg2));
 

@@ -14,12 +14,13 @@ use crate::tools::StrLen;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
+use unicode_segmentation::UnicodeSegmentation;
 
 use std::fmt;
 
 impl fmt::Display for PlansCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PlansCorr {}", self.plans)
+        write!(f, "PC{}", self.plans)
     }
 }
 
@@ -200,6 +201,56 @@ impl PlansCorr {
         }
         num_alt
     }
+
+    /// Return a PlansCorr instance, given a string representation.
+    /// Like PC[], PC[P[r001-0>r101]] or PC[P[r001-0>r101], P[r101-0>r101]].
+    pub fn from(pc_str: &str) -> Result<Self, String> {
+        //println!("regionscorr::from: {pc_str}");
+
+        let mut pc_str2 = String::new();
+        let mut last_chr = String::new();
+
+        for (inx, chr) in pc_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "P" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                    ));
+                }
+            }
+            if inx == 1 {
+                if chr == "C" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                    ));
+                }
+            }
+            if inx == 2 {
+                if chr == "[" {
+                } else {
+                    return Err(format!(
+                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                    ));
+                }
+            }
+
+            last_chr = chr.to_string();
+            pc_str2.push_str(chr);
+        }
+        if last_chr != "]" {
+            return Err(format!(
+                "PlansCorr::from: Invalid string, {pc_str} should end with ]"
+            ));
+        }
+
+        let plans = PlanStore::from(&pc_str2)?;
+
+        Ok(Self { plans })
+    }
 }
 
 impl Index<usize> for PlansCorr {
@@ -212,14 +263,11 @@ impl Index<usize> for PlansCorr {
 /// Implement the trait StrLen for PlansCorr.
 impl StrLen for PlansCorr {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2;
-
-        if self.is_not_empty() {
-            rc_len += self.plans.len() * self.plans[0].strlen();
-            rc_len += (self.plans.len() - 1) * 2;
+        if self.plans.is_empty() {
+            4
+        } else {
+            2 + self.plans.strlen()
         }
-
-        rc_len
     }
 }
 
@@ -229,11 +277,31 @@ mod tests {
     use crate::region::SomeRegion;
 
     #[test]
+    fn strlen() -> Result<(), String> {
+        let plncr1 = PlansCorr::from("PC[]")?;
+        let lenx = plncr1.strlen();
+        let strx = format!("{plncr1}");
+        println!("plncr1 {plncr1} len {} calced len {lenx}", strx.len());
+        assert!(lenx == strx.len());
+
+        let plncr2 = PlansCorr::from("PC[P[r0000-0->r1111]]")?;
+        let lenx = plncr2.strlen();
+        let strx = format!("{plncr2}");
+        println!("plncr2 {plncr2} len {} calced len {lenx}", strx.len());
+        assert!(lenx == strx.len());
+
+        let plncr3 = PlansCorr::from("PC[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        let lenx = plncr3.strlen();
+        let strx = format!("{plncr3}");
+        println!("plncr3 {plncr3} len {} calced len {lenx}", strx.len());
+        assert!(lenx == strx.len());
+
+        Ok(())
+    }
+
+    #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::from("P[r0X-0->r00]")?,
-            SomePlan::from("P[r0X1-1->r000]")?,
-        ]);
+        let plnsc1 = PlansCorr::from("PC[P[r0X-0->r00], P[r0X1-1->r000]]")?;
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
@@ -245,10 +313,7 @@ mod tests {
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::from("P[r0X-0->r00-1->r11]")?,
-            SomePlan::from("P[r0X1-1->r000-4->r101]")?,
-        ]);
+        let plnsc1 = PlansCorr::from("PC[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]]")?;
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
@@ -260,10 +325,7 @@ mod tests {
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::from("P[rXX-0->rx0]")?,
-            SomePlan::from("P[r0X0x-1->r0x11-2->r1X11]")?,
-        ]);
+        let plnsc1 = PlansCorr::from("PC[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->r1X11]]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from("RC[r11, r0100]")?;
@@ -280,10 +342,7 @@ mod tests {
 
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::from("P[rXX-0->rx0]")?,
-            SomePlan::from("P[r0X0x-1->r0x11-2->1X11]")?,
-        ]);
+        let plnsc1 = PlansCorr::from("PC[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->1X11]]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from("RC[r00, r1111]")?;
@@ -300,10 +359,7 @@ mod tests {
 
     #[test]
     fn plans_range() -> Result<(), String> {
-        let plnsc1 = PlansCorr::new(vec![
-            SomePlan::from("P[r0100-0->r0001-0->r0111]")?,
-            SomePlan::from("P[r1000-1->r1001-1->r1011]")?,
-        ]);
+        let plnsc1 = PlansCorr::from("PC[P[r0100-0->r0001-0->r0111], P[r1000-1->r1001-1->r1011]]")?;
         println!("{plnsc1}");
 
         let rng = plnsc1.plans_range();
@@ -312,6 +368,23 @@ mod tests {
         assert!(rng.len() == 2);
         assert!(rng[0] == SomeRegion::from("r0XXX")?);
         assert!(rng[1] == SomeRegion::from("r10XX")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn from() -> Result<(), String> {
+        let plncr1 = PlansCorr::from("PC[]")?;
+        println!("plncr1 {plncr1}");
+        assert!(format!("{plncr1}") == "PC[]");
+
+        let plncr2 = PlansCorr::from("PC[P[r0000-0->r1111]]")?;
+        println!("plncr2 {plncr2}");
+        assert!(format!("{plncr2}") == "PC[P[r0000-0->r1111]]");
+
+        let plncr3 = PlansCorr::from("PC[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        println!("plncr3 {plncr3}");
+        assert!(format!("{plncr3}") == "PC[P[r0000-0->r1111], P[r0000-0->r1100]]");
 
         Ok(())
     }
