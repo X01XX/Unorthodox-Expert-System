@@ -85,6 +85,9 @@ impl PlansCorrStore {
 
     /// Return a PlansCorrStore restricted by initial regions by a given RegionsCorr.
     pub fn restrict_initial_regions(&self, restrict: &RegionsCorr) -> Option<PlansCorrStore> {
+        assert!(self.is_not_empty());
+        debug_assert_eq!(self[0].num_bits_vec(), restrict.num_bits_vec());
+
         let mut plnsc_vec = Vec::<PlansCorr>::with_capacity(self.len());
 
         let mut last_initial = restrict.clone();
@@ -106,6 +109,9 @@ impl PlansCorrStore {
 
     /// Return a PlansCorrStore restricted by result regions by a given RegionsCorr.
     pub fn restrict_result_regions(&self, restrict: &RegionsCorr) -> Option<PlansCorrStore> {
+        assert!(self.is_not_empty());
+        debug_assert_eq!(self[0].num_bits_vec(), restrict.num_bits_vec());
+
         let mut plnsc_vec = Vec::<PlansCorr>::with_capacity(self.len());
 
         let mut last_result = restrict.clone();
@@ -129,9 +135,12 @@ impl PlansCorrStore {
     /// Return a PlansCorrStorr linked to another.
     pub fn link(&self, other: &Self) -> Result<Self, String> {
         //println!("planscorrstore::link {self} to {other}");
-        if self.is_empty() {
+        if let Some(pcx) = self.last() {
+            debug_assert_eq!(pcx.num_bits_vec(), other[0].num_bits_vec());
+        } else {
             return Ok(other.clone());
         }
+
         let result_regs = self.result_regions();
         let initial_regs = other.initial_regions();
 
@@ -177,6 +186,9 @@ impl PlansCorrStore {
 
     /// Return the expected result, given ititial regions.
     pub fn result_from_initial_regions(&self, regions: &RegionsCorr) -> Option<RegionsCorr> {
+        assert!(self.is_not_empty());
+        debug_assert_eq!(self[0].num_bits_vec(), regions.num_bits_vec());
+
         let mut cur_regs = regions.clone();
         for planscx in self.items.iter() {
             if let Some(next_regs) = planscx.result_from_initial_regions(&cur_regs) {
@@ -214,17 +226,16 @@ impl PlansCorrStore {
     }
 
     /// Return the last item in a non-empty PCS.
-    pub fn last(&self) -> &PlansCorr {
-        assert!(self.is_not_empty());
-
-        self.items.last().unwrap()
+    pub fn last(&self) -> Option<&PlansCorr> {
+        self.items.last()
     }
 
     /// Push a PlansCorr into a PlansCorrStore.
     pub fn push(&mut self, pcx: PlansCorr) {
-        debug_assert!(self.is_empty() || pcx.len() == self[0].len());
-
-        assert!(self.is_empty() || self.last().result_regions() == pcx.initial_regions());
+        if let Some(pcl) = self.last() {
+            assert!(pcl.num_bits_vec() == pcx.num_bits_vec());
+            assert!(pcl.is_linked(&pcx));
+        }
 
         self.items.push(pcx);
     }

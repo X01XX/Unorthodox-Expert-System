@@ -95,7 +95,7 @@ impl SelectRegions {
 
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         if let Some(regions) = self.regions.intersection(&other.regions) {
             let pos_value = self.pos_value + other.pos_value;
@@ -115,7 +115,7 @@ impl SelectRegions {
 
     /// Calculate the distance between a SelectRegions and a vector of states.
     pub fn distance_states(&self, stas: &StatesCorr) -> usize {
-        debug_assert!(self.len() == stas.len());
+        debug_assert!(self.regions.num_bits_vec() == stas.num_bits_vec());
 
         self.regions.distance_states(stas)
     }
@@ -132,14 +132,14 @@ impl SelectRegions {
 
     /// Return true if a SelectRegions is a subset of another.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         self.regions.is_adjacent(&other.regions)
     }
 
     /// Return a bridge between two adjacent SelectRegions.
     pub fn bridge(&self, other: &Self) -> Self {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         debug_assert!(self.regions.is_adjacent(&other.regions));
 
@@ -148,28 +148,28 @@ impl SelectRegions {
 
     /// Return true if a SelectRegions is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         self.regions.is_subset_of(&other.regions)
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of_states(&self, stas: &StatesCorr) -> bool {
-        debug_assert!(self.len() == stas.len());
+        debug_assert!(self.regions.num_bits_vec() == stas.num_bits_vec());
 
         self.regions.is_superset_states(stas)
     }
 
     /// Return true if a SelectRegions is a superset of a vector of state refs.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         self.regions.is_superset_of(&other.regions)
     }
 
     /// Return true if there is an intersection of corresponding regions, of two SelectRegions.
     pub fn intersects(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         self.regions.intersects(&other.regions)
     }
@@ -187,7 +187,7 @@ impl SelectRegions {
     /// Fragments, if any, retain the same value.
     pub fn subtract(&self, other: &Self) -> Vec<Self> {
         // println!("subtract {other} from {self}");
-        debug_assert!(self.len() == other.len());
+        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
 
         let mut ret_vec = vec![];
 
@@ -323,6 +323,11 @@ impl SelectRegions {
         };
 
         Ok(Self::new(rcx, val))
+    }
+
+    /// Return a vector of num bits used by regions.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        self.regions.num_bits_vec()
     }
 }
 

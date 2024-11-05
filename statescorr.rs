@@ -33,7 +33,6 @@ pub struct StatesCorr {
 impl StatesCorr {
     /// Return a new, empty, StatesCorr instance.
     pub fn new(states: Vec<SomeState>) -> Self {
-        debug_assert!(!states.is_empty());
         Self {
             states: StateStore::new(states),
         }
@@ -118,6 +117,15 @@ impl StatesCorr {
             Ok(states) => Ok(Self { states }),
             Err(errstr) => Err(format!("StatesCorr::from: {errstr}")),
         }
+    }
+
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for regx in self.states.iter() {
+            ret_vec.push(regx.num_bits());
+        }
+        ret_vec
     }
 } // end impl StatesCorr
 

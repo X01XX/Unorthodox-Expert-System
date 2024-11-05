@@ -84,8 +84,19 @@ impl PlansCorr {
         ret_regs
     }
 
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for plnx in self.plans.iter() {
+            ret_vec.push(plnx.num_bits().expect("SNH"));
+        }
+        ret_vec
+    }
+
     /// Restrict the initial regions of a PlansCorr plans.
     pub fn restrict_initial_regions(&self, regx: &RegionsCorr) -> Option<Self> {
+        debug_assert_eq!(self.num_bits_vec(), regx.num_bits_vec());
+
         let mut ret_plans = Self::with_capacity(self.len());
 
         for (plnx, regx) in self.plans.iter().zip(regx.iter()) {
@@ -101,6 +112,8 @@ impl PlansCorr {
 
     /// Restrict the result regions of a PlansCorr plans.
     pub fn restrict_result_regions(&self, regx: &RegionsCorr) -> Option<Self> {
+        debug_assert_eq!(self.num_bits_vec(), regx.num_bits_vec());
+
         let mut ret_plans = Self::with_capacity(self.len());
 
         for (plnx, regx) in self.plans.iter().zip(regx.iter()) {
@@ -120,13 +133,16 @@ impl PlansCorr {
 
     /// Return true if a PlansCorr can be linked to another.
     pub fn _can_be_linked(&self, other: &Self) -> bool {
+        debug_assert_eq!(self.num_bits_vec(), other.num_bits_vec());
+
         self.result_regions().intersects(&other.initial_regions())
     }
 
     /// Return the expected result, given initial regions.
     pub fn result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
         //println!("planscorr::result_from_initial_states self {self} states {states}");
-        debug_assert!(self.len() == states.len());
+        debug_assert_eq!(self.num_bits_vec(), states.num_bits_vec());
+
         let mut ret_stas = StatesCorr::with_capacity(states.len());
         for (planx, stax) in self.iter().zip(states.iter()) {
             if planx.initial_region().is_superset_of(stax) {
@@ -140,6 +156,8 @@ impl PlansCorr {
 
     /// Return the expected result, given initial regions.
     pub fn result_from_initial_regions(&self, regions: &RegionsCorr) -> Option<RegionsCorr> {
+        debug_assert_eq!(self.num_bits_vec(), regions.num_bits_vec());
+
         let mut ret_regs = RegionsCorr::with_capacity(regions.len());
         for (planx, regx) in self.iter().zip(regions.iter()) {
             if regx.intersects(planx.initial_region()) {

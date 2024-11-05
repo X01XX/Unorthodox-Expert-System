@@ -78,12 +78,16 @@ impl RegionsCorrStore {
     /// Return true if a RegionsCorrStore contains a region.
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
-    pub fn contains(&self, reg: &RegionsCorr) -> bool {
-        self.items.contains(reg)
+    pub fn contains(&self, rcx: &RegionsCorr) -> bool {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
+        self.items.contains(rcx)
     }
 
     /// Return true if there is any superset of a given RegionsCorr.
     fn any_superset_of(&self, rcx: &RegionsCorr) -> bool {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
         for rcy in self.iter() {
             if rcy.is_superset_of(rcx) {
                 return true;
@@ -94,6 +98,8 @@ impl RegionsCorrStore {
 
     /// Return true if there is any intersection of a given RegionsCorr.
     pub fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
         for rcy in self.iter() {
             if rcy.intersects(rcx) {
                 return true;
@@ -104,6 +110,8 @@ impl RegionsCorrStore {
 
     /// Delete subsets of a given RegionsCorr.
     fn delete_subsets_of(&mut self, rcx: &RegionsCorr) {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
         let mut del = Vec::<usize>::new();
 
         for (inx, rcy) in self.iter().enumerate() {
@@ -118,16 +126,20 @@ impl RegionsCorrStore {
     }
 
     /// Add a region to the vector, deleting subsets.
-    pub fn push_nosubs(&mut self, val: RegionsCorr) {
-        if self.any_superset_of(&val) {
+    pub fn push_nosubs(&mut self, rcx: RegionsCorr) {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
+        if self.any_superset_of(&rcx) {
             return;
         }
-        self.delete_subsets_of(&val);
-        self.items.push(val);
+        self.delete_subsets_of(&rcx);
+        self.items.push(rcx);
     }
 
     /// Subtract a RegionsCorr.
     pub fn subtract_regionscorr(&self, rcx: &RegionsCorr) -> Self {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
         let mut ret_store = Self::new(vec![]);
 
         for rcy in self.iter() {
@@ -145,6 +157,8 @@ impl RegionsCorrStore {
 
     /// Subtract a RegionsCorrStore.
     fn subtract(&self, other: &Self) -> Self {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == other[0].num_bits_vec());
+
         let mut ret = self.clone();
         for rcx in other.iter() {
             if self.any_intersection_of(rcx) {
@@ -216,6 +230,8 @@ impl RegionsCorrStore {
     /// Return true if a RegionsCorr is a superset of a RegionsCorrStore.
     #[allow(dead_code)]
     pub fn is_superset_of(&self, other: &Self) -> bool {
+        debug_assert!(self[0].num_bits_vec() == other[0].num_bits_vec());
+
         other.subtract(self).is_empty()
     }
 } // end impl RegionsCorrStore.

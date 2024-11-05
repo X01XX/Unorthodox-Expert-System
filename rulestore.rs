@@ -49,11 +49,19 @@ impl Eq for RuleStore {}
 impl RuleStore {
     /// Return a new, empty, RuleStore.
     pub fn new(items: Vec<SomeRule>) -> Self {
+        if items.len() > 1 {
+            for inx in 1..items.len() {
+                assert!(items[inx].num_bits() == items[0].num_bits());
+                assert!(items[inx].initial_region() == items[0].initial_region());
+            }
+        }
         Self { items }
     }
 
     /// Return true if a RuleStore contains a rule.
     pub fn contains(&self, rul: &SomeRule) -> bool {
+        assert!(self.is_empty() || rul.num_bits() == self[0].num_bits());
+
         self.items.contains(rul)
     }
 
@@ -75,6 +83,9 @@ impl RuleStore {
 
     /// Add a rule to a RuleStore.
     pub fn push(&mut self, val: SomeRule) {
+        debug_assert!(self.is_empty() || self[0].num_bits() == val.num_bits());
+        debug_assert!(self.is_empty() || self[0].initial_region() == val.initial_region());
+
         self.items.push(val);
     }
 
@@ -91,7 +102,7 @@ impl RuleStore {
     /// should check that the number of samples for the pn=1 rulestore is 1.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         if !self.initial_region().is_subset_of(&other.initial_region()) {
             return false;
@@ -105,7 +116,7 @@ impl RuleStore {
             }
         }
 
-        if self.len() == 2 {
+        if self.len() == 2 && other.len() == 2 {
             if self[0].is_subset_of(&other[0]) && self[1].is_subset_of(&other[1]) {
                 return true;
             }
@@ -123,7 +134,7 @@ impl RuleStore {
     /// Return true if a RuleStore is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
         assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         other.is_subset_of(self)
     }
@@ -141,19 +152,6 @@ impl RuleStore {
         }
 
         panic!("unexpected rulestore length!");
-    }
-
-    /// Return true if twe RuleStores have corresponding rules with compatible bit number use.
-    pub fn is_congruent(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for (rulx, ruly) in self.iter().zip(other.iter()) {
-            if rulx.num_bits() != ruly.num_bits() {
-                return false;
-            }
-        }
-        true
     }
 
     /// Return the union of two RuleStores.
@@ -190,7 +188,7 @@ impl RuleStore {
     pub fn union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore union {} and {}", self, other);
         assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         if self.len() == 1 {
             let rulx = self.items[0].union(&other.items[0])?;
@@ -243,7 +241,7 @@ impl RuleStore {
     pub fn parsed_union(&self, other: &Self) -> Option<Self> {
         //println!("\nrulestore parsed_union {} and {}", self, other);
         assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         if self.len() == 1 {
             let rulx = self.items[0].parsed_union(&other.items[0])?;
@@ -315,7 +313,7 @@ impl RuleStore {
         //println!("starting subcompatible_index");
         assert!(self.len() == 2);
         assert!(other.len() == 1);
-        //debug_assert_eq!(self.num_bits(), other.num_bits());
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         let zero = self[0].union(&other[0]).is_some();
         let one = self[1].union(&other[0]).is_some();
@@ -336,7 +334,7 @@ impl RuleStore {
     /// or two two-rule RuleStores are compatible.
     pub fn compatible(&self, other: &RuleStore) -> bool {
         assert!(self.len() == other.len());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         assert!(!self
             .initial_region()
@@ -362,7 +360,7 @@ impl RuleStore {
     /// Return the intersection of two RuleStores.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self.is_congruent(other));
+        debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         if self.len() == 1 {
             let int1 = self[0].intersection(&other[0])?;
@@ -400,7 +398,7 @@ impl RuleStore {
     /// Return the result of restricting the initial region of rules in a RuleStore.
     pub fn restrict_initial_region(&self, regx: &SomeRegion) -> Self {
         debug_assert!(self.is_not_empty());
-        debug_assert_eq!(self.num_bits().expect("SNH"), regx.num_bits());
+        debug_assert_eq!(self[0].num_bits(), regx.num_bits());
         debug_assert!(vec_same_num_bits(&self.items));
         debug_assert!(regx.intersects(&self.initial_region()));
 
@@ -432,7 +430,7 @@ impl RuleStore {
     /// Return true if all rules in the RuleStore have the same initial region.
     pub fn rules_initial_region_eq(&self, aregion: &SomeRegion) -> bool {
         debug_assert!(self.is_not_empty());
-        debug_assert!(self.num_bits().expect("SNH") == aregion.num_bits());
+        debug_assert!(self[0].num_bits() == aregion.num_bits());
 
         for rulx in self.iter() {
             if rulx.initial_region() != *aregion {
@@ -446,7 +444,7 @@ impl RuleStore {
     /// Rule order is preserved.
     pub fn within(&self, within: &SomeRegion) -> Vec<Option<SomeRule>> {
         debug_assert!(self.is_not_empty());
-        debug_assert!(self.num_bits().expect("SNH") == within.num_bits());
+        debug_assert!(self[0].num_bits() == within.num_bits());
 
         let mut ret = Vec::<Option<SomeRule>>::new();
 
@@ -853,9 +851,9 @@ mod tests {
         println!("rulst2 {rulst2}");
         assert!(format!("{rulst2}") == "[00/01/XX]");
 
-        let rulst3 = RuleStore::from("[X0/11/10/X1, 01/00/11]")?;
+        let rulst3 = RuleStore::from("[X0/11/10/X1, X1/10/11/X0]")?;
         println!("rulst3 {rulst3}");
-        assert!(format!("{rulst3}") == "[X0/11/10/X1, 01/00/11]");
+        assert!(format!("{rulst3}") == "[X0/11/10/X1, X1/10/11/X0]");
 
         //assert!(1 == 2);
         Ok(())

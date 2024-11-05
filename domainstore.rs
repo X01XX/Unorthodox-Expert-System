@@ -1183,8 +1183,7 @@ impl DomainStore {
         goal_regs: &RegionsCorr,
         select_regions: &RegionsCorrStore,
     ) -> Result<PlansCorrStore, Vec<String>> {
-        debug_assert!(start_regs.len() == goal_regs.len());
-        debug_assert!(start_regs.corresponding_num_bits(goal_regs));
+        debug_assert!(start_regs.is_congruent(goal_regs));
         //println!(
         //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
         //);
@@ -1537,9 +1536,8 @@ impl DomainStore {
         goal: &RegionsCorr,
         within: &RegionsCorr,
     ) -> Result<PlansCorr, Vec<String>> {
-        debug_assert!(from.len() == goal.len());
-        debug_assert!(from.corresponding_num_bits(goal));
-        debug_assert!(within.len() == from.len() && from.corresponding_num_bits(within));
+        debug_assert!(from.is_congruent(goal));
+        debug_assert!(from.is_congruent(within));
         debug_assert!(within.is_superset_of(from));
         debug_assert!(within.is_superset_of(goal));
 
@@ -1588,9 +1586,8 @@ impl DomainStore {
         within: &RegionsCorr,
     ) -> Result<PlansCorr, Vec<String>> {
         //println!("domainstore: make_plans2: from {from} goal {goal}");
-        debug_assert!(from.len() == goal.len());
-        debug_assert!(from.corresponding_num_bits(goal));
-        debug_assert!(within.len() == from.len() && from.corresponding_num_bits(within));
+        debug_assert!(from.is_congruent(goal));
+        debug_assert!(from.is_congruent(within));
         debug_assert!(within.is_superset_of(from));
         debug_assert!(within.is_superset_of(goal));
 

@@ -45,7 +45,7 @@ impl Eq for RegionsCorr {}
 impl RegionsCorr {
     /// Return a new, RegionsCorr.
     pub fn new(regions: Vec<SomeRegion>) -> Self {
-        debug_assert!(!regions.is_empty());
+        //debug_assert!(!regions.is_empty());
         Self {
             regions: RegionStore::new(regions),
         }
@@ -86,12 +86,7 @@ impl RegionsCorr {
 
     /// Return True if a RegionsCorr is a superset of all corresponding states in.
     pub fn is_superset_states(&self, stas: &StatesCorr) -> bool {
-        if self.len() != stas.len() {
-            println!("regionscorr {self}");
-            println!("stas {stas}");
-        }
-        debug_assert!(self.len() == stas.len());
-        debug_assert!(self.corresponding_num_bits(stas));
+        debug_assert!(self.is_congruent(stas));
 
         for (x, y) in self.iter().zip(stas.iter()) {
             if x.is_superset_of(y) {
@@ -105,8 +100,7 @@ impl RegionsCorr {
 
     /// Return true if RegionsCorr is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.is_subset_of(y) {
@@ -119,16 +113,14 @@ impl RegionsCorr {
 
     /// Return true if RegionsCorr is adjacent to another.
     pub fn is_adjacent(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         self.distance(other) == 1
     }
 
     /// Return true if RegionsCorr is adjacent to another.
     pub fn bridge(&self, other: &Self) -> Self {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
         debug_assert!(self.distance(other) == 1);
 
         let mut ret_regs = Self::with_capacity(self.len());
@@ -151,8 +143,7 @@ impl RegionsCorr {
 
     /// Return True if a RegionsCorr is a superset of another.
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if x.is_superset_of(y) {
@@ -166,8 +157,7 @@ impl RegionsCorr {
 
     /// Return the intersection, if any, of two RegionStoresCorrs.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         let mut ret = Self::with_capacity(self.len());
 
@@ -184,8 +174,7 @@ impl RegionsCorr {
 
     /// Return the union, of two RegionStoresCorrs.
     pub fn union(&self, other: &Self) -> Self {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         let mut ret = Self::with_capacity(self.len());
 
@@ -198,8 +187,7 @@ impl RegionsCorr {
 
     /// Calculate the distance between a RegionsCorr and States in a StatesCorr.
     pub fn distance_states(&self, stas: &StatesCorr) -> usize {
-        debug_assert!(self.len() == stas.len());
-        debug_assert!(self.corresponding_num_bits(stas));
+        debug_assert!(self.is_congruent(stas));
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(stas.iter()) {
@@ -214,8 +202,7 @@ impl RegionsCorr {
 
     /// Calculate the distance between two RegionsCorrs.
     pub fn distance(&self, other: &Self) -> usize {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(other.iter()) {
@@ -230,8 +217,7 @@ impl RegionsCorr {
 
     /// Return RegionsCorr minus another.
     pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
-        debug_assert!(self.len() == subtrahend.len());
-        debug_assert!(self.corresponding_num_bits(subtrahend));
+        debug_assert!(self.is_congruent(subtrahend));
 
         let mut ret = Vec::<Self>::new();
 
@@ -267,8 +253,7 @@ impl RegionsCorr {
 
     /// Return true if there is an intersection of two RegionStorCorrs.
     pub fn intersects(&self, other: &Self) -> bool {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         for (x, y) in self.iter().zip(other.iter()) {
             if !x.intersects(y) {
@@ -280,8 +265,7 @@ impl RegionsCorr {
 
     /// Make minimum changes to a RegionsCorr so that it will be a subset of another.
     pub fn translate_to(&self, other: &Self) -> Self {
-        debug_assert!(self.len() == other.len());
-        debug_assert!(self.corresponding_num_bits(other));
+        debug_assert!(self.is_congruent(other));
 
         let mut ret_regs = Self::with_capacity(self.len());
 
@@ -292,7 +276,10 @@ impl RegionsCorr {
     }
 
     /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn corresponding_num_bits(&self, other: &impl AvecRef) -> bool {
+    pub fn is_congruent(&self, other: &impl AvecRef) -> bool {
+        if self.len() != other.avec_ref().len() {
+            return false;
+        }
         for (item1, item2) in self.avec_ref().iter().zip(other.avec_ref().iter()) {
             if item1.num_bits() != item2.num_bits() {
                 return false;
@@ -350,6 +337,15 @@ impl RegionsCorr {
         let regions = RegionStore::from(&rc_str2)?;
 
         Ok(Self { regions })
+    }
+
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for regx in self.iter() {
+            ret_vec.push(regx.num_bits());
+        }
+        ret_vec
     }
 } // End impl RegionsCorr.
 
