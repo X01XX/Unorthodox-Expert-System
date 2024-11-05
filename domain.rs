@@ -134,10 +134,11 @@ impl SomeDomain {
     /// Add a SomeAction instance to the store.
     /// The rules will be used to generate responses to running the action
     /// against various states.
-    pub fn add_action(&mut self, rules: Vec<RuleStore>) {
+    pub fn add_action(&mut self, rules: Vec<RuleStore>, cleanup_trigger: usize) {
         debug_assert!(rules.is_empty() || rules[0].num_bits().unwrap() == self.num_bits());
 
-        self.actions.add_action(self.id, &self.cur_state, rules);
+        self.actions
+            .add_action(self.id, &self.cur_state, rules, cleanup_trigger);
     }
 
     /// Return needs gathered from all actions.
@@ -1026,6 +1027,12 @@ impl SomeDomain {
     pub fn maximum_region(&self) -> SomeRegion {
         SomeRegion::new(vec![self.cur_state.new_high(), self.cur_state.new_low()])
     }
+
+    /// Run cleanup for a  action.
+    pub fn cleanup(&mut self, act_id: usize, needs: &NeedStore) {
+        assert!(act_id < self.actions.len());
+        self.actions[act_id].cleanup(needs);
+    }
 } // end impl SomeDomain
 
 #[cfg(test)]
@@ -1061,7 +1068,7 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[00/11/01/11, 00/11/00/10]")?];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         let sta_5 = SomeState::from("0b0101")?;
 
@@ -1131,7 +1138,7 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[00/XX/01/XX]").expect("SNH")];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         // Form first group.
         dm0.cur_state = SomeState::from("0b0101")?; // -> 0111
@@ -1177,10 +1184,10 @@ mod tests {
         let dm0 = &mut dmxs[0];
 
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from("0b0000->0b0001")?);
@@ -1221,10 +1228,10 @@ mod tests {
         dmxs.add_domain(SomeState::from("0x0")?);
         let dm0 = &mut dmxs[0];
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![], 5);
 
         // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from("0b0000->0b0001")?);
@@ -1269,7 +1276,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1326,7 +1333,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1417,7 +1424,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(0, &SomeSample::from("0b0000->0b0001")?);
@@ -1450,7 +1457,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         let max_reg = SomeRegion::from("rXXXX")?;
 
@@ -1524,7 +1531,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         let rx1x1 = SomeRegion::from("rx1x1")?;
 
@@ -1577,7 +1584,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         let rx1x1 = SomeRegion::from("rx1x1")?;
 
@@ -1618,7 +1625,7 @@ mod tests {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0000")?);
         dm0.cur_state = SomeState::from("0b0000000000000001")?;
-        dm0.add_action(vec![]);
+        dm0.add_action(vec![], 5);
 
         // Create group for region XXX1010X101010XX.
         dm0.eval_sample_arbitrary(
@@ -1654,7 +1661,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from("0x0")?);
         dm0.cur_state = SomeState::from("0b0011")?;
-        dm0.add_action(vec![]); // Act 0
+        dm0.add_action(vec![], 5); // Act 0
 
         // Start groups.
         dm0.eval_sample_arbitrary(0, &SomeSample::from("0b1101->0b1101")?);
@@ -1740,19 +1747,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]").expect("SNH")];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]").expect("SNH")];
-        dm0.add_action(ruls1);
+        dm0.add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls2);
+        dm0.add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls3);
+        dm0.add_action(ruls3, 5);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from("0b0000")?;
@@ -1808,19 +1815,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]").expect("SNH")];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]").expect("SNH")];
-        dm0.add_action(ruls1);
+        dm0.add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls2);
+        dm0.add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls3);
+        dm0.add_action(ruls3, 5);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from("0b0000")?;
@@ -1881,19 +1888,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]").expect("SNH")];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]").expect("SNH")];
-        dm0.add_action(ruls1);
+        dm0.add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls2);
+        dm0.add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls3);
+        dm0.add_action(ruls3, 5);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from("0b0000")?;
@@ -1953,19 +1960,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]").expect("SNH")];
-        dm0.add_action(ruls0);
+        dm0.add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]").expect("SNH")];
-        dm0.add_action(ruls1);
+        dm0.add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls2);
+        dm0.add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]").expect("SNH")];
-        dm0.add_action(ruls3);
+        dm0.add_action(ruls3, 5);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from("0b0000")?;

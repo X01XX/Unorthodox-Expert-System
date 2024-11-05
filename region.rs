@@ -516,19 +516,6 @@ impl SomeRegion {
         self.states[0].num_bits()
     }
 
-    /// Return a bridge between two non-intersecting regions.
-    pub fn bridge(&self, other: &Self) -> Option<Self> {
-        debug_assert_eq!(self.num_bits(), other.num_bits());
-
-        if self.intersects(other) {
-            return None;
-        }
-
-        let to_x_mask = self.diff_edge_mask(other);
-        self.set_to_x(&to_x_mask)
-            .intersection(&other.set_to_x(&to_x_mask))
-    }
-
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeState> {
         self.states.iter()
@@ -670,42 +657,6 @@ mod tests {
         if reg3 != SomeRegion::from("r100110X")? {
             return Err(format!("{reg3} ??"));
         }
-        Ok(())
-    }
-
-    #[test]
-    fn bridge() -> Result<(), String> {
-        let reg1 = SomeRegion::from("rX101")?;
-        let reg2 = SomeRegion::from("rX111")?;
-        let reg3 = SomeRegion::from("r0X10")?;
-
-        if let Some(result) = reg1.bridge(&reg2) {
-            if result == SomeRegion::from("rX1X1")? {
-            } else {
-                return Err(format!("{reg1} bridge {reg2} == {result}"));
-            }
-        } else {
-            return Err(format!("{reg1} bridge {reg2} == None?"));
-        }
-
-        if let Some(result) = reg1.bridge(&reg3) {
-            if result == SomeRegion::from("r01XX")? {
-            } else {
-                return Err(format!("{reg1} bridge {reg3} == {result}"));
-            }
-        } else {
-            return Err(format!("{reg1} bridge {reg3} == None?"));
-        }
-
-        if let Some(result) = reg2.bridge(&reg3) {
-            println!("result {result}");
-            if result != SomeRegion::from("r011X")? {
-                return Err(format!("{reg2} bridge {reg3} = {result}?"));
-            }
-        } else {
-            return Err(format!("{reg2} {reg3} = None?"));
-        }
-
         Ok(())
     }
 

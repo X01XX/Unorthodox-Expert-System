@@ -146,17 +146,27 @@ impl GroupStore {
     }
 
     /// Return regions of any group is a superset, or equal, to a region.
-    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
-        self.items
-            .iter()
-            .filter_map(|grpx| {
-                if grpx.is_subset_of(itmx) {
-                    Some(&grpx.region)
-                } else {
-                    None
-                }
-            })
-            .collect()
+    pub fn supersets_of(&self, itmx: &impl AccessStates) -> RegionStore {
+        let mut ret_str = RegionStore::new(vec![]);
+
+        for grpx in self.items.iter() {
+            if grpx.region.is_superset_of(itmx) {
+                ret_str.push(grpx.region.clone());
+            }
+        }
+        ret_str
+    }
+
+    /// Return regions of any group is a subset, or equal, to a region.
+    pub fn subsets_of(&self, itmx: &impl AccessStates) -> RegionStore {
+        let mut ret_str = RegionStore::new(vec![]);
+
+        for grpx in self.items.iter() {
+            if grpx.region.is_subset_of(itmx) {
+                ret_str.push(grpx.region.clone());
+            }
+        }
+        ret_str
     }
 
     /// Find and remove a group, given a group region.

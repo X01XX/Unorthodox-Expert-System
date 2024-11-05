@@ -63,7 +63,7 @@ use pn::Pn;
 mod domainstore;
 mod step;
 mod stepstore;
-use domainstore::{DomainStore, InxPlan, NeedPlan};
+use domainstore::{DomainStore, NeedPlan};
 mod actioninterface;
 mod planstore;
 mod selectregions;
@@ -272,66 +272,66 @@ fn domainstore_init() -> DomainStore {
         RuleStore::from("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]").expect("SNH"),
         RuleStore::from("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]").expect("SNH"),
     ];
-    dmxs[0].add_action(ruls0);
+    dmxs[0].add_action(ruls0, 5);
 
     let ruls1: Vec<RuleStore> = vec![
         RuleStore::from("[XX_XX/Xx/11/XX]").expect("SNH"),
         RuleStore::from("[XX_XX/XX/01/XX]").expect("SNH"),
     ];
-    dmxs[0].add_action(ruls1);
+    dmxs[0].add_action(ruls1, 5);
 
     let ruls2: Vec<RuleStore> = vec![
         RuleStore::from("[XX_XX/XX/10/XX]").expect("SNH"),
         RuleStore::from("[XX_XX/Xx/00/XX]").expect("SNH"),
     ];
-    dmxs[0].add_action(ruls2);
+    dmxs[0].add_action(ruls2, 5);
 
     let ruls3: Vec<RuleStore> = vec![
         RuleStore::from("[Xx_11/XX/XX/XX]").expect("SNH"),
         RuleStore::from("[XX_01/XX/XX/XX]").expect("SNH"),
     ];
-    dmxs[0].add_action(ruls3);
+    dmxs[0].add_action(ruls3, 5);
 
     let ruls4: Vec<RuleStore> = vec![
         RuleStore::from("[XX_10/XX/XX/XX]").expect("SNH"),
         RuleStore::from("[Xx_00/XX/XX/XX]").expect("SNH"),
     ];
-    dmxs[0].add_action(ruls4);
+    dmxs[0].add_action(ruls4, 5);
 
     let ruls5: Vec<RuleStore> = vec![RuleStore::from("[XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[0].add_action(ruls5);
+    dmxs[0].add_action(ruls5, 5);
 
     // Add actions 0 through 6 to domain 1.
     let ruls0: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls0);
+    dmxs[1].add_action(ruls0, 5);
 
     let ruls1: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls1);
+    dmxs[1].add_action(ruls1, 5);
 
     let ruls2: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls2);
+    dmxs[1].add_action(ruls2, 5);
 
     let ruls3: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls3);
+    dmxs[1].add_action(ruls3, 5);
 
     let ruls4: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls4);
+    dmxs[1].add_action(ruls4, 5);
 
     let ruls5: Vec<RuleStore> =
         vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[1].add_action(ruls5);
+    dmxs[1].add_action(ruls5, 5);
 
     let ruls6: Vec<RuleStore> = vec![
         RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]").expect("SNH"),
         RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]").expect("SNH"),
         RuleStore::from("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]").expect("SNH"),
     ];
-    dmxs[1].add_action(ruls6);
+    dmxs[1].add_action(ruls6, 5);
 
     // Add select regions.
     dmxs.add_select(SelectRegions::from("SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3]").expect("SNH"));
@@ -542,7 +542,7 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> 
 fn do_any_need(dmxs: &mut DomainStore) {
     let np_inx = dmxs.choose_a_need();
 
-    if do_a_need(dmxs, dmxs.can_do[np_inx].clone()) {
+    if dmxs.do_a_need(dmxs.can_do[np_inx].clone()) {
         println!("Need satisfied");
     }
 }
@@ -570,103 +570,6 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
         }
         Err(error) => Err(error.to_string()),
     }
-}
-
-/// Try to satisfy a need.
-/// Return true if success.
-fn do_a_need(dmxs: &mut DomainStore, inx_pln: InxPlan) -> bool {
-    let dom_id = dmxs.current_domain;
-    let nd_inx = inx_pln.inx;
-
-    // Display Domain info, if needed.
-    match dmxs.needs[nd_inx] {
-        SomeNeed::ToSelectRegion { .. } => {
-            //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
-        }
-        SomeNeed::ExitSelectRegion { .. } => {
-            //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
-        }
-        _ => {
-            let nd_dom = dmxs.needs[nd_inx].dom_id().unwrap();
-            if dom_id != nd_dom {
-                // Show "before" state before running need.
-                println!("\nAll domain states: {}", dmxs.all_current_states());
-                dmxs.change_domain(nd_dom);
-                dmxs.print_domain();
-                //println!("\nNeed chosen: {} {}", ndx, plans.str_terse());
-            }
-        }
-    }
-
-    // Run the plan, allow for one failure.
-    if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
-        match dmxs.run_planscorrstore(plans) {
-            Ok(num) => {
-                if num == 1 {
-                    println!("{num} step run.")
-                } else {
-                    println!("{num} steps run.")
-                }
-            }
-            Err(errstr) => {
-                println!("Run plan failed, {errstr}.");
-                if let Ok(ndpln2) = dmxs.plan_using_least_negative_select_regions_for_target(
-                    dmxs.needs[inx_pln.inx].dom_id(),
-                    &dmxs.needs[inx_pln.inx].target(),
-                ) {
-                    match ndpln2 {
-                        NeedPlan::PlanFound { plan: plans2 } => {
-                            println!("Try again with {}", plans2);
-                            match dmxs.run_planscorrstore(&plans2) {
-                                Ok(num) => {
-                                    if num == 1 {
-                                        println!("{num} step run.")
-                                    } else {
-                                        println!("{num} steps run.")
-                                    }
-                                }
-                                Err(errstr) => {
-                                    println!("Second failure, giving up, {errstr}");
-                                    return false;
-                                }
-                            }
-                        }
-                        _ => return false,
-                    }
-                } else {
-                    println!("Unexpected result, new path to goal not found.");
-                }
-            }
-        }
-    }
-
-    // Take action after the desired state is reached.
-    match &dmxs.needs[nd_inx] {
-        SomeNeed::ToSelectRegion { target_select, .. } => {
-            if target_select
-                .regions
-                .is_superset_states(&dmxs.all_current_states())
-            {
-                if dmxs.set_boredom_limit() {
-                    dmxs.update_times_visited();
-                }
-                return true;
-            }
-        }
-        SomeNeed::ExitSelectRegion { target_regions, .. } => {
-            if target_regions.is_superset_states(&dmxs.all_current_states()) {
-                return true;
-            }
-        }
-        _ => {
-            if dmxs.needs[nd_inx].satisfied_by(dmxs.cur_state(dmxs.needs[nd_inx].dom_id().unwrap()))
-            {
-                dmxs.take_action_need(nd_inx);
-                return true;
-            }
-        }
-    }
-    false
 }
 
 /// Try to satisfy a need chosen by the user.
@@ -706,7 +609,7 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                     }
                 }
 
-                if do_a_need(dmxs, dmxs.can_do[n_num].clone()) {
+                if dmxs.do_a_need(dmxs.can_do[n_num].clone()) {
                     println!("Need satisfied");
                 }
 

@@ -137,15 +137,6 @@ impl SelectRegions {
         self.regions.is_adjacent(&other.regions)
     }
 
-    /// Return a bridge between two adjacent SelectRegions.
-    pub fn bridge(&self, other: &Self) -> Self {
-        debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());
-
-        debug_assert!(self.regions.is_adjacent(&other.regions));
-
-        Self::new(self.regions.bridge(&other.regions), 0)
-    }
-
     /// Return true if a SelectRegions is a subset of another.
     pub fn is_subset_of(&self, other: &Self) -> bool {
         debug_assert!(self.regions.num_bits_vec() == other.regions.num_bits_vec());

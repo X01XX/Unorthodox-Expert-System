@@ -56,9 +56,20 @@ impl ActionStore {
     }
 
     /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) {
-        self.items
-            .push(SomeAction::new(self.items.len(), dom_id, cur_state, rules));
+    pub fn add_action(
+        &mut self,
+        dom_id: usize,
+        cur_state: &SomeState,
+        rules: Vec<RuleStore>,
+        cleanup_trigger: usize,
+    ) {
+        self.items.push(SomeAction::new(
+            self.items.len(),
+            dom_id,
+            cur_state,
+            rules,
+            cleanup_trigger,
+        ));
     }
 
     /// Check limited flag due to new changes.

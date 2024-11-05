@@ -38,9 +38,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 
-/// Number of new squares added before a cleanup check is run.
-const CLEANUP: usize = 5;
-
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -64,8 +61,8 @@ pub struct SomeAction {
     pub squares: SquareStore,
     /// Connection to a process that takes the current state, and returns a, possibly changed, state.
     do_something: ActionInterface,
-    /// Trigger cleanup logic after a number of new squares.
-    cleanup_trigger: usize,
+    /// Number of new squares since last cleanup.
+    cleanup_number_new_squares: usize,
     /// When the actions groups change check for any missed regions.
     check_remainder: bool,
     /// Regions currently not covered by groups, when tere are no more needs to sample squares.
@@ -74,11 +71,20 @@ pub struct SomeAction {
     aggregate_changes: Option<SomeChange>,
     /// An indicator that the changes possible were recently updated.
     pub agg_chgs_updated: bool,
+    /// Number of new squares added before a cleanup check is run.
+    cleanup_trigger: usize,
 }
 
 impl SomeAction {
     /// Return a new SomeAction struct.
-    pub fn new(act_id: usize, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) -> Self {
+    pub fn new(
+        act_id: usize,
+        dom_id: usize,
+        cur_state: &SomeState,
+        rules: Vec<RuleStore>,
+        cleanup_trigger: usize,
+    ) -> Self {
+        assert!(cleanup_trigger > 0);
         SomeAction {
             id: act_id,
             dom_id,
@@ -86,11 +92,12 @@ impl SomeAction {
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new(), cur_state.num_bits()),
             do_something: ActionInterface::new(rules),
-            cleanup_trigger: 0,
+            cleanup_number_new_squares: 0,
             check_remainder: false,
             remainder_check_regions: RegionStore::new(vec![]),
             aggregate_changes: None,
             agg_chgs_updated: false,
+            cleanup_trigger,
         }
     }
 
@@ -106,7 +113,7 @@ impl SomeAction {
     fn add_new_square(&mut self, sqrx: SomeSquare) -> &SomeSquare {
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
 
-        self.cleanup_trigger += 1;
+        self.cleanup_number_new_squares += 1;
 
         let key = sqrx.state.clone();
         self.squares_insert(sqrx);
@@ -451,6 +458,12 @@ impl SomeAction {
                 };
             } // next ndx
         } // end while
+
+        // Check for cleanup.
+        // For testing, set cleanup_trigger > 99 to suppress this.
+        if ret.is_empty() && self.cleanup_trigger < 100 && self.cleanup_number_new_squares > 0 {
+            self.cleanup(&ret);
+        }
         ret
     }
 
@@ -530,9 +543,9 @@ impl SomeAction {
         } // end loop
 
         // Do cleanup, if needed.
-        if self.cleanup_trigger >= CLEANUP {
+        if self.cleanup_number_new_squares >= self.cleanup_trigger {
             self.cleanup(&nds);
-            self.cleanup_trigger = 0;
+            self.cleanup_number_new_squares = 0;
         }
 
         // Look for needs for states not in groups
@@ -573,41 +586,19 @@ impl SomeAction {
     }
 
     /// Cleanup unneeded squares.
-    fn cleanup(&mut self, needs: &NeedStore) {
-        // Identify bridge regions.
-        let mut shared_regions = RegionStore::new(vec![]);
-        for inx in 0..(self.groups.len() - 1) {
-            let grpx = &self.groups[inx];
-            if grpx.anchor.is_none() {
-                continue;
+    pub fn cleanup(&mut self, needs: &NeedStore) {
+        // Check for groups that can be deleted.
+        if needs.is_empty() {
+            let mut del = Vec::<SomeRegion>::new();
+            for grpx in self.groups.iter() {
+                if grpx.anchor.is_none() {
+                    del.push(grpx.region.clone());
+                }
             }
-            for iny in (inx + 1)..self.groups.len() {
-                let grpy = &self.groups[iny];
-
-                if grpy.pn != grpx.pn {
-                    continue;
-                }
-                if grpy.anchor.is_none() {
-                    continue;
-                }
-                if grpy.region.is_adjacent(&grpx.region) {
-                    if let Some(shared) = grpy.region.bridge(&grpx.region) {
-                        if shared.is_superset_of(&grpy.region)
-                            || shared.is_superset_of(&grpx.region)
-                        {
-                        } else {
-                            //println!("grp1 {} adj grp2 {} bridge {}", grpy.region, grpx.region, shared);
-                            shared_regions.push(shared);
-                        }
-                    }
-                }
-            } // next iny
-        } // next inx
-          // Delete shared symmetric groups.
-        for regx in shared_regions.iter() {
-            self.groups_remove_subsets_of(regx);
+            for regx in del.iter() {
+                self.remove_group(regx);
+            }
         }
-
         // Store for keys of squares to delete.
         let mut to_del = StateStore::new(vec![]);
 
@@ -676,6 +667,8 @@ impl SomeAction {
                 }
             }
         }
+
+        self.cleanup_number_new_squares = 0;
     } // end cleanup
 
     /// Get additional sample needs for the states that form a group.
@@ -999,43 +992,6 @@ impl SomeAction {
 
         //println!("action::limit_group_anchor_needs: stas to check {stas_in}");
 
-        let grpx_pn = self.groups.find(regx).as_ref().expect("SNH").pn;
-        let grpx_rules = self.groups.find(regx).as_ref().expect("SNH").rules.clone();
-
-        // Calculate bridge regions.
-        let mut shared_regions = RegionStore::new(vec![]);
-        for (inx, grpy) in self.groups.iter().enumerate() {
-            if inx == group_num {
-                continue;
-            }
-            if grpy.pn != grpx_pn {
-                continue;
-            }
-            if !regx.is_adjacent(&grpy.region) {
-                continue;
-            }
-            if grpy.region.x_mask() == regx.x_mask() {
-                continue;
-            }
-            if let Some(shared) = grpy.region.bridge(regx) {
-                if shared.is_superset_of(regx) {
-                    continue;
-                }
-                if grpx_pn == Pn::Unpredictable {
-                    shared_regions.push(shared);
-                } else if let Some(ruls) = &grpx_rules {
-                    let rulsx = ruls.restrict_initial_region(&shared);
-                    if let Some(ruls) = &grpy.rules {
-                        let rulsy = ruls.restrict_initial_region(&shared);
-
-                        if let Some(rule_shr) = rulsx.parsed_union(&rulsy) {
-                            //println!("shared region : {} {} {shared}", rulsx.initial_region(), rulsy.initial_region());
-                            shared_regions.push(rule_shr.initial_region());
-                        }
-                    }
-                }
-            }
-        }
         //println!("shared regions {shared_regions}");
 
         // For each state, sta1, only in the group region, greg:
@@ -1051,10 +1007,7 @@ impl SomeAction {
 
         for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
-            if !self.groups.in_1_group(stax)
-                || shared_regions.any_superset_of_state(stax)
-                || !max_reg.is_superset_of(stax)
-            {
+            if !self.groups.in_1_group(stax) || !max_reg.is_superset_of(stax) {
                 //println!("stax for anchor {stax} in group {} skipped", regx);
                 continue;
             }
@@ -2518,11 +2471,8 @@ impl SomeAction {
         if self.groups.any_superset_of(&grp.region) {
             let regs = self.groups.supersets_of(&grp.region);
             println!(
-                "Dom {} Act {} skipped adding group {}, a superset exists in {}",
-                self.dom_id,
-                self.id,
-                grp.region,
-                tools::vec_ref_string(&regs)
+                "Dom {} Act {} skipped adding group {}, a superset exists in {regs}",
+                self.dom_id, self.id, grp.region,
             );
             return false;
         }
@@ -2615,7 +2565,7 @@ mod tests {
     fn two_result_group() -> Result<(), String> {
         // Init action
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
@@ -2646,7 +2596,7 @@ mod tests {
     fn groups_formed_1() -> Result<(), String> {
         // Init action
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Eval sample that other samples will be incompatible with.
         act0.eval_sample_arbitrary(&SomeSample::from("0b0111->0b0111")?);
@@ -2673,7 +2623,7 @@ mod tests {
     fn possible_region() -> Result<(), String> {
         // Init Action.
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         let max_reg = SomeRegion::from("rXXXX")?;
 
@@ -2705,7 +2655,7 @@ mod tests {
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Set up square 0.
         act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
@@ -2729,7 +2679,7 @@ mod tests {
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Set up square 0.
         act0.eval_sample_arbitrary(&SomeSample::from("0b0000->0b0000")?);
@@ -2759,7 +2709,7 @@ mod tests {
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Set up square 2.
         act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
@@ -2783,7 +2733,7 @@ mod tests {
     fn aggregate_changes() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from("0b0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
 
         // Set up square 2.
         act0.eval_sample_arbitrary(&SomeSample::from("0b0010->0b0000")?);
