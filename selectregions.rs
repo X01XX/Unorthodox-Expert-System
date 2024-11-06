@@ -299,7 +299,7 @@ impl SelectRegions {
             return Err(format!("SelectRegions::from: Invalid string, {sr_str}"));
         }
 
-        println!("rc {rc_token} val {val_token}");
+        //println!("rc {rc_token} val {val_token}");
 
         // Get the regionscorr token value.
         let rcx = match RegionsCorr::from(&rc_token) {

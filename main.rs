@@ -342,8 +342,7 @@ fn domainstore_init() -> DomainStore {
 /// Do one session to end.
 /// Return the number steps taken get to the point where
 /// there are no more needs.
-/// Return error if no needs that can be done are available and
-/// there are needs than cannot be done.
+/// Return domainstore end-state info.
 fn do_one_session() -> (usize, usize, usize, usize) {
     let mut dmxs = domainstore_init();
 
@@ -368,6 +367,8 @@ pub fn do_interactive_session(dmxs: &mut DomainStore) {
 }
 
 /// Do command loop.
+/// Some commands work without the need to return and display the session
+/// state again, so the loop.  Otherwise the command returns.
 fn command_loop(dmxs: &mut DomainStore) {
     //println!("start command loop");
     loop {

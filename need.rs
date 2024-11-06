@@ -16,8 +16,6 @@ use crate::target::ATarget;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-pub const TO_SELECT_REGION_PRIORITY: usize = 900;
-
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_string())
@@ -147,8 +145,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::SampleInRegion { priority, .. } => *priority += 850,
-            Self::ToSelectRegion { priority, .. } => *priority += TO_SELECT_REGION_PRIORITY,
-            // Some needs should have a higher priority number compared to ToSelectRegion.
+            Self::ToSelectRegion { priority, .. } => *priority += 900,
             Self::StateInRemainder { priority, .. } => *priority = 1000,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
@@ -445,4 +442,24 @@ impl SomeNeed {
             }
         } // end match
     }
+
+    /// Return the distance between a need target and the current state.
+    pub fn distance(&self, cur_state: &SomeState) -> usize {
+        match self {
+            Self::ConfirmGroup { target_state, .. } => target_state.distance(cur_state),
+            Self::ContradictoryIntersection { target_region, .. } => {
+                target_region.distance(cur_state)
+            }
+            Self::LimitGroup { target_state, .. } => target_state.distance(cur_state),
+            Self::LimitGroupAdj { target_state, .. } => target_state.distance(cur_state),
+            Self::ConfirmGroupAdj { target_state, .. } => target_state.distance(cur_state),
+            Self::StateInRemainder { target_region, .. } => target_region.distance(cur_state),
+            Self::StateNotInGroup { target_state, .. } => target_state.distance(cur_state),
+            Self::SampleInRegion { target_region, .. } => target_region.distance(cur_state),
+            _ => panic!(
+                "SomeNeed::satisfied_by should not be called for the {} need.",
+                self.name()
+            ),
+        } //end match self
+    } // end distance
 } // End impl SomeNeed

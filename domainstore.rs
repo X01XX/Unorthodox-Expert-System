@@ -2,7 +2,7 @@
 //! and values/methods that manage the domains.
 
 use crate::domain::SomeDomain;
-use crate::need::{SomeNeed, TO_SELECT_REGION_PRIORITY};
+use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
@@ -161,12 +161,12 @@ impl DomainStore {
             return;
         }
 
-        println!("\nSelect Regions ({}):", self.select.len());
+        println!("\nGiven Select Regions ({}):\n", self.select.len());
         for selx in self.select.iter() {
             println!("  {selx}");
         }
-        println!("  Avoid negative SRs in rule-paths.");
-        println!("  Exit negative SR if the current state is within one.");
+        //println!("\n  Avoid negative SRs in rule-paths.");
+        //println!("\n  Exit a negative SR if the current state is within one.");
 
         // Get fragments due to different-value intersections.
         let fragments = self.select.split_by_intersections();
@@ -184,13 +184,13 @@ impl DomainStore {
 
         if self.select_positive.is_not_empty() {
             println!(
-                "\nPositive SR fragments, Positive SRs split by intersections ({}):",
+                "\nPositive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
                 self.select_positive.len()
             );
             for selx in self.select_positive.iter() {
                 println!("  {selx}");
             }
-            println!("  To seek, when no other needs can be done.");
+            println!("\n  To seek, when no other needs can be done.");
             self.times_visited = vec![0; self.select_positive.len()];
         }
 
@@ -206,13 +206,15 @@ impl DomainStore {
             self.rc_non_negative = non_neg_select;
 
             println!(
-                "\nNon-negative RCs, maximum RC regions minus negative SR regions ({}):",
+                "\nNon-negative RCs, maximum RC regions minus negative SR regions ({}):\n",
                 self.rc_non_negative.len()
             );
             for rcx in self.rc_non_negative.iter() {
                 println!("  {rcx}");
             }
-            println!("  Seek when exiting a negative SR the current state is in.");
+            println!("\n  Seek one of these when exiting a negative SR the current state is in.");
+            println!("\n  Only one bit needs to change to exit a region, with at least one edge,");
+            println!("  but there may be overlapping and adjacent negative SRs.");
 
             // Double check.
             for rcx in self.rc_non_negative.iter() {
@@ -233,11 +235,11 @@ impl DomainStore {
         }
         if neg_srs.is_not_empty() {
             self.select_negative = neg_srs.split_by_intersections();
-            println!("\nNegative SR fragments ({}):", self.select_negative.len());
+            println!("\nNegative SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");
             }
-            println!("  If more than one value, least negative values may be traversed to find a plan-path.");
+            println!("\n  If more than one different value, least negative values may be traversed to find a plan-path.");
         }
     }
 
@@ -373,6 +375,7 @@ impl DomainStore {
 
         let mut can = Vec::<InxPlan>::new();
 
+        // Check for needs that can be satisfied with the current state.
         for (inx, ndx) in self.needs.iter().enumerate() {
             if let Some(dom_id) = ndx.dom_id() {
                 if ndx.satisfied_by(&self.items[dom_id].cur_state) {
@@ -406,18 +409,6 @@ impl DomainStore {
         }
         println!("{}({}) ", cur_pri, count);
 
-        // Get select region info.
-        let in_select = self
-            .select
-            .any_supersets_of_states(&self.all_current_states());
-
-        let select_priority = if in_select && self.boredom < self.boredom_limit {
-            // Make fake need, to get priority.
-            TO_SELECT_REGION_PRIORITY
-        } else {
-            usize::MAX
-        };
-
         // Init current priority value and start index.
         let mut cur_pri = self.needs[0].priority();
 
@@ -436,58 +427,100 @@ impl DomainStore {
             // Process a priority slice.
             print!("Priority {cur_pri}");
 
-            // Test all slice needs for plans.
-            let inx_ndpln = (cur_pri_start..cur_pri_end)
-                .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-                .map(|nd_inx| {
-                    (
-                        nd_inx,
-                        self.plan_using_least_negative_select_regions_for_target(
-                            self.needs[nd_inx].dom_id(),
-                            &self.needs[nd_inx].target(),
-                        ),
-                    )
-                })
-                .collect::<Vec<(usize, Result<NeedPlan, Vec<String>>)>>();
+            // Test distance check.
+            // Find needs distance to the current state.
+            let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(self.needs.len()); // (need index, distance)
 
-            // See if any plans have been found.
-            let mut cant = Vec::<usize>::new();
+            //println!(" ");
+            for inx in cur_pri_start..cur_pri_end {
+                if let Some(dom_id) = self.needs[inx].dom_id() {
+                    let dist = self.needs[inx].distance(&self.items[dom_id].cur_state);
+                    //println!("need {} Dist to Target {dist}", self.needs[inx]);
+                    need_inx_vec.push((inx, dist));
+                } else {
+                    need_inx_vec.push((inx, 1));
+                }
+            }
 
-            for (inx, ndplnx) in inx_ndpln {
-                if let Ok(ndplnx) = ndplnx {
-                    match ndplnx {
-                        NeedPlan::AtTarget {} => {
-                            can.push(InxPlan {
-                                inx,
-                                plans: ndplnx,
-                                rate: 0,
-                                desired_num_bits_changed: 0,
-                                process_num_bits_changed: 0,
-                            });
-                        }
-                        NeedPlan::PlanFound { plan: ref plany } => {
-                            let ratex = plany.value;
-                            let cur_regs = self.all_current_regions();
-                            let desired_num_bits_changed =
-                                cur_regs.distance(&plany.result_regions());
-                            let process_num_bits_changed = plany.num_bits_changed();
-                            can.push(InxPlan {
-                                inx,
-                                plans: ndplnx,
-                                rate: ratex,
-                                desired_num_bits_changed,
-                                process_num_bits_changed,
-                            });
+            // Sort needs, of same priority, by distance.
+            need_inx_vec.sort_by(|(_, dist_a), (_, dist_b)| dist_a.partial_cmp(dist_b).unwrap());
+
+            // Calc slice of needs, of same priority, by distance.
+            let mut cur_dist_start = 0;
+            let mut cur_dist_end = 0;
+
+            while cur_dist_end < need_inx_vec.len() {
+                // calc next cur_dist_end.
+                if cur_dist_end < need_inx_vec.len() {
+                    for inx in cur_dist_start..need_inx_vec.len() {
+                        if need_inx_vec[inx].1 == need_inx_vec[cur_dist_start].1 {
+                            cur_dist_end += 1;
+                        } else {
+                            break;
                         }
                     }
-                } else {
-                    cant.push(inx);
                 }
-            } // next inx, ndplnx
+
+                // Test all slice needs for plans.
+                let inx_ndpln = (cur_dist_start..cur_dist_end)
+                    .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
+                    .map(|dist_inx| {
+                        (
+                            need_inx_vec[dist_inx].0,
+                            self.plan_using_least_negative_select_regions_for_target(
+                                self.needs[need_inx_vec[dist_inx].0].dom_id(),
+                                &self.needs[need_inx_vec[dist_inx].0].target(),
+                            ),
+                        )
+                    })
+                    .collect::<Vec<(usize, Result<NeedPlan, Vec<String>>)>>();
+
+                // See if any plans have been found.
+                let mut cant = Vec::<usize>::new();
+
+                for (inx, ndplnx) in inx_ndpln {
+                    if let Ok(ndplnx) = ndplnx {
+                        match ndplnx {
+                            NeedPlan::AtTarget {} => {
+                                can.push(InxPlan {
+                                    inx,
+                                    plans: ndplnx,
+                                    rate: 0,
+                                    desired_num_bits_changed: 0,
+                                    process_num_bits_changed: 0,
+                                });
+                            }
+                            NeedPlan::PlanFound { plan: ref plany } => {
+                                let ratex = plany.value;
+                                let cur_regs = self.all_current_regions();
+                                let desired_num_bits_changed =
+                                    cur_regs.distance(&plany.result_regions());
+                                let process_num_bits_changed = plany.num_bits_changed();
+                                can.push(InxPlan {
+                                    inx,
+                                    plans: ndplnx,
+                                    rate: ratex,
+                                    desired_num_bits_changed,
+                                    process_num_bits_changed,
+                                });
+                            }
+                        }
+                    } else {
+                        cant.push(inx);
+                    }
+                } // next inx, ndplnx
+
+                if can.is_empty() {
+                    cur_dist_start = cur_dist_end;
+                } else {
+                    self.can_do = can;
+                    return;
+                }
+            }
 
             if can.is_empty() {
                 println!(", none.");
-                if cur_pri_end == needs_len || cur_pri > select_priority {
+                if cur_pri_end == needs_len {
                     self.cant_do = (0..self.needs.len()).collect();
                     return;
                 }
@@ -1100,7 +1133,7 @@ impl DomainStore {
         // Successively subtract out most negative regions first, until no path can be found.
         // Find first min.
         let mut next_most_min = 0;
-        for selx in self.select.iter() {
+        for selx in self.select_negative.iter() {
             if selx.neg_value < next_most_min {
                 next_most_min = selx.neg_value;
             }
@@ -2716,6 +2749,8 @@ mod tests {
         Ok(())
     }
 
+    /// Test the cleanup of unneeded groups.
+    /// First use of running a full session from a test function.
     #[test]
     fn cleanup() -> Result<(), String> {
         // Create DomainStore.
@@ -2725,27 +2760,27 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]").expect("SNH")];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]").expect("SNH")];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]").expect("SNH")];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]").expect("SNH")];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Set up action 3, changing bit 3.
         let ruls4: Vec<RuleStore> = vec![
-            RuleStore::from("[XX/11/01/XX]").expect("SNH"),
-            RuleStore::from("[11/XX/10/XX]").expect("SNH"),
-            RuleStore::from("[Xx/00/00/XX]").expect("SNH"),
-            RuleStore::from("[01/XX/11/XX]").expect("SNH"),
+            RuleStore::from("[XX/11/01/XX]")?,
+            RuleStore::from("[11/XX/10/XX]")?,
+            RuleStore::from("[Xx/00/00/XX]")?,
+            RuleStore::from("[01/XX/11/XX]")?,
         ];
         dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
 
