@@ -587,6 +587,7 @@ impl SomeAction {
 
     /// Cleanup unneeded squares.
     pub fn cleanup(&mut self, needs: &NeedStore) {
+        //println!("action {} cleanup", self.id);
         // Check for groups that can be deleted.
         if needs.is_empty() {
             let mut del = Vec::<SomeRegion>::new();

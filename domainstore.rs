@@ -1712,6 +1712,25 @@ impl DomainStore {
         assert!(dom_id < self.len());
         self.items[dom_id].cleanup(act_id, &self.needs);
     }
+
+    /// Do a session until no needs can be done.
+    pub fn do_session(&mut self) {
+        loop {
+            // Generate needs, get can_do and cant_do need vectors.
+            self.generate_and_display_needs();
+
+            // Check for end.
+            if self.can_do.is_empty() {
+                return;
+            }
+
+            let np_inx = self.choose_a_need();
+
+            if self.do_a_need(self.can_do[np_inx].clone()) {
+                println!("Need satisfied");
+            }
+        } // end loop
+    }
 } // end impl DomainStore
 
 impl Index<usize> for DomainStore {
@@ -2730,21 +2749,7 @@ mod tests {
         ];
         dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
 
-        loop {
-            // Generate needs, get can_do and cant_do need vectors.
-            dmxs.generate_and_display_needs();
-
-            // Check for end.
-            if dmxs.can_do.is_empty() {
-                break;
-            }
-
-            let np_inx = dmxs.choose_a_need();
-
-            if dmxs.do_a_need(dmxs.can_do[np_inx].clone()) {
-                println!("Need satisfied");
-            }
-        } // end loop
+        dmxs.do_session();
 
         dmxs.print_domain();
         assert!(dmxs[0].actions[0].groups.len() == 1);

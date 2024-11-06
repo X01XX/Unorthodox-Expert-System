@@ -110,13 +110,10 @@ fn main() {
                 }
                 1 => {
                     let mut dmxs = domainstore_init();
-                    run_to_end(&mut dmxs);
+                    do_session_until_no_needs(&mut dmxs);
                 }
                 _ => {
-                    let fails = run_number_times(runs);
-                    if fails == 0 {
-                        return;
-                    }
+                    run_number_times(runs);
                     process::exit(1);
                 }
             }
@@ -140,7 +137,7 @@ fn run_step_by_step() {
 
     dmxs.generate_and_display_needs();
 
-    do_session(&mut dmxs);
+    do_interactive_session(&mut dmxs);
 }
 
 /// Load data from a file, then run with user input, step by step.
@@ -158,26 +155,18 @@ fn run_with_file(file_path: &str) {
         }
     };
 
-    // Generate needs, get can_do and cant_do need vectors.
-    dmxs.display_needs();
+    // Display current state.
+    dmxs.print_domain();
 
-    do_session(&mut dmxs);
+    // Run with it.
+    do_interactive_session(&mut dmxs);
 }
 
 /// Run until no more needs can be done, then take user input.
-fn run_to_end(dmxs: &mut DomainStore) {
+fn do_session_until_no_needs(dmxs: &mut DomainStore) {
     let start = Instant::now();
-    loop {
-        // Generate needs, get can_do and cant_do need vectors.
-        dmxs.generate_and_display_needs();
+    dmxs.do_session();
 
-        // Check for end.
-        if dmxs.can_do.is_empty() {
-            break;
-        }
-
-        do_any_need(dmxs);
-    } // end loop
     let duration = start.elapsed();
     println!(
         "Steps: {} Time elapsed: {:.2?} seconds",
@@ -185,10 +174,10 @@ fn run_to_end(dmxs: &mut DomainStore) {
         duration
     );
 
-    do_session(dmxs);
+    do_interactive_session(dmxs);
 }
 
-/// Run a number of times without user input, generate aggregae data.
+/// Run a number of times without user input, generate aggregate data.
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
 fn run_number_times(num_runs: usize) -> usize {
     let mut runs_left = num_runs;
@@ -358,33 +347,26 @@ fn domainstore_init() -> DomainStore {
 /// there are needs than cannot be done.
 fn do_one_session() -> (usize, usize, usize, usize) {
     let mut dmxs = domainstore_init();
-    loop {
-        // Generate needs, get can_do and cant_do need vectors.
-        dmxs.generate_and_display_needs();
 
-        // Check for end.
-        if dmxs.can_do.is_empty() {
-            return (
-                dmxs.step_num,
-                dmxs.number_groups(),
-                dmxs.number_groups_expected(),
-                dmxs.cant_do.len(),
-            );
-        }
+    dmxs.do_session();
 
-        do_any_need(&mut dmxs);
-    } // end loop
+    (
+        dmxs.step_num,
+        dmxs.number_groups(),
+        dmxs.number_groups_expected(),
+        dmxs.cant_do.len(),
+    )
 }
 
 /// Do a session, step by step, taking user commands.
-pub fn do_session(dmxs: &mut DomainStore) {
+pub fn do_interactive_session(dmxs: &mut DomainStore) {
     loop {
         command_loop(dmxs);
 
         // Generate needs, get can_do and cant_do need vectors.
         dmxs.generate_and_display_needs();
     } // end loop
-} // end do_session
+}
 
 /// Do command loop.
 fn command_loop(dmxs: &mut DomainStore) {
@@ -499,7 +481,7 @@ fn command_loop(dmxs: &mut DomainStore) {
             "run" => {
                 if dmxs.can_do.is_empty() {
                 } else {
-                    run_to_end(dmxs);
+                    dmxs.do_session();
                 }
             }
             "ss" => match do_sample_state_command(dmxs, &cmd) {
