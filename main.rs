@@ -142,21 +142,20 @@ fn run_step_by_step() {
 
 /// Load data from a file, then run with user input, step by step.
 fn run_with_file(file_path: &str) {
-    usage();
     // Init DomainStore or read in from file.
     let mut dmxs = match load_data(file_path) {
-        Ok(new_dmxs) => {
-            println!("Data loaded");
-            new_dmxs
-        }
-        Err(why) => {
-            eprintln!("{why}");
+        Ok(new_dmxs) => new_dmxs,
+        Err(errstr) => {
+            eprintln!("main::run_with_file: {errstr}");
             return;
         }
     };
 
+    // Display UI info.
+    usage();
+
     // Display current state.
-    dmxs.print_domain();
+    dmxs.generate_and_display_needs();
 
     // Run with it.
     do_interactive_session(&mut dmxs);
