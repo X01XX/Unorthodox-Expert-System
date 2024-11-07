@@ -375,19 +375,19 @@ impl DomainStore {
 
         let mut can = Vec::<InxPlan>::new();
 
+        let cur_states = self.all_current_states();
+
         // Check for needs that can be satisfied with the current state.
         for (inx, ndx) in self.needs.iter().enumerate() {
-            if let Some(dom_id) = ndx.dom_id() {
-                if ndx.satisfied_by(&self.items[dom_id].cur_state) {
-                    //println!("need {ndx} At Target");
-                    can.push(InxPlan {
-                        inx,
-                        plans: NeedPlan::AtTarget {},
-                        rate: 0,
-                        desired_num_bits_changed: 0,
-                        process_num_bits_changed: 0,
-                    });
-                }
+            if ndx.satisfied_by(&cur_states) {
+                //println!("need {ndx} At Target");
+                can.push(InxPlan {
+                    inx,
+                    plans: NeedPlan::AtTarget {},
+                    rate: 0,
+                    desired_num_bits_changed: 0,
+                    process_num_bits_changed: 0,
+                });
             }
         }
 
@@ -418,6 +418,8 @@ impl DomainStore {
         let mut cur_pri_end = 0;
         let needs_len = self.needs.len();
 
+        let states = self.all_current_states();
+
         // Scan successive slices of items with the same priority.
         loop {
             // Find end of current slice.
@@ -431,15 +433,9 @@ impl DomainStore {
             // Find needs distance to the current state.
             let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(self.needs.len()); // (need index, distance)
 
-            //println!(" ");
             for inx in cur_pri_start..cur_pri_end {
-                if let Some(dom_id) = self.needs[inx].dom_id() {
-                    let dist = self.needs[inx].distance(&self.items[dom_id].cur_state);
-                    //println!("need {} Dist to Target {dist}", self.needs[inx]);
-                    need_inx_vec.push((inx, dist));
-                } else {
-                    need_inx_vec.push((inx, 1));
-                }
+                let dist = self.needs[inx].distance(&states);
+                need_inx_vec.push((inx, dist));
             }
 
             // Sort needs, of same priority, by distance.
@@ -815,7 +811,7 @@ impl DomainStore {
 
             if let Some(near_nn_regs) = self.closest_rc_regions(&all_regs) {
                 // Process closest non-negative regions.
-                let mut needx = SomeNeed::ExitSelectRegion {
+                let mut needx = SomeNeed::ExitSelectRegions {
                     target_regions: near_nn_regs.clone(),
                     priority: 0,
                 };
@@ -856,7 +852,7 @@ impl DomainStore {
                 continue;
             }
             let adjust = (self.max_pos_value - psupx.net_value) + self.times_visited[inx] as isize;
-            let mut needx = SomeNeed::ToSelectRegion {
+            let mut needx = SomeNeed::ToSelectRegions {
                 target_select: psupx.clone(),
                 priority: adjust as usize,
                 times_visited: self.times_visited[inx],
@@ -1651,10 +1647,10 @@ impl DomainStore {
 
         // Display Domain info, if needed.
         match self.needs[nd_inx] {
-            SomeNeed::ToSelectRegion { .. } => {
+            SomeNeed::ToSelectRegions { .. } => {
                 //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
             }
-            SomeNeed::ExitSelectRegion { .. } => {
+            SomeNeed::ExitSelectRegions { .. } => {
                 //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
             }
             _ => {
@@ -1712,27 +1708,17 @@ impl DomainStore {
         }
 
         // Take action after the desired state is reached.
-        match &self.needs[nd_inx] {
-            SomeNeed::ToSelectRegion { target_select, .. } => {
-                if target_select
-                    .regions
-                    .is_superset_states(&self.all_current_states())
-                {
+
+        if self.needs[nd_inx].satisfied_by(&self.all_current_states()) {
+            match self.needs[nd_inx] {
+                SomeNeed::ToSelectRegions { .. } => {
                     if self.set_boredom_limit() {
                         self.update_times_visited();
                     }
                     return true;
                 }
-            }
-            SomeNeed::ExitSelectRegion { target_regions, .. } => {
-                if target_regions.is_superset_states(&self.all_current_states()) {
-                    return true;
-                }
-            }
-            _ => {
-                if self.needs[nd_inx]
-                    .satisfied_by(self.cur_state(self.needs[nd_inx].dom_id().unwrap()))
-                {
+                SomeNeed::ExitSelectRegions { .. } => return true,
+                _ => {
                     self.take_action_need(nd_inx);
                     return true;
                 }

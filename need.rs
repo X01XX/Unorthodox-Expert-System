@@ -11,6 +11,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::rulestore::RuleStore;
 use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
+use crate::statescorr::StatesCorr;
 use crate::target::ATarget;
 
 use serde::{Deserialize, Serialize};
@@ -96,12 +97,12 @@ pub enum SomeNeed {
         anchor: SomeState,
     },
     /// Move all current domain states out of a SelectRegion, to non-negative regions.
-    ExitSelectRegion {
+    ExitSelectRegions {
         target_regions: RegionsCorr,
         priority: usize,
     },
     /// Move all current domain states to a SelectRegion.
-    ToSelectRegion {
+    ToSelectRegions {
         target_select: SelectRegions,
         priority: usize,
         times_visited: usize,
@@ -127,8 +128,8 @@ impl SomeNeed {
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
             Self::SampleInRegion { .. } => "SampleInRegion",
-            Self::ToSelectRegion { .. } => "ToSelectRegion",
-            Self::ExitSelectRegion { .. } => "ExitSelectRegion",
+            Self::ToSelectRegions { .. } => "ToSelectRegions",
+            Self::ExitSelectRegions { .. } => "ExitSelectRegions",
         }
     }
 
@@ -138,14 +139,14 @@ impl SomeNeed {
         match self {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
-            Self::ExitSelectRegion { priority, .. } => *priority += 300,
+            Self::ExitSelectRegions { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
             Self::LimitGroup { priority, .. } => *priority += 500,
             Self::LimitGroupAdj { priority, .. } => *priority += 600,
             Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::SampleInRegion { priority, .. } => *priority += 850,
-            Self::ToSelectRegion { priority, .. } => *priority += 900,
+            Self::ToSelectRegions { priority, .. } => *priority += 900,
             Self::StateInRemainder { priority, .. } => *priority = 1000,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
@@ -159,15 +160,15 @@ impl SomeNeed {
         match self {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority,
-            Self::ExitSelectRegion { priority, .. } => *priority,
+            Self::ExitSelectRegions { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
             Self::ConfirmGroupAdj { priority, .. } => *priority,
             Self::StateNotInGroup { priority, .. } => *priority,
             Self::SampleInRegion { priority, .. } => *priority,
-            Self::ToSelectRegion { priority, .. } => *priority,
-            // Some needs should have a higher priority number compared to ToSelectRegion.
+            Self::ToSelectRegions { priority, .. } => *priority,
+            // Some needs should have a higher priority number compared to ToSelectRegions.
             Self::StateInRemainder { priority, .. } => *priority,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
@@ -177,52 +178,87 @@ impl SomeNeed {
     } // end priority
 
     /// Return true if a state satisfies a need.
-    pub fn satisfied_by(&self, cur_state: &SomeState) -> bool {
+    pub fn satisfied_by(&self, states: &StatesCorr) -> bool {
         match self {
-            Self::ConfirmGroup { target_state, .. } => {
-                if cur_state == target_state {
+            Self::ConfirmGroup {
+                dom_id,
+                target_state,
+                ..
+            } => {
+                if states[*dom_id] == *target_state {
                     return true;
                 }
             }
-            Self::ContradictoryIntersection { target_region, .. } => {
-                if target_region.is_superset_of(cur_state) {
+            Self::ContradictoryIntersection {
+                dom_id,
+                target_region,
+                ..
+            } => {
+                if target_region.is_superset_of(&states[*dom_id]) {
                     return true;
                 }
             }
-            Self::LimitGroup { target_state, .. } => {
-                if cur_state == target_state {
+            Self::LimitGroup {
+                dom_id,
+                target_state,
+                ..
+            } => {
+                if states[*dom_id] == *target_state {
                     return true;
                 }
             }
-            Self::LimitGroupAdj { target_state, .. } => {
-                if cur_state == target_state {
+            Self::LimitGroupAdj {
+                dom_id,
+                target_state,
+                ..
+            } => {
+                if states[*dom_id] == *target_state {
                     return true;
                 }
             }
-            Self::ConfirmGroupAdj { target_state, .. } => {
-                if cur_state == target_state {
+            Self::ConfirmGroupAdj {
+                dom_id,
+                target_state,
+                ..
+            } => {
+                if states[*dom_id] == *target_state {
                     return true;
                 }
             }
-            Self::StateInRemainder { target_region, .. } => {
-                if target_region.is_superset_of(cur_state) {
+            Self::StateInRemainder {
+                dom_id,
+                target_region,
+                ..
+            } => {
+                if target_region.is_superset_of(&states[*dom_id]) {
                     return true;
                 }
             }
-            Self::StateNotInGroup { target_state, .. } => {
-                if cur_state == target_state {
+            Self::StateNotInGroup {
+                dom_id,
+                target_state,
+                ..
+            } => {
+                if states[*dom_id] == *target_state {
                     return true;
                 }
             }
-            Self::SampleInRegion { target_region, .. } => {
-                if target_region.is_superset_of(cur_state) {
+            Self::SampleInRegion {
+                dom_id,
+                target_region,
+                ..
+            } => {
+                if target_region.is_superset_of(&states[*dom_id]) {
                     return true;
                 }
             }
-            _ => panic!(
-                "SomeNeed::satisfied_by should not be called for the {} need.",
-                self.name()
-            ),
+            Self::ExitSelectRegions { target_regions, .. } => {
+                return target_regions.is_superset_states(states)
+            }
+            Self::ToSelectRegions { target_select, .. } => {
+                return target_select.regions.is_superset_states(states)
+            }
+            _ => panic!("SomeNeed::satisfied_by: Unrecognized need. {}", self),
         } //end match self
         false
     } // end satisfied_by
@@ -246,6 +282,7 @@ impl SomeNeed {
     } // end act_id
 
     /// Return need domain number.
+    /// Two needs may cover GT 1 domain, so return None.
     pub fn dom_id(&self) -> Option<usize> {
         match self {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
@@ -295,11 +332,11 @@ impl SomeNeed {
                 region: target_region,
             },
 
-            Self::ToSelectRegion { target_select, .. } => ATarget::DomainRegions {
+            Self::ToSelectRegions { target_select, .. } => ATarget::DomainRegions {
                 regions: &target_select.regions,
             },
 
-            Self::ExitSelectRegion { target_regions, .. } => ATarget::DomainRegions {
+            Self::ExitSelectRegions { target_regions, .. } => ATarget::DomainRegions {
                 regions: target_regions,
             },
 
@@ -427,14 +464,14 @@ impl SomeNeed {
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State in {target_region})"
                 )
             }
-            Self::ToSelectRegion {
+            Self::ToSelectRegions {
                 target_select,
                 priority,
                 times_visited,
             } => {
                 format!("N(Pri {priority} To Select Regions {target_select}, times visited: {times_visited})")
             }
-            Self::ExitSelectRegion {
+            Self::ExitSelectRegions {
                 target_regions,
                 priority,
             } => {
@@ -444,22 +481,55 @@ impl SomeNeed {
     }
 
     /// Return the distance between a need target and the current state.
-    pub fn distance(&self, cur_state: &SomeState) -> usize {
+    pub fn distance(&self, states: &StatesCorr) -> usize {
         match self {
-            Self::ConfirmGroup { target_state, .. } => target_state.distance(cur_state),
-            Self::ContradictoryIntersection { target_region, .. } => {
-                target_region.distance(cur_state)
+            Self::ConfirmGroup {
+                dom_id,
+                target_state,
+                ..
+            } => target_state.distance(&states[*dom_id]),
+            Self::ContradictoryIntersection {
+                dom_id,
+                target_region,
+                ..
+            } => target_region.distance(&states[*dom_id]),
+            Self::LimitGroup {
+                dom_id,
+                target_state,
+                ..
+            } => target_state.distance(&states[*dom_id]),
+            Self::LimitGroupAdj {
+                dom_id,
+                target_state,
+                ..
+            } => target_state.distance(&states[*dom_id]),
+            Self::ConfirmGroupAdj {
+                dom_id,
+                target_state,
+                ..
+            } => target_state.distance(&states[*dom_id]),
+            Self::StateInRemainder {
+                dom_id,
+                target_region,
+                ..
+            } => target_region.distance(&states[*dom_id]),
+            Self::StateNotInGroup {
+                dom_id,
+                target_state,
+                ..
+            } => target_state.distance(&states[*dom_id]),
+            Self::SampleInRegion {
+                dom_id,
+                target_region,
+                ..
+            } => target_region.distance(&states[*dom_id]),
+            Self::ExitSelectRegions { target_regions, .. } => {
+                target_regions.distance_states(states)
             }
-            Self::LimitGroup { target_state, .. } => target_state.distance(cur_state),
-            Self::LimitGroupAdj { target_state, .. } => target_state.distance(cur_state),
-            Self::ConfirmGroupAdj { target_state, .. } => target_state.distance(cur_state),
-            Self::StateInRemainder { target_region, .. } => target_region.distance(cur_state),
-            Self::StateNotInGroup { target_state, .. } => target_state.distance(cur_state),
-            Self::SampleInRegion { target_region, .. } => target_region.distance(cur_state),
-            _ => panic!(
-                "SomeNeed::satisfied_by should not be called for the {} need.",
-                self.name()
-            ),
+            Self::ToSelectRegions { target_select, .. } => {
+                target_select.regions.distance_states(states)
+            }
+            _ => panic!("SomeNeed::distance: Unrecognised need {}", self),
         } //end match self
     } // end distance
 } // End impl SomeNeed

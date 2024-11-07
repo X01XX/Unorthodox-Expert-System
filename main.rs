@@ -581,8 +581,8 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
                 );
 
                 match dmxs.needs[nd_inx] {
-                    SomeNeed::ToSelectRegion { .. } => (),
-                    SomeNeed::ExitSelectRegion { .. } => (),
+                    SomeNeed::ToSelectRegions { .. } => (),
+                    SomeNeed::ExitSelectRegions { .. } => (),
                     _ => {
                         if dom_id != dmxs.needs[nd_inx].dom_id().unwrap() {
                             dmxs.change_domain(dmxs.needs[nd_inx].dom_id().unwrap());
