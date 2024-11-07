@@ -422,6 +422,11 @@ impl SomeAction {
     /// When most needs are satisfied, needs for group limitation are generated.
     /// If housekeeping needs are generated, they are processed and needs
     /// are checked again.
+    ///
+    /// You may think that the needs can be stored, and used again, if the action is
+    /// not changed by a new sample.  However, changes to the current state, via
+    /// a different action can elecit a new need in this action, if the new state is
+    /// not in a group.
     pub fn get_needs(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> NeedStore {
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);

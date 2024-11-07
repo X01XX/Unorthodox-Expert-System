@@ -88,14 +88,6 @@ pub struct DomainStore {
     pub times_visited: Vec<usize>,
     /// Non-negative, may be, or overlap, positive, regions.
     pub rc_non_negative: RegionsCorrStore,
-
-    /// Use to save the results of the last run of get_needs.
-    pub needs: NeedStore,
-    /// A vector of InxPlans for selected needs, where a plan could be calculated.
-    pub can_do: Vec<InxPlan>,
-    /// Vector of indicies for selected needs, where a plan could not be calculated.
-    pub cant_do: Vec<usize>,
-
     /// Save the maximum fragment value.
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
@@ -113,9 +105,9 @@ impl DomainStore {
             select_positive: SelectRegionsStore::new(vec![]),
             rc_non_negative: RegionsCorrStore::new(vec![]),
             select_negative: SelectRegionsStore::new(vec![]),
-            needs: NeedStore::new(vec![]),
-            can_do: Vec::<InxPlan>::new(),
-            cant_do: Vec::<usize>::new(),
+            // needs: NeedStore::new(vec![]),
+            //can_do: Vec::<InxPlan>::new(),
+            // cant_do: Vec::<usize>::new(),
             step_num: 0,
             max_pos_value: 0,
             times_visited: vec![],
@@ -257,7 +249,7 @@ impl DomainStore {
     /// Each Domain uses parallel processing to get needs for each Action.
     ///  plans.
     /// Set DomainStore fields with need info.
-    pub fn get_needs(&mut self) {
+    pub fn get_needs(&mut self) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
         //println!("domainstore::get_needs");
         // Inc step number.
         self.step_num += 1;
@@ -283,9 +275,10 @@ impl DomainStore {
 
         // Sort needs by ascending priority, and store.
         needs.sort_by_priority();
-        self.needs = needs;
 
-        self.evaluate_needs();
+        let (can_do, cant_do) = self.evaluate_needs(&needs);
+
+        (needs, can_do, cant_do)
     }
 
     /// Return the number of steps in a vector of PlanStores.
@@ -352,8 +345,8 @@ impl DomainStore {
     }
 
     /// Take an action to satisfy a need,
-    pub fn take_action_need(&mut self, nd_inx: usize) {
-        self.items[self.needs[nd_inx].dom_id().unwrap()].take_action_need(&self.needs[nd_inx]);
+    pub fn take_action_need(&mut self, needx: &SomeNeed) {
+        self.items[needx.dom_id().unwrap()].take_action_need(needx);
     }
 
     /// Return a reference to the current state of a given Domain index
@@ -362,26 +355,22 @@ impl DomainStore {
     }
     /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
-    pub fn evaluate_needs(&mut self) {
-        //println!("evaluate_needs: {} needs", self.needs.len());
+    pub fn evaluate_needs(&mut self, needs: &NeedStore) -> (Vec<InxPlan>, Vec<usize>) {
+        //println!("evaluate_needs: {} needs", needs.len());
 
-        // Init self need can/can't do vectors.
-        self.can_do = Vec::<InxPlan>::new();
-        self.cant_do = Vec::<usize>::new();
-
-        if self.needs.is_empty() {
-            return;
+        if needs.is_empty() {
+            return (vec![], vec![]);
         }
 
-        let mut can = Vec::<InxPlan>::new();
+        let mut can_do = Vec::<InxPlan>::new();
 
         let cur_states = self.all_current_states();
 
         // Check for needs that can be satisfied with the current state.
-        for (inx, ndx) in self.needs.iter().enumerate() {
+        for (inx, ndx) in needs.iter().enumerate() {
             if ndx.satisfied_by(&cur_states) {
                 //println!("need {ndx} At Target");
-                can.push(InxPlan {
+                can_do.push(InxPlan {
                     inx,
                     plans: NeedPlan::AtTarget {},
                     rate: 0,
@@ -391,15 +380,14 @@ impl DomainStore {
             }
         }
 
-        if !can.is_empty() {
-            self.can_do = can;
-            return;
+        if !can_do.is_empty() {
+            return (can_do, vec![]);
         }
 
-        let mut cur_pri = self.needs[0].priority();
+        let mut cur_pri = needs[0].priority();
         let mut count = 0;
-        print!("\nNumber needs: {}, priority(count): ", self.needs.len());
-        for needx in self.needs.iter() {
+        print!("\nNumber needs: {}, priority(count): ", needs.len());
+        for needx in needs.iter() {
             if needx.priority() > cur_pri {
                 print!("{}({}) ", cur_pri, count);
                 cur_pri = needx.priority();
@@ -410,20 +398,20 @@ impl DomainStore {
         println!("{}({}) ", cur_pri, count);
 
         // Init current priority value and start index.
-        let mut cur_pri = self.needs[0].priority();
+        let mut cur_pri = needs[0].priority();
 
         let mut cur_pri_start = 0;
 
         // Find current priority end index.
         let mut cur_pri_end = 0;
-        let needs_len = self.needs.len();
+        let needs_len = needs.len();
 
         let states = self.all_current_states();
 
         // Scan successive slices of items with the same priority.
         loop {
             // Find end of current slice.
-            while cur_pri_end < needs_len && self.needs[cur_pri_end].priority() == cur_pri {
+            while cur_pri_end < needs_len && needs[cur_pri_end].priority() == cur_pri {
                 cur_pri_end += 1;
             }
             // Process a priority slice.
@@ -431,10 +419,10 @@ impl DomainStore {
 
             // Test distance check.
             // Find needs distance to the current state.
-            let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(self.needs.len()); // (need index, distance)
+            let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(needs.len()); // (need index, distance)
 
             for inx in cur_pri_start..cur_pri_end {
-                let dist = self.needs[inx].distance(&states);
+                let dist = needs[inx].distance(&states);
                 need_inx_vec.push((inx, dist));
             }
 
@@ -464,8 +452,8 @@ impl DomainStore {
                         (
                             need_inx_vec[dist_inx].0,
                             self.plan_using_least_negative_select_regions_for_target(
-                                self.needs[need_inx_vec[dist_inx].0].dom_id(),
-                                &self.needs[need_inx_vec[dist_inx].0].target(),
+                                needs[need_inx_vec[dist_inx].0].dom_id(),
+                                &needs[need_inx_vec[dist_inx].0].target(),
                             ),
                         )
                     })
@@ -478,7 +466,7 @@ impl DomainStore {
                     if let Ok(ndplnx) = ndplnx {
                         match ndplnx {
                             NeedPlan::AtTarget {} => {
-                                can.push(InxPlan {
+                                can_do.push(InxPlan {
                                     inx,
                                     plans: ndplnx,
                                     rate: 0,
@@ -492,7 +480,7 @@ impl DomainStore {
                                 let desired_num_bits_changed =
                                     cur_regs.distance(&plany.result_regions());
                                 let process_num_bits_changed = plany.num_bits_changed();
-                                can.push(InxPlan {
+                                can_do.push(InxPlan {
                                     inx,
                                     plans: ndplnx,
                                     rate: ratex,
@@ -506,36 +494,31 @@ impl DomainStore {
                     }
                 } // next inx, ndplnx
 
-                if can.is_empty() {
+                if can_do.is_empty() {
                     cur_dist_start = cur_dist_end;
                 } else {
-                    self.can_do = can;
-                    return;
+                    return (can_do, vec![]);
                 }
             }
 
-            if can.is_empty() {
+            if can_do.is_empty() {
                 println!(", none.");
                 if cur_pri_end == needs_len {
-                    self.cant_do = (0..self.needs.len()).collect();
-                    return;
+                    return (vec![], (0..needs.len()).collect());
                 }
 
                 cur_pri_start = cur_pri_end;
-                cur_pri = self.needs[cur_pri_start].priority();
+                cur_pri = needs[cur_pri_start].priority();
                 continue;
             }
 
-            if can.len() == 1 {
+            if can_do.len() == 1 {
                 println!(", found 1 need that can be done.");
             } else {
-                println!(", found {} needs that can be done.", can.len());
+                println!(", found {} needs that can be done.", can_do.len());
             }
 
-            // Save can do results.
-            self.can_do = can;
-
-            return;
+            return (can_do, vec![]);
         } // End loop
           // Unreachable, since there is no break command.
     } // end evaluate_needs
@@ -663,17 +646,15 @@ impl DomainStore {
     /// Scan needs, by priority, to see what need can be satisfied by a plan.
     ///
     /// Return an index to the can_do vector.
-    pub fn choose_a_need(&self) -> usize {
+    pub fn choose_a_need(&self, can_do: &[InxPlan], needs: &NeedStore) -> usize {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
-        assert!(!self.can_do.is_empty());
+        assert!(!can_do.is_empty());
 
         // Gather plan rates.
         let mut rts = vec![];
-        for inxpln in self.can_do.iter() {
+        for inxpln in can_do.iter() {
             match &inxpln.plans {
-                NeedPlan::AtTarget {} => {
-                    rts.push(2000 - self.needs[inxpln.inx].priority() as isize)
-                } // change lower priority to higher rate.
+                NeedPlan::AtTarget {} => rts.push(2000 - needs[inxpln.inx].priority() as isize), // change lower priority to higher rate.
                 NeedPlan::PlanFound { plan: plnx } => rts.push(plnx.value),
             };
         }
@@ -693,8 +674,8 @@ impl DomainStore {
         println!(
             "\nNeed chosen: {:2} {} {}",
             inx,
-            self.needs[self.can_do[inx].inx],
-            match &self.can_do[inx].plans {
+            needs[can_do[inx].inx],
+            match &can_do[inx].plans {
                 NeedPlan::AtTarget {} => "At Target".to_string(),
                 NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
             }
@@ -886,7 +867,7 @@ impl DomainStore {
     }
 
     /// Print a domain.
-    pub fn print_domain(&self) {
+    pub fn print(&self) {
         // Calc current status.
         let mut in_str = String::new();
         let all_states = self.all_current_states();
@@ -939,21 +920,21 @@ impl DomainStore {
     }
 
     /// Print needs that can be done.
-    pub fn print_can_do(&self) {
-        if self.can_do.is_empty() {
-            if self.needs.is_not_empty() {
+    pub fn _print_can_do(&self, can_do: &[InxPlan], needs: &NeedStore) {
+        if can_do.is_empty() {
+            if needs.is_not_empty() {
                 println!("\nNeeds that can be done: None");
             }
             self.print_select();
         } else {
             println!("\nNeeds that can be done:");
 
-            for (inx, ndplnx) in self.can_do.iter().enumerate() {
+            for (inx, ndplnx) in can_do.iter().enumerate() {
                 if ndplnx.desired_num_bits_changed != 0 {
                     println!(
                         "{:2} {} {}/{}/{}/{:+}",
                         inx,
-                        self.needs[ndplnx.inx],
+                        needs[ndplnx.inx],
                         match &ndplnx.plans {
                             NeedPlan::AtTarget {} => "At Target".to_string(),
                             NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
@@ -966,7 +947,7 @@ impl DomainStore {
                     println!(
                         "{:2} {} {}",
                         inx,
-                        self.needs[ndplnx.inx],
+                        needs[ndplnx.inx],
                         match &ndplnx.plans {
                             NeedPlan::AtTarget {} => "At Target".to_string(),
                             NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
@@ -992,33 +973,25 @@ impl DomainStore {
         self[dmx].set_cur_state(new_state)
     }
 
-    /// Generate and display domain and needs.
-    pub fn generate_and_display_needs(&mut self) {
-        // Get the needs of all Domains / Actions
-        self.print_domain();
-        self.get_needs();
-        self.display_needs();
-    }
-
-    pub fn display_needs(&self) {
+    pub fn _display_needs(&self, needs: &NeedStore, can_do: Vec<InxPlan>, cant_do: Vec<usize>) {
         assert!(self.step_num < 1100); // Remove for continuous use
 
         // Print needs.
-        if self.needs.is_empty() {
+        if needs.is_empty() {
             println!("\nNumber needs: 0");
         } else {
             // Print needs that cannot be done.
-            if self.cant_do.is_empty() {
+            if cant_do.is_empty() {
                 // println!("\nNeeds that cannot be done: None");
             } else {
                 println!("\nNeeds that cannot be done:");
-                for ndplnx in self.cant_do.iter() {
-                    println!("   {}", self.needs[*ndplnx]);
+                for ndplnx in cant_do.iter() {
+                    println!("   {}", needs[*ndplnx]);
                 }
             }
         }
         // Print needs that can be done.
-        self.print_can_do();
+        self._print_can_do(&can_do, needs);
     }
 
     /// Return a plan for a given start RegionsCorr, goal RegionsCorr, within a RegionsCorrStore.
@@ -1641,12 +1614,12 @@ impl DomainStore {
 
     /// Try to satisfy a need.
     /// Return true if success.
-    pub fn do_a_need(&mut self, inx_pln: InxPlan) -> bool {
+    pub fn do_a_need(&mut self, needs: &NeedStore, inx_pln: &InxPlan) -> bool {
         let dom_id = self.current_domain;
         let nd_inx = inx_pln.inx;
 
         // Display Domain info, if needed.
-        match self.needs[nd_inx] {
+        match needs[nd_inx] {
             SomeNeed::ToSelectRegions { .. } => {
                 //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
             }
@@ -1654,12 +1627,12 @@ impl DomainStore {
                 //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
             }
             _ => {
-                let nd_dom = self.needs[nd_inx].dom_id().unwrap();
+                let nd_dom = needs[nd_inx].dom_id().unwrap();
                 if dom_id != nd_dom {
                     // Show "before" state before running need.
                     println!("\nAll domain states: {}", self.all_current_states());
                     self.change_domain(nd_dom);
-                    self.print_domain();
+                    self.print();
                     //println!("\nNeed chosen: {} {}", ndx, plans.str_terse());
                 }
             }
@@ -1678,8 +1651,8 @@ impl DomainStore {
                 Err(errstr) => {
                     println!("Run plan failed, {errstr}.");
                     if let Ok(ndpln2) = self.plan_using_least_negative_select_regions_for_target(
-                        self.needs[inx_pln.inx].dom_id(),
-                        &self.needs[inx_pln.inx].target(),
+                        needs[inx_pln.inx].dom_id(),
+                        &needs[inx_pln.inx].target(),
                     ) {
                         match ndpln2 {
                             NeedPlan::PlanFound { plan: plans2 } => {
@@ -1709,8 +1682,8 @@ impl DomainStore {
 
         // Take action after the desired state is reached.
 
-        if self.needs[nd_inx].satisfied_by(&self.all_current_states()) {
-            match self.needs[nd_inx] {
+        if needs[nd_inx].satisfied_by(&self.all_current_states()) {
+            match needs[nd_inx] {
                 SomeNeed::ToSelectRegions { .. } => {
                     if self.set_boredom_limit() {
                         self.update_times_visited();
@@ -1719,36 +1692,18 @@ impl DomainStore {
                 }
                 SomeNeed::ExitSelectRegions { .. } => return true,
                 _ => {
-                    self.take_action_need(nd_inx);
+                    self.take_action_need(&needs[nd_inx]);
                     return true;
                 }
             }
         }
         false
-    }
+    } // end do_a_need
+
     /// Run cleanup for a domain and action.
-    pub fn cleanup(&mut self, dom_id: usize, act_id: usize) {
+    pub fn cleanup(&mut self, dom_id: usize, act_id: usize, needs: &NeedStore) {
         assert!(dom_id < self.len());
-        self.items[dom_id].cleanup(act_id, &self.needs);
-    }
-
-    /// Do a session until no needs can be done.
-    pub fn do_session(&mut self) {
-        loop {
-            // Generate needs, get can_do and cant_do need vectors.
-            self.generate_and_display_needs();
-
-            // Check for end.
-            if self.can_do.is_empty() {
-                return;
-            }
-
-            let np_inx = self.choose_a_need();
-
-            if self.do_a_need(self.can_do[np_inx].clone()) {
-                println!("Need satisfied");
-            }
-        } // end loop
+        self.items[dom_id].cleanup(act_id, needs);
     }
 } // end impl DomainStore
 
@@ -1768,7 +1723,6 @@ impl IndexMut<usize> for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bits::SomeBits;
     use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
 
@@ -2007,8 +1961,7 @@ mod tests {
         domx.eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
         // Set select regions.
-        let regstr1 = RegionsCorr::from("RC[rxx0x]")?;
-        dmxs.add_select(SelectRegions::new(regstr1, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[rxx0x], -1]")?);
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2094,12 +2047,10 @@ mod tests {
         // Set select regions.
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
-        let regstr0 = RegionsCorr::from("RC[r1100]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r1100], -1]")?);
 
         // Set up dom 0 00XX dependent on dom 1 10XX.
-        let regstr1 = RegionsCorr::from("RC[r1011]")?;
-        dmxs.add_select(SelectRegions::new(regstr1, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r1011], -1]")?);
         dmxs.calc_select();
 
         let s0 = SomeState::from("0b0000")?;
@@ -2162,18 +2113,14 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
         // Set up dom 0 negative regions.
-        let regstr0 = RegionsCorr::from("RC[r01x1, rxxxx]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r01x1, rxxxx], -1]")?);
 
-        let regstr0 = RegionsCorr::from("RC[rx101, rxxxx]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[rx101, rxxxx], -1]")?);
 
         // Set up dom 1 negative regions.
-        let regstr0 = RegionsCorr::from("RC[rxxxx, r011x]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[rxxxx, r011x], -1]")?);
 
-        let regstr0 = RegionsCorr::from("RC[rxxxx, rx111]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[rxxxx, rx111], -1]")?);
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2245,13 +2192,9 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
         // Set up negative regions.
-        let regstr0 = RegionsCorr::from("RC[r00xx, rxx11]")?;
+        dmxs.add_select(SelectRegions::from("SR[RC[r00xx, rxx11], -1]")?);
 
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
-
-        let regstr0 = RegionsCorr::from("RC[r11xx, r01xx]")?;
-
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r11xx, r01xx], -1]")?);
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2332,11 +2275,9 @@ mod tests {
         dmxs[1].eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
         // Set up negative regions.
-        let regstr0 = RegionsCorr::from("RC[r000x, rxx11]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r000x, rxx11], -1]")?);
 
-        let regstr0 = RegionsCorr::from("RC[r11x1, r01xx]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        dmxs.add_select(SelectRegions::from("SR[RC[r11x1, r01xx], -1]")?);
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2380,20 +2321,19 @@ mod tests {
         // Add action to domain 1.
         dmxs[1].add_action(vec![], 5);
 
-        // Load select regions
-        let regstr1 = RegionsCorr::from("RC[r00000x0x, rXXXXXX10_1XXX_XXXX]")?;
-
-        let regstr2 = RegionsCorr::from("RC[r00000xx1, rXXXXXX10_1XXX_XXXX]")?;
-
-        let regstr3 = RegionsCorr::from("RC[r0000x1x1, rXXXXXX10_1XXX_XXXX]")?;
-
-        let regstr4 = RegionsCorr::from("RC[r00001110, rXXXXXX10_1XXX_XXXX]")?;
-
-        // Add select region stores.
-        dmxs.add_select(SelectRegions::new(regstr1, 1));
-        dmxs.add_select(SelectRegions::new(regstr2, 1));
-        dmxs.add_select(SelectRegions::new(regstr3, 1));
-        dmxs.add_select(SelectRegions::new(regstr4, 1));
+        // Load select regions.
+        dmxs.add_select(SelectRegions::from(
+            "SR[RC[r00000x0x, rXXXXXX10_1XXX_XXXX], 1]",
+        )?);
+        dmxs.add_select(SelectRegions::from(
+            "SR[RC[r00000xx1, rXXXXXX10_1XXX_XXXX], 1]",
+        )?);
+        dmxs.add_select(SelectRegions::from(
+            "SR[RC[r0000x1x1, rXXXXXX10_1XXX_XXXX], 1]",
+        )?);
+        dmxs.add_select(SelectRegions::from(
+            "SR[RC[r00001110, rXXXXXX10_1XXX_XXXX], 1]",
+        )?);
         dmxs.calc_select();
 
         // Set state for domain 0.
@@ -2505,19 +2445,10 @@ mod tests {
         dmxs[0].add_action(vec![], 5);
 
         // Load select regions
-        let regstr1 = RegionsCorr::from("RC[rxx0x]")?;
-
-        let regstr2 = RegionsCorr::from("RC[r00x1]")?;
-
-        let regstr3 = RegionsCorr::from("RC[r11x1]")?;
-
-        let regstr4 = RegionsCorr::from("RC[r10x0]")?;
-
-        // Add select region stores.
-        dmxs.add_select(SelectRegions::new(regstr1, 4));
-        dmxs.add_select(SelectRegions::new(regstr2, -2));
-        dmxs.add_select(SelectRegions::new(regstr3, -4));
-        dmxs.add_select(SelectRegions::new(regstr4, -5));
+        dmxs.add_select(SelectRegions::from("SR[RC[rxx0x], 4]")?);
+        dmxs.add_select(SelectRegions::from("SR[RC[r00x1], -2]")?);
+        dmxs.add_select(SelectRegions::from("SR[RC[r11x1], -4]")?);
+        dmxs.add_select(SelectRegions::from("SR[RC[r10x0], -5]")?);
         dmxs.calc_select();
 
         assert!(dmxs.select_positive.len() == 4);
@@ -2579,12 +2510,10 @@ mod tests {
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from("0b0000->0b1000")?);
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
-        // Set up negative regions.
-        let regstr0 = RegionsCorr::from("RC[r01xx]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -1));
+        // Set up negative select regions.
+        dmxs.add_select(SelectRegions::from("SR[RC[r01xx], -1]")?);
 
-        let regstr0 = RegionsCorr::from("RC[r10xx]")?;
-        dmxs.add_select(SelectRegions::new(regstr0, -2));
+        dmxs.add_select(SelectRegions::from("SR[RC[r10xx], -2]")?);
 
         // Calc non-negative RegionSores.
         dmxs.calc_select();
@@ -2731,108 +2660,6 @@ mod tests {
         } else {
             return Err("No path found?".to_string());
         }
-        //assert!(1 == 2);
-        Ok(())
-    }
-
-    /// Test the cleanup of unneeded groups.
-    /// First use of running a full session from a test function.
-    #[test]
-    fn cleanup() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls4: Vec<RuleStore> = vec![
-            RuleStore::from("[XX/11/01/XX]")?,
-            RuleStore::from("[11/XX/10/XX]")?,
-            RuleStore::from("[Xx/00/00/XX]")?,
-            RuleStore::from("[01/XX/11/XX]")?,
-        ];
-        dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
-
-        dmxs.do_session();
-
-        dmxs.print_domain();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
-        assert!(dmxs[0].actions[4].groups.len() == 6);
-
-        // Check action 4 primary groups.
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX10X")?) {
-            assert!(grpx.limited);
-        } else {
-            return Err("Group rX10X not found?".to_string());
-        }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r1X1X")?) {
-            assert!(grpx.limited);
-        } else {
-            return Err("Group r1X1X not found?".to_string());
-        }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX00X")?) {
-            assert!(grpx.limited);
-        } else {
-            return Err("Group rX00X not found?".to_string());
-        }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r0X1X")?) {
-            assert!(grpx.limited);
-        } else {
-            return Err("Group r0X1X not found?".to_string());
-        }
-
-        // Check unneeded groups.
-        let subs = dmxs[0].actions[4]
-            .groups
-            .subsets_of(&SomeRegion::from("r00XX")?);
-        println!("subsets of r00XX {subs}");
-        assert!(subs.len() == 1);
-        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
-        assert!(!grpx.limited);
-
-        let subs = dmxs[0].actions[4]
-            .groups
-            .subsets_of(&SomeRegion::from("r11XX")?);
-        println!("subsets of r11XX {subs}");
-        assert!(subs.len() == 1);
-        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
-        assert!(!grpx.limited);
-
-        // Do cleanup to delete unneeded groups.
-        dmxs.cleanup(0, 4);
-
-        dmxs.print_domain();
-        assert!(dmxs[0].actions[4].groups.len() == 4);
-        let subs = dmxs[0].actions[4]
-            .groups
-            .subsets_of(&SomeRegion::from("r11XX")?);
-        assert!(subs.is_empty());
-
-        let subs = dmxs[0].actions[4]
-            .groups
-            .subsets_of(&SomeRegion::from("r00XX")?);
-        assert!(subs.is_empty());
-
         //assert!(1 == 2);
         Ok(())
     }

@@ -14,7 +14,6 @@ use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
 use crate::target::ATarget;
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl fmt::Display for SomeNeed {
@@ -23,7 +22,7 @@ impl fmt::Display for SomeNeed {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Seek a sample in a region that contains no samples.

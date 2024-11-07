@@ -55,6 +55,7 @@ use sample::SomeSample;
 use state::SomeState;
 mod domain;
 mod needstore;
+use crate::needstore::NeedStore;
 mod plan;
 mod pn;
 mod statescorr;
@@ -63,7 +64,7 @@ use pn::Pn;
 mod domainstore;
 mod step;
 mod stepstore;
-use domainstore::{DomainStore, NeedPlan};
+use domainstore::{DomainStore, InxPlan, NeedPlan};
 mod actioninterface;
 mod planstore;
 mod selectregions;
@@ -135,9 +136,9 @@ fn run_step_by_step() {
     // Generate needs, get can_do and cant_do need vectors.
     let mut dmxs = domainstore_init();
 
-    dmxs.generate_and_display_needs();
+    let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
 
-    do_interactive_session(&mut dmxs);
+    do_interactive_session(&mut dmxs, needs, can_do, cant_do);
 }
 
 /// Load data from a file, then run with user input, step by step.
@@ -155,16 +156,16 @@ fn run_with_file(file_path: &str) {
     usage();
 
     // Display current state.
-    dmxs.generate_and_display_needs();
+    let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
 
     // Run with it.
-    do_interactive_session(&mut dmxs);
+    do_interactive_session(&mut dmxs, needs, can_do, cant_do);
 }
 
 /// Run until no more needs can be done, then take user input.
 fn do_session_until_no_needs(dmxs: &mut DomainStore) {
     let start = Instant::now();
-    dmxs.do_session();
+    do_session(dmxs);
 
     let duration = start.elapsed();
     println!(
@@ -173,7 +174,9 @@ fn do_session_until_no_needs(dmxs: &mut DomainStore) {
         duration
     );
 
-    do_interactive_session(dmxs);
+    let (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
+
+    do_interactive_session(dmxs, needs, can_do, cant_do);
 }
 
 /// Run a number of times without user input, generate aggregate data.
@@ -240,6 +243,92 @@ fn run_number_times(num_runs: usize) -> usize {
     println!("\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
          num_runs, average_steps, steps_high, steps_low, duration_minutes, average_time, duration_high, duration_low, cant_do, num_groups_off);
     cant_do
+}
+
+/// Do a session until no needs can be done.
+pub fn do_session(dmxs: &mut DomainStore) -> usize {
+    loop {
+        // Generate needs, get can_do and cant_do need vectors.
+        let (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
+
+        // Check for end.
+        if can_do.is_empty() {
+            return cant_do.len();
+        }
+
+        let np_inx = dmxs.choose_a_need(&can_do, &needs);
+
+        if dmxs.do_a_need(&needs, &can_do[np_inx]) {
+            println!("Need satisfied");
+        }
+    } // end loop
+}
+
+/// Generate and display domain and needs.
+pub fn generate_and_display_needs(dmxs: &mut DomainStore) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
+    // Get the needs of all Domains / Actions
+    dmxs.print();
+    let (needs, can_do, cant_do) = dmxs.get_needs();
+    display_needs(dmxs, &needs, &can_do, &cant_do);
+    (needs, can_do, cant_do)
+}
+
+pub fn display_needs(dmxs: &DomainStore, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
+    // Print needs.
+    if needs.is_empty() {
+        println!("\nNumber needs: 0");
+    } else {
+        // Print needs that cannot be done.
+        if cant_do.is_empty() {
+            // println!("\nNeeds that cannot be done: None");
+        } else {
+            println!("\nNeeds that cannot be done:");
+            for ndplnx in cant_do.iter() {
+                println!("   {}", needs[*ndplnx]);
+            }
+        }
+    }
+    // Print needs that can be done.
+    print_can_do(dmxs, can_do, needs);
+}
+
+/// Print needs that can be done.
+pub fn print_can_do(dmxs: &DomainStore, can_do: &[InxPlan], needs: &NeedStore) {
+    if can_do.is_empty() {
+        if needs.is_not_empty() {
+            println!("\nNeeds that can be done: None");
+        }
+        dmxs.print_select();
+    } else {
+        println!("\nNeeds that can be done:");
+
+        for (inx, ndplnx) in can_do.iter().enumerate() {
+            if ndplnx.desired_num_bits_changed != 0 {
+                println!(
+                    "{:2} {} {}/{}/{}/{:+}",
+                    inx,
+                    needs[ndplnx.inx],
+                    match &ndplnx.plans {
+                        NeedPlan::AtTarget {} => "At Target".to_string(),
+                        NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
+                    },
+                    ndplnx.desired_num_bits_changed,
+                    ndplnx.process_num_bits_changed,
+                    ndplnx.rate,
+                );
+            } else {
+                println!(
+                    "{:2} {} {}",
+                    inx,
+                    needs[ndplnx.inx],
+                    match &ndplnx.plans {
+                        NeedPlan::AtTarget {} => "At Target".to_string(),
+                        NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
+                    }
+                );
+            }
+        } // next ndplnx
+    }
 }
 
 /// Initialize a Domain Store, with two domains and 11 actions.
@@ -346,30 +435,35 @@ fn domainstore_init() -> DomainStore {
 fn do_one_session() -> (usize, usize, usize, usize) {
     let mut dmxs = domainstore_init();
 
-    dmxs.do_session();
+    let num_cant = do_session(&mut dmxs);
 
     (
         dmxs.step_num,
         dmxs.number_groups(),
         dmxs.number_groups_expected(),
-        dmxs.cant_do.len(),
+        num_cant,
     )
 }
 
 /// Do a session, step by step, taking user commands.
-pub fn do_interactive_session(dmxs: &mut DomainStore) {
+pub fn do_interactive_session(
+    dmxs: &mut DomainStore,
+    mut needs: NeedStore,
+    mut can_do: Vec<InxPlan>,
+    mut cant_do: Vec<usize>,
+) {
     loop {
-        command_loop(dmxs);
+        command_loop(dmxs, &needs, &can_do, &cant_do);
 
         // Generate needs, get can_do and cant_do need vectors.
-        dmxs.generate_and_display_needs();
+        (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
     } // end loop
 }
 
 /// Do command loop.
 /// Some commands work without the need to return and display the session
 /// state again, so the loop.  Otherwise the command returns.
-fn command_loop(dmxs: &mut DomainStore) {
+fn command_loop(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
     //println!("start command loop");
     loop {
         let mut cmd = Vec::<&str>::with_capacity(10);
@@ -383,9 +477,9 @@ fn command_loop(dmxs: &mut DomainStore) {
         // Default command, just press Enter
         if cmd.is_empty() {
             // Process needs
-            if dmxs.can_do.is_empty() {
+            if can_do.is_empty() {
             } else {
-                do_any_need(dmxs);
+                do_any_need(dmxs, needs, can_do);
             }
             return;
         }
@@ -413,8 +507,8 @@ fn command_loop(dmxs: &mut DomainStore) {
             }
             "cd" => match do_change_domain(dmxs, &cmd) {
                 Ok(()) => {
-                    dmxs.print_domain();
-                    dmxs.display_needs();
+                    dmxs.print();
+                    display_needs(dmxs, needs, can_do, cant_do);
                 }
                 Err(error) => {
                     println!("{error}");
@@ -427,10 +521,10 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "dcs" => {
-                dmxs.print_domain();
-                dmxs.print_can_do();
+                dmxs.print();
+                dmxs._print_can_do(can_do, needs);
             }
-            "dn" => match do_chosen_need(dmxs, &cmd) {
+            "dn" => match do_chosen_need(dmxs, &cmd, needs, can_do) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
@@ -449,7 +543,7 @@ fn command_loop(dmxs: &mut DomainStore) {
             "gnds" => {
                 let dom_id = dmxs.current_domain;
                 dmxs[dom_id].get_needs();
-                dmxs.print_domain();
+                dmxs.print();
                 continue;
             }
             "gps" => match do_print_group_defining_squares_command(dmxs, &cmd) {
@@ -460,7 +554,7 @@ fn command_loop(dmxs: &mut DomainStore) {
             },
             "h" => usage(),
             "help" => usage(),
-            "ppd" => match do_print_plan_details(dmxs, &cmd) {
+            "ppd" => match do_print_plan_details(dmxs, &cmd, needs, can_do) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
@@ -479,9 +573,9 @@ fn command_loop(dmxs: &mut DomainStore) {
                 }
             },
             "run" => {
-                if dmxs.can_do.is_empty() {
+                if can_do.is_empty() {
                 } else {
-                    dmxs.do_session();
+                    do_session(dmxs);
                 }
             }
             "ss" => match do_sample_state_command(dmxs, &cmd) {
@@ -521,29 +615,34 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> 
 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
-fn do_any_need(dmxs: &mut DomainStore) {
-    let np_inx = dmxs.choose_a_need();
+fn do_any_need(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan]) {
+    let np_inx = dmxs.choose_a_need(can_do, needs);
 
-    if dmxs.do_a_need(dmxs.can_do[np_inx].clone()) {
+    if dmxs.do_a_need(needs, &can_do[np_inx]) {
         println!("Need satisfied");
     }
 }
 
 /// Print details of a given plan
-fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_print_plan_details(
+    dmxs: &DomainStore,
+    cmd: &[&str],
+    needs: &NeedStore,
+    can_do: &[InxPlan],
+) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the ppd command.".to_string());
     }
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= dmxs.can_do.len() {
+            if n_num >= can_do.len() {
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
-                let ndx = &dmxs.needs[dmxs.can_do[n_num].inx];
+                let ndx = &needs[can_do[n_num].inx];
 
                 println!("\n{} Need: {}", n_num, ndx);
-                match &dmxs.can_do[n_num].plans {
+                match &can_do[n_num].plans {
                     NeedPlan::AtTarget {} => println!("AT?"),
                     NeedPlan::PlanFound { plan: plnx } => dmxs.print_planscorrstore_detail(plnx),
                 }
@@ -555,7 +654,12 @@ fn do_print_plan_details(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String>
 }
 
 /// Try to satisfy a need chosen by the user.
-fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_chosen_need(
+    dmxs: &mut DomainStore,
+    cmd: &[&str],
+    needs: &NeedStore,
+    can_do: &[InxPlan],
+) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the dn command.".to_string());
@@ -565,33 +669,33 @@ fn do_chosen_need(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
 
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= dmxs.can_do.len() {
+            if n_num >= can_do.len() {
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
-                let nd_inx = dmxs.can_do[n_num].inx;
+                let nd_inx = can_do[n_num].inx;
 
                 println!(
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
-                    dmxs.needs[nd_inx],
-                    match &dmxs.can_do[n_num].plans {
+                    needs[nd_inx],
+                    match &can_do[n_num].plans {
                         NeedPlan::AtTarget {} => "At Target".to_string(),
                         NeedPlan::PlanFound { plan: plnsx } => plnsx.str_terse(),
                     }
                 );
 
-                match dmxs.needs[nd_inx] {
+                match needs[nd_inx] {
                     SomeNeed::ToSelectRegions { .. } => (),
                     SomeNeed::ExitSelectRegions { .. } => (),
                     _ => {
-                        if dom_id != dmxs.needs[nd_inx].dom_id().unwrap() {
-                            dmxs.change_domain(dmxs.needs[nd_inx].dom_id().unwrap());
-                            dmxs.print_domain();
+                        if dom_id != needs[nd_inx].dom_id().unwrap() {
+                            dmxs.change_domain(needs[nd_inx].dom_id().unwrap());
+                            dmxs.print();
                         }
                     }
                 }
 
-                if dmxs.do_a_need(dmxs.can_do[n_num].clone()) {
+                if dmxs.do_a_need(needs, &can_do[n_num]) {
                     println!("Need satisfied");
                 }
 
@@ -1173,3 +1277,110 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
         Err(error) => Err(format!("Couldn't serialize {path_str}: {error}")),
     } // end match serialized_r
 } // end store_data
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Test the cleanup of unneeded groups.
+    /// First use of running a full session from a test function.
+    #[test]
+    fn cleanup() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls4: Vec<RuleStore> = vec![
+            RuleStore::from("[XX/11/01/XX]")?,
+            RuleStore::from("[11/XX/10/XX]")?,
+            RuleStore::from("[Xx/00/00/XX]")?,
+            RuleStore::from("[01/XX/11/XX]")?,
+        ];
+        dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
+
+        do_session(&mut dmxs);
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+        assert!(dmxs[0].actions[4].groups.len() == 6);
+
+        // Check action 4 primary groups.
+        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX10X")?) {
+            assert!(grpx.limited);
+        } else {
+            return Err("Group rX10X not found?".to_string());
+        }
+        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r1X1X")?) {
+            assert!(grpx.limited);
+        } else {
+            return Err("Group r1X1X not found?".to_string());
+        }
+        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX00X")?) {
+            assert!(grpx.limited);
+        } else {
+            return Err("Group rX00X not found?".to_string());
+        }
+        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r0X1X")?) {
+            assert!(grpx.limited);
+        } else {
+            return Err("Group r0X1X not found?".to_string());
+        }
+
+        // Check unneeded groups.
+        let subs = dmxs[0].actions[4]
+            .groups
+            .subsets_of(&SomeRegion::from("r00XX")?);
+        println!("subsets of r00XX {subs}");
+        assert!(subs.len() == 1);
+        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        assert!(!grpx.limited);
+
+        let subs = dmxs[0].actions[4]
+            .groups
+            .subsets_of(&SomeRegion::from("r11XX")?);
+        println!("subsets of r11XX {subs}");
+        assert!(subs.len() == 1);
+        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        assert!(!grpx.limited);
+
+        // Do cleanup to delete unneeded groups.
+        dmxs.cleanup(0, 4, &NeedStore::new(vec![]));
+
+        dmxs.print();
+        assert!(dmxs[0].actions[4].groups.len() == 4);
+        let subs = dmxs[0].actions[4]
+            .groups
+            .subsets_of(&SomeRegion::from("r11XX")?);
+        assert!(subs.is_empty());
+
+        let subs = dmxs[0].actions[4]
+            .groups
+            .subsets_of(&SomeRegion::from("r00XX")?);
+        assert!(subs.is_empty());
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+}

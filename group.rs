@@ -371,10 +371,7 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
-        let initial = SomeState::from("0b1100")?;
-        let result = SomeState::from("0b0100")?;
-
-        if !grpx.check_sample(&SomeSample::new(initial, result)) {
+        if !grpx.check_sample(&SomeSample::from("0b1100->0b0100")?) {
             return Err(format!("check_subset_sample: test 1 failed!"));
         }
 
@@ -389,14 +386,9 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::One
 
-        let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::from("0b1100")?,
-            SomeState::from("0b0100")?,
-        ));
-        sqrx.add_sample(&SomeSample::new(
-            sqrx.state.clone(),
-            SomeState::from("0b0101")?,
-        )); // Pn::Two, pnc == false.
+        let mut sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
+
+        sqrx.add_sample(&SomeSample::from("0b1100->0b0101")?); // Pn::Two, pnc == false.
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 1 failed!"));
@@ -409,19 +401,11 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::Two
 
-        let mut sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::from("0b1100")?,
-            SomeState::from("0b0100")?,
-        ));
-        sqrx.add_sample(&SomeSample::new(
-            sqrx.state.clone(),
-            SomeState::from("0b0100")?,
-        )); // pn = Pn::One, pnc = true.
+        let mut sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
 
-        sqrx.add_sample(&SomeSample::new(
-            sqrx.state.clone(),
-            SomeState::from("0b0100")?,
-        )); // pn = Pn::One, pnc = true.
+        sqrx.add_sample(&SomeSample::from("0b1100->0b0100")?); // pn = Pn::One, pnc = true.
+
+        sqrx.add_sample(&SomeSample::from("0b1100->0b0100")?); // pn = Pn::One, pnc = true.
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
@@ -434,10 +418,7 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, rules, false);
 
-        let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::from("0b1100")?,
-            SomeState::from("0b0100")?,
-        ));
+        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
 
         if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 3 failed!"));
@@ -450,19 +431,13 @@ mod tests {
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
-        let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::from("0b1100")?,
-            SomeState::from("0b0100")?,
-        ));
+        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
 
         if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4a failed!"));
         }
 
-        let sqrx = SomeSquare::new(&SomeSample::new(
-            SomeState::from("0b1100")?,
-            SomeState::from("0b0101")?,
-        ));
+        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0101")?);
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4b failed!"));

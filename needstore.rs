@@ -2,7 +2,6 @@
 
 use crate::need::SomeNeed;
 
-use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
@@ -14,7 +13,7 @@ impl fmt::Display for NeedStore {
 }
 
 #[readonly::make]
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug)]
 /// A vector of SomeNeed structs, and SomeNeed-specific funtions.
 pub struct NeedStore {
     /// A vector of SomeNeed struct instances.
