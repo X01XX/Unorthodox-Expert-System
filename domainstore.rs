@@ -453,7 +453,7 @@ impl DomainStore {
                             need_inx_vec[dist_inx].0,
                             self.plan_using_least_negative_select_regions_for_target(
                                 needs[need_inx_vec[dist_inx].0].dom_id(),
-                                &needs[need_inx_vec[dist_inx].0].target(),
+                                needs[need_inx_vec[dist_inx].0].target(),
                             ),
                         )
                     })
@@ -793,7 +793,9 @@ impl DomainStore {
             if let Some(near_nn_regs) = self.closest_rc_regions(&all_regs) {
                 // Process closest non-negative regions.
                 let mut needx = SomeNeed::ExitSelectRegions {
-                    target_regions: near_nn_regs.clone(),
+                    target: ATarget::DomainRegions {
+                        regions: near_nn_regs.clone(),
+                    },
                     priority: 0,
                 };
                 needx.add_priority_base();
@@ -834,7 +836,9 @@ impl DomainStore {
             }
             let adjust = (self.max_pos_value - psupx.net_value) + self.times_visited[inx] as isize;
             let mut needx = SomeNeed::ToSelectRegions {
-                target_select: psupx.clone(),
+                target: ATarget::SelectRegions {
+                    select: psupx.clone(),
+                },
                 priority: adjust as usize,
                 times_visited: self.times_visited[inx],
             };
@@ -919,45 +923,6 @@ impl DomainStore {
         );
     }
 
-    /// Print needs that can be done.
-    pub fn _print_can_do(&self, can_do: &[InxPlan], needs: &NeedStore) {
-        if can_do.is_empty() {
-            if needs.is_not_empty() {
-                println!("\nNeeds that can be done: None");
-            }
-            self.print_select();
-        } else {
-            println!("\nNeeds that can be done:");
-
-            for (inx, ndplnx) in can_do.iter().enumerate() {
-                if ndplnx.desired_num_bits_changed != 0 {
-                    println!(
-                        "{:2} {} {}/{}/{}/{:+}",
-                        inx,
-                        needs[ndplnx.inx],
-                        match &ndplnx.plans {
-                            NeedPlan::AtTarget {} => "At Target".to_string(),
-                            NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
-                        },
-                        ndplnx.desired_num_bits_changed,
-                        ndplnx.process_num_bits_changed,
-                        ndplnx.rate,
-                    );
-                } else {
-                    println!(
-                        "{:2} {} {}",
-                        inx,
-                        needs[ndplnx.inx],
-                        match &ndplnx.plans {
-                            NeedPlan::AtTarget {} => "At Target".to_string(),
-                            NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
-                        }
-                    );
-                }
-            } // next ndplnx
-        }
-    }
-
     /// Change the current display domain.
     pub fn change_domain(&mut self, dom_id: usize) {
         assert!(dom_id < self.items.len());
@@ -971,27 +936,6 @@ impl DomainStore {
 
         let dmx = self.current_domain;
         self[dmx].set_cur_state(new_state)
-    }
-
-    pub fn _display_needs(&self, needs: &NeedStore, can_do: Vec<InxPlan>, cant_do: Vec<usize>) {
-        assert!(self.step_num < 1100); // Remove for continuous use
-
-        // Print needs.
-        if needs.is_empty() {
-            println!("\nNumber needs: 0");
-        } else {
-            // Print needs that cannot be done.
-            if cant_do.is_empty() {
-                // println!("\nNeeds that cannot be done: None");
-            } else {
-                println!("\nNeeds that cannot be done:");
-                for ndplnx in cant_do.iter() {
-                    println!("   {}", needs[*ndplnx]);
-                }
-            }
-        }
-        // Print needs that can be done.
-        self._print_can_do(&can_do, needs);
     }
 
     /// Return a plan for a given start RegionsCorr, goal RegionsCorr, within a RegionsCorrStore.
@@ -1054,6 +998,7 @@ impl DomainStore {
                 .maximum_regions_except(dom_id.unwrap(), &SomeRegion::new(vec![(*state).clone()])),
             ATarget::Region { region } => &self.maximum_regions_except(dom_id.unwrap(), region),
             ATarget::DomainRegions { regions } => regions,
+            ATarget::SelectRegions { select } => &select.regions,
         };
         self.plan_using_least_negative_select_regions(&from, goal)
     }
@@ -1652,7 +1597,7 @@ impl DomainStore {
                     println!("Run plan failed, {errstr}.");
                     if let Ok(ndpln2) = self.plan_using_least_negative_select_regions_for_target(
                         needs[inx_pln.inx].dom_id(),
-                        &needs[inx_pln.inx].target(),
+                        needs[inx_pln.inx].target(),
                     ) {
                         match ndpln2 {
                             NeedPlan::PlanFound { plan: plans2 } => {

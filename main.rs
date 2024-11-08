@@ -522,7 +522,7 @@ fn command_loop(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan], c
             },
             "dcs" => {
                 dmxs.print();
-                dmxs._print_can_do(can_do, needs);
+                print_can_do(dmxs, can_do, needs);
             }
             "dn" => match do_chosen_need(dmxs, &cmd, needs, can_do) {
                 Ok(()) => return,
@@ -768,7 +768,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
         match dmxs.plan_using_least_negative_select_regions_for_target(
             Some(dom_id),
             &ATarget::Region {
-                region: &goal_region,
+                region: goal_region.clone(),
             },
         ) {
             Ok(planx) => {

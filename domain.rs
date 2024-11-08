@@ -1047,10 +1047,10 @@ mod tests {
             if nedx.name() == name {
                 if match (nedx.target(), target) {
                     (ATarget::State { state: state1 }, ATarget::State { state: state2 }) => {
-                        &state1 == state2
+                        state1 == state2
                     }
                     (ATarget::Region { region: region1 }, ATarget::Region { region: region2 }) => {
-                        &region1 == region2
+                        region1 == region2
                     }
                     _ => false,
                 } {
@@ -1287,7 +1287,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0001")?
+                state: SomeState::from("0b0001")?
             }
         ));
 
@@ -1320,7 +1320,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0000")?
+                state: SomeState::from("0b0000")?
             }
         ));
 
@@ -1344,7 +1344,7 @@ mod tests {
             &nds1,
             "StateNotInGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0001")?
+                state: SomeState::from("0b0001")?
             }
         ));
 
@@ -1374,14 +1374,14 @@ mod tests {
             &nds2,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0001")?
+                state: SomeState::from("0b0001")?
             }
         ));
         assert!(contains_similar_need(
             &nds2,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0010")?
+                state: SomeState::from("0b0010")?
             }
         ));
 
@@ -1396,7 +1396,7 @@ mod tests {
             &nds3,
             "ConfirmGroup",
             &ATarget::State {
-                state: &SomeState::from("0b0001")?
+                state: SomeState::from("0b0001")?
             }
         ));
 
@@ -1445,7 +1445,7 @@ mod tests {
             &nds1,
             "ContradictoryIntersection",
             &ATarget::Region {
-                region: &SomeRegion::from("rX100")?
+                region: SomeRegion::from("rX100")?
             }
         ));
 
@@ -1695,14 +1695,14 @@ mod tests {
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::from("0b1110")?
+                    state: SomeState::from("0b1110")?
                 }
             ));
             assert!(contains_similar_need(
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::from("0b0111")?
+                    state: SomeState::from("0b0111")?
                 }
             ));
         } else {
@@ -1721,14 +1721,14 @@ mod tests {
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::from("0b1100")?
+                    state: SomeState::from("0b1100")?
                 }
             ));
             assert!(contains_similar_need(
                 &needs,
                 "LimitGroupAdj",
                 &ATarget::State {
-                    state: &SomeState::from("0b0101")?
+                    state: SomeState::from("0b0101")?
                 }
             ));
         } else {

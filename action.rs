@@ -377,7 +377,9 @@ impl SomeAction {
                     let mut needx = SomeNeed::StateNotInGroup {
                         dom_id: self.dom_id,
                         act_id: self.id,
-                        target_state: cur_state.clone(),
+                        target: ATarget::State {
+                            state: cur_state.clone(),
+                        },
                         priority: 0,
                     };
                     needx.add_priority_base();
@@ -388,7 +390,9 @@ impl SomeAction {
                 let mut needx = SomeNeed::StateNotInGroup {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_state: cur_state.clone(),
+                    target: ATarget::State {
+                        state: cur_state.clone(),
+                    },
                     priority: 0,
                 };
                 needx.add_priority_base();
@@ -409,7 +413,9 @@ impl SomeAction {
             let mut needx = SomeNeed::StateNotInGroup {
                 dom_id: self.dom_id,
                 act_id: self.id,
-                target_state: stax.clone(),
+                target: ATarget::State {
+                    state: stax.clone(),
+                },
                 priority: cur_state.distance(stax),
             };
             needx.add_priority_base();
@@ -566,7 +572,9 @@ impl SomeAction {
                 let mut needx = SomeNeed::StateInRemainder {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_region: regx.clone(),
+                    target: ATarget::Region {
+                        region: regx.clone(),
+                    },
                     priority: 0,
                 };
                 needx.add_priority_base();
@@ -612,7 +620,7 @@ impl SomeAction {
             // Check needs
             for ndx in needs.iter() {
                 if match ndx.target() {
-                    ATarget::State { state } => state == keyx,
+                    ATarget::State { state } => *state == *keyx,
                     ATarget::Region { region } => region.is_superset_of(keyx),
                     _ => panic!("SNH"),
                 } {
@@ -698,7 +706,9 @@ impl SomeAction {
                 let mut needx = SomeNeed::ConfirmGroup {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_state: sqrx.state.clone(),
+                    target: ATarget::State {
+                        state: sqrx.state.clone(),
+                    },
                     grp_reg: grpx.region.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -735,7 +745,9 @@ impl SomeAction {
             let mut needx = SomeNeed::ConfirmGroup {
                 dom_id: self.dom_id,
                 act_id: self.id,
-                target_state: grpx.region.far_state().clone(),
+                target: ATarget::State {
+                    state: grpx.region.far_state(),
+                },
                 grp_reg: grpx.region.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
@@ -1062,7 +1074,9 @@ impl SomeAction {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor.clone(),
-                    target_state: anchor.clone(),
+                    target: ATarget::State {
+                        state: anchor.clone(),
+                    },
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1091,7 +1105,9 @@ impl SomeAction {
                 dom_id: self.dom_id,
                 act_id: self.id,
                 anchor: cfm_max.clone(),
-                target_state: cfm_max.clone(),
+                target: ATarget::State {
+                    state: cfm_max.clone(),
+                },
                 for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
@@ -1183,7 +1199,7 @@ impl SomeAction {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         anchor: anchor_sta.clone(),
-                        target_state: adj_sta,
+                        target: ATarget::State { state: adj_sta },
                         for_group: regx.clone(),
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
@@ -1196,7 +1212,7 @@ impl SomeAction {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
-                    target_state: adj_sta,
+                    target: ATarget::State { state: adj_sta },
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1233,7 +1249,7 @@ impl SomeAction {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
-                    target_state: sta_far,
+                    target: ATarget::State { state: sta_far },
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1246,7 +1262,7 @@ impl SomeAction {
                 dom_id: self.dom_id,
                 act_id: self.id,
                 anchor: anchor_sta.clone(),
-                target_state: sta_far,
+                target: ATarget::State { state: sta_far },
                 for_group: regx.clone(),
                 priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
             };
@@ -1281,7 +1297,7 @@ impl SomeAction {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         anchor: anchor_sta.clone(),
-                        target_state: adj_sta,
+                        target: ATarget::State { state: adj_sta },
                         for_group: regx.clone(),
                         priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
@@ -1294,7 +1310,7 @@ impl SomeAction {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
-                    target_state: adj_sta,
+                    target: ATarget::State { state: adj_sta },
                     for_group: regx.clone(),
                     priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                 };
@@ -1700,7 +1716,9 @@ impl SomeAction {
                 let mut needx = SomeNeed::ContradictoryIntersection {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_region: SomeRegion::new(vec![sqrx.state.clone()]),
+                    target: ATarget::Region {
+                        region: SomeRegion::new(vec![sqrx.state.clone()]),
+                    },
                     group1: grpx.region.clone(),
                     ruls1: rulsx,
                     group2: grpy.region.clone(),
@@ -1714,7 +1732,9 @@ impl SomeAction {
                 let mut needx = SomeNeed::ContradictoryIntersection {
                     dom_id: self.dom_id,
                     act_id: self.id,
-                    target_region: regx.clone(),
+                    target: ATarget::Region {
+                        region: regx.clone(),
+                    },
                     group1: grpx.region.clone(),
                     ruls1: rulsx,
                     group2: grpy.region.clone(),

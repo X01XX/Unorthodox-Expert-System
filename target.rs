@@ -2,29 +2,33 @@
 
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
+use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
 
 use std::fmt;
 
-impl fmt::Display for ATarget<'_> {
+impl fmt::Display for ATarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Target :{}", &self.formatted_string())
     }
 }
 
-pub enum ATarget<'a> {
-    State { state: &'a SomeState },
-    Region { region: &'a SomeRegion },
-    DomainRegions { regions: &'a RegionsCorr },
+#[derive(Debug)]
+pub enum ATarget {
+    State { state: SomeState },
+    Region { region: SomeRegion },
+    DomainRegions { regions: RegionsCorr },
+    SelectRegions { select: SelectRegions },
 }
 
-impl<'a> ATarget<'a> {
+impl ATarget {
     /// Return a String representation.
     fn formatted_string(&self) -> String {
         match self {
-            Self::State { state } => format!("{}", state),
-            Self::Region { region } => format!("{}", region),
-            Self::DomainRegions { regions } => format!("{}", regions),
+            Self::State { state } => format!("{state}"),
+            Self::Region { region } => format!("{region}"),
+            Self::DomainRegions { regions } => format!("{regions}"),
+            Self::SelectRegions { select } => format!("{select}"),
         }
     }
 }
