@@ -1,6 +1,7 @@
 //! The NeedStore struct, a vector of SomeNeed structs.
 
 use crate::need::SomeNeed;
+use crate::target::ATarget;
 
 use std::fmt;
 use std::ops::Index;
@@ -105,6 +106,36 @@ impl NeedStore {
     /// Remove a need by index.
     pub fn remove(&mut self, inx: usize) {
         self.items.remove(inx);
+    }
+
+    /// Return true if a need with a given type and target is in a NeedStore.
+    pub fn contains_similar_need(&self, name: &str, target: &ATarget) -> bool {
+        //println!("NeedStore::contains_similar_need: name {name} target {target}");
+        for nedx in self.iter() {
+            if nedx.name() != name {
+                return false;
+            }
+            if match (nedx.target(), target) {
+                (ATarget::State { state: state1 }, ATarget::State { state: state2 }) => {
+                    state1 == state2
+                }
+                (ATarget::Region { region: region1 }, ATarget::Region { region: region2 }) => {
+                    region1 == region2
+                }
+                (
+                    ATarget::DomainRegions { regions: region1 },
+                    ATarget::DomainRegions { regions: region2 },
+                ) => region1 == region2,
+                (
+                    ATarget::SelectRegions { select: sel1 },
+                    ATarget::SelectRegions { select: sel2 },
+                ) => sel1.regions == sel2.regions,
+                _ => false,
+            } {
+                return true;
+            }
+        }
+        false
     }
 } // end impl NeedStore
 

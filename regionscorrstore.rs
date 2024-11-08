@@ -183,7 +183,15 @@ impl RegionsCorrStore {
 
         let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
 
-        let mut cur_left = self.clone(); // Store for current non-remainders.
+        // Remove duplicates, if any.
+        let mut cur_left = Self::new(vec![]);
+        for rscx in self.iter() {
+            if !cur_left.contains(rscx) {
+                cur_left.push(rscx.clone());
+            }
+        }
+
+        //let mut cur_left = self.clone(); // Store for current non-remainders.
 
         while cur_left.is_not_empty() {
             // Find the remainders of each SelectRegions minus others.

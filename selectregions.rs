@@ -34,12 +34,6 @@ impl PartialEq for SelectRegions {
                 return false;
             }
         }
-        if self.pos_value != other.pos_value {
-            return false;
-        }
-        if self.neg_value != other.neg_value {
-            return false;
-        }
         if self.net_value != other.net_value {
             return false;
         }

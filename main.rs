@@ -1383,4 +1383,67 @@ mod tests {
         //assert!(1 == 2);
         Ok(())
     }
+
+    /// For a single positive SelectRegion,
+    /// Program develops rules, program seeks positive SelectRegion, then gets bored beyond limit.
+    #[test]
+    fn select1() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select regions
+        dmxs.add_select(SelectRegions::from("SR[RC[r1000], 1]")?);
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        do_session(&mut dmxs);
+
+        // Insure boredom is zero.
+        dmxs[0].set_cur_state(SomeState::from("0b0000")?);
+        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        assert!(dmxs.boredom == 0);
+        assert!(needs.contains_similar_need(
+            "ToSelectRegions",
+            &ATarget::SelectRegions {
+                select: SelectRegions::from("SR[RC[r1000], 1]")?
+            }
+        ));
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+
+        // Move to positive region.
+        do_any_need(&mut dmxs, &needs, &can_do);
+
+        assert!(dmxs[0].cur_state == (SomeState::from("0b1000")?));
+
+        generate_and_display_needs(&mut dmxs);
+        generate_and_display_needs(&mut dmxs);
+
+        assert!(dmxs.boredom > dmxs.boredom_limit);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 }

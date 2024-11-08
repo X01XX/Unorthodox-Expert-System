@@ -432,7 +432,8 @@ impl SomeAction {
     /// You may think that the needs can be stored, and used again, if the action is
     /// not changed by a new sample.  However, changes to the current state, via
     /// a different action can elecit a new need in this action, if the new state is
-    /// not in a group.
+    /// not in a group. A change in another action could expand, or restrict, the possible bit changes,
+    /// affecting all actions needs.
     pub fn get_needs(&mut self, cur_state: &SomeState, max_reg: &SomeRegion) -> NeedStore {
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
@@ -471,8 +472,8 @@ impl SomeAction {
         } // end while
 
         // Check for cleanup.
-        // For testing, set cleanup_trigger > 99 to suppress this.
-        if ret.is_empty() && self.cleanup_trigger < 100 && self.cleanup_number_new_squares > 0 {
+        // For testing, set cleanup_trigger high to suppress this.
+        if self.cleanup_number_new_squares >= self.cleanup_trigger {
             self.cleanup(&ret);
         }
         ret
@@ -552,12 +553,6 @@ impl SomeAction {
                 }
             } // next ndx
         } // end loop
-
-        // Do cleanup, if needed.
-        if self.cleanup_number_new_squares >= self.cleanup_trigger {
-            self.cleanup(&nds);
-            self.cleanup_number_new_squares = 0;
-        }
 
         // Look for needs for states not in groups
         nds.append(self.state_not_in_group_needs(cur_state));

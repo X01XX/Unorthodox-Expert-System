@@ -1041,26 +1041,6 @@ mod tests {
     use crate::domainstore::DomainStore;
     use crate::target::ATarget;
 
-    /// Return true if a need with a given type and target is in a NeedStore.
-    fn contains_similar_need(nds: &NeedStore, name: &str, target: &ATarget) -> bool {
-        for nedx in nds.iter() {
-            if nedx.name() == name {
-                if match (nedx.target(), target) {
-                    (ATarget::State { state: state1 }, ATarget::State { state: state2 }) => {
-                        state1 == state2
-                    }
-                    (ATarget::Region { region: region1 }, ATarget::Region { region: region2 }) => {
-                        region1 == region2
-                    }
-                    _ => false,
-                } {
-                    return true;
-                }
-            }
-        }
-        false
-    }
-
     // Test running a plan using an alt-rule (change) group.
     #[test]
     fn alt_rule1() -> Result<(), String> {
@@ -1283,8 +1263,7 @@ mod tests {
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(contains_similar_need(
-            &nds1,
+        assert!(nds1.contains_similar_need(
             "StateNotInGroup",
             &ATarget::State {
                 state: SomeState::from("0b0001")?
@@ -1316,8 +1295,7 @@ mod tests {
         println!("needs: {}", nds1);
 
         assert_eq!(nds1.len(), 1);
-        assert!(contains_similar_need(
-            &nds1,
+        assert!(nds1.contains_similar_need(
             "StateNotInGroup",
             &ATarget::State {
                 state: SomeState::from("0b0000")?
@@ -1340,8 +1318,7 @@ mod tests {
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(contains_similar_need(
-            &nds1,
+        assert!(nds1.contains_similar_need(
             "StateNotInGroup",
             &ATarget::State {
                 state: SomeState::from("0b0001")?
@@ -1370,15 +1347,13 @@ mod tests {
         println!("needs {}", nds2);
 
         assert_eq!(nds2.len(), 2);
-        assert!(contains_similar_need(
-            &nds2,
+        assert!(nds2.contains_similar_need(
             "ConfirmGroup",
             &ATarget::State {
                 state: SomeState::from("0b0001")?
             }
         ));
-        assert!(contains_similar_need(
-            &nds2,
+        assert!(nds2.contains_similar_need(
             "ConfirmGroup",
             &ATarget::State {
                 state: SomeState::from("0b0010")?
@@ -1392,8 +1367,7 @@ mod tests {
         let nds3 = dm0.actions[0].confirm_group_needs();
         println!("needs {}", nds3);
         assert_eq!(nds3.len(), 1);
-        assert!(contains_similar_need(
-            &nds3,
+        assert!(nds3.contains_similar_need(
             "ConfirmGroup",
             &ATarget::State {
                 state: SomeState::from("0b0001")?
@@ -1441,8 +1415,7 @@ mod tests {
         let nds1 = dm0.actions[0].group_pair_needs();
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
-        assert!(contains_similar_need(
-            &nds1,
+        assert!(nds1.contains_similar_need(
             "ContradictoryIntersection",
             &ATarget::Region {
                 region: SomeRegion::from("rX100")?
@@ -1691,15 +1664,13 @@ mod tests {
         if let Some(needs) = nds {
             println!("needs {}", needs);
             assert!(needs.len() == 2);
-            assert!(contains_similar_need(
-                &needs,
+            assert!(needs.contains_similar_need(
                 "LimitGroupAdj",
                 &ATarget::State {
                     state: SomeState::from("0b1110")?
                 }
             ));
-            assert!(contains_similar_need(
-                &needs,
+            assert!(needs.contains_similar_need(
                 "LimitGroupAdj",
                 &ATarget::State {
                     state: SomeState::from("0b0111")?
@@ -1717,15 +1688,13 @@ mod tests {
         if let Some(needs) = nds {
             println!("needs {}", needs);
             assert!(needs.len() == 2);
-            assert!(contains_similar_need(
-                &needs,
+            assert!(needs.contains_similar_need(
                 "LimitGroupAdj",
                 &ATarget::State {
                     state: SomeState::from("0b1100")?
                 }
             ));
-            assert!(contains_similar_need(
-                &needs,
+            assert!(needs.contains_similar_need(
                 "LimitGroupAdj",
                 &ATarget::State {
                     state: SomeState::from("0b0101")?

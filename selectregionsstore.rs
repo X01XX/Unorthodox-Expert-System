@@ -69,9 +69,9 @@ impl SelectRegionsStore {
         //print!("{} push {}", self, select);
         debug_assert!(self.is_empty() || select.num_bits_vec() == self.items[0].num_bits_vec());
 
-        if !self.contains(&select) {
-            self.items.push(select);
-        }
+        //if !self.contains(&select) {
+        self.items.push(select);
+        //}
     }
 
     /// Add a SelectRegionsStore, deleting subsets.
@@ -295,6 +295,7 @@ impl SelectRegionsStore {
 
     /// Return true if an equal RegionsCorr is already in the SelectRegionsStore.
     pub fn contains(&self, slrx: &SelectRegions) -> bool {
+        //println!("selectregionsstore::contains: store: {self} arg: {slrx}");
         debug_assert!(self.is_empty() || slrx.num_bits_vec() == self.items[0].num_bits_vec());
 
         for regstrx in &self.items {
@@ -374,7 +375,8 @@ impl SelectRegionsStore {
         // Calc intersections.
         fragments = fragments.split_by_intersections();
 
-        //println!("final remainders: {}", final_remainders);
+        //println!("fragments: {fragments}");
+
         let mut sel_fragments = Vec::<SelectRegions>::with_capacity(fragments.len());
         for regsx in fragments {
             // Calc positive and negative value for RegionsCorr.
