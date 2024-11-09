@@ -42,6 +42,7 @@ use region::SomeRegion;
 mod change;
 use change::SomeChange;
 mod regionscorr;
+use crate::regionscorr::RegionsCorr;
 mod regionstore;
 mod resultstore;
 mod rule;
@@ -262,6 +263,52 @@ pub fn do_session(dmxs: &mut DomainStore) -> usize {
             println!("Need satisfied");
         }
     } // end loop
+}
+
+/// Do a session until no needs can be done,
+/// then position to a desired end state,
+/// return true if the desired end state is attained.
+pub fn do_session_then_end_state(dmxs: &mut DomainStore, end_state_within: &RegionsCorr) -> bool {
+    loop {
+        // Generate needs, get can_do and cant_do need vectors.
+        let (needs, can_do, _cant_do) = generate_and_display_needs(dmxs);
+
+        // Check for end.
+        if can_do.is_empty() {
+            match to_end_state_within(dmxs, end_state_within) {
+                Ok(()) => return true,
+                Err(_) => return false,
+            }
+        }
+
+        let np_inx = dmxs.choose_a_need(&can_do, &needs);
+
+        if dmxs.do_a_need(&needs, &can_do[np_inx]) {
+            println!("Need satisfied");
+        }
+    } // end loop
+}
+
+/// Seek an end state within a given RegionsCorr instance.
+fn to_end_state_within(dmxs: &mut DomainStore, end_state: &RegionsCorr) -> Result<(), String> {
+    let cur_regions = dmxs.all_current_regions();
+
+    debug_assert!(cur_regions.is_congruent(end_state));
+
+    if end_state.is_superset_of(&cur_regions) {
+        return Ok(());
+    }
+
+    match dmxs.plan_using_least_negative_select_regions(&cur_regions, end_state) {
+        Ok(planx) => match planx {
+            NeedPlan::AtTarget {} => panic!("This condition should have been checked for earlier."),
+            NeedPlan::PlanFound { plan: plnx } => match dmxs.run_planscorrstore(&plnx) {
+                Ok(_) => Ok(()),
+                Err(errstr) => Err(errstr),
+            },
+        },
+        Err(errstr) => Err(format!("{:?}", errstr)),
+    }
 }
 
 /// Generate and display domain and needs.
@@ -1415,11 +1462,12 @@ mod tests {
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
-        // Develop rules.
-        do_session(&mut dmxs);
+        // Develop rules, position to desired end state.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0000]")?) {
+            return Err("Seesion to end state failed".to_string());
+        }
 
         // Insure boredom is zero.
-        dmxs[0].set_cur_state(SomeState::from("0b0000")?);
         let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
         assert!(dmxs.boredom == 0);
         assert!(needs.len() == 1);

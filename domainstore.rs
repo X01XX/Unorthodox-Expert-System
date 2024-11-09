@@ -1006,7 +1006,7 @@ impl DomainStore {
     /// Like Real Life, formulate a direct plan,
     /// notice there are some negative aspects,
     /// then try to form a plan that avoids the negative.
-    fn plan_using_least_negative_select_regions(
+    pub fn plan_using_least_negative_select_regions(
         &self,
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,

@@ -205,10 +205,8 @@ impl SelectRegionsStore {
         debug_assert!(self.is_empty() || regs.num_bits_vec() == self.items[0].num_bits_vec());
 
         for selx in self.items.iter() {
-            if selx.net_value < 0 {
-                if selx.regions.is_superset_of(regs) {
-                    return true;
-                }
+            if selx.net_value < 0 && selx.regions.is_superset_of(regs) {
+                return true;
             }
         }
         false
