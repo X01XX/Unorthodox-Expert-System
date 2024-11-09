@@ -200,6 +200,20 @@ impl SelectRegionsStore {
             .sum()
     }
 
+    /// Return true if a RegionsCorr instance is a subset af any negative SelectRegions.
+    pub fn in_negative_regions(&self, regs: &RegionsCorr) -> bool {
+        debug_assert!(self.is_empty() || regs.num_bits_vec() == self.items[0].num_bits_vec());
+
+        for selx in self.items.iter() {
+            if selx.net_value < 0 {
+                if selx.regions.is_superset_of(regs) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+
     /// Return true if any SelectRegion is a region superset of another..
     fn any_supersets_of(&self, slrx: &SelectRegions) -> bool {
         debug_assert!(self.is_empty() || slrx.num_bits_vec() == self.items[0].num_bits_vec());

@@ -1281,6 +1281,7 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::regionscorr::RegionsCorr;
 
     /// Test the cleanup of unneeded groups.
     /// First use of running a full session from a test function.
@@ -1414,12 +1415,14 @@ mod tests {
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
+        // Develop rules.
         do_session(&mut dmxs);
 
         // Insure boredom is zero.
         dmxs[0].set_cur_state(SomeState::from("0b0000")?);
         let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
         assert!(dmxs.boredom == 0);
+        assert!(needs.len() == 1);
         assert!(needs.contains_similar_need(
             "ToSelectRegions",
             &ATarget::SelectRegions {
@@ -1444,6 +1447,91 @@ mod tests {
         assert!(dmxs.boredom > dmxs.boredom_limit);
 
         //assert!(1 == 2);
+        Ok(())
+    }
+
+    /// Test going into a net-positive SelectRegion, out of boredom, then exiting because of
+    /// an additional, smaller, negative influence.
+    #[test]
+    fn select2() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select regions
+        dmxs.add_select(SelectRegions::from("SR[RC[r01X1], 3]")?);
+        dmxs.add_select(SelectRegions::from("SR[RC[rX111], -1]")?);
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        do_session(&mut dmxs);
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+        assert!(dmxs[0].cur_state == SomeState::from("0b0101")?);
+
+        // Inc boredom by 1.
+        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        assert!(needs.is_empty());
+        // Inc boredom by 1.
+        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        assert!(needs.is_empty());
+
+        // Should want to try state 0111 now.
+        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        assert!(needs.len() == 1);
+        assert!(needs.contains_similar_need(
+            "ToSelectRegions",
+            &ATarget::SelectRegions {
+                select: SelectRegions::from("SR[RC[r0111], 2]")?
+            }
+        ));
+
+        // Move to positive 0111..
+        do_any_need(&mut dmxs, &needs, &can_do);
+        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        assert!(needs.len() == 1);
+        assert!(
+            needs.contains_similar_need(
+                "ExitSelectRegions",
+                &ATarget::DomainRegions {
+                    regions: RegionsCorr::from("RC[rXXX0]")?
+                }
+            ) || needs.contains_similar_need(
+                "ExitSelectRegions",
+                &ATarget::DomainRegions {
+                    regions: RegionsCorr::from("RC[rX0XX]")?
+                }
+            ) || needs.contains_similar_need(
+                "ExitSelectRegions",
+                &ATarget::DomainRegions {
+                    regions: RegionsCorr::from("RC[rXX0X]")?
+                }
+            )
+        );
+
+        //assert!(1 == 2);
+
         Ok(())
     }
 }

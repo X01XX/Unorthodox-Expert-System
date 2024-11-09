@@ -777,10 +777,8 @@ impl DomainStore {
         // Get all domain current states vector.
         let all_regs = self.all_current_regions();
 
-        let rate = self.select.rate_regions(&all_regs);
-
-        // Check if current state rate is negative.
-        if rate < 0 {
+        // Check if current states are in a negative region.
+        if self.select.in_negative_regions(&all_regs) {
             self.boredom = 0;
             self.boredom_limit = 0;
 
