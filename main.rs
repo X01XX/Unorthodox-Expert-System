@@ -259,8 +259,9 @@ pub fn do_session(dmxs: &mut DomainStore) -> usize {
 
         let np_inx = dmxs.choose_a_need(&can_do, &needs);
 
-        if dmxs.do_a_need(&needs, &can_do[np_inx]) {
-            println!("Need satisfied");
+        match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+            Ok(()) => println!("Need satisfied"),
+            Err(errstr) => println!("{errstr}"),
         }
     } // end loop
 }
@@ -283,8 +284,9 @@ pub fn do_session_then_end_state(dmxs: &mut DomainStore, end_state_within: &Regi
 
         let np_inx = dmxs.choose_a_need(&can_do, &needs);
 
-        if dmxs.do_a_need(&needs, &can_do[np_inx]) {
-            println!("Need satisfied");
+        match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+            Ok(()) => println!("Need satisfied"),
+            Err(errstr) => println!("{errstr}"),
         }
     } // end loop
 }
@@ -665,8 +667,9 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> 
 fn do_any_need(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan]) {
     let np_inx = dmxs.choose_a_need(can_do, needs);
 
-    if dmxs.do_a_need(needs, &can_do[np_inx]) {
-        println!("Need satisfied");
+    match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+        Ok(()) => println!("Need satisfied"),
+        Err(errstr) => println!("{errstr}"),
     }
 }
 
@@ -742,11 +745,13 @@ fn do_chosen_need(
                     }
                 }
 
-                if dmxs.do_a_need(needs, &can_do[n_num]) {
-                    println!("Need satisfied");
+                match dmxs.do_a_need(&needs[can_do[n_num].inx], &can_do[n_num]) {
+                    Ok(()) => {
+                        println!("Need satisfied");
+                        Ok(())
+                    }
+                    Err(errstr) => Err(errstr),
                 }
-
-                Ok(())
             }
         }
         Err(error) => Err(format!("{error}")),
@@ -1464,7 +1469,7 @@ mod tests {
 
         // Develop rules, position to desired end state.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0000]")?) {
-            return Err("Seesion to end state failed".to_string());
+            return Err("Session to end state failed".to_string());
         }
 
         // Insure boredom is zero.
@@ -1530,13 +1535,15 @@ mod tests {
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        do_session(&mut dmxs);
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
         dmxs.print();
         assert!(dmxs[0].actions[0].groups.len() == 1);
         assert!(dmxs[0].actions[1].groups.len() == 1);
         assert!(dmxs[0].actions[2].groups.len() == 1);
         assert!(dmxs[0].actions[3].groups.len() == 1);
-        assert!(dmxs[0].cur_state == SomeState::from("0b0101")?);
 
         // Inc boredom by 1.
         let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);

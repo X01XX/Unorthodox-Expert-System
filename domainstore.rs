@@ -1558,13 +1558,11 @@ impl DomainStore {
     }
 
     /// Try to satisfy a need.
-    /// Return true if success.
-    pub fn do_a_need(&mut self, needs: &NeedStore, inx_pln: &InxPlan) -> bool {
+    pub fn do_a_need(&mut self, needx: &SomeNeed, inx_pln: &InxPlan) -> Result<(), String> {
         let dom_id = self.current_domain;
-        let nd_inx = inx_pln.inx;
 
         // Display Domain info, if needed.
-        match needs[nd_inx] {
+        match needx {
             SomeNeed::ToSelectRegions { .. } => {
                 //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
             }
@@ -1572,7 +1570,7 @@ impl DomainStore {
                 //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
             }
             _ => {
-                let nd_dom = needs[nd_inx].dom_id().unwrap();
+                let nd_dom = needx.dom_id().unwrap();
                 if dom_id != nd_dom {
                     // Show "before" state before running need.
                     println!("\nAll domain states: {}", self.all_current_states());
@@ -1584,8 +1582,8 @@ impl DomainStore {
         }
 
         // Run the plan, allow for one failure.
-        if let NeedPlan::PlanFound { plan: plans } = &inx_pln.plans {
-            match self.run_planscorrstore(plans) {
+        match &inx_pln.plans {
+            NeedPlan::PlanFound { plan: plans } => match self.run_planscorrstore(plans) {
                 Ok(num) => {
                     if num == 1 {
                         println!("{num} step run.")
@@ -1596,8 +1594,8 @@ impl DomainStore {
                 Err(errstr) => {
                     println!("Run plan failed, {errstr}.");
                     if let Ok(ndpln2) = self.plan_using_least_negative_select_regions_for_target(
-                        needs[inx_pln.inx].dom_id(),
-                        needs[inx_pln.inx].target(),
+                        needx.dom_id(),
+                        needx.target(),
                     ) {
                         match ndpln2 {
                             NeedPlan::PlanFound { plan: plans2 } => {
@@ -1611,38 +1609,43 @@ impl DomainStore {
                                         }
                                     }
                                     Err(errstr) => {
-                                        println!("Second failure, giving up, {errstr}");
-                                        return false;
+                                        return Err(format!("Second failure, giving up, {errstr}"));
                                     }
                                 }
                             }
-                            _ => return false,
+                            NeedPlan::AtTarget {} => (),
                         }
                     } else {
-                        println!("Unexpected result, new path to goal not found.");
+                        return Err(format!(
+                            "New path from {} to goal {} not found.",
+                            self.all_current_states(),
+                            needx.target()
+                        ));
                     }
                 }
-            }
+            },
+            NeedPlan::AtTarget {} => (),
         }
 
         // Take action after the desired state is reached.
 
-        if needs[nd_inx].satisfied_by(&self.all_current_states()) {
-            match needs[nd_inx] {
+        if needx.satisfied_by(&self.all_current_states()) {
+            match needx {
                 SomeNeed::ToSelectRegions { .. } => {
                     if self.set_boredom_limit() {
                         self.update_times_visited();
                     }
-                    return true;
+                    Ok(())
                 }
-                SomeNeed::ExitSelectRegions { .. } => return true,
+                SomeNeed::ExitSelectRegions { .. } => Ok(()),
                 _ => {
-                    self.take_action_need(&needs[nd_inx]);
-                    return true;
+                    self.take_action_need(needx);
+                    Ok(())
                 }
             }
+        } else {
+            Err("Need not staisfied".to_string())
         }
-        false
     } // end do_a_need
 
     /// Run cleanup for a domain and action.
