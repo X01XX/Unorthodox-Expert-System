@@ -647,7 +647,7 @@ impl SomeRule {
 
     /// Return true if a rule causes predictable change.
     pub fn causes_predictable_change(&self) -> bool {
-        !(self.b10.is_low() && self.b01.is_low())
+        self.b10.is_not_low() || self.b01.is_not_low()
     }
 
     /// Combine two rules into a single, aggregate, rule.

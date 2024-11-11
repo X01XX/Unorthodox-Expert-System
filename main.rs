@@ -1361,7 +1361,7 @@ mod tests {
         let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
-        // Set up action 3, changing bit 3.
+        // Set up action 4, changing bits 1 and 3.
         let ruls4: Vec<RuleStore> = vec![
             RuleStore::from("[XX/11/01/XX]")?,
             RuleStore::from("[11/XX/10/XX]")?,

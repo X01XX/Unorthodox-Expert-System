@@ -1635,16 +1635,15 @@ impl DomainStore {
                     if self.set_boredom_limit() {
                         self.update_times_visited();
                     }
-                    Ok(())
                 }
-                SomeNeed::ExitSelectRegions { .. } => Ok(()),
+                SomeNeed::ExitSelectRegions { .. } => (),
                 _ => {
                     self.take_action_need(needx);
-                    Ok(())
                 }
             }
+            Ok(())
         } else {
-            Err("Need not staisfied".to_string())
+            Err("Need not satisfied".to_string())
         }
     } // end do_a_need
 

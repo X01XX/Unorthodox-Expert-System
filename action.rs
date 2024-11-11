@@ -1265,9 +1265,9 @@ impl SomeAction {
             ret_nds.push(needx);
         }
 
-        // If a group that causes a single pedictable change, it will be confirmed by use.
-        if self.groups[group_num].pn == Pn::One
-            && self.groups[group_num].causes_predictable_change()
+        // If a group causes a pedictable change, it will be confirmed by use.
+        if self.groups[group_num].causes_predictable_change()
+            && self.groups[group_num].edge_mask().is_not_low()
         {
             if ret_nds.is_empty() {
                 //println!("action::limit_group_adj_needs: returning None (3)");
