@@ -105,9 +105,6 @@ impl DomainStore {
             select_positive: SelectRegionsStore::new(vec![]),
             rc_non_negative: RegionsCorrStore::new(vec![]),
             select_negative: SelectRegionsStore::new(vec![]),
-            // needs: NeedStore::new(vec![]),
-            //can_do: Vec::<InxPlan>::new(),
-            // cant_do: Vec::<usize>::new(),
             step_num: 0,
             max_pos_value: 0,
             times_visited: vec![],
@@ -144,7 +141,6 @@ impl DomainStore {
             }
         }
 
-        //self.select.push_nosubs(selx);
         self.select.push(selx);
     }
 
@@ -280,15 +276,6 @@ impl DomainStore {
         let (can_do, cant_do) = self.evaluate_needs(&needs);
 
         (needs, can_do, cant_do)
-    }
-
-    /// Return the number of steps in a vector of PlanStores.
-    pub fn number_steps(&self, plns: &Option<PlanStore>) -> usize {
-        if let Some(planx) = plns {
-            planx.number_steps()
-        } else {
-            0
-        }
     }
 
     /// Run a PlansCorrStore.
@@ -521,7 +508,6 @@ impl DomainStore {
 
             return (can_do, vec![]);
         } // End loop
-          // Unreachable, since there is no break command.
     } // end evaluate_needs
 
     /// Create a RegionsStoreCorr of maximum regions, except a for given domain.
@@ -784,12 +770,6 @@ impl DomainStore {
 
             let mut ndstr = NeedStore::new(vec![]);
 
-            //print!("all_states: [");
-            //for regx in all_regs.iter() {
-            //    print!(" {}", regx.first_state());
-            //}
-            //println!("], is subset of a negative region. ");
-
             if let Some(near_nn_regs) = self.closest_rc_regions(&all_regs) {
                 // Process closest non-negative regions.
                 let mut needx = SomeNeed::ExitSelectRegions {
@@ -819,7 +799,7 @@ impl DomainStore {
         self.select_goal_needs(&all_regs)
     }
 
-    /// Return a need for moving to an select region.
+    /// Return a need for moving to a select region.
     fn select_goal_needs(&self, goal_regs: &RegionsCorr) -> Option<NeedStore> {
         //println!("domainstore::select_goal_needs:");
         debug_assert!(self.len() == goal_regs.len());

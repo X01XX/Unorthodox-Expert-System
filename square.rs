@@ -62,7 +62,7 @@ impl SomeSquare {
     pub fn new(asample: &SomeSample) -> Self {
         Self {
             state: asample.initial.clone(),
-            results: ResultStore::new(vec![asample.result.clone()]),
+            results: ResultStore::new(asample.result.clone()),
             rules: Some(RuleStore::new(vec![SomeRule::new(asample)])),
             pn: Pn::One,
             pnc: false,

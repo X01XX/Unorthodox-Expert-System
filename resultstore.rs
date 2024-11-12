@@ -78,6 +78,7 @@
 
 use crate::pn::Pn;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 
 const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twice, changing pnc to true.
                               // If three-result squares are to be supported, a one-result square would need three results before pnc = true, instead of two.
@@ -85,13 +86,12 @@ const MAX_RESULTS: usize = 4; // Results for a two-result square can be seen twi
                               // Some assumptions for one-result squares would need to be changed in other code.
                               // Better not to go there unless there is a really good reason.
 
-use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
 impl fmt::Display for ResultStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.items))
+        write!(f, "{}", self.states)
     }
 }
 
@@ -101,27 +101,26 @@ type Resultint = usize;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
-    items: Vec<SomeState>,
+    states: StateStore,
     /// Number results seen so far.
     num_results: Resultint,
 }
 
 impl ResultStore {
     /// Return a new ResultStore, with an initial result.
-    pub fn new(mut st: Vec<SomeState>) -> Self {
-        debug_assert!(st.len() == 1);
+    pub fn new(st: SomeState) -> Self {
+        let mut states = StateStore::with_capacity(MAX_RESULTS);
+        states.push(st);
 
-        let mut ret = Self {
-            items: Vec::<SomeState>::with_capacity(MAX_RESULTS),
-            num_results: st.len(),
-        };
-        ret.items.append(&mut st);
-        ret
+        Self {
+            states,
+            num_results: 1,
+        }
     }
 
     /// Return the number of results in the store.
     pub fn len(&self) -> usize {
-        self.items.len()
+        self.states.len()
     }
 
     /// Add a result to a circular buffer.
@@ -129,15 +128,15 @@ impl ResultStore {
     pub fn add_result(&mut self, st: SomeState) -> Pn {
         debug_assert_eq!(st.num_bits(), self.num_bits());
 
-        if self.items.len() < MAX_RESULTS {
-            self.items.push(st);
+        if self.states.len() < MAX_RESULTS {
+            self.states.push(st);
         } else {
-            self.items[self.num_results % MAX_RESULTS] = st;
+            self.states[self.num_results % MAX_RESULTS] = st;
         }
 
         // Wrap around check.
         if self.num_results == Resultint::MAX {
-            self.num_results = 4;
+            self.num_results = MAX_RESULTS;
         } else {
             self.num_results += 1;
         }
@@ -147,17 +146,17 @@ impl ResultStore {
 
     /// Return the first result.
     pub fn first(&self) -> &SomeState {
-        &self.items[0]
+        &self.states[0]
     }
 
     /// Return the second result.
     pub fn second(&self) -> &SomeState {
-        &self.items[1]
+        &self.states[1]
     }
 
     /// Return the most recent result.
     pub fn most_recent_result(&self) -> &SomeState {
-        &self.items[(self.num_results - 1) % MAX_RESULTS]
+        &self.states[(self.num_results - 1) % MAX_RESULTS]
     }
 
     /// Calculate the Pattern Number, after adding a result.
@@ -165,8 +164,8 @@ impl ResultStore {
     fn calc_pn(&self) -> Pn {
         // Check for Pn::One.
         let mut pn_one = true;
-        for inx in 1..self.items.len() {
-            if self.items[inx] != self.items[0] {
+        for inx in 1..self.states.len() {
+            if self.states[inx] != self.states[0] {
                 pn_one = false;
             }
         }
@@ -175,11 +174,11 @@ impl ResultStore {
         }
 
         // Check for not Pn::Two
-        if self.items.len() > 2 {
-            if self.items[0] != self.items[2] {
+        if self.states.len() > 2 {
+            if self.states[0] != self.states[2] {
                 return Pn::Unpredictable;
             }
-            if self.items.len() > 3 && self.items[1] != self.items[3] {
+            if self.states.len() > 3 && self.states[1] != self.states[3] {
                 return Pn::Unpredictable;
             }
         }
@@ -192,9 +191,9 @@ impl ResultStore {
         self.num_results
     }
 
-    /// Return the number of bits used by ResultStore items.
+    /// Return the number of bits used by ResultStore states.
     pub fn num_bits(&self) -> usize {
-        self.items[0].num_bits()
+        self.states[0].num_bits()
     }
 
     /// Increment the number of results.
@@ -219,7 +218,7 @@ mod tests {
         let sta8 = SomeState::from("0x8")?;
         let sta9 = SomeState::from("0x9")?;
 
-        let mut rslt_str = ResultStore::new(vec![sta1.clone()]);
+        let mut rslt_str = ResultStore::new(sta1.clone());
         let mrr = rslt_str.most_recent_result();
         println!("mrr: {mrr} sta1: {sta1}");
         assert!(*mrr == sta1);
@@ -270,7 +269,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(vec![SomeState::from("0x505")?]);
+        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
 
         let pn = rslt_str.add_result(SomeState::from("0x505")?);
         println!("Pn: {pn} results: {rslt_str}");
@@ -291,7 +290,7 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(vec![SomeState::from("0x505")?]);
+        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
         let mut pn = rslt_str.add_result(SomeState::from("0x504")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
@@ -324,7 +323,7 @@ mod tests {
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
-        let mut rslt_str = ResultStore::new(vec![SomeState::from("0x505")?]);
+        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
         let mut pn = rslt_str.add_result(SomeState::from("0x504")?);
 
         println!("Pn: {pn} results: {rslt_str}");
@@ -335,7 +334,7 @@ mod tests {
         assert!(pn == Pn::Unpredictable);
 
         // Test three different results.
-        rslt_str = ResultStore::new(vec![SomeState::from("0x505")?]);
+        rslt_str = ResultStore::new(SomeState::from("0x505")?);
         pn = rslt_str.add_result(SomeState::from("0x504")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
@@ -350,7 +349,7 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(vec![SomeState::from("0x500")?]);
+        let mut rslt_str = ResultStore::new(SomeState::from("0x500")?);
         rslt_str.add_result(SomeState::from("0x501")?);
         rslt_str.add_result(SomeState::from("0x502")?);
         rslt_str.add_result(SomeState::from("0x503")?);
