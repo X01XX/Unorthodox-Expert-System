@@ -430,12 +430,6 @@ impl RegionStore {
     /// Each fragment returned will be a subset of one, or more, items in
     /// the original, but not otherwise intersect any item in the original.
     pub fn split_by_intersections(&self) -> Self {
-        if self.len() < 2 {
-            // Nothing to intersect.
-            return self.clone();
-        }
-
-        let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
 
         // Remove duplicates, if any.
         let mut cur_left = Self::new(vec![]);
@@ -444,6 +438,13 @@ impl RegionStore {
                 cur_left.push(rscx.clone());
             }
         }
+
+        if cur_left.len() < 2 {
+            // Nothing to intersect.
+            return cur_left;
+        }
+
+        let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
 
         while cur_left.is_not_empty() {
             // Find the remainders of each SelectRegions minus others.
