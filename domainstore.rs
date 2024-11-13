@@ -233,6 +233,7 @@ impl DomainStore {
     }
 
     /// Add a Domain struct to the store.
+    /// Enforce domain id = index into domainstore items vector.
     /// Add select regions after the last domain has been added.
     pub fn add_domain(&mut self, cur_state: SomeState) {
         debug_assert!(self.select.is_empty());

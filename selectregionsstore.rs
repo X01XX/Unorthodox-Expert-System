@@ -521,7 +521,7 @@ mod tests {
             assert!(pos_val + neg_val == selx.net_value);
         }
 
-        // Check no fragments are supersets (or equal) any other.
+        // Check no fragments are supersets (or equal) any other, or intersect.
         // Check each possible pair.
         for inx in 0..(frags.len() - 1) {
             for iny in (inx + 1)..frags.len() {

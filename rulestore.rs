@@ -480,7 +480,7 @@ impl RuleStore {
     }
 
     /// Return a rulestore, given a string representation.
-    /// Like [] or [r1010, r0101].
+    /// Like [], [X0/11/11/10/00] or [00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx].
     pub fn from(rs_str: &str) -> Result<Self, String> {
         //println!("rulestore::from: {rs_str}");
 

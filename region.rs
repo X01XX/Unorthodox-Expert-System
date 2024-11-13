@@ -520,6 +520,11 @@ impl SomeRegion {
     pub fn iter(&self) -> Iter<SomeState> {
         self.states.iter()
     }
+
+    /// Return the number of squares in a region.
+    pub fn number_squares(&self) -> usize {
+        2_u32.pow(self.x_mask().num_one_bits() as u32) as usize
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.

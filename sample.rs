@@ -45,7 +45,8 @@ impl SomeSample {
     }
 
     /// Return a sample from a string.
-    /// Like "0101->1010".
+    /// Prefixes that can be used, none, 0b, 0x, s.
+    /// Like "0001->0b1111", "s0101->0xa".
     pub fn from(s_str: &str) -> Result<Self, String> {
         let mut initial_str = String::new();
         let mut result_str = String::new();
@@ -107,7 +108,17 @@ mod tests {
 
     #[test]
     fn from() -> Result<(), String> {
-        match SomeSample::from("0101->1010") {
+        match SomeSample::from("0101->0b1010") {
+            Ok(asample) => {
+                assert!(asample.initial == SomeState::from("0101")?);
+                assert!(asample.result == SomeState::from("1010")?);
+            }
+            Err(errstr) => {
+                return Err(errstr);
+            }
+        }
+
+        match SomeSample::from("0x5->s1010") {
             Ok(asample) => {
                 assert!(asample.initial == SomeState::from("0101")?);
                 assert!(asample.result == SomeState::from("1010")?);

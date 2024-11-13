@@ -80,7 +80,7 @@ impl GroupStore {
             if inx == grp_inx {
                 continue;
             }
-            if ret.any_intersection(&grpx.region) {
+            if ret.any_intersection_of(&grpx.region) {
                 ret = ret.subtract_item(&grpx.region);
             }
         }

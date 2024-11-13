@@ -99,6 +99,18 @@ impl RegionsCorrStore {
         false
     }
 
+    /// Return true if there is any subset of a given RegionsCorrStore.
+    fn any_subset_of(&self, rcx: &RegionsCorr) -> bool {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
+        for rcy in self.iter() {
+            if rcy.is_subset_of(rcx) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return true if there is any intersection of a given RegionsCorr.
     pub fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
         debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
@@ -118,7 +130,24 @@ impl RegionsCorrStore {
         let mut del = Vec::<usize>::new();
 
         for (inx, rcy) in self.iter().enumerate() {
-            if rcx.is_superset_of(rcy) {
+            if rcy.is_subset_of(rcx) {
+                del.push(inx);
+            }
+        }
+        // Remove items, if any, highest index first.
+        for inx in del.iter().rev() {
+            self.items.remove(*inx);
+        }
+    }
+
+    /// Delete supersets of a given RegionsCorr.
+    fn delete_supersets_of(&mut self, rcx: &RegionsCorr) {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
+        let mut del = Vec::<usize>::new();
+
+        for (inx, rcy) in self.iter().enumerate() {
+            if rcy.is_superset_of(rcx) {
                 del.push(inx);
             }
         }
@@ -136,6 +165,17 @@ impl RegionsCorrStore {
             return;
         }
         self.delete_subsets_of(&rcx);
+        self.items.push(rcx);
+    }
+
+    /// Add a region to the vector, deleting supersets.
+    pub fn push_nosups(&mut self, rcx: RegionsCorr) {
+        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+
+        if self.any_subset_of(&rcx) {
+            return;
+        }
+        self.delete_supersets_of(&rcx);
         self.items.push(rcx);
     }
 
@@ -190,8 +230,6 @@ impl RegionsCorrStore {
                 cur_left.push(rscx.clone());
             }
         }
-
-        //let mut cur_left = self.clone(); // Store for current non-remainders.
 
         while cur_left.is_not_empty() {
             // Find the remainders of each SelectRegions minus others.
@@ -364,6 +402,11 @@ impl RegionsCorrStore {
         }
 
         Ok(rcs)
+    }
+
+    /// Extend a RegionsCorrStore by emptying another RegionsCorrStore.
+    pub fn append(&mut self, mut other: Self) {
+        self.items.append(&mut other.items);
     }
 } // end impl RegionsCorrStore.
 
