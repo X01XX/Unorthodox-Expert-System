@@ -494,12 +494,16 @@ impl RegionStore {
     /// Return the number of squares used by regions in a RegionStore, without double-counting squares in overlaps.
     #[allow(dead_code)]
     fn number_squares(&self) -> usize {
+        //println!("regionstore::number_squares: {self}");
         let mut fragments = self.split_by_intersections();
+        //println!("    fragments {fragments}");
         // Fragments may overlap.
         // Get fragments of fragments, as needed.
         let mut fragments2 = fragments.split_by_intersections();
+
         while fragments2.len() != fragments.len() {
             fragments = fragments2;
+            //println!("    fragments {fragments}");
             fragments2 = fragments.split_by_intersections();
         }
 
@@ -902,23 +906,23 @@ mod tests {
     #[test]
     fn number_squares() -> Result<(), String> {
         let regst1 = RegionStore::from("[r01x1, r011x]")?;
-        let num_sqrs = regst1.number_squares();
-        println!("num_sqrs {num_sqrs}");
-        assert!(num_sqrs == 3);
+        let num_sqrs1 = regst1.number_squares();
+        println!("num_sqrs1 {regst1} = {num_sqrs1}");
+        assert!(num_sqrs1 == 3);
 
         let regst2 = RegionStore::from("[r01x1, r011x, rxx11]")?;
         let num_sqrs2 = regst2.number_squares();
-        println!("num_sqrs2 {num_sqrs2}");
+        println!("num_sqrs2 {regst2} = {num_sqrs2}");
         assert!(num_sqrs2 == 6);
 
-        let regst3 = RegionStore::from("[r01x1, r011x, rxx11]")?;
+        let regst3 = RegionStore::from("[r01xx, rxx01, x11x]")?;
         let num_sqrs3 = regst3.number_squares();
-        println!("num_sqrs3 {num_sqrs3}");
-        assert!(num_sqrs2 == 6);
+        println!("num_sqrs3 {regst3} = {num_sqrs3}");
+        assert!(num_sqrs3 == 9);
 
         let regst4 = RegionStore::from("[rx10x, rx1x1]")?;
         let num_sqrs4 = regst4.number_squares();
-        println!("num_sqrs4 {num_sqrs4}");
+        println!("num_sqrs4 {regst4} = {num_sqrs4}");
         assert!(num_sqrs2 == 6);
 
         //assert!(1 == 2);
