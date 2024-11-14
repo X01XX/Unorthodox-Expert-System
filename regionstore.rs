@@ -910,10 +910,10 @@ mod tests {
         println!("num_sqrs1 {regst1} = {num_sqrs1}");
         assert!(num_sqrs1 == 3);
 
-        let regst2 = RegionStore::from("[r01x1, r011x, rxx11]")?;
+        let regst2 = RegionStore::from("[r01x1, r011x, rx110]")?;
         let num_sqrs2 = regst2.number_squares();
         println!("num_sqrs2 {regst2} = {num_sqrs2}");
-        assert!(num_sqrs2 == 6);
+        assert!(num_sqrs2 == 4);
 
         let regst3 = RegionStore::from("[r01xx, rxx01, x11x]")?;
         let num_sqrs3 = regst3.number_squares();
@@ -923,7 +923,7 @@ mod tests {
         let regst4 = RegionStore::from("[rx10x, rx1x1]")?;
         let num_sqrs4 = regst4.number_squares();
         println!("num_sqrs4 {regst4} = {num_sqrs4}");
-        assert!(num_sqrs2 == 6);
+        assert!(num_sqrs4 == 6);
 
         //assert!(1 == 2);
         Ok(())
