@@ -231,9 +231,10 @@ impl RegionsCorrStore {
     }
 
     /// Return self fragmented by intersections.
-    /// Successively, subtract intersections, collect remainders.
-    /// Each fragment returned will be a subset of one, or more, items in
-    /// the original, but not otherwise intersect any item in the original.
+    /// Each fragment returned will be a subset of any item
+    /// it intersects in the original.
+    /// All fragments returned will account for all parts of all items
+    /// in the original.
     pub fn split_by_intersections(&self) -> Self {
         // Remove duplicates, if any.
         let mut remaining = Self::new(vec![]);

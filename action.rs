@@ -563,6 +563,19 @@ impl SomeAction {
                 self.remainder_check_regions = self.remainder_check_region(max_reg);
                 self.check_remainder = false;
             }
+            if self.remainder_check_regions.len() > 1 {
+                let rem_ints = self.remainder_check_regions.largest_intersections();
+                for regx in rem_ints {
+                    let mut needx = SomeNeed::StateInRemainder {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target: ATarget::Region { region: regx },
+                        priority: 0,
+                    };
+                    needx.add_priority_base();
+                    nds.push(needx);
+                }
+            }
             for regx in self.remainder_check_regions.iter() {
                 let mut needx = SomeNeed::StateInRemainder {
                     dom_id: self.dom_id,
@@ -570,7 +583,7 @@ impl SomeAction {
                     target: ATarget::Region {
                         region: regx.clone(),
                     },
-                    priority: 0,
+                    priority: 5,
                 };
                 needx.add_priority_base();
                 nds.push(needx);

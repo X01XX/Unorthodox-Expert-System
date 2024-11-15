@@ -132,7 +132,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::ToSelectRegions { priority, .. } => *priority += 900,
-            Self::StateInRemainder { priority, .. } => *priority = 1000,
+            Self::StateInRemainder { priority, .. } => *priority += 1000,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()

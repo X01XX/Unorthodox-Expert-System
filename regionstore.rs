@@ -441,9 +441,10 @@ impl RegionStore {
     }
 
     /// Return self fragmented by intersections.
-    /// Successively, subtract intersections, collect remainders.
-    /// Each fragment returned will be a subset of one, or more, items in
-    /// the original, but not otherwise intersect any item in the original.
+    /// Each fragment returned will be a subset of any item
+    /// it intersects in the original.
+    /// All fragments returned will account for all parts of all items
+    /// in the original.
     pub fn split_by_intersections(&self) -> Self {
         // Remove duplicates, if any.
         let mut remaining = Self::new(vec![]);
@@ -936,11 +937,17 @@ mod tests {
         println!("num_sqrs8 {regst8} = {num_sqrs8}");
         assert!(num_sqrs8 == 5);
 
-        // Four regions, 5, 7, D, F, all of the squares, in four regions.
+        // Four regions, 5, 7, D, F, all of the squares, each in four regions.
         let regst9 = RegionStore::from("[r01x1, rx111, r11x1, x101]")?;
         let num_sqrs9 = regst9.number_squares();
         println!("num_sqrs9 {regst9} = {num_sqrs9}");
         assert!(num_sqrs9 == 4);
+
+        // Test subset region.
+        let regst10 = RegionStore::from("[rxxx1, r0x01]")?;
+        let num_sqrs10 = regst10.number_squares();
+        println!("num_sqrsa10 {regst10} = {num_sqrs10}");
+        assert!(num_sqrs10 == 8);
 
         //assert!(1 == 2);
         Ok(())
