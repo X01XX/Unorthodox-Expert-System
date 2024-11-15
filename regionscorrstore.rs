@@ -200,7 +200,11 @@ impl RegionsCorrStore {
 
     /// Subtract a RegionsCorrStore.
     fn subtract(&self, other: &Self) -> Self {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == other[0].num_bits_vec());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || self[0].num_bits_vec() == other[0].num_bits_vec()
+        );
 
         let mut ret = self.clone();
         for rcx in other.iter() {
@@ -211,70 +215,55 @@ impl RegionsCorrStore {
         ret
     }
 
+    /// Return the largest intersections of items.
+    pub fn largest_intersections(&self) -> Self {
+        let mut intersections = Self::new(vec![]);
+
+        // Check each possible pair.
+        for inx in 0..(self.len() - 1) {
+            for iny in (inx + 1)..self.len() {
+                if let Some(reg_int) = self[inx].intersection(&self[iny]) {
+                    intersections.push_nosubs(reg_int);
+                }
+            }
+        }
+        intersections
+    }
+
     /// Return self fragmented by intersections.
     /// Successively, subtract intersections, collect remainders.
     /// Each fragment returned will be a subset of one, or more, items in
     /// the original, but not otherwise intersect any item in the original.
     pub fn split_by_intersections(&self) -> Self {
-
         // Remove duplicates, if any.
-        let mut cur_left = Self::new(vec![]);
+        let mut remaining = Self::new(vec![]);
         for rscx in self.iter() {
-            if !cur_left.contains(rscx) {
-                cur_left.push(rscx.clone());
+            if !remaining.contains(rscx) {
+                remaining.push(rscx.clone());
             }
         }
 
-        if cur_left.len() < 2 {
+        if remaining.len() < 2 {
             // Nothing to intersect.
-            return cur_left;
+            return remaining;
         }
 
-        let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
+        let mut fragments = Self::new(vec![]); // Store to collect successive fragments.
 
-        while cur_left.is_not_empty() {
-            // Find the remainders of each SelectRegions minus others.
-            let mut cycle_remainders = Self::new(vec![]);
-            let mut cycle_left = Self::new(vec![]);
+        while !remaining.is_empty() {
+            // Get largest intersections.
+            let intersections = remaining.largest_intersections();
 
-            for (inx, regsx) in cur_left.iter().enumerate() {
-                // Init regsx remainders store.
-                let mut regsx_remainders = Self::new(vec![regsx.clone()]);
+            // Subtract intersections from regions remaining.
+            remaining = remaining.subtract(&intersections);
 
-                // Subtract anything that intersects regsx, except for regsx.
-                for (iny, regsy) in cur_left.iter().enumerate() {
-                    if iny != inx && regsx_remainders.any_intersection_of(regsy) {
-                        regsx_remainders = regsx_remainders.subtract_regionscorr(regsy);
-                    }
-                }
-
-                // Add to cycle_remainders.
-                if regsx_remainders.is_not_empty() {
-                    // Calc whats left of regsx, without remainders.
-                    let regsx_left = Self::new(vec![regsx.clone()]).subtract(&regsx_remainders);
-
-                    // Add regsx remainders to cycle remainders.
-                    for regsz in regsx_remainders.into_iter() {
-                        cycle_remainders.push_nosubs(regsz);
-                    }
-
-                    // Add to regsx left to cycle left.
-                    for regsz in regsx_left.into_iter() {
-                        cycle_left.push_nosubs(regsz);
-                    }
-                }
-            } // next inx, regsx
-
-            // Add cycle remainders to return store.
-            for regsz in cycle_remainders.into_iter() {
-                ret_remainders.push_nosubs(regsz);
-            }
+            // Save non-intersecting fragments.
+            fragments.append(remaining);
 
             // Set up next cycle.
-            cur_left = cycle_left;
-        } // end loop
-
-        ret_remainders
+            remaining = intersections;
+        }
+        fragments
     }
 
     /// Return true if a RegionsCorr is a superset of a RegionsCorrStore.

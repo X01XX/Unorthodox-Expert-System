@@ -425,70 +425,55 @@ impl RegionStore {
         self.items.append(&mut other.items);
     }
 
+    /// Return the largest intersections of items.
+    pub fn largest_intersections(&self) -> Self {
+        let mut intersections = Self::new(vec![]);
+
+        // Check each possible pair.
+        for inx in 0..(self.len() - 1) {
+            for iny in (inx + 1)..self.len() {
+                if let Some(reg_int) = self[inx].intersection(&self[iny]) {
+                    intersections.push_nosubs(reg_int);
+                }
+            }
+        }
+        intersections
+    }
+
     /// Return self fragmented by intersections.
     /// Successively, subtract intersections, collect remainders.
     /// Each fragment returned will be a subset of one, or more, items in
     /// the original, but not otherwise intersect any item in the original.
     pub fn split_by_intersections(&self) -> Self {
-
         // Remove duplicates, if any.
-        let mut cur_left = Self::new(vec![]);
+        let mut remaining = Self::new(vec![]);
         for rscx in self.iter() {
-            if !cur_left.contains(rscx) {
-                cur_left.push(rscx.clone());
+            if !remaining.contains(rscx) {
+                remaining.push(rscx.clone());
             }
         }
 
-        if cur_left.len() < 2 {
+        if remaining.len() < 2 {
             // Nothing to intersect.
-            return cur_left;
+            return remaining;
         }
 
-        let mut ret_remainders = Self::new(vec![]); // Store to collect successive remainders.
+        let mut fragments = Self::new(vec![]); // Store to collect successive fragments.
 
-        while cur_left.is_not_empty() {
-            // Find the remainders of each SelectRegions minus others.
-            let mut cycle_remainders = Self::new(vec![]);
-            let mut cycle_left = Self::new(vec![]);
+        while !remaining.is_empty() {
+            // Get largest intersections.
+            let intersections = remaining.largest_intersections();
 
-            for (inx, regsx) in cur_left.iter().enumerate() {
-                // Init regsx remainders store.
-                let mut regsx_remainders = Self::new(vec![regsx.clone()]);
+            // Subtract intersections from regions remaining.
+            remaining = remaining.subtract(&intersections);
 
-                // Subtract anything that intersects regsx, except for regsx.
-                for (iny, regsy) in cur_left.iter().enumerate() {
-                    if iny != inx && regsx_remainders.any_intersection_of(regsy) {
-                        regsx_remainders = regsx_remainders.subtract_item(regsy);
-                    }
-                }
-
-                // Add to cycle_remainders.
-                if regsx_remainders.is_not_empty() {
-                    // Calc whats left of regsx, without remainders.
-                    let regsx_left = Self::new(vec![regsx.clone()]).subtract(&regsx_remainders);
-
-                    // Add regsx remainders to cycle remainders.
-                    for regsz in regsx_remainders.into_iter() {
-                        cycle_remainders.push_nosubs(regsz);
-                    }
-
-                    // Add to regsx left to cycle left.
-                    for regsz in regsx_left.into_iter() {
-                        cycle_left.push_nosubs(regsz);
-                    }
-                }
-            } // next inx, regsx
-
-            // Add cycle remainders to return store.
-            for regsz in cycle_remainders.into_iter() {
-                ret_remainders.push_nosubs(regsz);
-            }
+            // Save non-intersecting fragments.
+            fragments.append(remaining);
 
             // Set up next cycle.
-            cur_left = cycle_left;
-        } // end loop
-
-        ret_remainders
+            remaining = intersections;
+        }
+        fragments
     }
 
     /// Return the number of squares used by regions in a RegionStore, without double-counting squares in overlaps.
@@ -496,14 +481,12 @@ impl RegionStore {
     fn number_squares(&self) -> usize {
         //println!("regionstore::number_squares: {self}");
         let mut fragments = self.split_by_intersections();
-        //println!("    fragments {fragments}");
         // Fragments may overlap.
         // Get fragments of fragments, as needed.
         let mut fragments2 = fragments.split_by_intersections();
 
         while fragments2.len() != fragments.len() {
             fragments = fragments2;
-            //println!("    fragments {fragments}");
             fragments2 = fragments.split_by_intersections();
         }
 
@@ -905,25 +888,59 @@ mod tests {
 
     #[test]
     fn number_squares() -> Result<(), String> {
-        let regst1 = RegionStore::from("[r01x1, r011x]")?;
+        // Test empty RS.
+        let regst1 = RegionStore::from("[]")?;
         let num_sqrs1 = regst1.number_squares();
         println!("num_sqrs1 {regst1} = {num_sqrs1}");
-        assert!(num_sqrs1 == 3);
+        assert!(num_sqrs1 == 0);
 
-        let regst2 = RegionStore::from("[r01x1, r011x, rx110]")?;
+        // Test single region RS.
+        let regst2 = RegionStore::from("[r0x11]")?;
         let num_sqrs2 = regst2.number_squares();
         println!("num_sqrs2 {regst2} = {num_sqrs2}");
-        assert!(num_sqrs2 == 4);
+        assert!(num_sqrs2 == 2);
 
-        let regst3 = RegionStore::from("[r01xx, rxx01, x11x]")?;
+        // Test two non-intersecting regions RS.
+        let regst3 = RegionStore::from("[r0011, r1xx1]")?;
         let num_sqrs3 = regst3.number_squares();
         println!("num_sqrs3 {regst3} = {num_sqrs3}");
-        assert!(num_sqrs3 == 9);
+        assert!(num_sqrs3 == 5);
 
-        let regst4 = RegionStore::from("[rx10x, rx1x1]")?;
+        // Two intersecting regions, 7 is in two regions.
+        let regst4 = RegionStore::from("[r01x1, r011x]")?;
         let num_sqrs4 = regst4.number_squares();
         println!("num_sqrs4 {regst4} = {num_sqrs4}");
-        assert!(num_sqrs4 == 6);
+        assert!(num_sqrs4 == 3);
+
+        // Three intersecting regions, 7 in two regions, 6 in two regions.
+        let regst5 = RegionStore::from("[r01x1, r011x, rx110]")?;
+        let num_sqrs5 = regst5.number_squares();
+        println!("num_sqrs5 {regst5} = {num_sqrs5}");
+        assert!(num_sqrs5 == 4);
+
+        // Three regions, 5 in two regions, 011X in two regions.
+        let regst6 = RegionStore::from("[r01xx, rxx01, x11x]")?;
+        let num_sqrs6 = regst6.number_squares();
+        println!("num_sqrs6 {regst6} = {num_sqrs6}");
+        assert!(num_sqrs6 == 9);
+
+        // Two regions, X101 in two regions.
+        let regst7 = RegionStore::from("[rx10x, rx1x1]")?;
+        let num_sqrs7 = regst7.number_squares();
+        println!("num_sqrs7 {regst7} = {num_sqrs7}");
+        assert!(num_sqrs7 == 6);
+
+        // Four regions, 5 in four regions.
+        let regst8 = RegionStore::from("[r0x01, rx101, r010x, 01x1]")?;
+        let num_sqrs8 = regst8.number_squares();
+        println!("num_sqrs8 {regst8} = {num_sqrs8}");
+        assert!(num_sqrs8 == 5);
+
+        // Four regions, 5, 7, D, F, all of the squares, in four regions.
+        let regst9 = RegionStore::from("[r01x1, rx111, r11x1, x101]")?;
+        let num_sqrs9 = regst9.number_squares();
+        println!("num_sqrs9 {regst9} = {num_sqrs9}");
+        assert!(num_sqrs9 == 4);
 
         //assert!(1 == 2);
         Ok(())
