@@ -2501,7 +2501,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 08/13/2024</p>
+   <p>Web page Started: 10/20/2010, last changed: 11/17/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
@@ -2836,11 +2836,44 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
     is a subset, or non-intersection, of any original region.
    </p>
     <p class="indent1">
-    For every region, subtract any intersecting region.  Aggregate the results, deleting subsets.  Aggregate the intersections, deleting subsets.
+    Create an working set from the original set, avoiding duplicates, but allowing subsets.
    </p>
     <p class="indent1">
-    If there are intersections, they become the target set of the next cycle.
+    Gather the intersections, no subsets, of every possible pair of regions in the working set.
    </p>
+    <p class="indent1">
+    Calculate the remainders of subtracting the intersections from the working set.  The intersections may be none.
+   </p>
+    <p class="indent1">
+    Accumulate the remainders of each cycle.
+   </p>
+    <p class="indent1">
+    Calculate the next cycle working set.
+   </p>
+    <p class="indent2">
+    Extract regions from the original set by using the intersections, cookie cutter like.
+   </p>
+    <p class="indent2">
+    Avoid duplicates, but allow subsets.
+   </p>
+    <p class="indent1">
+    After one, or more, cycles, the working set becomes empty, the result is the accumulated remainders.
+   </p>
+   <h3>Finding the number of squares used</h3>
+    <p class="indent1">
+    Given a set of overlapping regions, an interesting problem is to find the number of squares used, counting each
+    square once, in spite of overlapping.
+   </p>
+    <p class="indent1">
+    Running the logic, above, finding intersections of intersections, is a start, but the results can contain overlaps.
+   </p>
+    <p class="indent1">
+    The logic can be run successively, on its own results, until there are no overlaps.
+   </p>
+    <p class="indent1">
+    Then add the number of squares in each region, 2 to the power of the number of X-bit positions.
+   </p>
+
    <h3>Why does backward-chaining sometimes work, when forward-chaining does not?</h3>
     <p class="indent1">
     Given the rules 00/XX/01/XX, and 01/XX/11/XX, trace a path from 0 to F, and 0 from F.

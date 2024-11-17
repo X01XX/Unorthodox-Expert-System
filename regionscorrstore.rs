@@ -181,7 +181,9 @@ impl RegionsCorrStore {
 
     /// Subtract a RegionsCorr.
     pub fn subtract_regionscorr(&self, rcx: &RegionsCorr) -> Self {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+        debug_assert!(
+            self.is_empty() || rcx.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec()
+        );
 
         let mut ret_store = Self::new(vec![]);
 
@@ -235,7 +237,7 @@ impl RegionsCorrStore {
     /// it intersects in the original.
     /// All fragments returned will account for all parts of all items
     /// in the original.
-    pub fn split_by_intersections(&self) -> Self {
+    pub fn _split_by_intersections(&self) -> Self {
         // Remove duplicates, if any.
         let mut remaining = Self::new(vec![]);
         for rscx in self.iter() {
@@ -267,10 +269,63 @@ impl RegionsCorrStore {
         fragments
     }
 
+    /// Return self fragmented by intersections.
+    /// Each fragment returned will be a subset of any item
+    /// it intersects in the original.
+    /// All fragments returned will account for all parts of all items
+    /// in the original.
+    pub fn split_by_intersections(&self) -> Self {
+        // Remove duplicates, if any.
+        let mut remaining = Self::new(vec![]);
+        for rscx in self.iter() {
+            if !remaining.contains(rscx) {
+                remaining.push(rscx.clone());
+            }
+        }
+
+        if remaining.len() < 2 {
+            // Nothing to intersect.
+            return remaining;
+        }
+
+        let mut fragments = Self::new(vec![]); // Store to collect successive fragments.
+
+        while !remaining.is_empty() {
+            // Get largest intersections.
+            let intersections = remaining.largest_intersections();
+
+            // Subtract intersections from regions remaining.
+            remaining = remaining.subtract(&intersections);
+
+            // Extract remaining regions, like a cookie cutter.
+            let mut next_regions = Self::new(vec![]);
+            for regx in self.iter() {
+                for intx in intersections.iter() {
+                    if let Some(regy) = regx.intersection(intx) {
+                        if !next_regions.contains(&regy) {
+                            next_regions.push(regy);
+                        }
+                    }
+                }
+            }
+
+            // Save non-intersecting fragments.
+            fragments.append(remaining);
+
+            // Set up next cycle.
+            remaining = next_regions;
+        }
+        fragments
+    }
+
     /// Return true if a RegionsCorr is a superset of a RegionsCorrStore.
     #[allow(dead_code)]
     pub fn is_superset_of(&self, other: &Self) -> bool {
-        debug_assert!(self[0].num_bits_vec() == other[0].num_bits_vec());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || self[0].num_bits_vec() == other[0].num_bits_vec()
+        );
 
         other.subtract(self).is_empty()
     }
