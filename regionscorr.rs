@@ -183,10 +183,7 @@ impl RegionsCorr {
 
         let mut dist = 0;
         for (x, y) in self.iter().zip(other.iter()) {
-            if x.intersects(y) {
-            } else {
-                dist += x.distance(y);
-            }
+            dist += x.distance(y);
         }
 
         dist
@@ -516,7 +513,6 @@ mod tests {
     #[test]
     fn subtract() -> Result<(), String> {
         let regstr1 = RegionsCorr::from("RC[rx_01xx, rx_01xx]")?;
-
         let regstr2 = RegionsCorr::from("RC[rx_0101, r1_xxx0]")?;
 
         let regstrvec = regstr1.subtract(&regstr2);
@@ -529,12 +525,24 @@ mod tests {
         assert!(regstrvec.len() == 4);
 
         assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01x0, rx_01xx]")?));
-
         assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_011x, rx_01xx]")?));
-
         assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx, rx_01x1]")?));
-
         assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx, r0_01xx]")?));
+
+        // Test the equivalent one-region subtraction.
+        let regstr1 = RegionsCorr::from("RC[rx0_1xxx_01xx]")?;
+        let regstr2 = RegionsCorr::from("RC[rx0_1011_xxx0]")?;
+
+        let regstrvec = regstr1.subtract(&regstr2);
+        println!("{regstr1} subtract");
+        println!("{regstr2} is: ");
+        for rscx in regstrvec.iter() {
+            println!("{rscx}");
+        }
+        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01x0_x_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_011x_x_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx_x_01x1]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx_0_01xx]")?));
 
         //assert!(1 == 2);
         Ok(())

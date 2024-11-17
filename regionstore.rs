@@ -863,25 +863,58 @@ mod tests {
 
     #[test]
     fn split_by_intersections() -> Result<(), String> {
-        let regst1 = RegionStore::from("[r01x1, r011x]")?;
-        let fragments = regst1.split_by_intersections();
-        println!("fragments {fragments}");
-        assert!(fragments.len() == 3);
+        // Test empty RS.
+        let regst1 = RegionStore::from("[]")?;
+        let fragments1 = regst1.split_by_intersections();
+        println!("fragments1 {fragments1}");
+        assert!(fragments1.len() == 0);
 
-        let regst2 = RegionStore::from("[r01x1, r011x, r0x11]")?;
+        // Test single region RS.
+        let regst2 = RegionStore::from("[r0x11]")?;
         let fragments2 = regst2.split_by_intersections();
         println!("fragments2 {fragments2}");
-        assert!(fragments2.len() == 4);
+        assert!(fragments2.len() == 1);
 
-        let regst3 = RegionStore::from("[r01x1, r011x, rxx11]")?;
+        // Test two non-intersecting regions RS.
+        let regst3 = RegionStore::from("[r0011, r1xx1]")?;
         let fragments3 = regst3.split_by_intersections();
         println!("fragments3 {fragments3}");
-        assert!(fragments3.len() == 5);
+        assert!(fragments3.len() == 2);
 
-        let regst4 = RegionStore::from("[rx10x, rx1x1]")?;
+        let regst4 = RegionStore::from("[r01x1, r011x]")?;
         let fragments4 = regst4.split_by_intersections();
         println!("fragments4 {fragments4}");
         assert!(fragments4.len() == 3);
+        assert!(fragments4.contains(&SomeRegion::from("r0101")?));
+        assert!(fragments4.contains(&SomeRegion::from("r0110")?));
+        assert!(fragments4.contains(&SomeRegion::from("r0111")?));
+
+        let regst5 = RegionStore::from("[r01x1, r011x, r0x11]")?;
+        let fragments5 = regst5.split_by_intersections();
+        println!("fragments5 {fragments5}");
+        assert!(fragments5.len() == 4);
+        assert!(fragments5.contains(&SomeRegion::from("r0101")?));
+        assert!(fragments5.contains(&SomeRegion::from("r0110")?));
+        assert!(fragments5.contains(&SomeRegion::from("r0011")?));
+        assert!(fragments5.contains(&SomeRegion::from("r0111")?));
+
+        let regst6 = RegionStore::from("[r01x1, r011x, rxx11]")?;
+        let fragments6 = regst6.split_by_intersections();
+        println!("fragments6 {fragments6}");
+        assert!(fragments6.len() == 5);
+        assert!(fragments6.contains(&SomeRegion::from("r0101")?));
+        assert!(fragments6.contains(&SomeRegion::from("r0110")?));
+        assert!(fragments6.contains(&SomeRegion::from("rx011")?));
+        assert!(fragments6.contains(&SomeRegion::from("r1x11")?));
+        assert!(fragments6.contains(&SomeRegion::from("r0111")?));
+
+        let regst7 = RegionStore::from("[rx10x, rx1x1]")?;
+        let fragments7 = regst7.split_by_intersections();
+        println!("fragments7 {fragments7}");
+        assert!(fragments7.len() == 3);
+        assert!(fragments7.contains(&SomeRegion::from("rX100")?));
+        assert!(fragments7.contains(&SomeRegion::from("rX111")?));
+        assert!(fragments7.contains(&SomeRegion::from("rX101")?));
 
         //assert!(1 == 2);
         Ok(())
@@ -937,7 +970,7 @@ mod tests {
         println!("num_sqrs8 {regst8} = {num_sqrs8}");
         assert!(num_sqrs8 == 5);
 
-        // Four regions, 5, 7, D, F, all of the squares, each in four regions.
+        // Four regions, 5, 7, D, F, all of the squares, each in two regions.
         let regst9 = RegionStore::from("[r01x1, rx111, r11x1, x101]")?;
         let num_sqrs9 = regst9.number_squares();
         println!("num_sqrs9 {regst9} = {num_sqrs9}");

@@ -208,7 +208,7 @@ impl RegionsCorrStore {
 
         let mut ret = self.clone();
         for rcx in other.iter() {
-            if self.any_intersection_of(rcx) {
+            if ret.any_intersection_of(rcx) {
                 ret = ret.subtract_regionscorr(rcx);
             }
         }
@@ -510,6 +510,75 @@ mod tests {
         println!("rcs3 {rcs3}");
         assert!(rcs3.len() == 2);
 
+        Ok(())
+    }
+
+    #[test]
+    fn split_by_intersections() -> Result<(), String> {
+        // Test empty RCS.
+        let rcs1 = RegionsCorrStore::from("RCS[]")?;
+        let fragments1 = rcs1.split_by_intersections();
+        println!("fragments1 {fragments1}");
+        assert!(fragments1.len() == 0);
+
+        // Test single RCSs.
+        let rcs2 = RegionsCorrStore::from("RCS[RC[r0x11]]")?;
+        let fragments2 = rcs2.split_by_intersections();
+        println!("fragments2 {fragments2}");
+        assert!(fragments2.len() == 1);
+
+        // Test two non-intersecting RCSs.
+        let rcs3 = RegionsCorrStore::from("RCS[RC[r0011], RC[r1xx1]]")?;
+        let fragments3 = rcs3.split_by_intersections();
+        println!("fragments3 {fragments3}");
+        assert!(fragments3.len() == 2);
+
+        // Test two intersecting RCSs.
+        let rcs4 = RegionsCorrStore::from("RCS[RC[rX011], RC[r1xx1]]")?;
+        let fragments4 = rcs4.split_by_intersections();
+        println!("fragments4 {fragments4}");
+        assert!(fragments4.len() == 4);
+        assert!(fragments4.contains(&RegionsCorr::from("RC[r0011]")?));
+        assert!(fragments4.contains(&RegionsCorr::from("RC[r1X01]")?));
+        assert!(fragments4.contains(&RegionsCorr::from("RC[r11X1]")?));
+        assert!(fragments4.contains(&RegionsCorr::from("RC[r1011]")?));
+
+        // Test two intersecting, multi-region, RCSs.
+        let rcs5 = RegionsCorrStore::from("RCS[RC[rX10X, X1X1], RC[rX1X1, X10X]]")?;
+        let fragments5 = rcs5.split_by_intersections();
+        println!("fragments5 {fragments5}");
+        assert!(fragments5.len() == 5);
+        assert!(fragments5.contains(&RegionsCorr::from("RC[rX100, rX1X1]")?));
+        assert!(fragments5.contains(&RegionsCorr::from("RC[rX10X, rX111]")?));
+        assert!(fragments5.contains(&RegionsCorr::from("RC[rX111, rX10X]")?));
+        assert!(fragments5.contains(&RegionsCorr::from("RC[rX1X1, rX100]")?));
+        assert!(fragments5.contains(&RegionsCorr::from("RC[rX101, rX101]")?));
+
+        // Test two intersecting, one-region, RCSs, *equivalent* to the above RCSs.
+        let rcs6 = RegionsCorrStore::from("RCS[RC[rX10X_X1X1], RC[rX1X1_X10X]]")?;
+        let fragments6 = rcs6.split_by_intersections();
+        println!("fragments6 {fragments6}");
+        assert!(fragments6.len() == 5);
+        assert!(fragments6.contains(&RegionsCorr::from("RC[rX100_X1X1]")?));
+        assert!(fragments6.contains(&RegionsCorr::from("RC[rX10X_X111]")?));
+        assert!(fragments6.contains(&RegionsCorr::from("RC[rX111_X10X]")?));
+        assert!(fragments6.contains(&RegionsCorr::from("RC[rX1X1_X100]")?));
+        assert!(fragments6.contains(&RegionsCorr::from("RC[rX101_X101]")?));
+
+        // Test four one-region, RCSs.
+        let rcs7 =
+            RegionsCorrStore::from("RCS[RC[r0_X10X], RC[r0_X1X1], RC[r1_X10X], RC[r1_X1X1]]")?;
+        let fragments7 = rcs7.split_by_intersections();
+        println!("fragments7 {fragments7}");
+        assert!(fragments7.len() == 6);
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X100]")?));
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X111]")?));
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X100]")?));
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X111]")?));
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X101]")?));
+        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X101]")?));
+
+        //assert!(1 == 2);
         Ok(())
     }
 }
