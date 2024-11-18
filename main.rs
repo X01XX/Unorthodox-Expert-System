@@ -470,7 +470,7 @@ fn domainstore_init() -> DomainStore {
 
     dmxs.add_select(SelectRegions::from("SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1]").expect("SNH"));
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -1]").expect("SNH"));
+    dmxs.add_select(SelectRegions::from("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]").expect("SNH"));
 
     dmxs.calc_select();
 

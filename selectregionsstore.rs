@@ -374,6 +374,7 @@ impl SelectRegionsStore {
 
     /// Return self fragmented by intersections.
     pub fn split_by_intersections(&self) -> Self {
+        //println!("selectregionsstore::split_by_intersections: {self}");
         if self.len() < 2 {
             return self.clone();
         }

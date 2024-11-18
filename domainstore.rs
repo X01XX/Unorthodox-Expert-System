@@ -223,7 +223,7 @@ impl DomainStore {
             }
         }
         if neg_srs.is_not_empty() {
-            self.select_negative = neg_srs.split_by_intersections();
+            self.select_negative = neg_srs;
             println!("\nNegative SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");

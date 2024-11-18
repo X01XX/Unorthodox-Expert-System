@@ -2501,7 +2501,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 11/17/2024</p>
+   <p>Web page Started: 10/20/2010, last changed: 11/18/2024</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
@@ -2767,16 +2767,6 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
        <p class="indent1">
        For 0&#129042;X or 1&#129042;X, no modifications are needed.  This indicates that the result region will be a proper subset of the target region.
        </p>
-   <h3>Number of squares in a set of regions</h3>
-       <p class="indent1">
-       Since regions can overlap, this is not as easy as totaling up 2 to the number X-bit power for each region.
-       </p>
-       <p class="indent1">
-       Extract one region from the region-set and calculate the number of squares in it.
-       </p>
-       <p class="indent1">
-       Use that number plus the number of squares in the region-set minus the region just extracted, until no regions are left.
-       </p>
    <h3>Another possible representation for a region</h3>
         <p>
         Use a mask for ones and a mask for zeros.
@@ -2865,13 +2855,11 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
     square once, in spite of overlapping.
    </p>
     <p class="indent1">
-    Running the logic, above, finding intersections of intersections, is a start, but the results can contain overlaps.
+    Subtract out one region and count its squares, then do the same to the results, until no regions are left.
    </p>
     <p class="indent1">
-    The logic can be run successively, on its own results, until there are no overlaps.
-   </p>
-    <p class="indent1">
-    Then add the number of squares in each region, 2 to the power of the number of X-bit positions.
+    Or run the intersections of intersections logic, successively, on its own results, until there are no overlaps,
+    then add the number of squares in each region.
    </p>
 
    <h3>Why does backward-chaining sometimes work, when forward-chaining does not?</h3>

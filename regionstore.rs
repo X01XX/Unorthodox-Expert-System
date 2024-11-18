@@ -491,7 +491,7 @@ impl RegionStore {
 
     /// Return the number of squares used by regions in a RegionStore, without double-counting squares in overlaps.
     #[allow(dead_code)]
-    fn number_squares(&self) -> usize {
+    fn number_squares2(&self) -> usize {
         //println!("regionstore::number_squares: {self}");
         let mut fragments = self.split_by_intersections();
         // Fragments may overlap.
@@ -506,6 +506,17 @@ impl RegionStore {
         let mut count = 0;
         for regx in fragments.iter() {
             count += regx.number_squares();
+        }
+        count
+    }
+
+    #[allow(dead_code)]
+    fn number_squares(&self) -> usize {
+        let mut tmp_regions = self.clone();
+        let mut count = 0;
+        while tmp_regions.is_not_empty() {
+            count += tmp_regions[0].number_squares();
+            tmp_regions = tmp_regions.subtract_item(&tmp_regions[0]);
         }
         count
     }
