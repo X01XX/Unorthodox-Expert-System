@@ -85,6 +85,13 @@ impl SomeState {
         Self::new(self.bts.new_high())
     }
 
+    /// Combine two state instances, where the combination can fit in one Bitint.
+    pub fn combine(&self, other: &SomeState) -> Self {
+        Self {
+            bts: self.bts.combine(&other.bts),
+        }
+    }
+
     /// Return true if two squares are adjacent, that is there is exactly one bit difference.
     pub fn is_adjacent(&self, other: &Self) -> bool {
         self.bts.is_adjacent(&other.bts)
@@ -307,6 +314,17 @@ mod tests {
         let sta3 = SomeState::from("0b1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn combine() -> Result<(), String> {
+        let sta2 = SomeState::from("10")?;
+        let sta3 = SomeState::from("101")?;
+        let sta5 = sta2.combine(&sta3);
+        println!("{sta2} combine {sta3} = {sta5}");
+        assert!(sta5 == SomeState::from("10101")?);
 
         Ok(())
     }

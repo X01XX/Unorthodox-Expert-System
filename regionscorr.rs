@@ -321,6 +321,18 @@ impl RegionsCorr {
         }
         ret_vec
     }
+
+    /// Return a single-region RegionsCorr from a multi-region RegionsCorr,
+    /// where the sum of the regions num_bits is LE a singl Bitint.
+    pub fn combine(&self) -> Self {
+        assert!(self.len() > 1);
+
+        let mut regx = self.regions[0].clone();
+        for regy in self.regions.iter().skip(1) {
+            regx = regx.combine(regy);
+        }
+        Self::new(vec![regx])
+    }
 } // End impl RegionsCorr.
 
 impl Index<usize> for RegionsCorr {
@@ -561,6 +573,16 @@ mod tests {
         let regst3 = RegionsCorr::from("RC[r1010, r1111]")?;
         println!("regst3 {regst3}");
         assert!(format!("{regst3}") == "RC[r1010, r1111]");
+
+        Ok(())
+    }
+
+    #[test]
+    fn combine() -> Result<(), String> {
+        let regst1 = RegionsCorr::from("RC[r10, r11, r01]")?;
+        let regst2 = regst1.combine();
+        println!("{regst1} combined = {regst2}");
+        assert!(regst2 == RegionsCorr::from("RC[r10_1101]")?);
 
         //assert!(1 == 2);
         Ok(())

@@ -27,7 +27,7 @@ pub struct StateStore {
 }
 
 impl StateStore {
-    /// Return a new, empty, StateStore instance.
+    /// Return a new StateStore instance.
     pub fn new(items: Vec<SomeState>) -> Self {
         let mut ret = Self {
             items: Vec::<SomeState>::with_capacity(items.len()),

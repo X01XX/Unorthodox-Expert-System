@@ -49,7 +49,7 @@ impl SomeRegion {
     ///
     /// For a group region, all states will correspond to a square that has been sampled.
     ///
-    /// Duplicate states are deleted by creating a StateStore from the states.
+    /// Duplicate states are deleted.
     ///
     /// If more than two states are used, they should be a minimum combination, as generated
     /// in action::check_region_for_group.
@@ -57,10 +57,42 @@ impl SomeRegion {
         assert!(!states.is_empty());
         debug_assert!(vec_same_num_bits(&states));
 
+        // Remove duplicates.
+        // Logic may produce 2 states that are equal.
+        // For example, when the intersection of two regions is one state.
+        let mut states2 = vec![];
+        for stax in states {
+            if !states2.contains(&stax) {
+                states2.push(stax);
+            }
+        }
+
+        // Check for minimum states to define the region.
+        if states2.len() > 2 {
+            for inx in 0..(states2.len() - 1) {
+                for iny in (inx + 1)..states2.len() {
+                    // For each pair of states2, assure no state is between.
+                    for (inz, stax) in states2.iter().enumerate() {
+                        if inz != inx && inz != iny {
+                            assert!(!stax.is_between(&states2[inx], &states2[iny]));
+                        }
+                    }
+                }
+            }
+        }
+
         // Return new region.
         Self {
-            states: StateStore::new(states),
+            states: StateStore::new(states2),
         }
+    }
+
+    /// Combine two region instances, where the combination can fit in one Bitint.
+    pub fn combine(&self, other: &SomeRegion) -> Self {
+        Self::new(vec![
+            self.high_state().combine(&other.high_state()),
+            self.low_state().combine(&other.low_state()),
+        ])
     }
 
     /// Return a reference to the first state.
@@ -1189,6 +1221,17 @@ mod tests {
         println!("{reg0} subtract {reg3} = {regs}");
         assert!(regs.len() == 1);
         assert!(regs.contains(&reg0));
+
+        Ok(())
+    }
+
+    #[test]
+    fn combine() -> Result<(), String> {
+        let reg2 = SomeRegion::from("10")?;
+        let reg3 = SomeRegion::from("101")?;
+        let reg5 = reg2.combine(&reg3);
+        println!("{reg2} combine {reg3} = {reg5}");
+        assert!(reg5 == SomeRegion::from("10101")?);
 
         Ok(())
     }

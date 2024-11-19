@@ -1,6 +1,7 @@
 //! The RegionsCorrStore, a vector of RegionsCorr structs.
 
 use crate::regionscorr::RegionsCorr;
+use crate::regionstore::RegionStore;
 use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
@@ -40,6 +41,12 @@ impl Eq for RegionsCorrStore {}
 impl RegionsCorrStore {
     /// Return a new, RegionsCorrStore.
     pub fn new(items: Vec<RegionsCorr>) -> Self {
+        if items.len() > 1 {
+            let zero_vec = items[0].num_bits_vec();
+            for rcx in items.iter().skip(1) {
+                assert!(rcx.num_bits_vec() == zero_vec);
+            }
+        }
         Self { items }
     }
 
@@ -48,6 +55,29 @@ impl RegionsCorrStore {
         Self {
             items: Vec::<RegionsCorr>::with_capacity(num),
         }
+    }
+
+    /// For an instance containing RegionsCorr items with more than one region,
+    /// return a RegionsCorrStore with the RegionsCorr items combined.
+    pub fn combined(&self) -> Self {
+        let mut ret = Self::with_capacity(self.len());
+        for rcx in self.iter() {
+            ret.push(rcx.combine());
+        }
+        ret
+    }
+
+    /// Return a RegionStore from a  RCS.
+    pub fn to_regionstore(&self) -> RegionStore {
+        let mut ret = RegionStore::with_capacity(self.len());
+        for rcx in self.iter() {
+            if rcx.len() == 1 {
+                ret.push(rcx.regions[0].clone());
+            } else {
+                ret.push(rcx.combine().regions[0].clone());
+            }
+        }
+        ret
     }
 
     /// Return the number of regions.
@@ -230,43 +260,6 @@ impl RegionsCorrStore {
             }
         }
         intersections
-    }
-
-    /// Return self fragmented by intersections.
-    /// Each fragment returned will be a subset of any item
-    /// it intersects in the original.
-    /// All fragments returned will account for all parts of all items
-    /// in the original.
-    pub fn _split_by_intersections(&self) -> Self {
-        // Remove duplicates, if any.
-        let mut remaining = Self::new(vec![]);
-        for rscx in self.iter() {
-            if !remaining.contains(rscx) {
-                remaining.push(rscx.clone());
-            }
-        }
-
-        if remaining.len() < 2 {
-            // Nothing to intersect.
-            return remaining;
-        }
-
-        let mut fragments = Self::new(vec![]); // Store to collect successive fragments.
-
-        while !remaining.is_empty() {
-            // Get largest intersections.
-            let intersections = remaining.largest_intersections();
-
-            // Subtract intersections from regions remaining.
-            remaining = remaining.subtract(&intersections);
-
-            // Save non-intersecting fragments.
-            fragments.append(remaining);
-
-            // Set up next cycle.
-            remaining = intersections;
-        }
-        fragments
     }
 
     /// Return self fragmented by intersections.
@@ -633,7 +626,50 @@ mod tests {
         assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X101]")?));
         assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X101]")?));
 
-        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn to_regionstore() -> Result<(), String> {
+        let rcs1 = RegionsCorrStore::from("RCS[RC[r0011], RC[r1xx1]]")?;
+        let rs1 = rcs1.to_regionstore();
+        println!("{rcs1} to {rs1}");
+        assert!(rs1 == RegionStore::from("[r0011, r1xx1]")?);
+
+        let rcs1 = RegionsCorrStore::from("RCS[RC[r00, r11], RC[r1x, rx1]]")?;
+        let rs1 = rcs1.to_regionstore();
+        println!("{rcs1} to {rs1}");
+        assert!(rs1 == RegionStore::from("[r0011, r1xx1]")?);
+
+        Ok(())
+    }
+
+    // Test subtract, and equivalence to regionstore subtraction.
+    #[test]
+    fn eqv_subtract() -> Result<(), String> {
+        let rcs1 = RegionsCorrStore::from("RCS[RC[rX1, r0X]]")?;
+        let rcs2 = RegionsCorrStore::from("RCS[RC[r1X, rX1]]")?;
+        let rcs3 = rcs1.subtract(&rcs2);
+        println!("{rcs1} - {rcs2} = {rcs3}");
+        let rs1 = rcs3.to_regionstore();
+        let rs2 = RegionStore::from("[rX10X]")?.subtract(&RegionStore::from("[1XX1]")?);
+        println!("{rs1} should be eq {rs2}");
+        assert!(rs1 == rs2);
+
+        Ok(())
+    }
+
+    // Test split_by_intersections, and equivalence to regionstore split_by_intersections.
+    #[test]
+    fn eqv_split() -> Result<(), String> {
+        let rcs1 = RegionsCorrStore::from("RCS[RC[rX1, r0X], RC[r1X, rX1]]")?;
+        let rcs2 = rcs1.split_by_intersections();
+        println!("{rcs1} split = {rcs2}");
+        let rs1 = rcs2.to_regionstore();
+        let rs2 = RegionStore::from("[rX10X, r1XX1]")?.split_by_intersections();
+        println!("{rs1} should be eq {rs2}");
+        assert!(rs1 == rs2);
+
         Ok(())
     }
 }

@@ -2193,7 +2193,7 @@ impl SomeAction {
 
     /// Take an action for a need.
     pub fn take_action_need(&mut self, cur_state: &SomeState, ndx: &SomeNeed) -> SomeSample {
-        //println!("action::take_action_need: Dom {} Act {} take_action_arbitrary cur_state {cur_state} need {ndx}", self.dom_id, self.id);
+        //println!("action::take_action_need: Dom {} Act {} cur_state {cur_state} need {ndx}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(ndx.act_id(), self.id);
 

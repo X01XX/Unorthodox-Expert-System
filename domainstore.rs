@@ -1047,6 +1047,7 @@ impl DomainStore {
                     next_most_min2 = selx.neg_value;
                 }
             }
+            //println!("next_most_min2 {next_most_min2}");
 
             // Process all items with next most min num.
             for selx in self.select.iter() {

@@ -52,6 +52,16 @@ impl SomeBits {
         }
     }
 
+    /// Combine two bit instances, where the num_bits sum of both is LE one BitInt.
+    pub fn combine(&self, other: &SomeBits) -> Self {
+        assert!(self.num_bits + other.num_bits < Bitint::BITS as Bitint);
+
+        Self {
+            num_bits: (self.num_bits + other.num_bits) as Bitint,
+            ints: vec![(self.ints[0] << other.num_bits) + other.ints[0]; 1],
+        }
+    }
+
     /// Return the number of integers needed to represent a number of bits.
     pub fn number_bits_to_ints(num_bits: Bitint) -> Bitint {
         ((num_bits / Bitint::BITS as Bitint)
@@ -1103,6 +1113,17 @@ mod tests {
         let bts5 = build_from_vec(Bitint::BITS as Bitint + 8, vec![1, 1]);
         assert!(bts3.is_between(&bts2, &bts5));
         assert!(!bts5.is_between(&bts2, &bts3));
+        Ok(())
+    }
+
+    #[test]
+    fn combine() -> Result<(), String> {
+        let bits2 = SomeBits::from("10")?;
+        let bits3 = SomeBits::from("101")?;
+        let bits5 = bits2.combine(&bits3);
+        println!("{bits2} combine {bits3} = {bits5}");
+        assert!(bits5 == SomeBits::from("10101")?);
+
         Ok(())
     }
 }
