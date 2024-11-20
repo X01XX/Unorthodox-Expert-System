@@ -69,9 +69,7 @@ impl SelectRegionsStore {
         //print!("{} push {}", self, select);
         debug_assert!(self.is_empty() || select.num_bits_vec() == self.items[0].num_bits_vec());
 
-        //if !self.contains(&select) {
         self.items.push(select);
-        //}
     }
 
     /// Add a SelectRegionsStore, deleting subsets.

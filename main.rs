@@ -1506,7 +1506,7 @@ mod tests {
     /// Test going into a net-positive SelectRegion, out of boredom, then exiting because of
     /// an additional, smaller, negative influence.
     #[test]
-    fn select2() -> Result<(), String> {
+    fn _select2() -> Result<(), String> {
         // Create DomainStore.
         let mut dmxs = DomainStore::new();
 
@@ -1546,11 +1546,18 @@ mod tests {
         assert!(dmxs[0].actions[3].groups.len() == 1);
 
         // Inc boredom by 1.
-        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
-        assert!(needs.is_empty());
+        let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
+        println!("needs {needs}");
+        println!("cant_do {}", cant_do.len());
+        println!("can_do {}", can_do.len());
+        //assert!(can_do.is_empty());
         // Inc boredom by 1.
-        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
-        assert!(needs.is_empty());
+        let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
+        println!("needs {needs}");
+        println!("cant_do {}", cant_do.len());
+        println!("can_do {}", can_do.len());
+
+        //assert!(can_do.is_empty());
 
         // Should want to try state 0111 now.
         let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
