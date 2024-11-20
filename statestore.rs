@@ -2,8 +2,9 @@
 //! Duplicates are suppressed.
 
 use crate::bits::NumBits;
+use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools::{vec_string, AvecRef};
+use crate::tools::{vec_refs, vec_string, AvecRef};
 
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
@@ -29,13 +30,7 @@ pub struct StateStore {
 impl StateStore {
     /// Return a new StateStore instance.
     pub fn new(items: Vec<SomeState>) -> Self {
-        let mut ret = Self {
-            items: Vec::<SomeState>::with_capacity(items.len()),
-        };
-        for stax in items {
-            ret.push(stax);
-        }
-        ret
+        Self { items }
     }
 
     /// Return a new StateStore instance, empty, with a specified capacity.
@@ -152,6 +147,27 @@ impl StateStore {
         //println!("ret_statestore {ret_statestore}");
 
         Ok(ret_statestore)
+    }
+
+    /// Return a vector of references.
+    pub fn vec_refs(&self) -> Vec<&SomeState> {
+        vec_refs(&self.items[..])
+    }
+
+    /// Return the region formed by states in a non-empty StateStore.
+    pub fn x_mask(&self) -> SomeMask {
+        debug_assert!(self.is_not_empty());
+
+        let mut ret = SomeMask::new(self[0].bts.new_low());
+        for stax in self.iter().skip(1) {
+            ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]).convert_to_mask());
+        }
+        ret
+    }
+
+    // Return the items vector.
+    pub fn vec(self) -> Vec<SomeState> {
+        self.items
     }
 } // end impl StateStore
 

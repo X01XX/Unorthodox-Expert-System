@@ -7,7 +7,7 @@ use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::tools::StrLen;
+use crate::tools::{anyxofn, StrLen};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -57,33 +57,9 @@ impl SomeRegion {
         assert!(!states.is_empty());
         debug_assert!(vec_same_num_bits(&states));
 
-        // Remove duplicates.
-        // Logic may produce 2 states that are equal.
-        // For example, when the intersection of two regions is one state.
-        let mut states2 = vec![];
-        for stax in states {
-            if !states2.contains(&stax) {
-                states2.push(stax);
-            }
-        }
-
-        // Check for minimum states to define the region.
-        if states2.len() > 2 {
-            for inx in 0..(states2.len() - 1) {
-                for iny in (inx + 1)..states2.len() {
-                    // For each pair of states2, assure no state is between.
-                    for (inz, stax) in states2.iter().enumerate() {
-                        if inz != inx && inz != iny {
-                            assert!(!stax.is_between(&states2[inx], &states2[iny]));
-                        }
-                    }
-                }
-            }
-        }
-
         // Return new region.
         Self {
-            states: StateStore::new(states2),
+            states: StateStore::new(Self::minimum_states(states)),
         }
     }
 
@@ -557,6 +533,50 @@ impl SomeRegion {
     pub fn number_squares(&self) -> usize {
         2_u32.pow(self.x_mask().num_one_bits() as u32) as usize
     }
+
+    /// Given a non-empty vector of states, return a StateStore of the minimum
+    /// states required to define the region they imply.
+    pub fn minimum_states(states: Vec<SomeState>) -> Vec<SomeState> {
+        assert!(!states.is_empty());
+
+        // Remove duplicates.
+        let mut states2 = StateStore::with_capacity(states.len());
+        for stax in states {
+            if !states2.contains(&stax) {
+                states2.push(stax);
+            }
+        }
+        // Easy result.
+        if states2.len() < 3 {
+            return states2.vec();
+        }
+
+        let xmsk = states2.x_mask();
+
+        let state_refs = states2.vec_refs();
+
+        for any in 2..states2.len() {
+            let options = anyxofn(any, &state_refs);
+
+            for opx in options.iter() {
+                let mut xmsk2 = xmsk.new_low();
+                for stx in opx.iter().skip(1) {
+                    xmsk2 = xmsk2.bitwise_or(&stx.bitwise_xor(opx[0]).convert_to_mask());
+                }
+
+                // Return the first match.
+                if xmsk2 == xmsk {
+                    let mut ret = Vec::<SomeState>::with_capacity(any);
+                    for stax in opx.iter() {
+                        ret.push((*stax).clone());
+                    }
+                    return ret;
+                }
+            }
+        }
+        // states2 is already at the minimum.
+        states2.vec()
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -645,6 +665,7 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
+    use crate::tools::vec_string;
 
     #[test]
     fn state_far_from() -> Result<(), String> {
@@ -1233,6 +1254,65 @@ mod tests {
         println!("{reg2} combine {reg3} = {reg5}");
         assert!(reg5 == SomeRegion::from("10101")?);
 
+        Ok(())
+    }
+
+    #[test]
+    fn minimum_states() -> Result<(), String> {
+        // Test just one.
+        let stas0 = vec![SomeState::from("s1010")?];
+        let mins0 = SomeRegion::minimum_states(stas0);
+        println!("0 {}", vec_string(&mins0));
+        assert!(mins0.len() == 1);
+
+        // Test dups.
+        let stas1 = vec![SomeState::from("s1010")?, SomeState::from("s1010")?];
+        let mins1 = SomeRegion::minimum_states(stas1);
+        println!("1 {}", vec_string(&mins1));
+        assert!(mins1.len() == 1);
+
+        // test dups.
+        let stas2 = vec![
+            SomeState::from("s1010")?,
+            SomeState::from("s1000")?,
+            SomeState::from("s1010")?,
+        ];
+        let mins2 = SomeRegion::minimum_states(stas2);
+        println!("2 {}", vec_string(&mins2));
+        assert!(mins2.len() == 2);
+
+        // Test skip between state.
+        let stas3 = vec![
+            SomeState::from("s1010")?,
+            SomeState::from("s1000")?,
+            SomeState::from("s1111")?,
+        ];
+        let mins3 = SomeRegion::minimum_states(stas3);
+        println!("3 {}", vec_string(&mins3));
+        assert!(mins3.len() == 2);
+
+        // Test three states, all required.
+        let stas4 = vec![
+            SomeState::from("s1000")?,
+            SomeState::from("s1101")?,
+            SomeState::from("s1011")?,
+        ];
+        let mins4 = SomeRegion::minimum_states(stas4);
+        println!("4 {}", vec_string(&mins4));
+        assert!(mins4.len() == 3);
+
+        // Test skip between state.
+        let stas5 = vec![
+            SomeState::from("s1000")?,
+            SomeState::from("s0101")?,
+            SomeState::from("s0001")?,
+            SomeState::from("s0010")?,
+        ];
+        let mins5 = SomeRegion::minimum_states(stas5);
+        println!("5 {}", vec_string(&mins5));
+        assert!(mins5.len() == 3);
+
+        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

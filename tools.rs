@@ -195,7 +195,7 @@ fn anyxofn2<'a, T>(xitems: usize, xlist: &[&'a T], nlist: &[&'a T]) -> Vec<Vec<&
 }
 
 /// Return a vector of references, from a given vector.
-pub fn _vec_refs<T>(avec: &[T]) -> Vec<&T> {
+pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
     let mut ret = Vec::<&T>::with_capacity(avec.len());
 
     for x in avec.iter() {

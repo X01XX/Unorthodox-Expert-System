@@ -1383,8 +1383,8 @@ impl SomeAction {
         &self,
         regx: &SomeRegion,
         max_pn: Pn,
-    ) -> Option<(SomeRegion, Option<RuleStore>, bool)> {
-        let squares_in = self.squares.squares_in_reg(regx);
+    ) -> Option<(SomeRegion, Option<RuleStore>)> {
+        let squares_in: Vec<&SomeSquare> = self.squares.squares_in_reg(regx);
 
         if squares_in.is_empty() {
             return None;
@@ -1404,7 +1404,12 @@ impl SomeAction {
                 return None;
             }
         }
-        debug_assert!(max_pn == Pn::One || !sqrs_pn_eq.is_empty());
+        if max_pn > Pn::One {
+            if sqrs_pnc.is_empty() {
+                return None;
+            }
+            sqrs_pn_eq = sqrs_pnc;
+        }
 
         // Calc region that can be formed of all pn eq squares.
         let mut reg_pn_eq = SomeRegion::new(vec![sqrs_pn_eq[0].state.clone()]);
@@ -1418,11 +1423,8 @@ impl SomeAction {
         let mut rules: Option<RuleStore> = None;
 
         if max_pn < Pn::Unpredictable {
-            let mut rulesx = if let Some(rulesy) = &sqrs_pn_eq[0].rules {
-                rulesy.clone()
-            } else {
-                return None;
-            };
+            let mut rulesx = sqrs_pn_eq[0].rules.as_ref().unwrap().clone();
+
             for sqrx in sqrs_pn_eq.iter().skip(1) {
                 if let Some(rulesy) = &sqrx.rules {
                     if let Some(rulesz) = rulesx.union(rulesy) {
@@ -1437,118 +1439,22 @@ impl SomeAction {
             rules = Some(rulesx);
         }
 
-        // Check if some squares are unneeded.
-
-        // Init vector for possible, fewer in number, combinations.
-        let mut combos = Vec::<Vec<&SomeSquare>>::new();
-
-        if sqrs_pn_eq.len() > 2 {
-            // Find minimum state options.
-            let target_x_mask = reg_pn_eq.x_mask();
-
-            // Check combinations of 2 squares, 3 squares, etc.
-            // Up to one less that the number of pn-eq squares in the region.
-            for x in 2..sqrs_pn_eq.len() {
-                let options = tools::anyxofn(x, &sqrs_pn_eq);
-
-                for optx in options {
-                    // Calc x-mask for option.
-                    let mut xmask_tmp = optx[0].state.new_low().convert_to_mask();
-                    for sqrx in optx.iter().skip(1) {
-                        xmask_tmp = xmask_tmp.bitwise_or(&sqrx.state.bitwise_xor(&optx[0].state));
-                    }
-                    if xmask_tmp == target_x_mask {
-                        combos.push(optx);
-                    }
-                }
-                if combos.is_empty() {
-                    continue;
-                }
-                break;
+        // Load square states.
+        let mut stas_in = Vec::<SomeState>::with_capacity(sqrs_pn_eq.len());
+        // Load pnc square states first.
+        for sqrx in sqrs_pn_eq.iter() {
+            if sqrx.pnc {
+                stas_in.push(sqrx.state.clone());
+            }
+        }
+        // Load non-pnc square states second.
+        for sqrx in sqrs_pn_eq.iter() {
+            if !sqrx.pnc {
+                stas_in.push(sqrx.state.clone());
             }
         }
 
-        // Get a list of states from squares that combine to describe a region,
-        // without unneeded states,
-        // with the first state from a pnc square, if any are available.
-        let states: Vec<SomeState> = if combos.is_empty() {
-            // Use all square states in sqrs_pn_eq.
-            let mut states = Vec::<SomeState>::with_capacity(sqrs_pn_eq.len());
-            if sqrs_pnc.is_empty() {
-                // Add all square states.
-                for sqrx in sqrs_pn_eq.iter() {
-                    states.push(sqrx.state.clone());
-                }
-            } else {
-                // Pick a pnc square state to be first.
-                let inx = rand::thread_rng().gen_range(0..sqrs_pnc.len());
-                states.push(sqrs_pnc[inx].state.clone());
-                // Add other square states.
-                for sqrx in sqrs_pn_eq.iter() {
-                    if !(sqrx.state == sqrs_pnc[inx].state) {
-                        states.push(sqrx.state.clone());
-                    }
-                }
-            }
-            states
-        } else {
-            // Evaluate each combination for any pnc square.
-            let mut combos2 = Vec::<Vec<&SomeSquare>>::new();
-            for combx in combos.iter() {
-                let mut pnc_found = false;
-                for sqrx in combx.iter() {
-                    if sqrx.pnc {
-                        pnc_found = true;
-                        break;
-                    }
-                }
-                if pnc_found {
-                    combos2.push(combx.clone());
-                }
-            }
-            // Select a combination to use, fill a list of square states.
-            if combos2.is_empty() {
-                let sqrs = &combos[rand::thread_rng().gen_range(0..combos.len())];
-                let mut states = Vec::<SomeState>::with_capacity(sqrs.len());
-                for sqrx in sqrs.iter() {
-                    states.push(sqrx.state.clone());
-                }
-                states
-            } else {
-                let sqrs = &combos2[rand::thread_rng().gen_range(0..combos2.len())];
-
-                let mut states = Vec::<SomeState>::with_capacity(sqrs.len());
-                for (inx, sqrx) in sqrs.iter().enumerate() {
-                    if sqrx.pnc {
-                        states.push(sqrx.state.clone());
-                        for (iny, sqry) in sqrs.iter().enumerate() {
-                            if iny == inx {
-                                continue;
-                            }
-                            states.push(sqry.state.clone());
-                        }
-                        break;
-                    }
-                }
-                states
-            }
-        };
-
-        // Calc pnc.
-        let mut pnc = true;
-
-        for stax in states.iter() {
-            if let Some(sqrx) = self.squares.find(stax) {
-                if !sqrx.pnc {
-                    pnc = false;
-                    break;
-                }
-            } else {
-                pnc = false;
-                break;
-            }
-        }
-        Some((SomeRegion::new(states), rules, pnc))
+        Some((SomeRegion::new(stas_in), rules))
     } // end check_region_for_group
 
     /// Check two groups that may be combined.
@@ -1570,13 +1476,13 @@ impl SomeAction {
 
         let reg_combined = grpx.region.union(&grpy.region);
 
-        if let Some((regx, rules, pnc)) = self.check_region_for_group(&reg_combined, grpx.pn) {
+        if let Some((regx, rules)) = self.check_region_for_group(&reg_combined, grpx.pn) {
             if regx == reg_combined {
                 //println!("group_combine_needs: returning (2) {regx} for combination of {} and {}", grpx.region, grpy.region);
                 nds.push(SomeNeed::AddGroup {
                     group_region: regx,
                     rules,
-                    pnc,
+                    pnc: false,
                 });
             }
         }
@@ -2180,9 +2086,9 @@ impl SomeAction {
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert!(regx.is_superset_of(sqrx));
 
-        if let Some((regy, rules, pnc)) = self.check_region_for_group(regx, sqrx.pn) {
+        if let Some((regy, rules)) = self.check_region_for_group(regx, sqrx.pn) {
             if regy.is_superset_of(&sqrx.state) {
-                Some(SomeGroup::new(regy, rules, pnc))
+                Some(SomeGroup::new(regy, rules, false))
             } else {
                 None
             }
