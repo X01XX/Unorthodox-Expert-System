@@ -333,6 +333,34 @@ impl RegionsCorr {
         }
         Self::new(vec![regx])
     }
+
+    /// Return symmetrical_overlapping_regions for two adjacent RegionsCorrs.
+    pub fn symmetrical_overlapping_regions(&self, other: &Self) -> Self {
+        debug_assert!(self.is_congruent(other));
+        debug_assert!(self.is_adjacent(other));
+
+        let mut adj_count = 0;
+        let mut alt_self = RegionsCorr::new(vec![]);
+        let mut alt_other = RegionsCorr::new(vec![]);
+
+        for (item1, item2) in self.regions.iter().zip(other.regions.iter()) {
+            if item1.intersects(item2) {
+                alt_self.push(item1.clone());
+                alt_other.push(item2.clone());
+            } else if item1.is_adjacent(item2) {
+                adj_count += 1;
+                if adj_count > 1 {
+                    panic!("regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent");
+                }
+                let msk = item1.diff_edge_mask(item2);
+                alt_self.push(item1.set_to_x(&msk));
+                alt_other.push(item2.set_to_x(&msk));
+            } else {
+                panic!("regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent");
+            }
+        }
+        alt_self.intersection(&alt_other).unwrap()
+    }
 } // End impl RegionsCorr.
 
 impl Index<usize> for RegionsCorr {
@@ -445,19 +473,6 @@ mod tests {
         assert!(regstr1.is_superset_of(&regstr2));
         assert!(!regstr2.is_superset_of(&regstr1));
 
-        Ok(())
-    }
-
-    #[test]
-    fn intersection() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x0x]")?;
-
-        let regstr2 = RegionsCorr::from("RC[rx1x1, r1xx1]")?;
-
-        let intreg = regstr1.intersection(&regstr2).expect("SNH");
-        println!("int part {}", intreg);
-
-        assert!(intreg == RegionsCorr::from("RC[r0101, r1x01]")?);
         Ok(())
     }
 
@@ -585,6 +600,52 @@ mod tests {
         assert!(regst2 == RegionsCorr::from("RC[r10_1101]")?);
 
         //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn symmetrical_overlapping_regions() -> Result<(), String> {
+        let regsc1 = RegionsCorr::from("RC[rX10X]")?;
+        let regsc2 = RegionsCorr::from("RC[r1X1X]")?;
+
+        let regsc3 = regsc1.symmetrical_overlapping_regions(&regsc2);
+        println!("{regsc1} symmetrical_overlapping_regions {regsc2} = {regsc3}");
+        assert!(regsc3 == RegionsCorr::from("RC[r11XX]")?);
+
+        Ok(())
+    }
+
+    // Test intersection, and equivalence to region intersection.
+    #[test]
+    fn eqv_intersection() -> Result<(), String> {
+        let rc1 = RegionsCorr::from("RC[rX1, r0X]")?;
+        let rc2 = RegionsCorr::from("RC[r1X, rX0]")?;
+        let rc3 = rc1.intersection(&rc2).unwrap();
+        println!("{rc1} intersection {rc2} = {rc3}");
+        let rc4 = rc3.combine();
+        let rc5 = RegionsCorr::new(vec![SomeRegion::from("rX10X")?
+            .intersection(&SomeRegion::from("r1XX0")?)
+            .unwrap()]);
+        println!("{rc4} should be eq {rc5}");
+        assert!(rc4 == rc5);
+
+        Ok(())
+    }
+
+    // Test union, and equivalence to region union.
+    #[test]
+    fn eqv_union() -> Result<(), String> {
+        let rc1 = RegionsCorr::from("RC[rX1, r0X]")?;
+        let rc2 = RegionsCorr::from("RC[r1X, rX0]")?;
+        let rc3 = rc1.union(&rc2);
+        println!("{rc1} union {rc2} = {rc3}");
+        let rc4 = rc3.combine();
+        let rc5 = RegionsCorr::new(vec![
+            SomeRegion::from("rX10X")?.union(&SomeRegion::from("r1XX0")?)
+        ]);
+        println!("{rc4} should be eq {rc5}");
+        assert!(rc4 == rc5);
+
         Ok(())
     }
 }

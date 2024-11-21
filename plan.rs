@@ -436,14 +436,18 @@ impl SomePlan {
                 if chr == "P" {
                     continue;
                 } else {
-                    return Err("SomePlan::from: Invalid string, should start with P[".to_string());
+                    return Err(format!(
+                        "SomePlan::from: Invalid string {plan_str}, should start with P["
+                    ));
                 }
             }
             if inx == 1 {
                 if chr == "[" {
                     continue;
                 } else {
-                    return Err("SomePlan::from: Invalid string, should start with P[".to_string());
+                    return Err(format!(
+                        "SomePlan::from: Invalid string {plan_str}, should start with P["
+                    ));
                 }
             }
             if chr == "]" {

@@ -14,7 +14,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlansCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} value {}", tools::vec_string(&self.items), self.value)
+        write!(f, "PCS[{}]", tools::vec_string(&self.items))
     }
 }
 
@@ -23,25 +23,30 @@ impl fmt::Display for PlansCorrStore {
 pub struct PlansCorrStore {
     /// A vector of PlansCorr.
     pub items: Vec<PlansCorr>,
-    pub value: isize,
 }
 
 impl PlansCorrStore {
     /// Return a new, PlansCorrStore.
     pub fn new(items: Vec<PlansCorr>) -> Self {
-        let ret_plnsc = Self { items, value: 0 };
+        let ret_plnsc = Self { items };
         assert!(ret_plnsc.is_valid());
         ret_plnsc
+    }
+
+    /// Return a PlansCorrStore rate.
+    pub fn rate(&self) -> isize {
+        let mut rate = 0;
+        for plncx in self.items.iter() {
+            if plncx.rate < rate {
+                rate = plncx.rate;
+            }
+        }
+        rate
     }
 
     /// Return the number of plans.
     pub fn len(&self) -> usize {
         self.items.len()
-    }
-
-    /// Set the PlansCorrStore value.
-    pub fn set_value(&mut self, value: isize) {
-        self.value = value;
     }
 
     /// Return true if the store is empty.
@@ -242,8 +247,9 @@ impl PlansCorrStore {
 
     /// Return a PlansCorrStore instance, given a string representation.
     /// Like PCS[], PCS[PC[P[r001-0>r101]]] or PCS[PC[P[r001-0>r101]], PC[P[r101-0>r101]]].
-    pub fn from(pcs_str: &str) -> Result<Self, String> {
+    pub fn from(pcs_str_in: &str) -> Result<Self, String> {
         //println!("regionscorrstore::from: {pcs_str}");
+        let pcs_str = pcs_str_in.trim();
 
         // Unwrap PCS[], check that brackets are balanced overall.
         let mut pcs_str2 = String::new();
@@ -320,6 +326,8 @@ impl PlansCorrStore {
         pcs_str2.remove(pcs_str2.len() - 1);
         //println!("pcs_str2 {pcs_str2}");
 
+        pcs_str2 = pcs_str2.trim().to_string();
+
         // Process contents of PCS[], if any.
         let mut pcs = PlansCorrStore::new(vec![]);
 
@@ -387,12 +395,12 @@ mod tests {
         let pcs1 = PlansCorrStore::from("PCS[]")?;
         println!("pcs1 {pcs1}");
 
-        let pcs2 = PlansCorrStore::from("PCS[PC[P[r0X-0->r00], P[r0X1-1->r000]]]")?;
+        let pcs2 = PlansCorrStore::from("PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]]")?;
         println!("pcs2 {pcs2}");
         assert!(pcs2.len() == 1);
 
         let pcs3 = PlansCorrStore::from(
-            "PCS[PC[P[r0X-0->r00], P[r0X1-1->r000]], PC[P[r00-0->r01], P[r000-1->r100]]]",
+            "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0], PC[[P[r00-0->r01], P[r000-1->r100]], 0]]",
         )?;
         println!("pcs3 {pcs3}");
         assert!(pcs3.len() == 2);
@@ -403,7 +411,7 @@ mod tests {
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnscstr = PlansCorrStore::from("PCS[PC[P[r0X-0->r00], P[r0X1-1->r000]]]")?;
+        let plnscstr = PlansCorrStore::from("PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]]")?;
         println!("plnscstr {plnscstr}");
 
         let initial_regs = plnscstr.initial_regions();
@@ -415,7 +423,7 @@ mod tests {
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let plnscstr = PlansCorrStore::from("PCS[PC[P[r0X-0->r00], P[r0X1-1->r000]]]")?;
+        let plnscstr = PlansCorrStore::from("PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]]")?;
         println!("plnscstr {plnscstr}");
 
         let result_regs = plnscstr.result_regions();
@@ -427,7 +435,7 @@ mod tests {
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
-        let plnscstr = PlansCorrStore::from("PCS[PC[P[rXX-0->rx0], P[rXXX-1->r0x0]]]")?;
+        let plnscstr = PlansCorrStore::from("PCS[PC[[P[rXX-0->rx0], P[rXXX-1->r0x0]], 0]]")?;
         println!("plnscstr {plnscstr}");
 
         let restrict_regs = RegionsCorr::from("RC[r00, r000]")?;
@@ -445,7 +453,7 @@ mod tests {
 
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
-        let plnscstr = PlansCorrStore::from("PCS[PC[P[rXX-0->rx0], P[rXXX-1->r0x0]]]")?;
+        let plnscstr = PlansCorrStore::from("PCS[PC[[P[rXX-0->rx0], P[rXXX-1->r0x0]], 0]]")?;
         println!("plnscstr {plnscstr}");
 
         let restrict_regs = RegionsCorr::from("RC[r0X, r00X]")?;
@@ -465,10 +473,10 @@ mod tests {
     #[test]
     fn link() -> Result<(), String> {
         // Set up first PlansCorrStore.
-        let plnscstr1 = PlansCorrStore::from("PCS[PC[P[r000X-0->r001X-0->r011X]]]")?;
+        let plnscstr1 = PlansCorrStore::from("PCS[PC[[P[r000X-0->r001X-0->r011X]], 0]]")?;
 
         // Set up second PlansCorrStore.
-        let plnscstr2 = PlansCorrStore::from("PCS[PC[P[rX111-0->X101-0->rX100]]]")?;
+        let plnscstr2 = PlansCorrStore::from("PCS[PC[[P[rX111-0->X101-0->rX100]], 0]]")?;
 
         println!(
             "plnscstr1 results {} plnscstr2 initial {}",
@@ -489,7 +497,8 @@ mod tests {
 
     #[test]
     fn result_from_initial_regions() -> Result<(), String> {
-        let plcstr = PlansCorrStore::from("PCS[PC[P[rXX-0->r0X-0->r11], P[rXXX-1->r0x1-1->1x0]]]")?;
+        let plcstr =
+            PlansCorrStore::from("PCS[PC[[P[rXX-0->r0X-0->r11], P[rXXX-1->r0x1-1->1x0]], 0]]")?;
         println!("plcstr {plcstr}");
 
         if let Some(rslts) =

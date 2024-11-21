@@ -464,7 +464,7 @@ impl DomainStore {
                                 });
                             }
                             NeedPlan::PlanFound { plan: ref plany } => {
-                                let ratex = plany.value;
+                                let ratex = plany.rate();
                                 let cur_regs = self.all_current_regions();
                                 let desired_num_bits_changed =
                                     cur_regs.distance(&plany.result_regions());
@@ -520,29 +520,6 @@ impl DomainStore {
         regs
     }
 
-    /// Return a rate for a plan, based on the sum of values of select regions the plan passes through.
-    fn rate_planscorrstore(&self, plans: &PlansCorrStore) -> isize {
-        let mut cnt = 0;
-        for plnscrx in plans.iter() {
-            cnt += self.rate_planscorr(plnscrx);
-        }
-        cnt
-    }
-
-    /// Return a rate for a set of plans, based on the sum of values of negative select regions the plan passes through.
-    /// This ignores the select regions a plan starts in.
-    /// A square in a region can exit the region to an adjacent square by changing one bit.
-    /// A square adjacent to a region can enter the region by changing one bit.
-    fn rate_planscorr(&self, planscs: &PlansCorr) -> isize {
-        let mut cur_regions = self.all_current_regions();
-
-        // Collect path regions for each plan.
-        for (dom_id, planx) in planscs.iter().enumerate() {
-            cur_regions[dom_id] = planx.path_for(&cur_regions[dom_id]);
-        }
-        self.select.rate_by_negative_regions(&cur_regions)
-    }
-
     /// Get plans to move to a goal region, choose a plan.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
@@ -577,7 +554,7 @@ impl DomainStore {
         let mut rates = Vec::<isize>::with_capacity(plans.len());
 
         for planx in plans.iter() {
-            rates.push(planx.value - planx.num_altrules());
+            rates.push(planx.rate() - planx.num_altrules());
         }
 
         // Get max rate.
@@ -643,7 +620,7 @@ impl DomainStore {
         for inxpln in can_do.iter() {
             match &inxpln.plans {
                 NeedPlan::AtTarget {} => rts.push(2000 - needs[inxpln.inx].priority() as isize), // change lower priority to higher rate.
-                NeedPlan::PlanFound { plan: plnx } => rts.push(plnx.value),
+                NeedPlan::PlanFound { plan: plnx } => rts.push(plnx.rate()),
             };
         }
         // Find maximum rate.
@@ -925,14 +902,19 @@ impl DomainStore {
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,
         within: &[&RegionsCorr],
+        cur_rate: isize,
     ) -> Result<PlansCorrStore, Vec<String>> {
         //println!(
-        //    "plan_using_least_negative_select_regions_get_plan: starting: start {start_regs} goal: {goal_regs} within {within}"
+        //    "plan_using_least_negative_select_regions_get_plan: starting: start {start_regs} goal: {goal_regs} within {}", tools::vec_ref_string(within)
         //);
         debug_assert!(!within.is_empty());
         let plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
-            .map(|_| self.plan_using_least_negative_select_regions2(start_regs, goal_regs, within))
+            .map(|_| {
+                self.plan_using_least_negative_select_regions2(
+                    start_regs, goal_regs, within, cur_rate,
+                )
+            })
             .collect::<Vec<Result<PlansCorrStore, Vec<String>>>>();
 
         let mut plans2 = Vec::<PlansCorrStore>::new();
@@ -1006,29 +988,8 @@ impl DomainStore {
         }
 
         // Define last_results.
-        let mut last_results: Result<NeedPlan, Vec<String>>;
-
-        // Test direct path.
-        match self.plan_using_least_negative_select_regions_get_plan(
-            start_regs,
-            goal_regs,
-            &[&self.maximum_regions()],
-        ) {
-            Ok(planx) => {
-                if self.rate_planscorrstore(&planx) >= 0 {
-                    //println!("domainstore::plan_using_least_negative_select_regions: return 3");
-                    return Ok(NeedPlan::PlanFound { plan: planx });
-                } else {
-                    // Save result, maybe something better will be found, below.
-                    last_results = Ok(NeedPlan::PlanFound { plan: planx });
-                }
-            }
-            Err(errstr) => last_results = Err(errstr),
-        };
-
-        if self.select.is_empty() {
-            return last_results;
-        }
+        let mut last_results: Result<NeedPlan, Vec<String>> =
+            Err(vec!["No plan found".to_string()]);
 
         // Make a list of negative values in self.select_negative.
         let mut neg_values = Vec::<isize>::new();
@@ -1043,22 +1004,36 @@ impl DomainStore {
 
         // Init available path fragments with non-negative fragments.
         let mut fragments = Vec::<&RegionsCorr>::new();
+
         for selx in self.select_positive.iter() {
             fragments.push(&selx.regions);
         }
         for rcx in self.rc_non_negative.iter() {
             fragments.push(rcx);
         }
+        let all_regs = self.maximum_regions();
+        if fragments.is_empty() {
+            fragments.push(&all_regs);
+        }
+        //println!("fragments {}", tools::vec_ref_string(&fragments));
 
+        let mut current_rate = 0;
         let mut neg_inx = 0;
 
-        while neg_inx < neg_values.len() {
+        loop {
+            // until plan found or all negative SRs added to fragments.
+            //println!("current_rate {current_rate}");
             // Use fragments to find path.
             //println!("use fragments {}", tools::vec_ref_string(&fragments));
             match self.plan_using_least_negative_select_regions_get_plan(
-                start_regs, goal_regs, &fragments,
+                start_regs,
+                goal_regs,
+                &fragments,
+                current_rate,
             ) {
                 Ok(planx) => {
+                    //println!("domainstore::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
+                    //assert!(1 == 2);
                     return Ok(NeedPlan::PlanFound { plan: planx });
                 }
                 Err(errstr) => {
@@ -1070,12 +1045,17 @@ impl DomainStore {
 
             // Add more negative regioncorrs.
             //println!("   adding {} valued SRs", neg_values[neg_inx]);
+            if neg_inx == neg_values.len() {
+                break;
+            }
             for selx in self.select_negative.iter() {
                 if selx.neg_value == neg_values[neg_inx] {
                     //println!("  found {selx}");
                     fragments.push(&selx.regions);
                 }
             }
+
+            current_rate = neg_values[neg_inx];
             neg_inx += 1;
         }
 
@@ -1113,11 +1093,12 @@ impl DomainStore {
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,
         select_regions: &[&RegionsCorr],
+        cur_rate: isize,
     ) -> Result<PlansCorrStore, Vec<String>> {
         debug_assert!(start_regs.is_congruent(goal_regs));
         debug_assert!(!select_regions.is_empty());
         //println!(
-        //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
+        //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
         //);
 
         // Check no plan needed.
@@ -1133,11 +1114,11 @@ impl DomainStore {
                     &selx.intersection(goal_regs).expect("SNH"),
                     selx,
                 ) {
-                    Ok(plans) => {
+                    Ok(mut plans) => {
+                        plans.set_rate(cur_rate);
                         //assert!(plans.is_valid());
-                        let mut plncs = PlansCorrStore::new(vec![plans]);
-                        plncs.set_value(self.rate_planscorrstore(&plncs));
-                        //println!("plan_using_least_negative_select_regions2: returning (1) {plncs}");
+                        let plncs = PlansCorrStore::new(vec![plans]);
+                        //println!("1plan_using_least_negative_select_regions2: returning (1) {plncs}");
                         return Ok(plncs);
                     }
                     Err(errvec) => return Err(errvec),
@@ -1170,8 +1151,9 @@ impl DomainStore {
         for inx in 1..(pathx.len() - 1) {
             if let Some(intx) = pathx[inx].intersection(&pathx[inx + 1]) {
                 match self.make_plans(&cur_regs, &intx, &pathx[inx]) {
-                    Ok(plans) => {
-                        //println!("domainstore::plan_using_least_negative_select_regions2: for {cur_regs} to {intx} plans found {plans}");
+                    Ok(mut plans) => {
+                        plans.set_rate(cur_rate);
+                        //println!("2domainstore::plan_using_least_negative_select_regions2: for {cur_regs} to {intx} plans found {plans}");
                         match mid_plans.link(&PlansCorrStore::new(vec![plans])) {
                             Ok(mid_plans2) => {
                                 //println!("mid plans {mid_plans}");
@@ -1203,11 +1185,11 @@ impl DomainStore {
     } // end plan_using_least_negative_select_regions2
 
     /// Massage a path for return.
-    fn get_path_through_select_regions2(&self, path: &[&RegionsCorr]) -> RegionsCorrStore {
+    fn get_path_through_select_regions2(&self, path: &[RegionsCorr]) -> RegionsCorrStore {
         let num_items = path.len();
         let mut ret_path = RegionsCorrStore::with_capacity(num_items);
 
-        ret_path.push(path[0].intersection(path[1]).expect("SNH"));
+        ret_path.push(path[0].intersection(&path[1]).expect("SNH"));
 
         for itemx in path.iter().take(num_items - 1).skip(1) {
             ret_path.push((*itemx).clone());
@@ -1215,7 +1197,7 @@ impl DomainStore {
 
         ret_path.push(
             path[num_items - 1]
-                .intersection(path[num_items - 2])
+                .intersection(&path[num_items - 2])
                 .expect("SNH"),
         );
 
@@ -1240,12 +1222,12 @@ impl DomainStore {
         // Kind of like two random depth-first searches.
 
         // Init start intersections vector.
-        let mut start_ints = Vec::<&RegionsCorr>::new();
-        start_ints.push(start_regs);
+        let mut start_ints = Vec::<RegionsCorr>::new();
+        start_ints.push(start_regs.clone());
 
         // Init goal intersections vector.
-        let mut goal_ints = Vec::<&RegionsCorr>::new();
-        goal_ints.push(goal_regs);
+        let mut goal_ints = Vec::<RegionsCorr>::new();
+        goal_ints.push(goal_regs.clone());
 
         // Build up start and goal vectors, until the is an intersection between them, or
         // no more intersections.
@@ -1261,22 +1243,35 @@ impl DomainStore {
 
                 // A new RegionsCorr must intersect the last one in the vector.
                 if start_last.intersects(selx) {
+                    // Avoid duplicating a vector item.
+                    if start_ints.contains(selx) {
+                        continue;
+                    }
+                    // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
+                    // one has already been chosen.
+                    if start_ints.len() > 1 && selx.intersects(start_regs) {
+                        continue;
+                    }
+                    start_ints.push((*selx).clone());
+                    start_added = true;
+                    break;
+                } else if start_last.is_adjacent(selx) {
+                    let bridge = start_last.symmetrical_overlapping_regions(selx);
+                    //println!("{start_last} is adjacent {selx}, bridge is {bridge}");
+                    if start_ints.contains(&bridge) {
+                        continue;
+                    }
+                    // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
+                    // one has already been chosen.
+                    if start_ints.len() > 1 && bridge.intersects(start_regs) {
+                        continue;
+                    }
+                    start_ints.push(bridge);
+                    start_added = true;
+                    break;
                 } else {
                     continue;
                 }
-                // Avoid duplicating a vector item.
-                if tools::vec_contains_ref(&start_ints, selx) {
-                    continue;
-                }
-                // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
-                // one has already been chosen.
-                if start_ints.len() > 1 && selx.intersects(start_regs) {
-                    continue;
-                }
-
-                start_ints.push(selx);
-                start_added = true;
-                break;
             } // next pick.
 
             // Get next layer of intersections for goal_ints.
@@ -1294,7 +1289,7 @@ impl DomainStore {
                     continue;
                 }
                 // Avoid duplicating a vector item.
-                if tools::vec_contains_ref(&goal_ints, selx) {
+                if goal_ints.contains(selx) {
                     continue;
                 }
                 // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
@@ -1303,7 +1298,7 @@ impl DomainStore {
                     continue;
                 }
 
-                goal_ints.push(selx);
+                goal_ints.push((*selx).clone());
                 goal_added = true;
                 break;
             } // next pick.
@@ -1319,25 +1314,25 @@ impl DomainStore {
             let start_last = start_ints.last()?;
 
             // Keep track of goal items traversed, in case an intersection is found.
-            let mut tmp_path = Vec::<&RegionsCorr>::new();
+            let mut tmp_path = Vec::<RegionsCorr>::new();
 
             for regs_gx in goal_ints.iter() {
                 if regs_gx.intersects(start_last) {
                 } else {
                     // If no intersection is found, the iter will exit, without returning a result.
-                    tmp_path.push(regs_gx);
+                    tmp_path.push(regs_gx.clone());
                     continue;
                 }
                 // Use current start_ints vector as the return vector.
 
                 // Avoid two consecutive, equal, RegionsCorrs.
-                if std::ptr::eq(*regs_gx, *start_last) {
+                if regs_gx == start_last {
                 } else {
-                    start_ints.push(regs_gx);
+                    start_ints.push(regs_gx.clone());
                 }
                 // Unwind successive goal path items.
                 for regs_tx in tmp_path.iter().rev() {
-                    start_ints.push(regs_tx);
+                    start_ints.push((*regs_tx).clone());
                 }
                 //println!("get_path_through_select_regions: returning (1) {}", tools::vec_ref_string(&start_ints));
                 return Some(self.get_path_through_select_regions2(&start_ints));
@@ -1347,24 +1342,24 @@ impl DomainStore {
             let goal_last = goal_ints.last()?;
 
             // Save RegionsCorrs traversed, to use if/when an intersection is found.
-            let mut tmp_path = Vec::<&RegionsCorr>::new();
+            let mut tmp_path = Vec::<RegionsCorr>::new();
 
             for regs_sx in start_ints.iter() {
                 if regs_sx.intersects(goal_last) {
                 } else {
                     // If no intersection is found, the iter will exit, without returning a result.
                     // tmp_path will be a waste.
-                    tmp_path.push(regs_sx);
+                    tmp_path.push(regs_sx.clone());
                     continue;
                 }
                 // Avoid two consecutive, equal, RegionsCorrs.
                 if std::ptr::eq(regs_sx, goal_last) {
                 } else {
-                    tmp_path.push(regs_sx);
+                    tmp_path.push(regs_sx.clone());
                 }
                 // Unwind successive goal path RegionsCorrs.
                 for regs_gx in goal_ints.iter().rev() {
-                    tmp_path.push(regs_gx);
+                    tmp_path.push(regs_gx.clone());
                 }
                 //println!("get_path_through_select_regions: returning (2) {}", tools::vec_ref_string(&tmp_path));
                 return Some(self.get_path_through_select_regions2(&tmp_path));
@@ -1506,6 +1501,10 @@ impl DomainStore {
         if plans2.is_empty() {
             Err(errs)
         } else {
+            //println!("domainstore::make_plans: returning:");
+            //for plnx in plans2.iter() {
+            //    println!("    {plnx}");
+            //}
             Ok(plans2.swap_remove(rand::thread_rng().gen_range(0..plans2.len())))
         }
     }
@@ -1533,13 +1532,17 @@ impl DomainStore {
             } else {
                 // Try making plans.
                 match self.get_plans(dom_id, regx, regy, &within[dom_id]) {
-                    Ok(mut plans) => plans_per_target
-                        .push(plans.remove(rand::thread_rng().gen_range(0..plans.len()))),
+                    Ok(mut plans) => {
+                        //println!(" {} plans from get_plans", plans.len());
+                        plans_per_target
+                            .push(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                    }
                     Err(errvec) => return Err(errvec),
                 };
             }
         } // next domain
 
+        //println!("domainstore::make_plans2: returning {plans_per_target}");
         Ok(plans_per_target)
     }
 
@@ -1725,7 +1728,7 @@ mod tests {
                             "Plan found: {} start {start_region} goal {goal_region}",
                             planx
                         );
-                        assert!(planx.value == 0);
+                        assert!(planx.rate() == 0);
                         //assert!(1 == 2);
                         Ok(())
                     }
@@ -1789,7 +1792,7 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
                 println!("Plan found: {planx}");
-                assert!(planx.value == 0);
+                assert!(planx.rate() == 0);
                 Ok(())
             }
             _ => Err("No plan found?".to_string()),
@@ -1855,7 +1858,7 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
                 println!("Plan found: {}", planx);
-                assert!(planx.value == 0);
+                assert!(planx.rate() == 0);
                 Ok(())
             }
             _ => Err("No plan found?".to_string()),
@@ -1914,7 +1917,7 @@ mod tests {
                 planx.str_terse();
                 Ok(())
             }
-            _ => Err(format!("No plan ?")),
+            _ => Err(format!("No plan {start_region} to {goal_region}?")),
         }
     }
 
@@ -1974,9 +1977,6 @@ mod tests {
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from("0b0000->0b1000")?);
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from("0b1111->0b0111")?);
 
-        // Init aggregate needs.
-        dmxs.get_needs();
-
         // Set select regions.
 
         // Set up dom 0 00XX dependent on dom 1 01XX.
@@ -1985,6 +1985,9 @@ mod tests {
         // Set up dom 0 00XX dependent on dom 1 10XX.
         dmxs.add_select(SelectRegions::from("SR[RC[r1011], -1]")?);
         dmxs.calc_select();
+
+        // Init aggregate needs.
+        dmxs.get_needs();
 
         let s0 = SomeState::from("0b0000")?;
         dmxs[0].set_cur_state(s0.clone());
@@ -1996,7 +1999,7 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: plans }) => {
                 println!("Plans {}", plans);
-                assert!(plans.value == 0);
+                assert!(plans.rate() == 0);
                 Ok(())
             }
             _ => Err(format!("No plan found?")),
@@ -2074,7 +2077,7 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: plans }) => {
                 println!("Plans {}", plans);
-                assert!(plans.value == 0);
+                assert!(plans.rate() == 0);
                 Ok(())
             }
             _ => Err(format!("No plan found?")),
@@ -2149,7 +2152,7 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
             Ok(NeedPlan::PlanFound { plan: plans }) => {
                 println!("Plans {}", plans);
-                assert!(plans.value == 0);
+                assert!(plans.rate() == 0);
                 let mut cur_states = dmxs.all_current_states();
                 for planx in plans.iter() {
                     if let Some(next_states) = planx.result_from_initial_states(&cur_states) {
@@ -2233,6 +2236,7 @@ mod tests {
             Ok(ndpln) => match ndpln {
                 NeedPlan::PlanFound { plan: plans } => {
                     println!("Plans {}", plans);
+                    //assert!(1 == 2);
                     return Ok(());
                 }
                 _ => return Err("No plan found".to_string()),
@@ -2482,7 +2486,8 @@ mod tests {
         match dmxs.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
             Ok(NeedPlan::PlanFound { plan: plans }) => {
                 println!("Plans {}", plans);
-                assert!(plans.value == -1);
+                assert!(plans.rate() == -1);
+                //assert!(1 == 2);
                 Ok(())
             }
             _ => Err(format!("No plan found?")),
@@ -2512,7 +2517,7 @@ mod tests {
         dmxs[2].set_cur_state(SomeState::from("s0b10")?);
 
         // Set up PlansCorr.
-        let plnsc1 = PlansCorr::from("PC[P[r0000-0->r0001], P[r001-no->r001], P[r10-0->11]]")?;
+        let plnsc1 = PlansCorr::from("PC[[P[r0000-0->r0001], P[r001-no->r001], P[r10-0->11]], 0]")?;
         println!("{plnsc1}");
 
         let before = dmxs.all_current_states();
@@ -2565,7 +2570,7 @@ mod tests {
         dmxs[1].set_cur_state(SomeState::from("s0b1111")?);
 
         // Set up PlansCorrStore.
-        let plnscrstr = PlansCorrStore::from("PCS[PC[P[r0000-2->r0100], P[r1111-0->r1110]], PC[P[r0100-0->0101], P[r1110-1->r1100]]]")?;
+        let plnscrstr = PlansCorrStore::from("PCS[PC[[P[r0000-2->r0100], P[r1111-0->r1110]], 0], PC[[P[r0100-0->0101], P[r1110-1->r1100]], 0]]")?;
         println!("plnscrstr {plnscrstr}");
 
         let before = dmxs.all_current_states();
@@ -2611,7 +2616,10 @@ mod tests {
                 print!("{rcx}");
             }
             println!(" ");
-            assert!(pathx[0] == RegionsCorr::from("RC[r1111]")?);
+            assert!(
+                pathx[0] == RegionsCorr::from("RC[r1111]")?
+                    || pathx[0] == RegionsCorr::from("RC[r1X11]")?
+            );
             assert!(pathx[pathx.len() - 1] == RegionsCorr::from("RC[r0000]")?);
         } else {
             return Err("No path found?".to_string());

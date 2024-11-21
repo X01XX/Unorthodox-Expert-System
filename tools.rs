@@ -12,7 +12,7 @@ pub fn vec_contains<T, U>(avec: &[T], testfn: fn(&T, &U) -> bool, item: &U) -> b
 }
 
 /// Return true if a vector contains the same reference given.
-pub fn vec_contains_ref<T>(avec: &[&T], item: &T) -> bool {
+pub fn _vec_contains_ref<T>(avec: &[&T], item: &T) -> bool {
     for itemx in avec.iter() {
         if std::ptr::eq(*itemx, item) {
             return true;

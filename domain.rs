@@ -630,11 +630,8 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: &SomeRegion,
     ) -> Result<PlanStore, Vec<String>> {
-        //if let Some(in_reg) = within {
-        //    println!("domain::make_plans: from {from_reg} goal {goal_reg} within {in_reg}");
-        //} else {
-        //    println!("domain::make_plans: from {from_reg} goal {goal_reg}");
-        //}
+        //println!("domain::make_plans: from {from_reg} goal {goal_reg} within {within}");
+
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
@@ -643,6 +640,7 @@ impl SomeDomain {
 
         match self.make_plans2(from_reg, goal_reg, within) {
             Ok(mut plans) => {
+                //println!("  {} plans found 1", plans.len());
                 //println!("make_plans2 num found {} plans", plans.len());
 
                 let mut addplans = PlanStore::new(vec![]);
@@ -654,6 +652,7 @@ impl SomeDomain {
                 if addplans.is_not_empty() {
                     plans.append(addplans);
                 }
+                //println!("  {} plans return 1", plans.len());
                 Ok(plans)
             }
             Err(errvec) => Err(errvec),
@@ -738,13 +737,15 @@ impl SomeDomain {
                 }
             }
         } // next rslt.
-
+          //println!("dom {} make_plans2 returns", self.id);
+          //for plnx in plans2.iter() {
+          //    println!("    {plnx}");
+          //}
         if plans2.is_empty() {
             Err(problems)
         } else {
             Ok(plans2)
         }
-        //println!("dom {} make_plans2 returns {}", self.id, tools::vec_string(&plans));
     } // end make_plans2
 
     /// Get steps that may allow a change to be made.
@@ -757,6 +758,7 @@ impl SomeDomain {
     /// If all steps found, in aggregate, cannot change all bits needed, return None.
     ///
     pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
+        //println!("domain::get_steps: from {} to {} within {within}", rule_to_goal.initial_region(), rule_to_goal.result_region());
         debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
         debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
@@ -975,12 +977,13 @@ impl SomeDomain {
             if let Ok(plans2) =
                 self.make_plans2(&planx[*from_inx].initial, &planx[*to_inx].result, within)
             {
-                // println!(
-                //     "    plans found from {} to {}",
-                //     planx[*from_inx].initial, &planx[*to_inx].result
+                //println!(
+                //       "    plans found from {} to {}",
+                //    planx[*from_inx].initial, &planx[*to_inx].result
                 //);
-                //println!("    Plans found {plans2}");
+                //println!("    Plans found 2");
                 for plany in plans2 {
+                    //println!("    sub plan1 {}", plany);
                     let mut new_plan = SomePlan::new(vec![]);
                     if *from_inx > 0 {
                         for inz in 0..*from_inx {

@@ -20,7 +20,7 @@ use std::fmt;
 
 impl fmt::Display for PlansCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PC{}", self.plans)
+        write!(f, "PC[{}, {}]", self.plans, self.rate)
     }
 }
 
@@ -29,6 +29,8 @@ impl fmt::Display for PlansCorr {
 pub struct PlansCorr {
     /// A vector of plans.
     pub plans: PlanStore,
+    /// Value assigned based on the largest negative SRs needed to find a plan.
+    pub rate: isize,
 }
 
 impl PlansCorr {
@@ -37,6 +39,7 @@ impl PlansCorr {
         debug_assert!(!plans.is_empty());
         Self {
             plans: PlanStore::new(plans),
+            rate: 0,
         }
     }
 
@@ -46,7 +49,13 @@ impl PlansCorr {
 
         Self {
             plans: PlanStore::with_capacity(cap),
+            rate: 0,
         }
+    }
+
+    /// Set the value of the planscorr.
+    pub fn set_rate(&mut self, rate: isize) {
+        self.rate = rate;
     }
 
     /// Return the number of plans in a PlansCorr.
@@ -107,6 +116,7 @@ impl PlansCorr {
                 return None;
             }
         }
+        ret_plans.set_rate(self.rate);
         Some(ret_plans)
     }
 
@@ -123,6 +133,7 @@ impl PlansCorr {
                 return None;
             }
         }
+        ret_plans.set_rate(self.rate);
         Some(ret_plans)
     }
 
@@ -221,13 +232,17 @@ impl PlansCorr {
     }
 
     /// Return a PlansCorr instance, given a string representation.
-    /// Like PC[], PC[P[r001-0>r101]] or PC[P[r001-0>r101], P[r101-0>r101]].
-    pub fn from(pc_str: &str) -> Result<Self, String> {
+    /// Like PC[[], 0], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
+    pub fn from(pc_str_in: &str) -> Result<Self, String> {
         //println!("regionscorr::from: {pc_str}");
+        let pc_str = pc_str_in.trim();
 
         let mut pc_str2 = String::new();
         let mut last_chr = String::new();
+        let mut num_left = 0;
+        let mut num_right = 0;
 
+        // Strip PCS[ ] from string.
         for (inx, chr) in pc_str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "P" {
@@ -249,11 +264,25 @@ impl PlansCorr {
             }
             if inx == 2 {
                 if chr == "[" {
+                    num_left += 1;
+                    continue;
                 } else {
                     return Err(format!(
                         "PlansCorr::from: Invalid string, {pc_str} should start with PC["
                     ));
                 }
+            }
+
+            if chr == "[" {
+                num_left += 1;
+            }
+            if chr == "]" {
+                num_right += 1;
+            }
+            if num_right > num_left {
+                return Err(format!(
+                    "PlansCorr::from: Invalid string, {pc_str}, brackets are not balanced."
+                ));
             }
 
             last_chr = chr.to_string();
@@ -264,10 +293,63 @@ impl PlansCorr {
                 "PlansCorr::from: Invalid string, {pc_str} should end with ]"
             ));
         }
+        // Remove last right-bracket, balancing PCS[.
+        pc_str2.remove(pc_str2.len() - 1);
+        pc_str2 = pc_str2.trim().to_string();
 
-        let plans = PlanStore::from(&pc_str2)?;
+        // Find last comma.
+        let mut comma = 0;
+        for (inx, chr) in pc_str2.chars().enumerate() {
+            if chr == ',' {
+                comma = inx;
+            }
+        }
+        if comma == 0 {
+            return Err(format!(
+                "PlansCorr::from: Invalid string, {pc_str2} no comma found"
+            ));
+        }
 
-        Ok(Self { plans })
+        let mut ps_token = String::new();
+        let mut tmp_token = String::new();
+
+        for (inx, chr) in pc_str2.chars().enumerate() {
+            if chr == ' ' {
+                continue;
+            }
+            if inx == comma {
+                if !ps_token.is_empty() {
+                    return Err(format!(
+                        "PlansCorr::from: Invalid string, {pc_str2} ps_token {ps_token}"
+                    ));
+                }
+                ps_token = tmp_token;
+                tmp_token = String::new();
+                continue;
+            }
+
+            tmp_token.push(chr);
+        }
+        let val_token = tmp_token;
+
+        // Check that there are two tokens.
+        if ps_token.is_empty() || val_token.is_empty() {
+            return Err(format!("PlansCorr::from: Invalid string, {pc_str2}"));
+        }
+
+        // Get the planscorr token value.
+        let plans = match PlanStore::from(&ps_token) {
+            Ok(plans) => plans,
+            Err(errstr) => return Err(format!("PlansCorr::from: {errstr}")),
+        };
+
+        // Get the value token value.
+        let val = match val_token.parse::<isize>() {
+            Ok(val) => val,
+            Err(errstr) => return Err(format!("PlansCorr::from: {errstr}")),
+        };
+
+        Ok(Self { plans, rate: val })
     }
 }
 
@@ -281,11 +363,15 @@ impl Index<usize> for PlansCorr {
 /// Implement the trait StrLen for PlansCorr.
 impl StrLen for PlansCorr {
     fn strlen(&self) -> usize {
-        if self.plans.is_empty() {
-            4
+        let mut rtlen = 4; // PC[]
+        rtlen += self.plans.strlen();
+
+        if self.rate < 0 {
+            rtlen += 4; // , -1
         } else {
-            2 + self.plans.strlen()
-        }
+            rtlen += 3; // , 0
+        };
+        rtlen
     }
 }
 
@@ -296,19 +382,19 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let plncr1 = PlansCorr::from("PC[]")?;
+        let plncr1 = PlansCorr::from("PC[[], 0]")?;
         let lenx = plncr1.strlen();
         let strx = format!("{plncr1}");
         println!("plncr1 {plncr1} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr2 = PlansCorr::from("PC[P[r0000-0->r1111]]")?;
+        let plncr2 = PlansCorr::from("PC[[P[r0000-0->r1111]], 0]")?;
         let lenx = plncr2.strlen();
         let strx = format!("{plncr2}");
         println!("plncr2 {plncr2} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr3 = PlansCorr::from("PC[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        let plncr3 = PlansCorr::from("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
         let lenx = plncr3.strlen();
         let strx = format!("{plncr3}");
         println!("plncr3 {plncr3} len {} calced len {lenx}", strx.len());
@@ -319,7 +405,7 @@ mod tests {
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[P[r0X-0->r00], P[r0X1-1->r000]]")?;
+        let plnsc1 = PlansCorr::from("PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]")?;
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
@@ -331,7 +417,7 @@ mod tests {
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]]")?;
+        let plnsc1 = PlansCorr::from("PC[[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]], 0]")?;
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
@@ -343,7 +429,7 @@ mod tests {
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->r1X11]]")?;
+        let plnsc1 = PlansCorr::from("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->r1X11]], 0]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from("RC[r11, r0100]")?;
@@ -360,7 +446,7 @@ mod tests {
 
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->1X11]]")?;
+        let plnsc1 = PlansCorr::from("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->1X11]], 0]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from("RC[r00, r1111]")?;
@@ -377,7 +463,8 @@ mod tests {
 
     #[test]
     fn plans_range() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[P[r0100-0->r0001-0->r0111], P[r1000-1->r1001-1->r1011]]")?;
+        let plnsc1 =
+            PlansCorr::from("PC[[P[r0100-0->r0001-0->r0111], P[r1000-1->r1001-1->r1011]], 0]")?;
         println!("{plnsc1}");
 
         let rng = plnsc1.plans_range();
@@ -392,17 +479,17 @@ mod tests {
 
     #[test]
     fn from() -> Result<(), String> {
-        let plncr1 = PlansCorr::from("PC[]")?;
+        let plncr1 = PlansCorr::from("PC[[], 0]")?;
         println!("plncr1 {plncr1}");
-        assert!(format!("{plncr1}") == "PC[]");
+        assert!(format!("{plncr1}") == "PC[[], 0]");
 
-        let plncr2 = PlansCorr::from("PC[P[r0000-0->r1111]]")?;
+        let plncr2 = PlansCorr::from("PC[[P[r0000-0->r1111]], 1]")?;
         println!("plncr2 {plncr2}");
-        assert!(format!("{plncr2}") == "PC[P[r0000-0->r1111]]");
+        assert!(format!("{plncr2}") == "PC[[P[r0000-0->r1111]], 1]");
 
-        let plncr3 = PlansCorr::from("PC[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        let plncr3 = PlansCorr::from("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
         println!("plncr3 {plncr3}");
-        assert!(format!("{plncr3}") == "PC[P[r0000-0->r1111], P[r0000-0->r1100]]");
+        assert!(format!("{plncr3}") == "PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]");
 
         Ok(())
     }

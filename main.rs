@@ -1506,7 +1506,7 @@ mod tests {
     /// Test going into a net-positive SelectRegion, out of boredom, then exiting because of
     /// an additional, smaller, negative influence.
     #[test]
-    fn _select2() -> Result<(), String> {
+    fn select2() -> Result<(), String> {
         // Create DomainStore.
         let mut dmxs = DomainStore::new();
 
