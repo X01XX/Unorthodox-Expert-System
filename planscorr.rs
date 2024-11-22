@@ -9,7 +9,7 @@ use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
-use crate::tools::StrLen;
+use crate::tools::{CorrespondingItems, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -104,7 +104,7 @@ impl PlansCorr {
 
     /// Restrict the initial regions of a PlansCorr plans.
     pub fn restrict_initial_regions(&self, regx: &RegionsCorr) -> Option<Self> {
-        debug_assert_eq!(self.num_bits_vec(), regx.num_bits_vec());
+        debug_assert!(self.is_congruent(regx));
 
         let mut ret_plans = Self::with_capacity(self.len());
 
@@ -122,7 +122,7 @@ impl PlansCorr {
 
     /// Restrict the result regions of a PlansCorr plans.
     pub fn restrict_result_regions(&self, regx: &RegionsCorr) -> Option<Self> {
-        debug_assert_eq!(self.num_bits_vec(), regx.num_bits_vec());
+        debug_assert!(self.is_congruent(regx));
 
         let mut ret_plans = Self::with_capacity(self.len());
 
@@ -139,12 +139,14 @@ impl PlansCorr {
 
     /// Return true if two PlansCorrs are linked, result regions to initial regions.
     pub fn is_linked(&self, other: &Self) -> bool {
+        debug_assert!(self.is_congruent(other));
+
         self.result_regions() == other.initial_regions()
     }
 
     /// Return true if a PlansCorr can be linked to another.
     pub fn _can_be_linked(&self, other: &Self) -> bool {
-        debug_assert_eq!(self.num_bits_vec(), other.num_bits_vec());
+        debug_assert!(self.is_congruent(other));
 
         self.result_regions().intersects(&other.initial_regions())
     }
@@ -152,7 +154,7 @@ impl PlansCorr {
     /// Return the expected result, given initial regions.
     pub fn result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
         //println!("planscorr::result_from_initial_states self {self} states {states}");
-        debug_assert_eq!(self.num_bits_vec(), states.num_bits_vec());
+        debug_assert!(self.is_congruent(states));
 
         let mut ret_stas = StatesCorr::with_capacity(states.len());
         for (planx, stax) in self.iter().zip(states.iter()) {
@@ -167,7 +169,7 @@ impl PlansCorr {
 
     /// Return the expected result, given initial regions.
     pub fn result_from_initial_regions(&self, regions: &RegionsCorr) -> Option<RegionsCorr> {
-        debug_assert_eq!(self.num_bits_vec(), regions.num_bits_vec());
+        debug_assert!(self.is_congruent(regions));
 
         let mut ret_regs = RegionsCorr::with_capacity(regions.len());
         for (planx, regx) in self.iter().zip(regions.iter()) {
@@ -206,19 +208,6 @@ impl PlansCorr {
             numr += plnx.number_steps_to_run();
         }
         numr
-    }
-
-    /// Return a range for a PlansCorr.
-    /// When plans are run in parallel, the whole range of possible results
-    /// must be considered for intersection with negative SelectRegions.
-    pub fn plans_range(&self) -> RegionsCorr {
-        // Form new RegionsCorr representing the whole range of possible regions,
-        // since the PlansCorr will be crun in prallel.
-        let mut plans_range = RegionsCorr::with_capacity(self.len());
-        for plnx in self.iter() {
-            plans_range.push(plnx.range());
-        }
-        plans_range
     }
 
     /// Return the number of steps with AltRuleHint::AltRule set.
@@ -351,6 +340,11 @@ impl PlansCorr {
 
         Ok(Self { plans, rate: val })
     }
+
+    /// Return true if corresponding regions in two vectors have the same number of bits.
+    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
+    }
 }
 
 impl Index<usize> for PlansCorr {
@@ -372,6 +366,12 @@ impl StrLen for PlansCorr {
             rtlen += 3; // , 0
         };
         rtlen
+    }
+}
+
+impl CorrespondingItems for PlansCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
     }
 }
 
@@ -458,22 +458,6 @@ mod tests {
         } else {
             return Err("restrict failed?".to_string());
         }
-        Ok(())
-    }
-
-    #[test]
-    fn plans_range() -> Result<(), String> {
-        let plnsc1 =
-            PlansCorr::from("PC[[P[r0100-0->r0001-0->r0111], P[r1000-1->r1001-1->r1011]], 0]")?;
-        println!("{plnsc1}");
-
-        let rng = plnsc1.plans_range();
-        println!("range {rng}");
-
-        assert!(rng.len() == 2);
-        assert!(rng[0] == SomeRegion::from("r0XXX")?);
-        assert!(rng[1] == SomeRegion::from("r10XX")?);
-
         Ok(())
     }
 

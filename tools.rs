@@ -135,8 +135,14 @@ pub trait StrLen {
     fn strlen(&self) -> usize;
 }
 
+/// Define a trail that allows getting a reference to vector of items that implemant the NumBits trait.
 pub trait AvecRef {
     fn avec_ref(&self) -> &Vec<impl NumBits>;
+}
+
+/// Define a trait that allows checking correspondance with bit_nums used by items.
+pub trait CorrespondingItems {
+    fn num_bits_vec(&self) -> Vec<usize>;
 }
 
 /// Given a number of items, return any x number
@@ -192,6 +198,14 @@ fn anyxofn2<'a, T>(xitems: usize, xlist: &[&'a T], nlist: &[&'a T]) -> Vec<Vec<&
     }
 
     ret_vec
+}
+
+/// For those awkward situations when you want to use referenced items, instead of cloning,
+/// and you want to use non-reference items, generated from the referenced items.
+#[allow(dead_code)]
+enum Either<'a, T> {
+    Itemref { aref: &'a T },
+    Item { item: T },
 }
 
 /// Return a vector of references, from a given vector.

@@ -11,7 +11,6 @@ use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-use tools::AvecRef;
 
 use std::fmt;
 
@@ -142,9 +141,15 @@ impl IndexMut<usize> for StatesCorr {
     }
 }
 
-impl AvecRef for StatesCorr {
+impl tools::AvecRef for StatesCorr {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
         self.states.avec_ref()
+    }
+}
+
+impl tools::CorrespondingItems for StatesCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
     }
 }
 

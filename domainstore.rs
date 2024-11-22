@@ -17,12 +17,13 @@ use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
 use crate::step::{AltRuleHint::AltRule, SomeStep};
 use crate::target::ATarget;
-use crate::tools;
+use crate::tools::{self, CorrespondingItems};
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::slice::Iter;
 
 use rayon::prelude::*;
 
@@ -124,22 +125,7 @@ impl DomainStore {
             return;
         }
 
-        // Check length.
-        debug_assert!(selx.len() == self.items.len());
-
-        // Do not allow dups.
-        //if self.select.contains(&selx) {
-        //    println!("add_select: {} Equal select region found, skipped.", selx);
-        //    return;
-        //}
-
-        // Check that each select region matches the corresponding domain number bits.
-        for (sely, domx) in selx.regions.iter().zip(self.items.iter()) {
-            if sely.num_bits() == domx.cur_state.num_bits() {
-            } else {
-                return;
-            }
-        }
+        assert!(self.is_congruent(&selx));
 
         self.select.push(selx);
     }
@@ -314,6 +300,8 @@ impl DomainStore {
 
     /// Run a PlansCorr, plans will be run in parallel.
     pub fn run_planscorr(&mut self, plns: &PlansCorr) -> Result<usize, String> {
+        debug_assert!(self.is_congruent(plns));
+
         let mut steps_run = 0;
 
         let vecb = plns
@@ -780,7 +768,7 @@ impl DomainStore {
     /// Return a need for moving to a select region.
     fn select_goal_needs(&self, goal_regs: &RegionsCorr) -> Option<NeedStore> {
         //println!("domainstore::select_goal_needs:");
-        debug_assert!(self.len() == goal_regs.len());
+        debug_assert!(self.is_congruent(goal_regs));
 
         // Load return vector.
         let mut ret_str = NeedStore::new(vec![]);
@@ -978,8 +966,8 @@ impl DomainStore {
         //println!(
         //    "plan_using_least_negative_select_regions: starting: start {start_regs} goal: {goal_regs}"
         //);
-        assert!(start_regs.len() == self.len());
-        assert!(goal_regs.len() == self.len());
+        debug_assert!(self.is_congruent(start_regs));
+        debug_assert!(self.is_congruent(goal_regs));
 
         // Check if no plans are needed.
         if start_regs.is_subset_of(goal_regs) {
@@ -1022,9 +1010,7 @@ impl DomainStore {
 
         loop {
             // until plan found or all negative SRs added to fragments.
-            //println!("current_rate {current_rate}");
             // Use fragments to find path.
-            //println!("use fragments {}", tools::vec_ref_string(&fragments));
             match self.plan_using_least_negative_select_regions_get_plan(
                 start_regs,
                 goal_regs,
@@ -1066,7 +1052,7 @@ impl DomainStore {
     /// Return the nearest non-negative regions.
     pub fn closest_rc_regions(&self, from_regs: &RegionsCorr) -> Option<&RegionsCorr> {
         // Find closest non-negative SelectRegions, if any.
-        debug_assert!(from_regs.len() == self.len());
+        debug_assert!(self.is_congruent(from_regs));
 
         let mut min_distance = usize::MAX;
         let mut targets = Vec::<&RegionsCorr>::new();
@@ -1095,7 +1081,6 @@ impl DomainStore {
         select_regions: &[&RegionsCorr],
         cur_rate: isize,
     ) -> Result<PlansCorrStore, Vec<String>> {
-        debug_assert!(start_regs.is_congruent(goal_regs));
         debug_assert!(!select_regions.is_empty());
         //println!(
         //    "plan_using_least_negative_select_regions2: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
@@ -1269,8 +1254,6 @@ impl DomainStore {
                     start_ints.push(bridge);
                     start_added = true;
                     break;
-                } else {
-                    continue;
                 }
             } // next pick.
 
@@ -1285,22 +1268,33 @@ impl DomainStore {
 
                 // A new RegionsCorr must intersect the last one in the vector.
                 if goal_last.intersects(selx) {
-                } else {
-                    continue;
+                    // Avoid duplicating a vector item.
+                    if goal_ints.contains(selx) {
+                        continue;
+                    }
+                    // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
+                    // one has already been chosen.
+                    if goal_ints.len() > 1 && selx.intersects(goal_regs) {
+                        continue;
+                    }
+                    goal_ints.push((*selx).clone());
+                    goal_added = true;
+                    break;
+                } else if goal_last.is_adjacent(selx) {
+                    let bridge = goal_last.symmetrical_overlapping_regions(selx);
+                    // Avoid duplicating a vector item.
+                    if goal_ints.contains(&bridge) {
+                        continue;
+                    }
+                    // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
+                    // one has already been chosen.
+                    if goal_ints.len() > 1 && bridge.intersects(goal_regs) {
+                        continue;
+                    }
+                    goal_ints.push(bridge);
+                    goal_added = true;
+                    break;
                 }
-                // Avoid duplicating a vector item.
-                if goal_ints.contains(selx) {
-                    continue;
-                }
-                // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
-                // one has already been chosen.
-                if goal_ints.len() > 1 && selx.intersects(goal_regs) {
-                    continue;
-                }
-
-                goal_ints.push((*selx).clone());
-                goal_added = true;
-                break;
             } // next pick.
 
             // Check if done, with no result.
@@ -1464,8 +1458,6 @@ impl DomainStore {
         goal: &RegionsCorr,
         within: &RegionsCorr,
     ) -> Result<PlansCorr, Vec<String>> {
-        debug_assert!(from.is_congruent(goal));
-        debug_assert!(from.is_congruent(within));
         debug_assert!(within.is_superset_of(from));
         debug_assert!(within.is_superset_of(goal));
 
@@ -1518,8 +1510,6 @@ impl DomainStore {
         within: &RegionsCorr,
     ) -> Result<PlansCorr, Vec<String>> {
         //println!("domainstore: make_plans2: from {from} goal {goal}");
-        debug_assert!(from.is_congruent(goal));
-        debug_assert!(from.is_congruent(within));
         debug_assert!(within.is_superset_of(from));
         debug_assert!(within.is_superset_of(goal));
 
@@ -1640,6 +1630,25 @@ impl DomainStore {
     pub fn cleanup(&mut self, dom_id: usize, act_id: usize, needs: &NeedStore) {
         assert!(dom_id < self.len());
         self.items[dom_id].cleanup(act_id, needs);
+    }
+
+    /// Return true if corresponding items have the same number of bits.
+    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
+    }
+
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for domx in self.iter() {
+            ret_vec.push(domx.num_bits());
+        }
+        ret_vec
+    }
+
+    /// Return a vector iterator.
+    pub fn iter(&self) -> Iter<SomeDomain> {
+        self.items.iter()
     }
 } // end impl DomainStore
 

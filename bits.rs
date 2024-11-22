@@ -52,9 +52,10 @@ impl SomeBits {
         }
     }
 
-    /// Combine two bit instances, where the num_bits sum of both is LE one BitInt.
+    /// Combine two bit instances, where the num_bits sum of both is LE one Bitint.
+    /// I can visualize 4 bits, in a 2-D K-Map.  Maybe 6 bits in 3-D K-Map.  Both of which are less than fits in u8.
     pub fn combine(&self, other: &SomeBits) -> Self {
-        assert!(self.num_bits + other.num_bits < Bitint::BITS as Bitint);
+        assert!(self.num_bits + other.num_bits <= Bitint::BITS as Bitint);
 
         Self {
             num_bits: (self.num_bits + other.num_bits) as Bitint,

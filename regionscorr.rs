@@ -7,7 +7,7 @@ use crate::bits::NumBits;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::statescorr::StatesCorr;
-use crate::tools::{AvecRef, StrLen};
+use crate::tools::{AvecRef, CorrespondingItems, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -250,16 +250,8 @@ impl RegionsCorr {
     }
 
     /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl AvecRef) -> bool {
-        if self.len() != other.avec_ref().len() {
-            return false;
-        }
-        for (item1, item2) in self.avec_ref().iter().zip(other.avec_ref().iter()) {
-            if item1.num_bits() != item2.num_bits() {
-                return false;
-            }
-        }
-        true
+    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
     }
 
     /// Return a RegionsCorr instance, given a string representation.
@@ -323,7 +315,7 @@ impl RegionsCorr {
     }
 
     /// Return a single-region RegionsCorr from a multi-region RegionsCorr,
-    /// where the sum of the regions num_bits is LE a singl Bitint.
+    /// where the sum of the regions num_bits is LE a single Bitint.
     pub fn combine(&self) -> Self {
         assert!(self.len() > 1);
 
@@ -393,6 +385,12 @@ impl StrLen for RegionsCorr {
 impl AvecRef for RegionsCorr {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
         self.regions.avec_ref()
+    }
+}
+
+impl CorrespondingItems for RegionsCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
     }
 }
 
