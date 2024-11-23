@@ -1169,26 +1169,6 @@ impl DomainStore {
         Ok(ret_planscorrstore)
     } // end plan_using_least_negative_select_regions2
 
-    /// Massage a path for return.
-    fn get_path_through_select_regions2(&self, path: &RegionsCorrStore) -> RegionsCorrStore {
-        let num_items = path.len();
-        let mut ret_path = RegionsCorrStore::with_capacity(num_items);
-
-        ret_path.push(path[0].intersection(&path[1]).expect("SNH"));
-
-        for itemx in path.iter().take(num_items - 1).skip(1) {
-            ret_path.push((*itemx).clone());
-        }
-
-        ret_path.push(
-            path[num_items - 1]
-                .intersection(&path[num_items - 2])
-                .expect("SNH"),
-        );
-
-        ret_path
-    }
-
     /// Return a series of intersecting RegionsCorrs, to
     /// guide a path between start and goal.
     fn get_path_through_select_regions<'a>(
@@ -1215,14 +1195,13 @@ impl DomainStore {
         goal_ints.push(goal_regs.clone());
 
         // Init work vector.
-        let mut select_regions2: Vec<_> = select_regions.to_vec();
+        let mut select_regions2: Vec<_> = select_regions.to_vec(); // clippy requires the argument to be a slice.
 
         // Build out start intersection and goal intersection RCSs, until there is an intersection/adjacency between them, or
         // no more options.
         while !select_regions2.is_empty() {
             // Get next layer of intersections for start_ints.
-            let mut start_added = false;
-            let mut goal_added = false;
+            let mut int_added = false;
 
             let start_last = &start_ints.last()?;
 
@@ -1232,15 +1211,15 @@ impl DomainStore {
             while let Some(inx) = randpick.pick() {
                 let selx = select_regions2[inx];
 
-                // A new RegionsCorr must intersect the last RC in the start_ints RCS.
+                // Add a new RegionsCorr intersection, to start_int or goal_ints.
                 if start_last.intersects(selx) {
                     // Avoid circle back.
                     if start_ints.number_intersections_of(selx) != 1 {
                         continue;
                     }
                     start_ints.push((*selx).clone());
-                    select_regions2.remove(inx);
-                    start_added = true;
+                    tools::remove_unordered(&mut select_regions2, inx);
+                    int_added = true;
                     break;
                 } else if start_last.is_adjacent(selx) {
                     // Avoid circle back.
@@ -1250,8 +1229,8 @@ impl DomainStore {
                     let bridge = start_last.symmetrical_overlapping_regions(selx);
                     start_ints.push(bridge);
                     start_ints.push((*selx).clone());
-                    select_regions2.remove(inx);
-                    start_added = true;
+                    tools::remove_unordered(&mut select_regions2, inx);
+                    int_added = true;
                     break;
                 } else {
                     // Get next layer of intersections for goal_ints.
@@ -1264,8 +1243,8 @@ impl DomainStore {
                             continue;
                         }
                         goal_ints.push((*selx).clone());
-                        select_regions2.remove(inx);
-                        goal_added = true;
+                        tools::remove_unordered(&mut select_regions2, inx);
+                        int_added = true;
                         break;
                     } else if goal_last.is_adjacent(selx) {
                         // Avoid circle back.
@@ -1275,40 +1254,40 @@ impl DomainStore {
                         let bridge = goal_last.symmetrical_overlapping_regions(selx);
                         goal_ints.push(bridge);
                         goal_ints.push((*selx).clone());
-                        select_regions2.remove(inx);
-                        goal_added = true;
+                        tools::remove_unordered(&mut select_regions2, inx);
+                        int_added = true;
                         break;
                     }
                 }
             } // next pick.
 
-            // Check if done, with no result.
-            if start_added || goal_added {
+            // Check no new intersection was found.
+            if int_added {
             } else {
                 //println!("get_path_through_select_regions: returning (1) no new intersections found");
                 return None;
             }
 
             // Check for two intersecting items between the start and goal intersection RCSs.
-            if let Some((s, mut g)) = start_ints.intersecting_pair(&goal_ints) {
-                if start_ints[s] == goal_ints[g] {
-                    g -= 1;
-                }
+            if let Some((s, g)) = start_ints.intersecting_pair(&goal_ints) {
                 start_ints.truncate(s + 1);
                 goal_ints.truncate(g + 1);
+
                 goal_ints.reverse();
                 start_ints.append(goal_ints);
-                return Some(self.get_path_through_select_regions2(&start_ints));
+                return Some(start_ints);
 
             // Check for two adjacent items between the start and goal intersection RCSs.
             } else if let Some((s, g)) = start_ints.adjacent_pair(&goal_ints) {
                 start_ints.truncate(s + 1);
                 goal_ints.truncate(g + 1);
+
                 let bridge = start_ints[s].symmetrical_overlapping_regions(&goal_ints[g]);
                 start_ints.push(bridge);
+
                 goal_ints.reverse();
                 start_ints.append(goal_ints);
-                return Some(self.get_path_through_select_regions2(&start_ints));
+                return Some(start_ints);
             }
         } // end loop
         None
