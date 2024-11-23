@@ -145,15 +145,17 @@ impl DomainStore {
 
         // Get fragments due to different-value intersections.
         let fragments = self.select.split_by_intersections();
+        // println!("fragments");
 
-        //        println!("fragments");
-        for sely in fragments.iter() {
-            //            println!("  {sely}");
-            if !sely.net_value < 0 {
-                if sely.net_value > self.max_pos_value {
-                    self.max_pos_value = sely.net_value;
+        // Separate fragments by value.
+        for selx in fragments {
+            if selx.net_value < 0 {
+                self.select_negative.push(selx);
+            } else {
+                if selx.net_value > self.max_pos_value {
+                    self.max_pos_value = selx.net_value;
                 }
-                self.select_positive.push(sely.clone());
+                self.select_positive.push(selx);
             }
         }
 
@@ -173,13 +175,13 @@ impl DomainStore {
         let mut non_neg_select = RegionsCorrStore::new(vec![self.maximum_regions()]);
 
         for selx in self.select.iter() {
-            if selx.net_value < 0 {
+            if selx.neg_value < 0 {
                 non_neg_select = non_neg_select.subtract_regionscorr(&selx.regions);
             }
         }
-        if non_neg_select.is_not_empty() {
-            self.rc_non_negative = non_neg_select;
+        self.rc_non_negative = non_neg_select;
 
+        if self.rc_non_negative.is_not_empty() {
             println!(
                 "\nNon-negative RCs, maximum RC regions minus negative SR regions ({}):\n",
                 self.rc_non_negative.len()
@@ -190,26 +192,9 @@ impl DomainStore {
             println!("\n  Seek one of these when exiting a negative SR the current state is in.");
             println!("\n  Only one bit needs to change to exit a region, with at least one edge,");
             println!("  but there may be overlapping and adjacent negative SRs.");
-
-            // Double check.
-            for rcx in self.rc_non_negative.iter() {
-                for selz in self.select.iter() {
-                    if selz.neg_value < 0 {
-                        assert!(!selz.regions.intersects(rcx));
-                    }
-                }
-            }
         }
 
-        // Calc negative fragments.
-        let mut neg_srs = SelectRegionsStore::new(vec![]);
-        for selx in fragments.iter() {
-            if selx.net_value < 0 {
-                neg_srs.push(selx.clone());
-            }
-        }
-        if neg_srs.is_not_empty() {
-            self.select_negative = neg_srs;
+        if self.select_negative.is_not_empty() {
             println!("\nNegative SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");

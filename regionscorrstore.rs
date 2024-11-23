@@ -244,7 +244,7 @@ impl RegionsCorrStore {
     }
 
     /// Subtract a RegionsCorrStore.
-    fn subtract(&self, other: &Self) -> Self {
+    pub fn subtract(&self, other: &Self) -> Self {
         debug_assert!(
             self.is_empty()
                 || other.is_empty()
