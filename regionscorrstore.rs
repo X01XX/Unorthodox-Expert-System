@@ -98,7 +98,7 @@ impl RegionsCorrStore {
 
     /// Add a region to the vector.
     pub fn push(&mut self, val: RegionsCorr) {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == val.num_bits_vec());
+        debug_assert!(self.is_empty() || self[0].is_congruent(&val));
 
         self.items.push(val);
     }
@@ -112,14 +112,14 @@ impl RegionsCorrStore {
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
     pub fn contains(&self, rcx: &RegionsCorr) -> bool {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
 
         self.items.contains(rcx)
     }
 
     /// Return true if there is any superset of a given RegionsCorr.
     fn any_superset_of(&self, rcx: &RegionsCorr) -> bool {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
 
         for rcy in self.iter() {
             if rcy.is_superset_of(rcx) {
@@ -131,7 +131,7 @@ impl RegionsCorrStore {
 
     /// Return true if there is any subset of a given RegionsCorrStore.
     fn any_subset_of(&self, rcx: &RegionsCorr) -> bool {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
 
         for rcy in self.iter() {
             if rcy.is_subset_of(rcx) {
@@ -143,7 +143,7 @@ impl RegionsCorrStore {
 
     /// Return true if there is any intersection of a given RegionsCorr.
     pub fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
+        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
 
         for rcy in self.iter() {
             if rcy.intersects(rcx) {
@@ -151,6 +151,19 @@ impl RegionsCorrStore {
             }
         }
         false
+    }
+
+    /// Return number intersections within a RegionsCorr.
+    pub fn number_intersections_of(&self, rcx: &RegionsCorr) -> usize {
+        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
+
+        let mut count = 0;
+        for rcy in self.iter() {
+            if rcy.intersects(rcx) {
+                count += 1;
+            }
+        }
+        count
     }
 
     /// Delete subsets of a given RegionsCorr.
@@ -454,10 +467,22 @@ impl RegionsCorrStore {
     }
 
     /// Return indicies of first intersection found between two instances.
-    pub fn first_intersection(&self, other: &Self) -> Option<(usize, usize)> {
+    pub fn intersecting_pair(&self, other: &Self) -> Option<(usize, usize)> {
         for (inx, rcx) in self.iter().enumerate() {
             for (iny, rcy) in other.iter().enumerate() {
                 if rcx.intersects(rcy) {
+                    return Some((inx, iny));
+                }
+            }
+        }
+        None
+    }
+
+    /// Return indicies of first intersection found between two instances.
+    pub fn adjacent_pair(&self, other: &Self) -> Option<(usize, usize)> {
+        for (inx, rcx) in self.iter().enumerate() {
+            for (iny, rcy) in other.iter().enumerate() {
+                if rcx.is_adjacent(rcy) {
                     return Some((inx, iny));
                 }
             }

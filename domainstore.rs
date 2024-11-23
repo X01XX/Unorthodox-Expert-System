@@ -1206,94 +1206,79 @@ impl DomainStore {
         //
         // Kind of like two random depth-first searches.
 
-        // Init start intersections vector.
+        // Init start intersections RCS.
         let mut start_ints = RegionsCorrStore::new(vec![]);
         start_ints.push(start_regs.clone());
 
-        // Init goal intersections vector.
+        // Init goal intersections RCS.
         let mut goal_ints = RegionsCorrStore::new(vec![]);
         goal_ints.push(goal_regs.clone());
 
-        // Build up start and goal vectors, until the is an intersection between them, or
-        // no more intersections.
-        loop {
+        // Init work vector.
+        let mut select_regions2: Vec<_> = select_regions.to_vec();
+
+        // Build out start intersection and goal intersection RCSs, until there is an intersection/adjacency between them, or
+        // no more options.
+        while !select_regions2.is_empty() {
             // Get next layer of intersections for start_ints.
             let mut start_added = false;
+            let mut goal_added = false;
+
             let start_last = &start_ints.last()?;
 
             // Randomly pick possible SelectRegions to test.
-            let mut randpick = tools::RandomPick::new(select_regions.len());
-            while let Some(inx) = randpick.pick() {
-                let selx = &select_regions[inx];
+            let mut randpick = tools::RandomPick::new(select_regions2.len());
 
-                // A new RegionsCorr must intersect the last one in the vector.
+            while let Some(inx) = randpick.pick() {
+                let selx = select_regions2[inx];
+
+                // A new RegionsCorr must intersect the last RC in the start_ints RCS.
                 if start_last.intersects(selx) {
-                    // Avoid duplicating a vector item.
-                    if start_ints.contains(selx) {
-                        continue;
-                    }
-                    // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
-                    // one has already been chosen.
-                    if start_ints.len() > 1 && selx.intersects(start_regs) {
+                    // Avoid circle back.
+                    if start_ints.number_intersections_of(selx) != 1 {
                         continue;
                     }
                     start_ints.push((*selx).clone());
+                    select_regions2.remove(inx);
                     start_added = true;
                     break;
                 } else if start_last.is_adjacent(selx) {
+                    // Avoid circle back.
+                    if start_ints.number_intersections_of(selx) != 0 {
+                        continue;
+                    }
                     let bridge = start_last.symmetrical_overlapping_regions(selx);
-                    //println!("{start_last} is adjacent {selx}, bridge is {bridge}");
-                    if start_ints.contains(&bridge) {
-                        continue;
-                    }
-                    // Avoid the case of multiple RegionsCorrs intersecting the start RegionsCorr,
-                    // one has already been chosen.
-                    if start_ints.len() > 1 && bridge.intersects(start_regs) {
-                        continue;
-                    }
                     start_ints.push(bridge);
+                    start_ints.push((*selx).clone());
+                    select_regions2.remove(inx);
                     start_added = true;
                     break;
-                }
-            } // next pick.
+                } else {
+                    // Get next layer of intersections for goal_ints.
+                    let goal_last = &goal_ints.last()?;
 
-            // Get next layer of intersections for goal_ints.
-            let mut goal_added = false;
-            let goal_last = &goal_ints.last()?;
-
-            // Randomly pick possible SelectRegions to test.
-            let mut randpick = tools::RandomPick::new(select_regions.len());
-            while let Some(inx) = randpick.pick() {
-                let selx = &select_regions[inx];
-
-                // A new RegionsCorr must intersect the last one in the vector.
-                if goal_last.intersects(selx) {
-                    // Avoid duplicating a vector item.
-                    if goal_ints.contains(selx) {
-                        continue;
+                    // A new RegionsCorr must intersect the last RC in the goal_ints RCS.
+                    if goal_last.intersects(selx) {
+                        // Avoid circle back.
+                        if goal_ints.number_intersections_of(selx) != 1 {
+                            continue;
+                        }
+                        goal_ints.push((*selx).clone());
+                        select_regions2.remove(inx);
+                        goal_added = true;
+                        break;
+                    } else if goal_last.is_adjacent(selx) {
+                        // Avoid circle back.
+                        if goal_ints.number_intersections_of(selx) != 0 {
+                            continue;
+                        }
+                        let bridge = goal_last.symmetrical_overlapping_regions(selx);
+                        goal_ints.push(bridge);
+                        goal_ints.push((*selx).clone());
+                        select_regions2.remove(inx);
+                        goal_added = true;
+                        break;
                     }
-                    // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
-                    // one has already been chosen.
-                    if goal_ints.len() > 1 && selx.intersects(goal_regs) {
-                        continue;
-                    }
-                    goal_ints.push((*selx).clone());
-                    goal_added = true;
-                    break;
-                } else if goal_last.is_adjacent(selx) {
-                    let bridge = goal_last.symmetrical_overlapping_regions(selx);
-                    // Avoid duplicating a vector item.
-                    if goal_ints.contains(&bridge) {
-                        continue;
-                    }
-                    // Avoid the case of multiple RegionsCorrs intersecting the goal RegionsCorr,
-                    // one has already been chosen.
-                    if goal_ints.len() > 1 && bridge.intersects(goal_regs) {
-                        continue;
-                    }
-                    goal_ints.push(bridge);
-                    goal_added = true;
-                    break;
                 }
             } // next pick.
 
@@ -1304,7 +1289,8 @@ impl DomainStore {
                 return None;
             }
 
-            if let Some((s, mut g)) = start_ints.first_intersection(&goal_ints) {
+            // Check for two intersecting items between the start and goal intersection RCSs.
+            if let Some((s, mut g)) = start_ints.intersecting_pair(&goal_ints) {
                 if start_ints[s] == goal_ints[g] {
                     g -= 1;
                 }
@@ -1313,8 +1299,19 @@ impl DomainStore {
                 goal_ints.reverse();
                 start_ints.append(goal_ints);
                 return Some(self.get_path_through_select_regions2(&start_ints));
+
+            // Check for two adjacent items between the start and goal intersection RCSs.
+            } else if let Some((s, g)) = start_ints.adjacent_pair(&goal_ints) {
+                start_ints.truncate(s + 1);
+                goal_ints.truncate(g + 1);
+                let bridge = start_ints[s].symmetrical_overlapping_regions(&goal_ints[g]);
+                start_ints.push(bridge);
+                goal_ints.reverse();
+                start_ints.append(goal_ints);
+                return Some(self.get_path_through_select_regions2(&start_ints));
             }
         } // end loop
+        None
     } // end get_path_through_select_regions
 
     /// Return a String representation of a DomainStore.
