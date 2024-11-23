@@ -1170,7 +1170,7 @@ impl DomainStore {
     } // end plan_using_least_negative_select_regions2
 
     /// Massage a path for return.
-    fn get_path_through_select_regions2(&self, path: &[RegionsCorr]) -> RegionsCorrStore {
+    fn get_path_through_select_regions2(&self, path: &RegionsCorrStore) -> RegionsCorrStore {
         let num_items = path.len();
         let mut ret_path = RegionsCorrStore::with_capacity(num_items);
 
@@ -1198,7 +1198,7 @@ impl DomainStore {
         select_regions: &'a [&RegionsCorr],
     ) -> Option<RegionsCorrStore> {
         //println!(
-        //    "get_path_through_select_regions: starting: start {start_regs} goal: {goal_regs} select {}", select_regions
+        //    "get_path_through_select_regions: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
         //);
         // Start a list with the start regions, and a list with the goal regions.
         // Successively add intersections, of the last item of each list, to extend each list,
@@ -1207,11 +1207,11 @@ impl DomainStore {
         // Kind of like two random depth-first searches.
 
         // Init start intersections vector.
-        let mut start_ints = Vec::<RegionsCorr>::new();
+        let mut start_ints = RegionsCorrStore::new(vec![]);
         start_ints.push(start_regs.clone());
 
         // Init goal intersections vector.
-        let mut goal_ints = Vec::<RegionsCorr>::new();
+        let mut goal_ints = RegionsCorrStore::new(vec![]);
         goal_ints.push(goal_regs.clone());
 
         // Build up start and goal vectors, until the is an intersection between them, or
@@ -1304,59 +1304,15 @@ impl DomainStore {
                 return None;
             }
 
-            // Check the last start_ints item against all goal_ints.
-            let start_last = start_ints.last()?;
-
-            // Keep track of goal items traversed, in case an intersection is found.
-            let mut tmp_path = Vec::<RegionsCorr>::new();
-
-            for regs_gx in goal_ints.iter() {
-                if regs_gx.intersects(start_last) {
-                } else {
-                    // If no intersection is found, the iter will exit, without returning a result.
-                    tmp_path.push(regs_gx.clone());
-                    continue;
+            if let Some((s, mut g)) = start_ints.first_intersection(&goal_ints) {
+                if start_ints[s] == goal_ints[g] {
+                    g -= 1;
                 }
-                // Use current start_ints vector as the return vector.
-
-                // Avoid two consecutive, equal, RegionsCorrs.
-                if regs_gx == start_last {
-                } else {
-                    start_ints.push(regs_gx.clone());
-                }
-                // Unwind successive goal path items.
-                for regs_tx in tmp_path.iter().rev() {
-                    start_ints.push((*regs_tx).clone());
-                }
-                //println!("get_path_through_select_regions: returning (1) {}", tools::vec_ref_string(&start_ints));
+                start_ints.truncate(s + 1);
+                goal_ints.truncate(g + 1);
+                goal_ints.reverse();
+                start_ints.append(goal_ints);
                 return Some(self.get_path_through_select_regions2(&start_ints));
-            }
-
-            // Check the last goal_ints item against all start_ints.
-            let goal_last = goal_ints.last()?;
-
-            // Save RegionsCorrs traversed, to use if/when an intersection is found.
-            let mut tmp_path = Vec::<RegionsCorr>::new();
-
-            for regs_sx in start_ints.iter() {
-                if regs_sx.intersects(goal_last) {
-                } else {
-                    // If no intersection is found, the iter will exit, without returning a result.
-                    // tmp_path will be a waste.
-                    tmp_path.push(regs_sx.clone());
-                    continue;
-                }
-                // Avoid two consecutive, equal, RegionsCorrs.
-                if std::ptr::eq(regs_sx, goal_last) {
-                } else {
-                    tmp_path.push(regs_sx.clone());
-                }
-                // Unwind successive goal path RegionsCorrs.
-                for regs_gx in goal_ints.iter().rev() {
-                    tmp_path.push(regs_gx.clone());
-                }
-                //println!("get_path_through_select_regions: returning (2) {}", tools::vec_ref_string(&tmp_path));
-                return Some(self.get_path_through_select_regions2(&tmp_path));
             }
         } // end loop
     } // end get_path_through_select_regions
@@ -2629,7 +2585,10 @@ mod tests {
                 pathx[0] == RegionsCorr::from("RC[r1111]")?
                     || pathx[0] == RegionsCorr::from("RC[r1X11]")?
             );
-            assert!(pathx[pathx.len() - 1] == RegionsCorr::from("RC[r0000]")?);
+            assert!(
+                pathx[pathx.len() - 1] == RegionsCorr::from("RC[rX000]")?
+                    || pathx[pathx.len() - 1] == RegionsCorr::from("RC[r0000]")?
+            );
         } else {
             return Err("No path found?".to_string());
         }

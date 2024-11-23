@@ -447,6 +447,33 @@ impl RegionsCorrStore {
     pub fn append(&mut self, mut other: Self) {
         self.items.append(&mut other.items);
     }
+
+    /// Return a reference to the last item in an instance.
+    pub fn last(&self) -> Option<&RegionsCorr> {
+        self.items.last()
+    }
+
+    /// Return indicies of first intersection found between two instances.
+    pub fn first_intersection(&self, other: &Self) -> Option<(usize, usize)> {
+        for (inx, rcx) in self.iter().enumerate() {
+            for (iny, rcy) in other.iter().enumerate() {
+                if rcx.intersects(rcy) {
+                    return Some((inx, iny));
+                }
+            }
+        }
+        None
+    }
+
+    /// Truncate after the first X items of an instance.
+    pub fn truncate(&mut self, limit: usize) {
+        self.items.truncate(limit);
+    }
+
+    /// Reverse the order of items in an instance.
+    pub fn reverse(&mut self) {
+        self.items.reverse();
+    }
 } // end impl RegionsCorrStore.
 
 impl Index<usize> for RegionsCorrStore {
