@@ -82,7 +82,7 @@ pub struct DomainStore {
     pub select: SelectRegionsStore,
     /// Positive region fragments, possibly overlapped by negative value regions.
     /// These tend to be goals.
-    pub select_positive: SelectRegionsStore,
+    pub select_net_positive: SelectRegionsStore,
     /// Negative select fragments.
     pub select_negative: SelectRegionsStore,
     /// Times visited, order corresponding to, positive select regions.
@@ -103,7 +103,7 @@ impl DomainStore {
             boredom: 0,
             boredom_limit: 0,
             select: SelectRegionsStore::new(vec![]),
-            select_positive: SelectRegionsStore::new(vec![]),
+            select_net_positive: SelectRegionsStore::new(vec![]),
             rc_non_negative: RegionsCorrStore::new(vec![]),
             select_negative: SelectRegionsStore::new(vec![]),
             step_num: 0,
@@ -149,26 +149,24 @@ impl DomainStore {
 
         // Separate fragments by value.
         for selx in fragments {
-            if selx.net_value < 0 {
-                self.select_negative.push(selx);
-            } else {
+            if selx.net_value > 0 {
                 if selx.net_value > self.max_pos_value {
                     self.max_pos_value = selx.net_value;
                 }
-                self.select_positive.push(selx);
+                self.select_net_positive.push(selx);
             }
         }
 
-        if self.select_positive.is_not_empty() {
+        if self.select_net_positive.is_not_empty() {
             println!(
-                "\nPositive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
-                self.select_positive.len()
+                "\nNet-positive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
+                self.select_net_positive.len()
             );
-            for selx in self.select_positive.iter() {
+            for selx in self.select_net_positive.iter() {
                 println!("  {selx}");
             }
             println!("\n  To seek, when no other needs can be done.");
-            self.times_visited = vec![0; self.select_positive.len()];
+            self.times_visited = vec![0; self.select_net_positive.len()];
         }
 
         // Calc non-negative regions.
@@ -194,8 +192,16 @@ impl DomainStore {
             println!("  but there may be overlapping and adjacent negative SRs.");
         }
 
+        // Calc negative fragments.
+        let mut select_negative = SelectRegionsStore::new(vec![]);
+        for selx in self.select.iter() {
+            if selx.pos_value == 0 && selx.neg_value < 0 {
+                select_negative.push(selx.clone());
+            }
+        }
+        self.select_negative = select_negative.split_by_intersections();
         if self.select_negative.is_not_empty() {
-            println!("\nNegative SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n", self.select_negative.len());
+            println!("\nNegative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");
             }
@@ -669,7 +675,7 @@ impl DomainStore {
         let all_states = self.all_current_states();
 
         // Get the select regions the current state is in.
-        for (inx, optregs) in self.select_positive.iter_mut().enumerate() {
+        for (inx, optregs) in self.select_net_positive.iter_mut().enumerate() {
             if optregs.regions.is_superset_states(&all_states) {
                 self.times_visited[inx] += 1;
             }
@@ -761,7 +767,7 @@ impl DomainStore {
         // Get current states.
         let all_states = self.all_current_states();
 
-        for (inx, psupx) in self.select_positive.iter().enumerate() {
+        for (inx, psupx) in self.select_net_positive.iter().enumerate() {
             if psupx.is_superset_of_states(&all_states) {
                 continue;
             }
@@ -978,9 +984,6 @@ impl DomainStore {
         // Init available path fragments with non-negative fragments.
         let mut fragments = Vec::<&RegionsCorr>::new();
 
-        for selx in self.select_positive.iter() {
-            fragments.push(&selx.regions);
-        }
         for rcx in self.rc_non_negative.iter() {
             fragments.push(rcx);
         }
@@ -2312,23 +2315,24 @@ mod tests {
         dmxs.add_select(SelectRegions::from("SR[RC[r00x1], -2]")?);
         dmxs.add_select(SelectRegions::from("SR[RC[r11x1], -4]")?);
         dmxs.add_select(SelectRegions::from("SR[RC[r10x0], -5]")?);
+        dmxs.add_select(SelectRegions::from("SR[RC[rX111], -1]")?);
         dmxs.calc_select();
 
-        assert!(dmxs.select_positive.len() == 6);
+        assert!(dmxs.select_net_positive.len() == 5);
         assert!(dmxs
-            .select_positive
+            .select_net_positive
             .contains(&SelectRegions::from("SR[RC[rx100], 4]")?));
         assert!(dmxs
-            .select_positive
+            .select_net_positive
             .contains(&SelectRegions::from("SR[RC[r0x00], 4]")?));
         assert!(dmxs
-            .select_positive
+            .select_net_positive
             .contains(&SelectRegions::from("SR[RC[r010x], 4]")?));
         assert!(dmxs
-            .select_positive
+            .select_net_positive
             .contains(&SelectRegions::from("SR[RC[r1001], 4]")?));
         assert!(dmxs
-            .select_positive
+            .select_net_positive
             .contains(&SelectRegions::from("SR[RC[r0001], 2]")?));
 
         assert!(dmxs.rc_non_negative.len() == 4);
@@ -2340,24 +2344,27 @@ mod tests {
             .contains(&RegionsCorr::from("RC[r0xx0]")?));
         assert!(dmxs
             .rc_non_negative
-            .contains(&RegionsCorr::from("RC[r01xx]")?));
+            .contains(&RegionsCorr::from("RC[r010x]")?));
         assert!(dmxs
             .rc_non_negative
             .contains(&RegionsCorr::from("RC[r10x1]")?));
 
-        assert!(dmxs.select_negative.len() == 4);
+        assert!(dmxs.select_negative.len() == 5);
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from("SR[RC[r0011], -2]")?));
+            .contains(&SelectRegions::from("SR[RC[r00X1], -2]")?));
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from("SR[RC[r1111], -4]")?));
+            .contains(&SelectRegions::from("SR[RC[r1101], -4]")?));
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from("SR[RC[r1010], -5]")?));
+            .contains(&SelectRegions::from("SR[RC[r10X0], -5]")?));
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from("SR[RC[r1000], -1]")?));
+            .contains(&SelectRegions::from("SR[RC[r0111], -1]")?));
+        assert!(dmxs
+            .select_negative
+            .contains(&SelectRegions::from("SR[RC[r1111], -5]")?));
 
         //assert!(1 == 2);
         Ok(())
