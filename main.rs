@@ -1591,9 +1591,245 @@ mod tests {
                 }
             )
         );
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    /// Test duplicate select regions.
+    #[should_panic]
+    #[test]
+    fn select_duplicate() {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select regions
+        dmxs.add_select(SelectRegions::from("SR[RC[r01X1], 3]").unwrap());
+        dmxs.add_select(SelectRegions::from("SR[RC[r01x1], -1]").unwrap());
+        dmxs.calc_select();
+    }
+
+    /// Test no select regions.
+    #[test]
+    fn select_none() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
+        Ok(())
+    }
 
+    /// Test one large positive select region.
+    #[test]
+    fn select_one_large_positive() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select region
+        dmxs.add_select(SelectRegions::from("SR[RC[rXXXX], 3]")?);
+
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    /// Test one small positive select region.
+    #[test]
+    fn select_one_small_positive() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select region
+        dmxs.add_select(SelectRegions::from("SR[RC[r1010], 3]")?);
+
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    /// Test one large negative select region.
+    #[test]
+    fn select_one_large_negative() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select region
+        dmxs.add_select(SelectRegions::from("SR[RC[rXXXX], -3]")?);
+
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    /// Test one small negative select region.
+    #[test]
+    fn select_one_small_negative() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::new();
+
+        // Create a domain that uses 4 bits.
+        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+
+        // Load select region
+        dmxs.add_select(SelectRegions::from("SR[RC[r1010], -3]")?);
+
+        dmxs.calc_select();
+
+        // Set up action 0, changing bit 0.
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        dmxs[0].add_action(ruls0, 5);
+
+        // Set up action 1, changing bit 1.
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        dmxs[0].add_action(ruls1, 5);
+
+        // Set up action 2, changing bit 2.
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        dmxs[0].add_action(ruls2, 5);
+
+        // Set up action 3, changing bit 3.
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        dmxs[0].add_action(ruls3, 5);
+
+        // Develop rules.
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+            return Err("Session to end state failed".to_string());
+        }
+
+        dmxs.print();
+        assert!(dmxs[0].actions[0].groups.len() == 1);
+        assert!(dmxs[0].actions[1].groups.len() == 1);
+        assert!(dmxs[0].actions[2].groups.len() == 1);
+        assert!(dmxs[0].actions[3].groups.len() == 1);
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

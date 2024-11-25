@@ -41,6 +41,7 @@ pub struct SelectRegionsStore {
 
 impl SelectRegionsStore {
     /// Return a new SelectRegionsStores instance.
+    /// Duplicate RegionsCorr not allowed.
     pub fn new(items: Vec<SelectRegions>) -> Self {
         debug_assert!(
             items.len() < 2 || {
@@ -54,7 +55,13 @@ impl SelectRegionsStore {
                 ret
             }
         );
-        Self { items }
+        let mut ret_srs = Self { items: vec![] };
+
+        // Test for duplicates.
+        for selx in items {
+            ret_srs.push(selx);
+        }
+        ret_srs
     }
 
     /// Return a new SelectRegions instance, empty, with a specified capacity.
@@ -65,9 +72,12 @@ impl SelectRegionsStore {
     }
 
     /// Add a SelectRegionsStore.
+    /// Duplicate RegionsCorr not allowed.
     pub fn push(&mut self, select: SelectRegions) {
         //print!("{} push {}", self, select);
         debug_assert!(self.is_empty() || select.num_bits_vec() == self.items[0].num_bits_vec());
+
+        assert!(!self.contains(&select));
 
         self.items.push(select);
     }
@@ -309,7 +319,7 @@ impl SelectRegionsStore {
         debug_assert!(self.is_empty() || slrx.num_bits_vec() == self.items[0].num_bits_vec());
 
         for regstrx in &self.items {
-            if regstrx == slrx {
+            if regstrx.regions == slrx.regions {
                 return true;
             }
         }

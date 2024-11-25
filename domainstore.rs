@@ -133,12 +133,12 @@ impl DomainStore {
     /// Calculate parts of select regions, in case of any overlaps.
     pub fn calc_select(&mut self) {
         if self.select.is_empty() {
-            return;
-        }
-
-        println!("\nGiven Select Regions ({}):\n", self.select.len());
-        for selx in self.select.iter() {
-            println!("  {selx}");
+            println!("\nGiven Select Regions: None\n");
+        } else {
+            println!("\nGiven Select Regions ({}):\n", self.select.len());
+            for selx in self.select.iter() {
+                println!("  {selx}");
+            }
         }
         //println!("\n  Avoid negative SRs in rule-paths.");
         //println!("\n  Exit a negative SR if the current state is within one.");
@@ -157,15 +157,19 @@ impl DomainStore {
             }
         }
 
-        if self.select_net_positive.is_not_empty() {
+        println!(" ");
+        if self.select_net_positive.is_empty() {
+            println!("Net-positive SR fragments: None");
+        } else {
             println!(
-                "\nNet-positive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
+                "Net-positive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
                 self.select_net_positive.len()
             );
             for selx in self.select_net_positive.iter() {
                 println!("  {selx}");
             }
-            println!("\n  To seek, when no other needs can be done.");
+            println!(" ");
+            println!("  To seek, when no other needs can be done.");
             self.times_visited = vec![0; self.select_net_positive.len()];
         }
 
@@ -179,16 +183,21 @@ impl DomainStore {
         }
         self.rc_non_negative = non_neg_select;
 
-        if self.rc_non_negative.is_not_empty() {
+        println!(" ");
+        if self.rc_non_negative.is_empty() {
+            println!("Non-negative RCs: None");
+        } else {
             println!(
-                "\nNon-negative RCs, maximum RC regions minus negative SR regions ({}):\n",
+                "Non-negative RCs, maximum RC regions minus negative SR regions ({}):\n",
                 self.rc_non_negative.len()
             );
             for rcx in self.rc_non_negative.iter() {
                 println!("  {rcx}");
             }
-            println!("\n  Seek one of these when exiting a negative SR the current state is in.");
-            println!("\n  Only one bit needs to change to exit a region, with at least one edge,");
+            println!(" ");
+            println!("  Seek one of these when exiting a negative SR the current state is in.");
+            println!(" ");
+            println!("  Only one bit needs to change to exit a region, with at least one edge,");
             println!("  but there may be overlapping and adjacent negative SRs.");
         }
 
@@ -200,12 +209,17 @@ impl DomainStore {
             }
         }
         self.select_negative = select_negative.split_by_intersections();
-        if self.select_negative.is_not_empty() {
-            println!("\nNegative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
+
+        println!(" ");
+        if self.select_negative.is_empty() {
+            println!("Negative SR fragments: None");
+        } else {
+            println!("Negative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");
             }
-            println!("\n  If more than one different value, more and more negative value SRs may be considered to find a plan-path.");
+            println!(" ");
+            println!("  If more than one different value, more and more negative value SRs may be considered to find a plan-path.");
         }
     }
 
@@ -269,7 +283,7 @@ impl DomainStore {
                 .is_superset_of(&self.all_current_regions())
             {
                 if not_first {
-                    println!("----");
+                    print!("---- ");
                 }
                 match self.run_planscorr(plnscrx) {
                     Ok(num) => {
@@ -305,7 +319,9 @@ impl DomainStore {
 
         for rsltx in vecb {
             match rsltx {
-                Ok(num) => steps_run += num,
+                Ok(num) => {
+                    steps_run += num;
+                }
                 Err(errstr) => return Err(errstr),
             }
         }
@@ -946,9 +962,9 @@ impl DomainStore {
         self.plan_using_least_negative_select_regions(&from, goal)
     }
 
-    /// Like Real Life, formulate a direct plan,
-    /// notice there are some negative aspects,
-    /// then try to form a plan that avoids the negative.
+    /// Try to formulate a plan using non-negative paths first,
+    /// then add increasingly negative paths if needed.
+    /// Each set of plans to traverse a SR can be run in parallel.
     pub fn plan_using_least_negative_select_regions(
         &self,
         start_regs: &RegionsCorr,
@@ -987,8 +1003,10 @@ impl DomainStore {
         for rcx in self.rc_non_negative.iter() {
             fragments.push(rcx);
         }
+
+        // Check for edge case, no SelectRegions.
         let all_regs = self.maximum_regions();
-        if fragments.is_empty() {
+        if fragments.is_empty() && self.select_negative.is_empty() {
             fragments.push(&all_regs);
         }
         //println!("fragments {}", tools::vec_ref_string(&fragments));
@@ -997,22 +1015,25 @@ impl DomainStore {
         let mut neg_inx = 0;
 
         loop {
-            // until plan found or all negative SRs added to fragments.
-            // Use fragments to find path.
-            match self.plan_using_least_negative_select_regions_get_plan(
-                start_regs,
-                goal_regs,
-                &fragments,
-                current_rate,
-            ) {
-                Ok(planx) => {
-                    //println!("domainstore::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
-                    //assert!(1 == 2);
-                    return Ok(NeedPlan::PlanFound { plan: planx });
-                }
-                Err(errstr) => {
-                    if last_results.is_err() {
-                        last_results = Err(errstr)
+            // fragments could be empty if there is a single, maximunm-region, negative select region.
+            if !fragments.is_empty() {
+                // until plan found or all negative SRs added to fragments.
+                // Use fragments to find path.
+                match self.plan_using_least_negative_select_regions_get_plan(
+                    start_regs,
+                    goal_regs,
+                    &fragments,
+                    current_rate,
+                ) {
+                    Ok(planx) => {
+                        //println!("domainstore::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
+                        //assert!(1 == 2);
+                        return Ok(NeedPlan::PlanFound { plan: planx });
+                    }
+                    Err(errstr) => {
+                        if last_results.is_err() {
+                            last_results = Err(errstr)
+                        }
                     }
                 }
             }
@@ -1192,6 +1213,7 @@ impl DomainStore {
             let mut int_added = false;
 
             let start_last = &start_ints.last()?;
+            let goal_last = &goal_ints.last()?;
 
             // Randomly pick possible SelectRegions to test.
             let mut randpick = tools::RandomPick::new(select_regions2.len());
@@ -1222,7 +1244,6 @@ impl DomainStore {
                     break;
                 } else {
                     // Get next layer of intersections for goal_ints.
-                    let goal_last = &goal_ints.last()?;
 
                     // A new RegionsCorr must intersect the last RC in the goal_ints RCS.
                     if goal_last.intersects(selx) {
