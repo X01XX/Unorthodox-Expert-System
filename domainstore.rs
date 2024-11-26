@@ -962,6 +962,18 @@ impl DomainStore {
         self.plan_using_least_negative_select_regions(&from, goal)
     }
 
+    /// Return the most negative fragment value that is a superset
+    /// of a given RegionsCorr.
+    pub fn most_negative_rate(&self, rcx: &RegionsCorr) -> isize {
+        let mut min_val = 0;
+        for selx in self.select_negative.iter() {
+            if selx.regions.is_superset_of(rcx) && selx.neg_value < min_val {
+                min_val = selx.neg_value;
+            }
+        }
+        min_val
+    }
+
     /// Try to formulate a plan using non-negative paths first,
     /// then add increasingly negative paths if needed.
     /// Each set of plans to traverse a SR can be run in parallel.
@@ -1011,8 +1023,30 @@ impl DomainStore {
         }
         //println!("fragments {}", tools::vec_ref_string(&fragments));
 
-        let mut current_rate = 0;
+        // Check need for negative fragments, at the start.
         let mut neg_inx = 0;
+        let min_start = self.most_negative_rate(start_regs);
+        let min_goal = self.most_negative_rate(goal_regs);
+        let neg_val = if min_start < min_goal {
+            min_start
+        } else {
+            min_goal
+        };
+        for nvx in neg_values.iter() {
+            if *nvx < neg_val {
+                break;
+            }
+            neg_inx += 1;
+
+            for selx in self.select_negative.iter() {
+                if selx.neg_value == *nvx {
+                    //println!("  adding neg value {nvx}");
+                    fragments.push(&selx.regions);
+                }
+            }
+        }
+
+        let mut current_rate = 0;
 
         loop {
             // fragments could be empty if there is a single, maximunm-region, negative select region.
