@@ -1161,6 +1161,28 @@ impl DomainStore {
              tools::vec_ref_string(select_regions))]);
         }
 
+        // Find lowest length paths, if needed.
+        let mut low = usize::MAX;
+        let mut high = 0;
+        for planx in mid_paths.iter() {
+            let len = planx.len();
+            if len > high {
+                high = len;
+            }
+            if len < low {
+                low = len;
+            }
+        }
+        if low != high {
+            let mut lows = Vec::<RegionsCorrStore>::new();
+            for planx in mid_paths {
+                if planx.len() == low {
+                    lows.push(planx);
+                }
+            }
+            mid_paths = lows;
+        }
+
         // Randomly choose a possible path.
         let pathx = mid_paths.swap_remove(rand::thread_rng().gen_range(0..mid_paths.len()));
 
@@ -1169,20 +1191,22 @@ impl DomainStore {
         let mut mid_plans = PlansCorrStore::new(vec![]);
         for inx in 1..(pathx.len() - 1) {
             if let Some(intx) = pathx[inx].intersection(&pathx[inx + 1]) {
-                match self.make_plans(&cur_regs, &intx, &pathx[inx]) {
-                    Ok(mut plans) => {
-                        plans.set_rate(cur_rate);
-                        //println!("2domainstore::plan_using_least_negative_select_regions2: for {cur_regs} to {intx} plans found {plans}");
-                        match mid_plans.link(&PlansCorrStore::new(vec![plans])) {
-                            Ok(mid_plans2) => {
-                                //println!("mid plans {mid_plans}");
-                                cur_regs = mid_plans2.result_regions();
-                                mid_plans = mid_plans2;
-                            }
-                            Err(errstr) => return Err(vec![errstr]),
-                        };
+                if intx != cur_regs && !intx.is_superset_of(&cur_regs) {
+                    match self.make_plans(&cur_regs, &intx, &pathx[inx]) {
+                        Ok(mut plans) => {
+                            plans.set_rate(cur_rate);
+                            //println!("2domainstore::plan_using_least_negative_select_regions2: for {cur_regs} to {intx} plans found {plans}");
+                            match mid_plans.link(&PlansCorrStore::new(vec![plans])) {
+                                Ok(mid_plans2) => {
+                                    //println!("mid plans {mid_plans}");
+                                    cur_regs = mid_plans2.result_regions();
+                                    mid_plans = mid_plans2;
+                                }
+                                Err(errstr) => return Err(vec![errstr]),
+                            };
+                        }
+                        Err(errstr) => return Err(errstr),
                     }
-                    Err(errstr) => return Err(errstr),
                 }
             } else {
                 return Err(vec![format!("domainstore::plan_using_least_negative_select_regions2: {} does not intersect {}", pathx[inx], pathx[inx + 1])]);
@@ -1237,8 +1261,8 @@ impl DomainStore {
             // Get next layer of intersections for start_ints.
             let mut int_added = false;
 
-            let start_last = &start_ints.last()?;
-            let goal_last = &goal_ints.last()?;
+            let start_last = start_ints.last()?;
+            let goal_last = goal_ints.last()?;
 
             // Randomly pick possible SelectRegions to test.
             let mut randpick = tools::RandomPick::new(select_regions2.len());
@@ -1247,6 +1271,8 @@ impl DomainStore {
                 let selx = select_regions2[inx];
 
                 // Add a new RegionsCorr intersection, to start_int or goal_ints.
+
+                // A new RegionsCorr may intersect the last RC in the start_ints RCS.
                 if start_last.intersects(selx) {
                     start_ints.push((*selx).clone());
                     tools::remove_unordered(&mut select_regions2, inx);
@@ -1260,9 +1286,7 @@ impl DomainStore {
                     int_added = true;
                     break;
                 } else {
-                    // Get next layer of intersections for goal_ints.
-
-                    // A new RegionsCorr must intersect the last RC in the goal_ints RCS.
+                    // A new RegionsCorr may intersect the last RC in the goal_ints RCS.
                     if goal_last.intersects(selx) {
                         goal_ints.push((*selx).clone());
                         tools::remove_unordered(&mut select_regions2, inx);
@@ -1279,12 +1303,12 @@ impl DomainStore {
                 }
             } // next pick.
 
-            // Check no new intersection was found.
-            if int_added {
-            } else {
-                //println!("get_path_through_select_regions: returning (1) no new intersections found");
+            // Check if start/goal connection found.
+            if !int_added {
                 return None;
             }
+
+            // A select regions, or a bridge and a select regions, has been added to either start_ints, or goal_ints.
 
             // Check for two intersecting items between the start and goal intersection RCSs.
             if let Some((s, g)) = start_ints.intersecting_pair(&goal_ints) {
@@ -1295,8 +1319,9 @@ impl DomainStore {
                 start_ints.append(goal_ints);
                 return Some(start_ints);
 
-            // Check for two adjacent items between the start and goal intersection RCSs.
-            } else if let Some((s, g)) = start_ints.adjacent_pair(&goal_ints) {
+                // Check for two adjacent items between the start and goal intersection RCSs.
+            }
+            if let Some((s, g)) = start_ints.adjacent_pair(&goal_ints) {
                 start_ints.truncate(s + 1);
                 goal_ints.truncate(g + 1);
 

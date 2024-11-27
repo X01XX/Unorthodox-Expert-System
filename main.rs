@@ -1363,8 +1363,8 @@ mod tests {
 
         // Set up action 4, changing bits 1 and 3.
         let ruls4: Vec<RuleStore> = vec![
-            RuleStore::from("[XX/11/01/XX]")?,
-            RuleStore::from("[11/XX/10/XX]")?,
+            RuleStore::from("[XX/11/01/Xx]")?,
+            RuleStore::from("[11/XX/10/Xx]")?,
             RuleStore::from("[Xx/00/00/XX]")?,
             RuleStore::from("[01/XX/11/XX]")?,
         ];
@@ -1418,6 +1418,7 @@ mod tests {
         let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
         assert!(!grpx.limited);
 
+        //assert!(1 == 2);
         // Do cleanup to delete unneeded groups.
         dmxs.cleanup(0, 4, &NeedStore::new(vec![]));
 
