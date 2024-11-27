@@ -337,6 +337,7 @@ impl DomainStore {
     pub fn cur_state(&self, dmxi: usize) -> &SomeState {
         self.items[dmxi].current_state()
     }
+
     /// Set can_do, and cant_do, struct fields for the DomainStore needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
     pub fn evaluate_needs(&mut self, needs: &NeedStore) -> (Vec<InxPlan>, Vec<usize>) {
@@ -967,10 +968,11 @@ impl DomainStore {
     pub fn most_negative_rate(&self, rcx: &RegionsCorr) -> isize {
         let mut min_val = 0;
         for selx in self.select_negative.iter() {
-            if selx.regions.is_superset_of(rcx) && selx.neg_value < min_val {
+            if selx.neg_value < min_val && selx.regions.is_superset_of(rcx) {
                 min_val = selx.neg_value;
             }
         }
+        //println!("min_val of {rcx} is {min_val}");
         min_val
     }
 
@@ -993,10 +995,6 @@ impl DomainStore {
             //println!("domainstore::plan_using_least_negative_select_regions: return 1");
             return Ok(NeedPlan::AtTarget {});
         }
-
-        // Define last_results.
-        let mut last_results: Result<NeedPlan, Vec<String>> =
-            Err(vec!["No plan found".to_string()]);
 
         // Make a list of negative values in self.select_negative.
         let mut neg_values = Vec::<isize>::new();
@@ -1027,13 +1025,14 @@ impl DomainStore {
         let mut neg_inx = 0;
         let min_start = self.most_negative_rate(start_regs);
         let min_goal = self.most_negative_rate(goal_regs);
-        let neg_val = if min_start < min_goal {
+        let mut current_rate = if min_start < min_goal {
             min_start
         } else {
             min_goal
         };
+
         for nvx in neg_values.iter() {
-            if *nvx < neg_val {
+            if *nvx < current_rate {
                 break;
             }
             neg_inx += 1;
@@ -1046,29 +1045,21 @@ impl DomainStore {
             }
         }
 
-        let mut current_rate = 0;
-
         loop {
+            //println!("current_rate is {current_rate}");
             // fragments could be empty if there is a single, maximunm-region, negative select region.
             if !fragments.is_empty() {
                 // until plan found or all negative SRs added to fragments.
                 // Use fragments to find path.
-                match self.plan_using_least_negative_select_regions_get_plan(
+
+                if let Ok(planx) = self.plan_using_least_negative_select_regions_get_plan(
                     start_regs,
                     goal_regs,
                     &fragments,
                     current_rate,
                 ) {
-                    Ok(planx) => {
-                        //println!("domainstore::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
-                        //assert!(1 == 2);
-                        return Ok(NeedPlan::PlanFound { plan: planx });
-                    }
-                    Err(errstr) => {
-                        if last_results.is_err() {
-                            last_results = Err(errstr)
-                        }
-                    }
+                    //println!("domainstore::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
+                    return Ok(NeedPlan::PlanFound { plan: planx });
                 }
             }
 
@@ -1077,19 +1068,19 @@ impl DomainStore {
             if neg_inx == neg_values.len() {
                 break;
             }
+            current_rate = neg_values[neg_inx];
             for selx in self.select_negative.iter() {
-                if selx.neg_value == neg_values[neg_inx] {
+                if selx.neg_value == current_rate {
                     //println!("  found {selx}");
                     fragments.push(&selx.regions);
                 }
             }
 
-            current_rate = neg_values[neg_inx];
             neg_inx += 1;
         }
 
-        // Return previous results.
-        last_results
+        // Return failure.
+        Err(vec!["No plan found".to_string()])
     }
 
     /// Return the nearest non-negative regions.
@@ -1257,19 +1248,11 @@ impl DomainStore {
 
                 // Add a new RegionsCorr intersection, to start_int or goal_ints.
                 if start_last.intersects(selx) {
-                    // Avoid circle back.
-                    if start_ints.number_intersections_of(selx) != 1 {
-                        continue;
-                    }
                     start_ints.push((*selx).clone());
                     tools::remove_unordered(&mut select_regions2, inx);
                     int_added = true;
                     break;
                 } else if start_last.is_adjacent(selx) {
-                    // Avoid circle back.
-                    if start_ints.number_intersections_of(selx) != 0 {
-                        continue;
-                    }
                     let bridge = start_last.symmetrical_overlapping_regions(selx);
                     start_ints.push(bridge);
                     start_ints.push((*selx).clone());
@@ -1281,19 +1264,11 @@ impl DomainStore {
 
                     // A new RegionsCorr must intersect the last RC in the goal_ints RCS.
                     if goal_last.intersects(selx) {
-                        // Avoid circle back.
-                        if goal_ints.number_intersections_of(selx) != 1 {
-                            continue;
-                        }
                         goal_ints.push((*selx).clone());
                         tools::remove_unordered(&mut select_regions2, inx);
                         int_added = true;
                         break;
                     } else if goal_last.is_adjacent(selx) {
-                        // Avoid circle back.
-                        if goal_ints.number_intersections_of(selx) != 0 {
-                            continue;
-                        }
                         let bridge = goal_last.symmetrical_overlapping_regions(selx);
                         goal_ints.push(bridge);
                         goal_ints.push((*selx).clone());

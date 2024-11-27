@@ -144,13 +144,6 @@ impl PlansCorr {
         self.result_regions() == other.initial_regions()
     }
 
-    /// Return true if a PlansCorr can be linked to another.
-    pub fn _can_be_linked(&self, other: &Self) -> bool {
-        debug_assert!(self.is_congruent(other));
-
-        self.result_regions().intersects(&other.initial_regions())
-    }
-
     /// Return the expected result, given initial regions.
     pub fn result_from_initial_states(&self, states: &StatesCorr) -> Option<StatesCorr> {
         //println!("planscorr::result_from_initial_states self {self} states {states}");

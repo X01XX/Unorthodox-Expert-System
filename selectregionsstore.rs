@@ -262,7 +262,11 @@ impl SelectRegionsStore {
 
     /// Return the intersection of a SelectRegionStore and a Selectregions instance.
     pub fn intersection(&self, other: &SelectRegionsStore) -> Option<Self> {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == other[0].num_bits_vec());
+        debug_assert!(
+            self.is_empty()
+                || other.is_empty()
+                || self[0].num_bits_vec() == other[0].num_bits_vec()
+        );
 
         let mut ret = Self::new(vec![]);
         for inx in 0..(self.len() - 1) {

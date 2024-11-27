@@ -153,19 +153,6 @@ impl RegionsCorrStore {
         false
     }
 
-    /// Return number intersections within a RegionsCorr.
-    pub fn number_intersections_of(&self, rcx: &RegionsCorr) -> usize {
-        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
-
-        let mut count = 0;
-        for rcy in self.iter() {
-            if rcy.intersects(rcx) {
-                count += 1;
-            }
-        }
-        count
-    }
-
     /// Delete subsets of a given RegionsCorr.
     fn delete_subsets_of(&mut self, rcx: &RegionsCorr) {
         debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
