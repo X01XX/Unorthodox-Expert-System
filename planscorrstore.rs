@@ -164,12 +164,12 @@ impl PlansCorrStore {
     pub fn str_terse(&self) -> String {
         let mut rc_str = String::new();
 
-        rc_str.push('[');
+        rc_str.push_str("PCS[");
         for (inx, planscx) in self.items.iter().enumerate() {
             if inx > 0 {
-                rc_str.push_str(", (");
+                rc_str.push_str(", PC[");
             } else {
-                rc_str.push('(');
+                rc_str.push_str("PC[");
             }
 
             let mut cnt = 0;
@@ -178,11 +178,11 @@ impl PlansCorrStore {
                     if cnt > 0 {
                         rc_str.push_str(", ");
                     }
-                    rc_str.push_str(&format!("P[{iny}]:{}]", &planx.str_terse()));
+                    rc_str.push_str(&format!("P[{iny}:{}]", &planx.str_terse()));
                     cnt += 1;
                 }
             }
-            rc_str.push(')');
+            rc_str.push(']');
         }
         rc_str.push(']');
 
