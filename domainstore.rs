@@ -2471,10 +2471,33 @@ mod tests {
         println!("\nActions {}\n", dmxs[0].actions);
 
         // Try making plans.
+        // Bridge overlap, using 01XX, between 3 and F, at 7, strangely
+        // makes a step within 01XX unneeded.
         match dmxs.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
             Ok(NeedPlan::PlanFound { plan: plans }) => {
                 println!("Plans {}", plans);
                 assert!(plans.rate() == -1);
+                assert!(plans.len() == 2);
+                //assert!(1 == 2);
+                //Ok(())
+            }
+            _ => return Err(format!("No plan found?")),
+        }
+
+        let start_regions = RegionsCorr::from("RC[0x3]")?;
+
+        let goal_regions = RegionsCorr::from("RC[0xd]")?;
+
+        println!("\nActions {}\n", dmxs[0].actions);
+
+        // Try making plans.
+        // No bridge overlap here, using 01XX, between 3 and D, requiring a step from
+        // 7 to 5, within 01XX.
+        match dmxs.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
+            Ok(NeedPlan::PlanFound { plan: plans }) => {
+                println!("Plans {}", plans);
+                assert!(plans.rate() == -1);
+                assert!(plans.len() == 3);
                 //assert!(1 == 2);
                 Ok(())
             }
