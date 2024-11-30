@@ -710,7 +710,11 @@ mod tests {
         }
 
         // Test reflection.
-        assert!(format!("{}", SomeBits::from_str("b1101")?) == "b1101");
+        let bits_str = "b1101";
+        assert!(format!("{}", SomeBits::from_str(&bits_str)?) == bits_str);
+
+        let bits_str = "b01_1101";
+        assert!(format!("{}", SomeBits::from_str(&bits_str)?) == bits_str);
 
         Ok(())
     }

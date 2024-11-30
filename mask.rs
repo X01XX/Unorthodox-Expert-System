@@ -204,8 +204,8 @@ impl SomeMask {
     }
 
     /// Return a SomeMask instance from a SomeState instance.
-    pub fn convert_to_state(self) -> SomeState {
-        SomeState::new(self.bts)
+    pub fn as_state(&self) -> SomeState {
+        SomeState::new(self.bts.clone())
     }
 
     /// Return the number of bits used in a mask.
@@ -275,7 +275,12 @@ mod tests {
     #[test]
     fn from_str() -> Result<(), String> {
         // Test reflection.
-        assert!(format!("{}", SomeMask::from_str("m1101")?) == "m1101");
+        let mask_str = "m1101";
+        assert!(format!("{}", SomeMask::from_str(&mask_str)?) == mask_str);
+
+        let mask_str = "m01_1101";
+        assert!(format!("{}", SomeMask::from_str(&mask_str)?) == mask_str);
+
         Ok(())
     }
 }

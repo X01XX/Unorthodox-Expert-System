@@ -130,6 +130,7 @@ impl SomeChange {
                 .bitwise_and(&self.m10)
                 .bitwise_or(&self.m01.bitwise_and_not(stax)),
         )
+        .as_state()
     }
 
     /// Return the number of bits used by the change's masks.

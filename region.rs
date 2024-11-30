@@ -85,7 +85,7 @@ impl SomeRegion {
         } else if self.states.len() == 2 {
             self.states[1].clone()
         } else {
-            self.states[0].bitwise_xor(&self.x_mask()) // The reason a state is returned, intead of a reference.
+            self.states[0].bitwise_xor(&self.x_mask()).as_state()
         }
     }
 
@@ -243,20 +243,23 @@ impl SomeRegion {
         } else if other.one_state() {
             Some(Self::new(vec![other.first_state().clone()]))
         } else {
-            let lower_high_state = self.high_state().bitwise_and(&other.high_state());
-            let higher_low_state = self.low_state().bitwise_or(&other.low_state());
+            let lower_high_state = self
+                .high_state()
+                .bitwise_and(&other.high_state())
+                .as_state();
+            let higher_low_state = self.low_state().bitwise_or(&other.low_state()).as_state();
             Some(Self::new(vec![lower_high_state, higher_low_state]))
         }
     }
 
     /// Return a Mask of zero positions.
     pub fn edge_zeros_mask(&self) -> SomeMask {
-        self.high_state().bitwise_not().convert_to_mask()
+        self.high_state().bitwise_not()
     }
 
     /// Return a Mask of one positions.
     pub fn edge_ones_mask(&self) -> SomeMask {
-        self.low_state().convert_to_mask()
+        self.low_state().as_mask()
     }
 
     /// Return a mask of edge (non-X) bits.
@@ -267,15 +270,11 @@ impl SomeRegion {
     /// Return mask of x bit positions.
     pub fn x_mask(&self) -> SomeMask {
         if self.states.len() == 1 {
-            self.states[0].new_low().convert_to_mask()
+            self.states[0].new_low().as_mask()
         } else if self.states.len() == 2 {
-            self.states[0]
-                .bitwise_xor(&self.states[1])
-                .convert_to_mask()
+            self.states[0].bitwise_xor(&self.states[1])
         } else {
-            self.high_state()
-                .bitwise_xor(&self.low_state())
-                .convert_to_mask()
+            self.high_state().bitwise_xor(&self.low_state())
         }
     }
 
@@ -284,7 +283,7 @@ impl SomeRegion {
         debug_assert_eq!(self.num_bits(), sta.num_bits());
         assert!(self.is_superset_of(sta));
 
-        sta.bitwise_xor(&self.x_mask())
+        sta.bitwise_xor(&self.x_mask()).as_state()
     }
 
     /// Given a region, and a proper subset region, return the
@@ -297,8 +296,8 @@ impl SomeRegion {
         let cng_mask = self.x_mask().bitwise_xor(&other.x_mask());
 
         SomeRegion::new(vec![
-            other.high_state().bitwise_xor(&cng_mask),
-            other.low_state().bitwise_xor(&cng_mask),
+            other.high_state().bitwise_xor(&cng_mask).as_state(),
+            other.low_state().bitwise_xor(&cng_mask).as_state(),
         ])
     }
 
@@ -331,8 +330,8 @@ impl SomeRegion {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         //println!("union {} and {}", self, other);
-        let st_low = self.low_state().bitwise_and(&other.low_state());
-        let st_high = self.high_state().bitwise_or(&other.high_state());
+        let st_low = self.low_state().bitwise_and(&other.low_state()).as_state();
+        let st_high = self.high_state().bitwise_or(&other.high_state()).as_state();
         Self::new(vec![st_high, st_low])
     }
 
@@ -341,13 +340,13 @@ impl SomeRegion {
         if self.states.len() == 1 {
             self.states[0].clone()
         } else if self.states.len() == 2 {
-            self.states[0].bitwise_or(&self.states[1])
+            self.states[0].bitwise_or(&self.states[1]).as_state()
         } else {
-            let mut most_ones = self.states[0].new_low();
+            let mut most_ones = self.states[0].new_low().as_mask();
             for stax in self.states.iter() {
                 most_ones = most_ones.bitwise_or(stax);
             }
-            most_ones
+            most_ones.as_state()
         }
     }
 
@@ -356,13 +355,13 @@ impl SomeRegion {
         if self.states.len() == 1 {
             self.states[0].clone()
         } else if self.states.len() == 2 {
-            self.states[0].bitwise_and(&self.states[1])
+            self.states[0].bitwise_and(&self.states[1]).as_state()
         } else {
-            let mut least_ones = self.states[0].new_high();
+            let mut least_ones = self.states[0].new_high().as_mask();
             for stax in self.states.iter() {
                 least_ones = least_ones.bitwise_and(stax);
             }
-            least_ones
+            least_ones.as_state()
         }
     }
 
@@ -370,8 +369,8 @@ impl SomeRegion {
     pub fn set_to_zeros(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let high_state = self.high_state().bitwise_and_not(msk);
-        let low_state = self.low_state().bitwise_and_not(msk);
+        let high_state = self.high_state().bitwise_and_not(msk).as_state();
+        let low_state = self.low_state().bitwise_and_not(msk).as_state();
 
         Self::new(vec![high_state, low_state])
     }
@@ -380,8 +379,8 @@ impl SomeRegion {
     pub fn set_to_x(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let high_state = self.high_state().bitwise_or(msk);
-        let low_state = self.low_state().bitwise_and(&msk.bitwise_not());
+        let high_state = self.high_state().bitwise_or(msk).as_state();
+        let low_state = self.low_state().bitwise_and(&msk.bitwise_not()).as_state();
 
         Self::new(vec![high_state, low_state])
     }
@@ -390,8 +389,8 @@ impl SomeRegion {
     pub fn set_to_ones(&self, msk: &SomeMask) -> Self {
         debug_assert_eq!(self.num_bits(), msk.num_bits());
 
-        let high_state = self.high_state().bitwise_or(msk);
-        let low_state = self.low_state().bitwise_or(msk);
+        let high_state = self.high_state().bitwise_or(msk).as_state();
+        let low_state = self.low_state().bitwise_or(msk).as_state();
 
         Self::new(vec![high_state, low_state])
     }
@@ -558,7 +557,7 @@ impl SomeRegion {
             for opx in options.iter() {
                 let mut xmsk2 = xmsk.new_low();
                 for stx in opx.iter().skip(1) {
-                    xmsk2 = xmsk2.bitwise_or(&stx.bitwise_xor(opx[0]).convert_to_mask());
+                    xmsk2 = xmsk2.bitwise_or(&stx.bitwise_xor(opx[0]));
                 }
 
                 // Return the first match.

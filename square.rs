@@ -302,10 +302,10 @@ impl AccessStates for SomeSquare {
         &self.state
     }
     fn x_mask(&self) -> SomeMask {
-        self.state.new_low().convert_to_mask()
+        self.state.new_low().as_mask()
     }
     fn edge_mask(&self) -> SomeMask {
-        self.state.new_high().convert_to_mask()
+        self.state.new_high().as_mask()
     }
     fn high_state(&self) -> SomeState {
         self.state.clone()

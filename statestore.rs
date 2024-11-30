@@ -162,7 +162,7 @@ impl StateStore {
 
         let mut ret = SomeMask::new(self[0].bts.new_low());
         for stax in self.iter().skip(1) {
-            ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]).convert_to_mask());
+            ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]));
         }
         ret
     }

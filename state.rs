@@ -114,30 +114,24 @@ impl SomeState {
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_and(&self, other: &impl BitsRef) -> Self {
+    pub fn bitwise_and(&self, other: &impl BitsRef) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
 
-        Self {
-            bts: self.bts.b_and(other.bitsref()),
-        }
+        SomeMask::new(self.bts.b_and(other.bitsref()))
     }
 
     /// Return a SomeState instance, representing a bitwise Or of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_or(&self, other: &impl BitsRef) -> Self {
+    pub fn bitwise_or(&self, other: &impl BitsRef) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
 
-        Self {
-            bts: self.bts.b_or(other.bitsref()),
-        }
+        SomeMask::new(self.bts.b_or(other.bitsref()))
     }
 
     /// Return a SomeState instance, representing a bitwise XOr of a state and another instance that supports the BitsRef Trait.
-    pub fn bitwise_xor(&self, other: &impl BitsRef) -> Self {
+    pub fn bitwise_xor(&self, other: &impl BitsRef) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
 
-        Self {
-            bts: self.bts.b_xor(other.bitsref()),
-        }
+        SomeMask::new(self.bts.b_xor(other.bitsref()))
     }
 
     /// Return a mask of the bits values that are the same.
@@ -148,15 +142,13 @@ impl SomeState {
     }
 
     /// Return the bitwise Not of a SomeState instance.
-    pub fn bitwise_not(&self) -> Self {
-        Self {
-            bts: self.bts.b_not(),
-        }
+    pub fn bitwise_not(&self) -> SomeMask {
+        SomeMask::new(self.bts.b_not())
     }
 
     /// Return a SomeMask instance from a SomeState instance.
-    pub fn convert_to_mask(self) -> SomeMask {
-        SomeMask::new(self.bts)
+    pub fn as_mask(&self) -> SomeMask {
+        SomeMask::new(self.bts.clone())
     }
 
     /// Return true if a state is between two given states, exclusive.
@@ -182,12 +174,10 @@ impl SomeState {
     }
 
     /// Return a SomeMask instance, representing a bitwise And-not of a mask and the invert of another instance that supports the BitsRef Trait.
-    pub fn bitwise_and_not(&self, other: &impl BitsRef) -> Self {
+    pub fn bitwise_and_not(&self, other: &impl BitsRef) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.bitsref().num_bits as usize);
 
-        Self {
-            bts: self.bts.b_and_not(other.bitsref()),
-        }
+        SomeMask::new(self.bts.b_and_not(other.bitsref()))
     }
 } // end impl SomeState
 
@@ -221,10 +211,10 @@ impl AccessStates for SomeState {
         self
     }
     fn x_mask(&self) -> SomeMask {
-        self.new_low().convert_to_mask()
+        self.new_low().as_mask()
     }
     fn edge_mask(&self) -> SomeMask {
-        self.new_high().convert_to_mask()
+        self.new_high().as_mask()
     }
     fn high_state(&self) -> SomeState {
         self.clone()
@@ -338,7 +328,11 @@ mod tests {
     #[test]
     fn from_str() -> Result<(), String> {
         // Test reflection.
-        assert!(format!("{}", SomeState::from_str("s1101")?) == "s1101");
+        let state_str = "s1101";
+        assert!(format!("{}", SomeState::from_str(&state_str)?) == state_str);
+
+        let state_str = "s01_1101";
+        assert!(format!("{}", SomeState::from_str(&state_str)?) == state_str);
         Ok(())
     }
 }

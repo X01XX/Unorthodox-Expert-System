@@ -47,14 +47,10 @@ impl SomeRule {
     /// Return a new SomeRule instance given an initial state and the corresponding result state.
     pub fn new(smpl: &SomeSample) -> Self {
         Self {
-            m00: smpl
-                .initial
-                .bitwise_not()
-                .bitwise_and_not(&smpl.result)
-                .convert_to_mask(),
-            m01: smpl.result.bitwise_and_not(&smpl.initial).convert_to_mask(),
-            m11: smpl.initial.bitwise_and(&smpl.result).convert_to_mask(),
-            m10: smpl.initial.bitwise_and_not(&smpl.result).convert_to_mask(),
+            m00: smpl.initial.bitwise_not().bitwise_and_not(&smpl.result),
+            m01: smpl.result.bitwise_and_not(&smpl.initial),
+            m11: smpl.initial.bitwise_and(&smpl.result),
+            m10: smpl.initial.bitwise_and_not(&smpl.result),
         }
     }
 
@@ -267,31 +263,23 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = self.m11.bitwise_or(&self.m10).convert_to_state();
-        let st_low = self
-            .m00
-            .bitwise_or(&self.m01)
-            .bitwise_not()
-            .convert_to_state();
+        let st_high = self.m11.bitwise_or(&self.m10).as_state();
+        let st_low = self.m00.bitwise_or(&self.m01).bitwise_not().as_state();
 
         SomeRegion::new(vec![st_high, st_low])
     }
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = self.m11.bitwise_or(&self.m01).convert_to_state();
-        let st_low = self
-            .m00
-            .bitwise_or(&self.m10)
-            .bitwise_not()
-            .convert_to_state();
+        let st_high = self.m11.bitwise_or(&self.m01).as_state();
+        let st_low = self.m00.bitwise_or(&self.m10).bitwise_not().as_state();
 
         // Change X->x positions to indicate a change, instead of appearing as X->X.
         let x_xnot_mask = self.m01.bitwise_and(&self.m10);
 
         SomeRegion::new(vec![
-            st_high.bitwise_and_not(&x_xnot_mask),
-            st_low.bitwise_or(&x_xnot_mask),
+            st_high.bitwise_and_not(&x_xnot_mask).as_state(),
+            st_low.bitwise_or(&x_xnot_mask).as_state(),
         ])
     }
 
@@ -318,7 +306,7 @@ impl SomeRule {
             .m01
             .bitwise_and_not(sta)
             .bitwise_or(&self.m10.bitwise_and(sta));
-        sta.bitwise_xor(&toggle)
+        sta.bitwise_xor(&toggle).as_state()
     }
 
     /// Restrict the initial region to an intersection of the
@@ -330,8 +318,8 @@ impl SomeRule {
         let init_reg = self.initial_region();
 
         if let Some(reg_int) = init_reg.intersection(other) {
-            let zeros = reg_int.low_state().bitwise_not().convert_to_mask();
-            let ones = reg_int.high_state().convert_to_mask();
+            let zeros = reg_int.low_state().bitwise_not();
+            let ones = reg_int.high_state().as_mask();
 
             Self {
                 m00: self.m00.bitwise_and(&zeros),
@@ -355,8 +343,8 @@ impl SomeRule {
         let rslt_reg = self.result_region();
 
         if let Some(reg_int) = regx.intersection(&rslt_reg) {
-            let zeros = reg_int.low_state().bitwise_not().convert_to_mask();
-            let ones = reg_int.high_state().convert_to_mask();
+            let zeros = reg_int.low_state().bitwise_not();
+            let ones = reg_int.high_state().as_mask();
 
             Self {
                 m00: self.m00.bitwise_and(&zeros),

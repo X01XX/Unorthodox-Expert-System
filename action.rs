@@ -945,7 +945,7 @@ impl SomeAction {
 
         // Rate adjacent external states
         for edge_bit in &edge_msks {
-            let sta_adj = stax.bitwise_xor(edge_bit);
+            let sta_adj = stax.bitwise_xor(edge_bit).as_state();
 
             let stats = self.groups.in_one_anchor(&sta_adj);
 
@@ -1000,7 +1000,7 @@ impl SomeAction {
 
         for ancx in adj_squares.iter() {
             // Calc state in group that corresponds to an adjacent anchor.
-            let stay = ancx.bitwise_xor(&regx.diff_edge_mask(ancx));
+            let stay = ancx.bitwise_xor(&regx.diff_edge_mask(ancx)).as_state();
 
             // Check if the state has not been sampled already.
             if !stas_in.contains(&stay) {
@@ -1174,7 +1174,7 @@ impl SomeAction {
         let edge_msks: Vec<SomeMask> = change_bits.split();
 
         for mskx in edge_msks {
-            let adj_sta = anchor_sta.bitwise_xor(&mskx);
+            let adj_sta = anchor_sta.bitwise_xor(&mskx).as_state();
 
             //println!("*** for group {} checking adj sqr {}", regx, adj_sta);
 
@@ -1295,7 +1295,7 @@ impl SomeAction {
         let x_msks: Vec<SomeMask> = regx.x_mask().split();
 
         for mskx in x_msks {
-            let adj_sta = anchor_sta.bitwise_xor(&mskx);
+            let adj_sta = anchor_sta.bitwise_xor(&mskx).as_state();
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
