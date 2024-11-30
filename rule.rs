@@ -12,10 +12,10 @@
 use crate::bits::NumBits;
 use crate::change::{AccessChanges, SomeChange};
 use crate::mask::SomeMask;
-use crate::region::{AccessStates, SomeRegion};
+use crate::region::SomeRegion;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -312,7 +312,7 @@ impl SomeRule {
     /// Restrict the initial region to an intersection of the
     /// given region.  Assuming the region given is not a superset
     /// this will also change the result region.
-    pub fn restrict_initial_region(&self, other: &impl AccessStates) -> Self {
+    pub fn restrict_initial_region(&self, other: &impl tools::AccessStates) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let init_reg = self.initial_region();
@@ -742,7 +742,7 @@ impl SomeRule {
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
-impl StrLen for SomeRule {
+impl tools::StrLen for SomeRule {
     fn strlen(&self) -> usize {
         (3 * self.num_bits()) - 1
     }

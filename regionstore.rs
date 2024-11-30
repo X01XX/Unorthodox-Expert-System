@@ -1,9 +1,9 @@
 //! The RegionStore, a vector of SomeRegion structs.
 
 use crate::bits::NumBits;
-use crate::region::{AccessStates, SomeRegion};
+use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::tools::{self, AvecRef, StrLen};
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -106,7 +106,7 @@ impl RegionStore {
     }
 
     /// Return vector of regions that are a superset of a given item.
-    pub fn supersets_of(&self, itmx: &impl AccessStates) -> Self {
+    pub fn supersets_of(&self, itmx: &impl tools::AccessStates) -> Self {
         debug_assert!(self.is_empty() || itmx.num_bits() == self.num_bits().unwrap());
 
         let regs = self
@@ -192,7 +192,7 @@ impl RegionStore {
     }
 
     /// Subtract a region/state from a RegionStore.
-    pub fn subtract_item(&self, itmx: &impl AccessStates) -> Self {
+    pub fn subtract_item(&self, itmx: &impl tools::AccessStates) -> Self {
         debug_assert!(self.is_empty() || itmx.num_bits() == self.items[0].num_bits());
 
         let mut ret_str = Self::new(vec![]);
@@ -549,14 +549,14 @@ impl IntoIterator for RegionStore {
     }
 }
 
-impl AvecRef for RegionStore {
+impl tools::AvecRef for RegionStore {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
         &self.items
     }
 }
 
 /// Implement the trait StrLen for RegionStore.
-impl StrLen for RegionStore {
+impl tools::StrLen for RegionStore {
     fn strlen(&self) -> usize {
         let mut rc_len = 2;
 

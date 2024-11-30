@@ -6,12 +6,12 @@
 use crate::bits::{BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::pn::Pn;
-use crate::region::AccessStates;
 use crate::region::SomeRegion;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -274,17 +274,17 @@ impl SomeGroup {
     }
 
     /// Return true if a group region is a superset of a given group/region/square/state.
-    pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    pub fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.region.is_superset_of(other)
     }
 
     /// Return true if a group region is a subset of a given group/region/square/state.
-    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    pub fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.region.is_subset_of(other)
     }
 
     /// Return true if a group region intersects another group/region/square/state.
-    pub fn intersects(&self, other: &impl AccessStates) -> bool {
+    pub fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         self.region.intersects(other)
     }
 
@@ -310,7 +310,7 @@ impl SomeGroup {
 } // end impl SomeGroup
 
 /// Implement the trait AccessStates for SomeGroup.
-impl AccessStates for SomeGroup {
+impl tools::AccessStates for SomeGroup {
     fn one_state(&self) -> bool {
         1 == self.region.states.len()
     }
@@ -329,16 +329,16 @@ impl AccessStates for SomeGroup {
     fn low_state(&self) -> SomeState {
         self.region.low_state()
     }
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         self.region.diff_edge_mask(other)
     }
-    fn intersects(&self, other: &impl AccessStates) -> bool {
+    fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         self.region.intersects(other)
     }
-    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.region.is_subset_of(other)
     }
-    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.region.is_superset_of(other)
     }
     fn num_bits(&self) -> usize {

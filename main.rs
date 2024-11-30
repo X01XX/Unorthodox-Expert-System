@@ -76,6 +76,8 @@ mod regionscorrstore;
 mod selectregionsstore;
 mod target;
 use crate::target::ATarget;
+mod maskscorr;
+mod maskstore;
 
 extern crate unicode_segmentation;
 

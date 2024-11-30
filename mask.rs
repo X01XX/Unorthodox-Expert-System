@@ -13,7 +13,7 @@
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -222,7 +222,7 @@ impl BitsRef for SomeMask {
 }
 
 /// Implement the trait StrLen for SomeMask.
-impl StrLen for SomeMask {
+impl tools::StrLen for SomeMask {
     fn strlen(&self) -> usize {
         self.bts.strlen()
     }

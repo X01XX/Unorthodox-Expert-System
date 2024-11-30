@@ -9,7 +9,7 @@
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
-use crate::tools::{CorrespondingItems, StrLen};
+use crate::tools;
 use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};
@@ -321,13 +321,13 @@ impl SelectRegions {
     }
 
     /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
     }
 }
 
 /// Implement the trait StrLen for SomeRegion.
-impl StrLen for SelectRegions {
+impl tools::StrLen for SelectRegions {
     fn strlen(&self) -> usize {
         let mut ret = 4;
         // Add Regions.
@@ -340,7 +340,7 @@ impl StrLen for SelectRegions {
     }
 }
 
-impl CorrespondingItems for SelectRegions {
+impl tools::CorrespondingItems for SelectRegions {
     fn num_bits_vec(&self) -> Vec<usize> {
         self.regions.num_bits_vec()
     }
@@ -350,6 +350,7 @@ impl CorrespondingItems for SelectRegions {
 mod tests {
     use super::*;
     use crate::selectregionsstore::SelectRegionsStore;
+    use tools::StrLen;
 
     #[test]
     fn strlen() -> Result<(), String> {

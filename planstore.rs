@@ -7,7 +7,7 @@
 
 use crate::plan::SomePlan;
 use crate::regionscorr::RegionsCorr;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -266,7 +266,7 @@ impl Index<usize> for PlanStore {
 }
 
 /// Implement the trait StrLen for SomePlan.
-impl StrLen for PlanStore {
+impl tools::StrLen for PlanStore {
     fn strlen(&self) -> usize {
         let mut cnt = 2; // brackets.
         for (inx, planx) in self.items.iter().enumerate() {

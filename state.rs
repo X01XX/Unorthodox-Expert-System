@@ -14,8 +14,7 @@
 use crate::bits::SomeBits;
 use crate::bits::{BitsRef, NumBits};
 use crate::mask::SomeMask;
-use crate::region::AccessStates;
-use crate::tools::StrLen;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -160,7 +159,7 @@ impl SomeState {
     }
 
     /// Return a difference mask between a state and another item.
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         other
@@ -189,7 +188,7 @@ impl BitsRef for SomeState {
 }
 
 /// Implement the trait StrLen for SomeState.
-impl StrLen for SomeState {
+impl tools::StrLen for SomeState {
     fn strlen(&self) -> usize {
         self.bts.strlen()
     }
@@ -203,7 +202,7 @@ impl NumBits for SomeState {
 }
 
 /// Implement the trait AccessStates for SomeState.
-impl AccessStates for SomeState {
+impl tools::AccessStates for SomeState {
     fn one_state(&self) -> bool {
         true
     }
@@ -222,17 +221,17 @@ impl AccessStates for SomeState {
     fn low_state(&self) -> SomeState {
         self.clone()
     }
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         debug_assert!(self.num_bits() == other.num_bits());
 
         self.diff_edge_mask(other)
     }
-    fn intersects(&self, other: &impl AccessStates) -> bool {
+    fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert!(self.num_bits() == other.num_bits());
 
         self.diff_edge_mask(other).is_low()
     }
-    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert!(self.num_bits() == other.num_bits());
 
         if other.one_state() {
@@ -241,7 +240,7 @@ impl AccessStates for SomeState {
             self.diff_edge_mask(other).is_low()
         }
     }
-    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert!(self.num_bits() == other.num_bits());
 
         if other.one_state() {
@@ -258,6 +257,7 @@ impl AccessStates for SomeState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tools::StrLen;
 
     #[test]
     fn strlen() -> Result<(), String> {

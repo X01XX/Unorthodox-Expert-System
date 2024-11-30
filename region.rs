@@ -7,7 +7,7 @@ use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::tools::{anyxofn, StrLen};
+use crate::tools::{self, AccessStates, StrLen};
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -217,14 +217,14 @@ impl SomeRegion {
     }
 
     /// Return true if a region and a region/state are adjacent.
-    pub fn is_adjacent(&self, other: &impl AccessStates) -> bool {
+    pub fn is_adjacent(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         self.diff_edge_mask(other).num_one_bits() == 1
     }
 
     /// Return true if two regions intersect.
-    pub fn intersects(&self, other: &impl AccessStates) -> bool {
+    pub fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         //println!("region::intersects: num b s {} num b o {}", self.num_bits(), other.num_bits());
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
@@ -232,7 +232,7 @@ impl SomeRegion {
     }
 
     /// Return the intersection a region and a region or state..
-    pub fn intersection(&self, other: &impl AccessStates) -> Option<Self> {
+    pub fn intersection(&self, other: &impl tools::AccessStates) -> Option<Self> {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if !self.intersects(other) {
@@ -302,7 +302,7 @@ impl SomeRegion {
     }
 
     /// Return true if a region is subset, or equal, on another region.
-    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    pub fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if self.intersects(other) {
@@ -314,7 +314,7 @@ impl SomeRegion {
     }
 
     /// Return true if a region is superset, or equal, on another region.
-    pub fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    pub fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         if self.intersects(other) {
@@ -326,7 +326,7 @@ impl SomeRegion {
     }
 
     /// Return the union of a region and a region/state.
-    pub fn union(&self, other: &impl AccessStates) -> Self {
+    pub fn union(&self, other: &impl tools::AccessStates) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         //println!("union {} and {}", self, other);
@@ -396,14 +396,14 @@ impl SomeRegion {
     }
 
     /// Return the distance from a region to a region/state.
-    pub fn distance(&self, other: &impl AccessStates) -> usize {
+    pub fn distance(&self, other: &impl tools::AccessStates) -> usize {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         self.diff_edge_mask(other).num_one_bits()
     }
 
     /// Return a mask of different edge bits between a region and a region/state.
-    pub fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    pub fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         self.edge_mask()
@@ -413,7 +413,7 @@ impl SomeRegion {
 
     /// Given a region, and a second region, return the
     /// first region minus the second.
-    pub fn subtract(&self, other: &impl AccessStates) -> Vec<Self> {
+    pub fn subtract(&self, other: &impl tools::AccessStates) -> Vec<Self> {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let mut ret_vec = Vec::<Self>::new();
@@ -552,7 +552,7 @@ impl SomeRegion {
         let state_refs = states2.vec_refs();
 
         for any in 2..states2.len() {
-            let options = anyxofn(any, &state_refs);
+            let options = tools::anyxofn(any, &state_refs);
 
             for opx in options.iter() {
                 let mut xmsk2 = xmsk.new_low();
@@ -576,30 +576,14 @@ impl SomeRegion {
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
-impl StrLen for SomeRegion {
+impl tools::StrLen for SomeRegion {
     fn strlen(&self) -> usize {
         self.first_state().strlen()
     }
 }
 
-/// Define the AccessStates trait, so operations on Regions, States, Squares and Groups are smoother.
-/// A region defined by a single state, is similar to a single state.
-pub trait AccessStates {
-    fn one_state(&self) -> bool;
-    fn first_state(&self) -> &SomeState;
-    fn x_mask(&self) -> SomeMask;
-    fn edge_mask(&self) -> SomeMask;
-    fn high_state(&self) -> SomeState;
-    fn low_state(&self) -> SomeState;
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask;
-    fn intersects(&self, other: &impl AccessStates) -> bool;
-    fn is_subset_of(&self, other: &impl AccessStates) -> bool;
-    fn is_superset_of(&self, other: &impl AccessStates) -> bool;
-    fn num_bits(&self) -> usize;
-}
-
 /// Implement the trait AccessStates for SomeRegion.
-impl AccessStates for SomeRegion {
+impl tools::AccessStates for SomeRegion {
     fn one_state(&self) -> bool {
         1 == self.states.len()
     }
@@ -618,16 +602,16 @@ impl AccessStates for SomeRegion {
     fn low_state(&self) -> SomeState {
         self.low_state()
     }
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         self.diff_edge_mask(other)
     }
-    fn intersects(&self, other: &impl AccessStates) -> bool {
+    fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         self.intersects(other)
     }
-    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.is_subset_of(other)
     }
-    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.is_superset_of(other)
     }
     fn num_bits(&self) -> usize {
@@ -878,6 +862,13 @@ mod tests {
                 return Err(error);
             }
         }
+
+        // Test reflection.
+        let reg_str = "r1101";
+        assert!(format!("{}", SomeRegion::from_str(&reg_str)?) == reg_str);
+
+        let reg_str = "r01_1101";
+        assert!(format!("{}", SomeRegion::from_str(&reg_str)?) == reg_str);
 
         Ok(())
     }

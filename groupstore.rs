@@ -4,7 +4,7 @@ use crate::bits::vec_same_num_bits;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::pn::Pn;
-use crate::region::{AccessStates, SomeRegion};
+use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
@@ -58,7 +58,7 @@ impl GroupStore {
     }
 
     /// Return true if an item is in exactly one group.
-    pub fn in_1_group(&self, itmx: &impl AccessStates) -> bool {
+    pub fn in_1_group(&self, itmx: &impl tools::AccessStates) -> bool {
         let mut num_grps = 0;
 
         for grpx in &self.items {
@@ -88,7 +88,7 @@ impl GroupStore {
     }
 
     /// Return the groups regions an item is in.
-    pub fn groups_in(&self, itmx: &impl AccessStates) -> Vec<&SomeRegion> {
+    pub fn groups_in(&self, itmx: &impl tools::AccessStates) -> Vec<&SomeRegion> {
         self.items
             .iter()
             .filter_map(|grpx| {
@@ -130,7 +130,7 @@ impl GroupStore {
     }
 
     /// Return the number of groups an item is in.
-    pub fn num_groups_in(&self, itmx: &impl AccessStates) -> usize {
+    pub fn num_groups_in(&self, itmx: &impl tools::AccessStates) -> usize {
         let mut count = 0;
         for grpx in &self.items {
             if grpx.is_superset_of(itmx) {
@@ -141,12 +141,12 @@ impl GroupStore {
     }
 
     /// Return true if any group is a superset of, or equal to, an item.
-    pub fn any_superset_of(&self, itmx: &impl AccessStates) -> bool {
+    pub fn any_superset_of(&self, itmx: &impl tools::AccessStates) -> bool {
         tools::vec_contains(&self.items, SomeGroup::is_superset_of, itmx)
     }
 
     /// Return regions of any group is a superset, or equal, to a region.
-    pub fn supersets_of(&self, itmx: &impl AccessStates) -> RegionStore {
+    pub fn supersets_of(&self, itmx: &impl tools::AccessStates) -> RegionStore {
         let mut ret_str = RegionStore::new(vec![]);
 
         for grpx in self.items.iter() {
@@ -158,7 +158,7 @@ impl GroupStore {
     }
 
     /// Return regions of any group is a subset, or equal, to a region.
-    pub fn subsets_of(&self, itmx: &impl AccessStates) -> RegionStore {
+    pub fn subsets_of(&self, itmx: &impl tools::AccessStates) -> RegionStore {
         let mut ret_str = RegionStore::new(vec![]);
 
         for grpx in self.items.iter() {

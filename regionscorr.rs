@@ -4,10 +4,11 @@
 //! domain, not necessarily the same as other regions in the vector.
 
 use crate::bits::NumBits;
+use crate::maskscorr::MasksCorr;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::statescorr::StatesCorr;
-use crate::tools::{AvecRef, CorrespondingItems, StrLen};
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -166,27 +167,14 @@ impl RegionsCorr {
     pub fn distance_states(&self, stas: &StatesCorr) -> usize {
         debug_assert!(self.is_congruent(stas));
 
-        let mut dist = 0;
-        for (x, y) in self.iter().zip(stas.iter()) {
-            if x.is_superset_of(y) {
-            } else {
-                dist += x.distance(y);
-            }
-        }
-
-        dist
+        self.diff_edge_mask_states(stas).num_one_bits()
     }
 
     /// Calculate the distance between two RegionsCorrs.
     pub fn distance(&self, other: &Self) -> usize {
         debug_assert!(self.is_congruent(other));
 
-        let mut dist = 0;
-        for (x, y) in self.iter().zip(other.iter()) {
-            dist += x.distance(y);
-        }
-
-        dist
+        self.diff_edge_mask(other).num_one_bits()
     }
 
     /// Return RegionsCorr minus another.
@@ -229,12 +217,7 @@ impl RegionsCorr {
     pub fn intersects(&self, other: &Self) -> bool {
         debug_assert!(self.is_congruent(other));
 
-        for (x, y) in self.iter().zip(other.iter()) {
-            if !x.intersects(y) {
-                return false;
-            }
-        }
-        true
+        self.distance(other) == 0
     }
 
     /// Make minimum changes to a RegionsCorr so that it will be a subset of another.
@@ -250,7 +233,7 @@ impl RegionsCorr {
     }
 
     /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
     }
 
@@ -358,6 +341,30 @@ impl RegionsCorr {
         }
         alt_self.intersection(&alt_other).unwrap()
     }
+
+    /// Return a difference edge mask for two RegionsCorrs.
+    pub fn diff_edge_mask(&self, other: &Self) -> MasksCorr {
+        assert!(self.is_congruent(other));
+
+        let mut ret_mc = MasksCorr::with_capacity(self.len());
+
+        for (regx, regy) in self.iter().zip(other.iter()) {
+            ret_mc.push(regx.diff_edge_mask(regy));
+        }
+        ret_mc
+    }
+
+    /// Return a difference edge mask for a RegionsCorrs and a StatesCorr.
+    pub fn diff_edge_mask_states(&self, other: &StatesCorr) -> MasksCorr {
+        assert!(self.is_congruent(other));
+
+        let mut ret_mc = MasksCorr::with_capacity(self.len());
+
+        for (regx, stay) in self.iter().zip(other.iter()) {
+            ret_mc.push(regx.diff_edge_mask(stay));
+        }
+        ret_mc
+    }
 } // End impl RegionsCorr.
 
 impl Index<usize> for RegionsCorr {
@@ -374,7 +381,7 @@ impl IndexMut<usize> for RegionsCorr {
 }
 
 /// Implement the trait StrLen for RegionsCorr.
-impl StrLen for RegionsCorr {
+impl tools::StrLen for RegionsCorr {
     fn strlen(&self) -> usize {
         let mut rc_len = 4;
 
@@ -387,13 +394,13 @@ impl StrLen for RegionsCorr {
     }
 }
 
-impl AvecRef for RegionsCorr {
+impl tools::AvecRef for RegionsCorr {
     fn avec_ref(&self) -> &Vec<impl NumBits> {
         self.regions.avec_ref()
     }
 }
 
-impl CorrespondingItems for RegionsCorr {
+impl tools::CorrespondingItems for RegionsCorr {
     fn num_bits_vec(&self) -> Vec<usize> {
         self.num_bits_vec()
     }
@@ -402,6 +409,7 @@ impl CorrespondingItems for RegionsCorr {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tools::StrLen;
 
     #[test]
     fn strlen() -> Result<(), String> {

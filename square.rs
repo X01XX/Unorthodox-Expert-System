@@ -3,13 +3,12 @@
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::pn::Pn;
-use crate::region::AccessStates;
 use crate::resultstore::ResultStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
-use crate::tools::StrLen;
+use crate::tools::{self, AccessStates};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -254,7 +253,7 @@ impl SomeSquare {
     }
 
     /// Return true is a square state is a subset of another group/square/region/state.
-    pub fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    pub fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         self.state.is_subset_of(other)
@@ -287,14 +286,14 @@ impl SomeSquare {
 } // end impl SomeSquare
 
 /// Implement the trait StrLen for SomeSquare.
-impl StrLen for SomeSquare {
+impl tools::StrLen for SomeSquare {
     fn strlen(&self) -> usize {
         40
     }
 }
 
 /// Implement the trait AccessStates for SomeSquare.
-impl AccessStates for SomeSquare {
+impl tools::AccessStates for SomeSquare {
     fn one_state(&self) -> bool {
         true
     }
@@ -313,16 +312,16 @@ impl AccessStates for SomeSquare {
     fn low_state(&self) -> SomeState {
         self.state.clone()
     }
-    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask {
+    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         self.state.diff_edge_mask(other)
     }
-    fn intersects(&self, other: &impl AccessStates) -> bool {
+    fn intersects(&self, other: &impl tools::AccessStates) -> bool {
         self.state.intersects(other)
     }
-    fn is_subset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_subset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.is_subset_of(other)
     }
-    fn is_superset_of(&self, other: &impl AccessStates) -> bool {
+    fn is_superset_of(&self, other: &impl tools::AccessStates) -> bool {
         self.state.is_superset_of(other)
     }
     fn num_bits(&self) -> usize {

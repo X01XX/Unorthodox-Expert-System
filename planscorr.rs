@@ -9,7 +9,7 @@ use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
-use crate::tools::{CorrespondingItems, StrLen};
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
@@ -339,7 +339,7 @@ impl PlansCorr {
     }
 
     /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl CorrespondingItems) -> bool {
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
     }
 }
@@ -352,7 +352,7 @@ impl Index<usize> for PlansCorr {
 }
 
 /// Implement the trait StrLen for PlansCorr.
-impl StrLen for PlansCorr {
+impl tools::StrLen for PlansCorr {
     fn strlen(&self) -> usize {
         let mut rtlen = 4; // PC[]
         rtlen += self.plans.strlen();
@@ -366,7 +366,7 @@ impl StrLen for PlansCorr {
     }
 }
 
-impl CorrespondingItems for PlansCorr {
+impl tools::CorrespondingItems for PlansCorr {
     fn num_bits_vec(&self) -> Vec<usize> {
         self.num_bits_vec()
     }
@@ -376,6 +376,7 @@ impl CorrespondingItems for PlansCorr {
 mod tests {
     use super::*;
     use crate::region::SomeRegion;
+    use tools::StrLen;
 
     #[test]
     fn strlen() -> Result<(), String> {

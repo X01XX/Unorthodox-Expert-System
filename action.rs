@@ -18,7 +18,7 @@ use crate::mask::SomeMask;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::pn::Pn;
-use crate::region::{AccessStates, SomeRegion};
+use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
@@ -30,7 +30,7 @@ use crate::statestore::StateStore;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::target::ATarget;
-use crate::tools;
+use crate::tools::{self, AccessStates};
 
 use rand::Rng;
 use rayon::prelude::*;

@@ -1,4 +1,6 @@
 use crate::bits::NumBits;
+use crate::mask::SomeMask;
+use crate::state::SomeState;
 use std::fmt;
 
 /// Return true if a vector contains an item, that passes a test as the first argument of a given function, and a second given item.
@@ -138,6 +140,22 @@ pub trait StrLen {
 /// Define a trail that allows getting a reference to vector of items that implemant the NumBits trait.
 pub trait AvecRef {
     fn avec_ref(&self) -> &Vec<impl NumBits>;
+}
+
+/// Define the AccessStates trait, so operations on Regions, States, Squares and Groups are smoother.
+/// A region defined by a single state, is similar to a single state.
+pub trait AccessStates {
+    fn one_state(&self) -> bool;
+    fn first_state(&self) -> &SomeState;
+    fn x_mask(&self) -> SomeMask;
+    fn edge_mask(&self) -> SomeMask;
+    fn high_state(&self) -> SomeState;
+    fn low_state(&self) -> SomeState;
+    fn diff_edge_mask(&self, other: &impl AccessStates) -> SomeMask;
+    fn intersects(&self, other: &impl AccessStates) -> bool;
+    fn is_subset_of(&self, other: &impl AccessStates) -> bool;
+    fn is_superset_of(&self, other: &impl AccessStates) -> bool;
+    fn num_bits(&self) -> usize;
 }
 
 /// Define a trait that allows checking correspondance with bit_nums used by items.

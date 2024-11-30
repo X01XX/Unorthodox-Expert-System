@@ -1,5 +1,4 @@
 //! The StateStore struct. A vector of SomeState structs.
-//! Duplicates are suppressed.
 
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
@@ -198,9 +197,9 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let sta1 = SomeState::from_str("b0001")?;
+        let sta1 = SomeState::from_str("s0001")?;
 
-        let sta2 = SomeState::from_str("b0010")?;
+        let sta2 = SomeState::from_str("s0010")?;
 
         // Create a one-state store.
         let store = StateStore::new(vec![sta1.clone()]);
