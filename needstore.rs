@@ -9,7 +9,7 @@ use std::slice::{Iter, IterMut};
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -75,7 +75,7 @@ impl NeedStore {
     }
 
     /// Return a String representation of a NeedStore.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut flg = 0;
 
         let mut rc_str = String::new();

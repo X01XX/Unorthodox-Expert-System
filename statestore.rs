@@ -82,8 +82,13 @@ impl StateStore {
 
     /// Return a statestore, given a string representation.
     /// Like [] or [s1010, s0101].
-    pub fn from(statestore_str: &str) -> Result<Self, String> {
-        //println!("statestore::from: {statestore_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("statestore::from_str: {str_in}");
+        let statestore_str = str_in.trim();
+
+        if statestore_str.is_empty() {
+            return Err("StateStore::from_str: Empty string?".to_string());
+        }
 
         let mut statestore_str2 = String::new();
         let mut last_chr = false;
@@ -133,15 +138,12 @@ impl StateStore {
         } else {
             token_list.push(token);
         }
-        //println!("token_list {:?}", token_list);
-
-        // println!("token_list2 {:?}", token_list2);
 
         // Tally up tokens.
         let mut regions = Vec::<SomeState>::new();
 
         for tokenx in token_list.into_iter() {
-            regions.push(SomeState::from(&tokenx).expect("Invalid region token"));
+            regions.push(SomeState::from_str(&tokenx).expect("Invalid region token"));
         }
         let ret_statestore = StateStore::new(regions);
         //println!("ret_statestore {ret_statestore}");
@@ -196,9 +198,9 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let sta1 = SomeState::from("0b0001")?;
+        let sta1 = SomeState::from_str("b0001")?;
 
-        let sta2 = SomeState::from("0b0010")?;
+        let sta2 = SomeState::from_str("b0010")?;
 
         // Create a one-state store.
         let store = StateStore::new(vec![sta1.clone()]);
@@ -214,16 +216,16 @@ mod tests {
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let stast1 = StateStore::from("[]")?;
+    fn from_str() -> Result<(), String> {
+        let stast1 = StateStore::from_str("[]")?;
         println!("stast1 {stast1}");
         assert!(format!("{stast1}") == "[]");
 
-        let stast2 = StateStore::from("[s1010]")?;
+        let stast2 = StateStore::from_str("[s1010]")?;
         println!("stast2 {stast2}");
         assert!(format!("{stast2}") == "[s1010]");
 
-        let stast3 = StateStore::from("[s1010, s1111]")?;
+        let stast3 = StateStore::from_str("[s1010, s1111]")?;
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == "[s1010, s1111]");
 

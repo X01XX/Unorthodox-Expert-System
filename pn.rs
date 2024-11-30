@@ -28,7 +28,7 @@ use std::fmt;
 /// Implement the fmt::Display trait for a Pn.
 impl fmt::Display for Pn {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -69,7 +69,7 @@ pub enum Pn {
 
 impl Pn {
     /// Return a String representation of a Pn.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         match self {
             Pn::One => String::from("1"),
             Pn::Two => String::from("2"),

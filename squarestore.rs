@@ -18,7 +18,7 @@ const MAX_MEMORY: usize = 20;
 
 impl fmt::Display for SquareStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -240,7 +240,7 @@ impl SquareStore {
     }
 
     /// Return a String representation of a SquareStore.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut flg = 0;
         let mut rc_str = String::new();
 

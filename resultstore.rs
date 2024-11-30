@@ -208,15 +208,15 @@ mod tests {
 
     #[test]
     fn most_recent_result() -> Result<(), String> {
-        let sta1 = SomeState::from("0x1")?;
-        let sta2 = SomeState::from("0x2")?;
-        let sta3 = SomeState::from("0x3")?;
-        let sta4 = SomeState::from("0x4")?;
-        let sta5 = SomeState::from("0x5")?;
-        let sta6 = SomeState::from("0x6")?;
-        let sta7 = SomeState::from("0x7")?;
-        let sta8 = SomeState::from("0x8")?;
-        let sta9 = SomeState::from("0x9")?;
+        let sta1 = SomeState::from_str("s0001")?;
+        let sta2 = SomeState::from_str("s0010")?;
+        let sta3 = SomeState::from_str("s0011")?;
+        let sta4 = SomeState::from_str("s0100")?;
+        let sta5 = SomeState::from_str("s0101")?;
+        let sta6 = SomeState::from_str("s0110")?;
+        let sta7 = SomeState::from_str("s0111")?;
+        let sta8 = SomeState::from_str("s1000")?;
+        let sta9 = SomeState::from_str("s1001")?;
 
         let mut rslt_str = ResultStore::new(sta1.clone());
         let mrr = rslt_str.most_recent_result();
@@ -269,15 +269,15 @@ mod tests {
     // Test ResultStore::add_result for Pn::One
     #[test]
     fn add_result_pn_one() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
+        let mut rslt_str = ResultStore::new(SomeState::from_str("s0101_0000_0101")?);
 
-        let pn = rslt_str.add_result(SomeState::from("0x505")?);
+        let pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0101")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::One);
 
         // Test additional adds.
         for _ in 0..8 {
-            let pn = rslt_str.add_result(SomeState::from("0x505")?);
+            let pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0101")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::One);
         }
@@ -290,26 +290,26 @@ mod tests {
     // Test ResultStore::add_result for Pn::Two
     #[test]
     fn add_result_pn_two() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
-        let mut pn = rslt_str.add_result(SomeState::from("0x504")?);
+        let mut rslt_str = ResultStore::new(SomeState::from_str("s0101_0000_0101")?);
+        let mut pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(SomeState::from("0x505")?);
+        pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0101")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(SomeState::from("0x504")?);
+        pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
         // Test additional adds.
         for _ in 0..4 {
-            pn = rslt_str.add_result(SomeState::from("0x505")?);
+            pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0101")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::Two);
 
-            pn = rslt_str.add_result(SomeState::from("0x504")?);
+            pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
             println!("Pn: {pn} results: {rslt_str}");
             assert!(pn == Pn::Two);
         }
@@ -323,23 +323,23 @@ mod tests {
     #[test]
     fn add_result_pn_unpredictable() -> Result<(), String> {
         // Test two different results but out of order.
-        let mut rslt_str = ResultStore::new(SomeState::from("0x505")?);
-        let mut pn = rslt_str.add_result(SomeState::from("0x504")?);
+        let mut rslt_str = ResultStore::new(SomeState::from_str("s0101_0000_0101")?);
+        let mut pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
 
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(SomeState::from("0x504")?); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?); // two results, but out of order
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Unpredictable);
 
         // Test three different results.
-        rslt_str = ResultStore::new(SomeState::from("0x505")?);
-        pn = rslt_str.add_result(SomeState::from("0x504")?);
+        rslt_str = ResultStore::new(SomeState::from_str("s0101_0000_0101")?);
+        pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Two);
 
-        pn = rslt_str.add_result(SomeState::from("0x502")?); // two results, but out of order
+        pn = rslt_str.add_result(SomeState::from_str("s0101_0000_0010")?); // two results, but out of order
         println!("Pn: {pn} results: {rslt_str}");
         assert!(pn == Pn::Unpredictable);
 
@@ -349,18 +349,18 @@ mod tests {
     // Test ResultStore::add_result functions first, second, most_recent.
     #[test]
     fn add_result_misc() -> Result<(), String> {
-        let mut rslt_str = ResultStore::new(SomeState::from("0x500")?);
-        rslt_str.add_result(SomeState::from("0x501")?);
-        rslt_str.add_result(SomeState::from("0x502")?);
-        rslt_str.add_result(SomeState::from("0x503")?);
-        rslt_str.add_result(SomeState::from("0x504")?);
-        rslt_str.add_result(SomeState::from("0x505")?);
-        rslt_str.add_result(SomeState::from("0x506")?);
+        let mut rslt_str = ResultStore::new(SomeState::from_str("s0101_0000_0000")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0001")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0010")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0011")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0100")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0101")?);
+        rslt_str.add_result(SomeState::from_str("s0101_0000_0110")?);
 
         println!("results: {rslt_str}");
-        assert!(*rslt_str.first() == SomeState::from("0x504")?);
-        assert!(*rslt_str.second() == SomeState::from("0x505")?);
-        assert!(*rslt_str.most_recent_result() == SomeState::from("0x506")?);
+        assert!(*rslt_str.first() == SomeState::from_str("s0101_0000_0100")?);
+        assert!(*rslt_str.second() == SomeState::from_str("s0101_0000_0101")?);
+        assert!(*rslt_str.most_recent_result() == SomeState::from_str("s0101_0000_0110")?);
 
         Ok(())
     }

@@ -18,7 +18,7 @@ use std::fmt;
 
 impl fmt::Display for SomeGroup {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -105,7 +105,7 @@ impl SomeGroup {
     }
 
     /// Return a string representing a group.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut rc_str = String::from("G(");
         rc_str.push_str(&self.region.to_string());
 
@@ -366,12 +366,12 @@ mod tests {
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {
-        let rules = RuleStore::from("[10/x1/x0/00]")?;
-        let regx = SomeRegion::from("r1xx0")?;
+        let rules = RuleStore::from_str("[10/x1/x0/00]")?;
+        let regx = SomeRegion::from_str("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
-        if !grpx.check_sample(&SomeSample::from("0b1100->0b0100")?) {
+        if !grpx.check_sample(&SomeSample::from_str("s1100->s0100")?) {
             return Err(format!("check_subset_sample: test 1 failed!"));
         }
 
@@ -381,31 +381,31 @@ mod tests {
     #[test]
     fn check_subset_square() -> Result<(), String> {
         // Test if sqrx.pn > self.pn
-        let rules = RuleStore::from("[10/x1/x0/00]")?;
-        let regx = SomeRegion::from("r1xx0")?;
+        let rules = RuleStore::from_str("[10/x1/x0/00]")?;
+        let regx = SomeRegion::from_str("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::One
 
-        let mut sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
+        let mut sqrx = SomeSquare::new(&SomeSample::from_str("s1100->s0100")?);
 
-        sqrx.add_sample(&SomeSample::from("0b1100->0b0101")?); // Pn::Two, pnc == false.
+        sqrx.add_sample(&SomeSample::from_str("s1100->s0101")?); // Pn::Two, pnc == false.
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 1 failed!"));
         }
 
         // Test if sqrx.pn != self.pn && sqrx.pnc
-        let rules = RuleStore::from("[10/x1/x0/00, 10/x1/x0/01]")?;
+        let rules = RuleStore::from_str("[10/x1/x0/00, 10/x1/x0/01]")?;
 
-        let regx = SomeRegion::from("r1xx0")?;
+        let regx = SomeRegion::from_str("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false); // Pn::Two
 
-        let mut sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
+        let mut sqrx = SomeSquare::new(&SomeSample::from_str("s1100->s0100")?);
 
-        sqrx.add_sample(&SomeSample::from("0b1100->0b0100")?); // pn = Pn::One, pnc = true.
+        sqrx.add_sample(&SomeSample::from_str("s1100->s0100")?); // pn = Pn::One, pnc = true.
 
-        sqrx.add_sample(&SomeSample::from("0b1100->0b0100")?); // pn = Pn::One, pnc = true.
+        sqrx.add_sample(&SomeSample::from_str("s1100->s0100")?); // pn = Pn::One, pnc = true.
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 2 failed!"));
@@ -414,30 +414,30 @@ mod tests {
         // Test if self.pn == Pn::Unpredictable
         let rules = None;
 
-        let regx = SomeRegion::from("r1xx0")?;
+        let regx = SomeRegion::from_str("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, rules, false);
 
-        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
+        let sqrx = SomeSquare::new(&SomeSample::from_str("s1100->s0100")?);
 
         if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 3 failed!"));
         }
 
         // Test self.rules.is_superset_of(&sqrx.rules)
-        let rules = RuleStore::from("[10/x1/x0/00]")?;
+        let rules = RuleStore::from_str("[10/x1/x0/00]")?;
 
-        let regx = SomeRegion::from("r1xx0")?;
+        let regx = SomeRegion::from_str("r1xx0")?;
 
         let mut grpx = SomeGroup::new(regx, Some(rules), false);
 
-        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0100")?);
+        let sqrx = SomeSquare::new(&SomeSample::from_str("s1100->s0100")?);
 
         if !grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4a failed!"));
         }
 
-        let sqrx = SomeSquare::new(&SomeSample::from("0b1100->0b0101")?);
+        let sqrx = SomeSquare::new(&SomeSample::from_str("s1100->s0101")?);
 
         if grpx.check_square(&sqrx) {
             return Err(format!("check_subset_square: test 4b failed!"));

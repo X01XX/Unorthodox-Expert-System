@@ -390,87 +390,111 @@ fn domainstore_init() -> DomainStore {
 
     // Add actions 0 through 9 to Domain 0;
     let ruls0: Vec<RuleStore> = vec![
-        RuleStore::from("[XX_11/XX/00/Xx]").expect("SNH"),
-        RuleStore::from("[XX_00/XX/11/Xx]").expect("SNH"),
-        RuleStore::from("[XX_XX/11/XX/10]").expect("SNH"),
-        RuleStore::from("[XX_11/00/10/XX, XX_11/01/11/XX]").expect("SNH"),
-        RuleStore::from("[XX_11/XX/10/00, XX_11/Xx/11/00]").expect("SNH"),
-        RuleStore::from("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]").expect("SNH"),
-        RuleStore::from("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]").expect("SNH"),
+        RuleStore::from_str("[XX_11/XX/00/Xx]").expect("SNH"),
+        RuleStore::from_str("[XX_00/XX/11/Xx]").expect("SNH"),
+        RuleStore::from_str("[XX_XX/11/XX/10]").expect("SNH"),
+        RuleStore::from_str("[XX_11/00/10/XX, XX_11/01/11/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_11/XX/10/00, XX_11/Xx/11/00]").expect("SNH"),
+        RuleStore::from_str("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls0, 5);
 
     let ruls1: Vec<RuleStore> = vec![
-        RuleStore::from("[XX_XX/Xx/11/XX]").expect("SNH"),
-        RuleStore::from("[XX_XX/XX/01/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_XX/Xx/11/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_XX/XX/01/XX]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls1, 5);
 
     let ruls2: Vec<RuleStore> = vec![
-        RuleStore::from("[XX_XX/XX/10/XX]").expect("SNH"),
-        RuleStore::from("[XX_XX/Xx/00/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_XX/XX/10/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_XX/Xx/00/XX]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls2, 5);
 
     let ruls3: Vec<RuleStore> = vec![
-        RuleStore::from("[Xx_11/XX/XX/XX]").expect("SNH"),
-        RuleStore::from("[XX_01/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[Xx_11/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_01/XX/XX/XX]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls3, 5);
 
     let ruls4: Vec<RuleStore> = vec![
-        RuleStore::from("[XX_10/XX/XX/XX]").expect("SNH"),
-        RuleStore::from("[Xx_00/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[XX_10/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[Xx_00/XX/XX/XX]").expect("SNH"),
     ];
     dmxs[0].add_action(ruls4, 5);
 
-    let ruls5: Vec<RuleStore> = vec![RuleStore::from("[XX_XX/XX/XX/XX]").expect("SNH")];
+    let ruls5: Vec<RuleStore> = vec![RuleStore::from_str("[XX_XX/XX/XX/XX]").expect("SNH")];
     dmxs[0].add_action(ruls5, 5);
 
     // Add actions 0 through 6 to domain 1.
     let ruls0: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls0, 5);
 
     let ruls1: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls1, 5);
 
     let ruls2: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls2, 5);
 
     let ruls3: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls3, 5);
 
     let ruls4: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls4, 5);
 
     let ruls5: Vec<RuleStore> =
-        vec![RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH")];
+        vec![
+            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
+        ];
     dmxs[1].add_action(ruls5, 5);
 
     let ruls6: Vec<RuleStore> = vec![
-        RuleStore::from("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]").expect("SNH"),
-        RuleStore::from("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]").expect("SNH"),
-        RuleStore::from("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]").expect("SNH"),
+        RuleStore::from_str("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]").expect("SNH"),
     ];
     dmxs[1].add_action(ruls6, 5);
 
     // Add select regions.
-    dmxs.add_select(SelectRegions::from("SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3]").expect("SNH"),
+    );
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2]").expect("SNH"),
+    );
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3]").expect("SNH"),
+    );
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1]").expect("SNH"),
+    );
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1]").expect("SNH"),
+    );
 
-    dmxs.add_select(SelectRegions::from("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]").expect("SNH"));
+    dmxs.add_select(
+        SelectRegions::from_str("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]").expect("SNH"),
+    );
 
     dmxs.calc_select();
 
@@ -765,7 +789,7 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
         return Err("Exactly one state argument is needed for the cs command.".to_string());
     }
     // Get state from string
-    match SomeState::from(cmd[1]) {
+    match SomeState::from_str(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
             dmxs.set_cur_state(a_state);
@@ -783,7 +807,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
     }
 
     // Get region from string
-    let goal_region = SomeRegion::from(cmd[1])?;
+    let goal_region = SomeRegion::from_str(cmd[1])?;
 
     let dom_id = dmxs.current_domain;
     let dmx = &mut dmxs[dom_id];
@@ -800,9 +824,9 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(
-        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                 b01 {}\n                 b10 {}",
+        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                 m01 {}\n                 b10 {}",
         needed_change.number_changes(),
-        needed_change.b01, needed_change.b10
+        needed_change.m01, needed_change.m10
     );
 
     if goal_region.is_superset_of(cur_state) {
@@ -884,7 +908,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 
     if cmd.len() == 3 {
         // Get state from string
-        let a_state = match SomeState::from(cmd[2]) {
+        let a_state = match SomeState::from_str(cmd[2]) {
             Ok(a_state) => a_state,
             Err(error) => {
                 return Err(error);
@@ -910,10 +934,10 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         // This tends to break things for an action, unless all samples are arbitrary.
         // Useful for testing a wholly different series of samples/results.
         // Using the command: ss  action-number  initial-state  result-state
-        // e.g. ss  0  s0b1010  s0b1111
+        // e.g. ss  0  s1010  s1111
 
         // Get i-state from string
-        let i_state = match SomeState::from(cmd[2]) {
+        let i_state = match SomeState::from_str(cmd[2]) {
             Ok(i_state) => i_state,
             Err(error) => {
                 return Err(error);
@@ -921,7 +945,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         };
 
         // Get r-state from string
-        let r_state = match SomeState::from(cmd[3]) {
+        let r_state = match SomeState::from_str(cmd[3]) {
             Ok(r_state) => r_state,
             Err(error) => {
                 return Err(error);
@@ -1014,7 +1038,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
 
     if cmd.len() == 3 {
         // Get region from command.
-        let aregion = SomeRegion::from(cmd[2])?;
+        let aregion = SomeRegion::from_str(cmd[2])?;
 
         if aregion.num_bits() != dmx.cur_state.num_bits() {
             return Err("Invalid number of bits in region.".to_string());
@@ -1132,7 +1156,7 @@ fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), 
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = SomeRegion::from(cmd[2])?;
+    let aregion = SomeRegion::from_str(cmd[2])?;
 
     if aregion.num_bits() != dmx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
@@ -1164,7 +1188,7 @@ fn do_print_group_defining_squares_command(
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = SomeRegion::from(cmd[2])?;
+    let aregion = SomeRegion::from_str(cmd[2])?;
 
     if aregion.num_bits() != dmx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
@@ -1346,27 +1370,27 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Set up action 4, changing bits 1 and 3.
         let ruls4: Vec<RuleStore> = vec![
-            RuleStore::from("[XX/11/01/Xx]")?,
-            RuleStore::from("[11/XX/10/Xx]")?,
-            RuleStore::from("[Xx/00/00/XX]")?,
-            RuleStore::from("[01/XX/11/XX]")?,
+            RuleStore::from_str("[XX/11/01/Xx]")?,
+            RuleStore::from_str("[11/XX/10/Xx]")?,
+            RuleStore::from_str("[Xx/00/00/XX]")?,
+            RuleStore::from_str("[01/XX/11/XX]")?,
         ];
         dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
 
@@ -1380,22 +1404,34 @@ mod tests {
         assert!(dmxs[0].actions[4].groups.len() == 6);
 
         // Check action 4 primary groups.
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX10X")?) {
+        if let Some(grpx) = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("rX10X")?)
+        {
             assert!(grpx.limited);
         } else {
             return Err("Group rX10X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r1X1X")?) {
+        if let Some(grpx) = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("r1X1X")?)
+        {
             assert!(grpx.limited);
         } else {
             return Err("Group r1X1X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("rX00X")?) {
+        if let Some(grpx) = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("rX00X")?)
+        {
             assert!(grpx.limited);
         } else {
             return Err("Group rX00X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4].groups.find(&SomeRegion::from("r0X1X")?) {
+        if let Some(grpx) = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("r0X1X")?)
+        {
             assert!(grpx.limited);
         } else {
             return Err("Group r0X1X not found?".to_string());
@@ -1404,7 +1440,7 @@ mod tests {
         // Check unneeded groups.
         let subs = dmxs[0].actions[4]
             .groups
-            .subsets_of(&SomeRegion::from("r00XX")?);
+            .subsets_of(&SomeRegion::from_str("r00XX")?);
         println!("subsets of r00XX {subs}");
         assert!(subs.len() == 1);
         let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
@@ -1412,7 +1448,7 @@ mod tests {
 
         let subs = dmxs[0].actions[4]
             .groups
-            .subsets_of(&SomeRegion::from("r11XX")?);
+            .subsets_of(&SomeRegion::from_str("r11XX")?);
         println!("subsets of r11XX {subs}");
         assert!(subs.len() == 1);
         let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
@@ -1426,12 +1462,12 @@ mod tests {
         assert!(dmxs[0].actions[4].groups.len() == 4);
         let subs = dmxs[0].actions[4]
             .groups
-            .subsets_of(&SomeRegion::from("r11XX")?);
+            .subsets_of(&SomeRegion::from_str("r11XX")?);
         assert!(subs.is_empty());
 
         let subs = dmxs[0].actions[4]
             .groups
-            .subsets_of(&SomeRegion::from("r00XX")?);
+            .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
 
         //assert!(1 == 2);
@@ -1449,27 +1485,27 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select regions
-        dmxs.add_select(SelectRegions::from("SR[RC[r1000], 1]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r1000], 1]")?);
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules, position to desired end state.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0000]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0000]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1480,7 +1516,7 @@ mod tests {
         assert!(needs.contains_similar_need(
             "ToSelectRegions",
             &ATarget::SelectRegions {
-                select: SelectRegions::from("SR[RC[r1000], 1]")?
+                select: SelectRegions::from_str("SR[RC[r1000], 1]")?
             }
         ));
 
@@ -1493,7 +1529,7 @@ mod tests {
         // Move to positive region.
         do_any_need(&mut dmxs, &needs, &can_do);
 
-        assert!(dmxs[0].cur_state == (SomeState::from("0b1000")?));
+        assert!(dmxs[0].cur_state == (SomeState::from_str("s1000")?));
 
         generate_and_display_needs(&mut dmxs);
         generate_and_display_needs(&mut dmxs);
@@ -1515,28 +1551,28 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select regions
-        dmxs.add_select(SelectRegions::from("SR[RC[r01X1], 3]")?);
-        dmxs.add_select(SelectRegions::from("SR[RC[rX111], -1]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[rX111], -1]")?);
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1566,7 +1602,7 @@ mod tests {
         assert!(needs.contains_similar_need(
             "ToSelectRegions",
             &ATarget::SelectRegions {
-                select: SelectRegions::from("SR[RC[r0111], 2]")?
+                select: SelectRegions::from_str("SR[RC[r0111], 2]")?
             }
         ));
 
@@ -1578,17 +1614,17 @@ mod tests {
             needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
-                    regions: RegionsCorr::from("RC[rXXX0]")?
+                    regions: RegionsCorr::from_str("RC[rXXX0]")?
                 }
             ) || needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
-                    regions: RegionsCorr::from("RC[rX0XX]")?
+                    regions: RegionsCorr::from_str("RC[rX0XX]")?
                 }
             ) || needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
-                    regions: RegionsCorr::from("RC[rXX0X]")?
+                    regions: RegionsCorr::from_str("RC[rXX0X]")?
                 }
             )
         );
@@ -1607,8 +1643,8 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select regions
-        dmxs.add_select(SelectRegions::from("SR[RC[r01X1], 3]").unwrap());
-        dmxs.add_select(SelectRegions::from("SR[RC[r01x1], -1]").unwrap());
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]").unwrap());
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r01x1], -1]").unwrap());
         dmxs.calc_select();
     }
 
@@ -1624,23 +1660,23 @@ mod tests {
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1664,28 +1700,28 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select region
-        dmxs.add_select(SelectRegions::from("SR[RC[rXXXX], 3]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[rXXXX], 3]")?);
 
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1709,28 +1745,28 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select region
-        dmxs.add_select(SelectRegions::from("SR[RC[r1010], 3]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r1010], 3]")?);
 
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1754,28 +1790,28 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select region
-        dmxs.add_select(SelectRegions::from("SR[RC[rXXXX], -3]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[rXXXX], -3]")?);
 
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
@@ -1799,28 +1835,28 @@ mod tests {
         dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
 
         // Load select region
-        dmxs.add_select(SelectRegions::from("SR[RC[r1010], -3]")?);
+        dmxs.add_select(SelectRegions::from_str("SR[RC[r1010], -3]")?);
 
         dmxs.calc_select();
 
         // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/XX/Xx]")?];
+        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
         dmxs[0].add_action(ruls0, 5);
 
         // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from("[XX/XX/Xx/XX]")?];
+        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
         dmxs[0].add_action(ruls1, 5);
 
         // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from("[XX/Xx/XX/XX]")?];
+        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
         dmxs[0].add_action(ruls2, 5);
 
         // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from("[Xx/XX/XX/XX]")?];
+        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
         dmxs[0].add_action(ruls3, 5);
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 

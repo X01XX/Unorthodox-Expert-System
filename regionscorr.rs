@@ -256,8 +256,13 @@ impl RegionsCorr {
 
     /// Return a RegionsCorr instance, given a string representation.
     /// Like RC[], RC[r1010], or RC[r101, r1000].
-    pub fn from(rc_str: &str) -> Result<Self, String> {
-        //println!("regionscorr::from: {rc_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("regionscorr::from_str: {str_in}");
+        let rc_str = str_in.trim();
+
+        if rc_str.is_empty() {
+            return Err("RegionsCorr::from_str: Empty string?".to_string());
+        }
 
         let mut rc_str2 = String::new();
         let mut last_chr = false;
@@ -268,7 +273,7 @@ impl RegionsCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorr::from: Invalid string, {rc_str} should start with RC["
+                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
                     ));
                 }
             }
@@ -277,7 +282,7 @@ impl RegionsCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorr::from: Invalid string, {rc_str} should start with RC["
+                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
                     ));
                 }
             }
@@ -289,18 +294,18 @@ impl RegionsCorr {
 
             if last_chr {
                 return Err(format!(
-                    "RegionsCorr::from: Invalid string, {rc_str} should end with ]"
+                    "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
                 ));
             }
             rc_str2.push_str(chr);
         }
         if !last_chr {
             return Err(format!(
-                "RegionsCorr::from: Invalid string, {rc_str} should end with ]"
+                "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
             ));
         }
 
-        let regions = RegionStore::from(&rc_str2)?;
+        let regions = RegionStore::from_str(&rc_str2)?;
 
         Ok(Self { regions })
     }
@@ -401,7 +406,7 @@ mod tests {
     #[test]
     fn strlen() -> Result<(), String> {
         let regs1_str = "RC[r0x00, r1x1x]";
-        let regs1 = RegionsCorr::from(&regs1_str)?;
+        let regs1 = RegionsCorr::from_str(&regs1_str)?;
         let len = regs1.strlen();
         println!("len of {regs1_str} = {len}");
 
@@ -412,16 +417,16 @@ mod tests {
 
     #[test]
     fn is_superset_states() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x00, r1x1x]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x00, r1x1x]")?;
 
-        let stas = StatesCorr::from("SC[0x1, 0x8]")?;
+        let stas = StatesCorr::from_str("SC[s0001, s1000]")?;
 
         println!("regstr1 {}", regstr1);
         println!("stas    {}", stas);
 
         assert!(!regstr1.is_superset_states(&stas));
 
-        let stas2 = StatesCorr::from("SC[0x4, 0xa]")?;
+        let stas2 = StatesCorr::from_str("SC[s0100, s1010]")?;
 
         println!("regstr1 {}", regstr1);
         println!("stas2   {}", stas2);
@@ -433,9 +438,9 @@ mod tests {
 
     #[test]
     fn distance_states() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x00, r1x1x]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x00, r1x1x]")?;
 
-        let stas = StatesCorr::from("SC[0x1, 0x8]")?;
+        let stas = StatesCorr::from_str("SC[s0001, s1000]")?;
 
         let dist = regstr1.distance_states(&stas);
         println!("Distance = {dist}");
@@ -446,9 +451,9 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x0x]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x0x]")?;
 
-        let regstr2 = RegionsCorr::from("RC[r0101, r1x01]")?;
+        let regstr2 = RegionsCorr::from_str("RC[r0101, r1x01]")?;
 
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
@@ -461,9 +466,9 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x0x]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x0x]")?;
 
-        let regstr2 = RegionsCorr::from("RC[r0101, r1x01]")?;
+        let regstr2 = RegionsCorr::from_str("RC[r0101, r1x01]")?;
 
         println!("regstr1 {}", regstr1);
         println!("regstr2 {}", regstr2);
@@ -476,9 +481,9 @@ mod tests {
 
     #[test]
     fn distance() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x00]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x00]")?;
 
-        let regstr2 = RegionsCorr::from("RC[r11x1, r1xx1]")?;
+        let regstr2 = RegionsCorr::from_str("RC[r11x1, r1xx1]")?;
 
         let dist = regstr1.distance(&regstr2);
         println!("dist {}", dist);
@@ -489,16 +494,16 @@ mod tests {
 
     #[test]
     fn intersects() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x00]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x00]")?;
 
-        let regstr2 = RegionsCorr::from("RC[r11x1, r1xx1]")?;
+        let regstr2 = RegionsCorr::from_str("RC[r11x1, r1xx1]")?;
 
         let intb = regstr1.intersects(&regstr2);
         println!("{regstr1} intersects {regstr2} is {intb}");
 
         assert!(!intb);
 
-        let regstr3 = RegionsCorr::from("RC[r010x, rx10x]")?;
+        let regstr3 = RegionsCorr::from_str("RC[r010x, rx10x]")?;
 
         let intb = regstr1.intersects(&regstr3);
         println!("{regstr1} intersects {regstr3} is {intb}");
@@ -510,25 +515,25 @@ mod tests {
 
     #[test]
     fn translate_to() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[r0x0x, r1x00]")?;
+        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x00]")?;
 
-        let regstr2 = RegionsCorr::from("RC[r11x1, r1xx1]")?;
+        let regstr2 = RegionsCorr::from_str("RC[r11x1, r1xx1]")?;
 
         let regstr3 = regstr1.translate_to(&regstr2);
         println!("{regstr1} transate_to {regstr2} is {regstr3}");
 
         let mut regstrtmp = RegionsCorr::with_capacity(2);
-        regstrtmp.push(SomeRegion::from("r1101")?);
-        regstrtmp.push(SomeRegion::from("r1x01")?);
+        regstrtmp.push(SomeRegion::from_str("r1101")?);
+        regstrtmp.push(SomeRegion::from_str("r1x01")?);
 
         assert!(regstr3 == regstrtmp);
 
-        let regstr4 = RegionsCorr::from("RC[r010x, rx10x]")?;
+        let regstr4 = RegionsCorr::from_str("RC[r010x, rx10x]")?;
 
         let regstr5 = regstr1.translate_to(&regstr4);
         println!("{regstr1} transate_to {regstr4} is {regstr5}");
 
-        let regstrtmp = RegionsCorr::from("RC[r010x, r1100]")?;
+        let regstrtmp = RegionsCorr::from_str("RC[r010x, r1100]")?;
 
         assert!(regstr5 == regstrtmp);
 
@@ -537,8 +542,8 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from("RC[rx_01xx, rx_01xx]")?;
-        let regstr2 = RegionsCorr::from("RC[rx_0101, r1_xxx0]")?;
+        let regstr1 = RegionsCorr::from_str("RC[rx_01xx, rx_01xx]")?;
+        let regstr2 = RegionsCorr::from_str("RC[rx_0101, r1_xxx0]")?;
 
         let regstrvec = regstr1.subtract(&regstr2);
         println!("{regstr1} subtract");
@@ -549,14 +554,14 @@ mod tests {
 
         assert!(regstrvec.len() == 4);
 
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01x0, rx_01xx]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_011x, rx_01xx]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx, rx_01x1]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx, r0_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01x0, rx_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_011x, rx_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx, rx_01x1]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx, r0_01xx]")?));
 
         // Test the equivalent one-region subtraction.
-        let regstr1 = RegionsCorr::from("RC[rx0_1xxx_01xx]")?;
-        let regstr2 = RegionsCorr::from("RC[rx0_1011_xxx0]")?;
+        let regstr1 = RegionsCorr::from_str("RC[rx0_1xxx_01xx]")?;
+        let regstr2 = RegionsCorr::from_str("RC[rx0_1011_xxx0]")?;
 
         let regstrvec = regstr1.subtract(&regstr2);
         println!("{regstr1} subtract");
@@ -564,26 +569,26 @@ mod tests {
         for rscx in regstrvec.iter() {
             println!("{rscx}");
         }
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01x0_x_01xx]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_011x_x_01xx]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx_x_01x1]")?));
-        assert!(regstrvec.contains(&RegionsCorr::from("RC[rx_01xx_0_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01x0_x_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_011x_x_01xx]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx_x_01x1]")?));
+        assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx_0_01xx]")?));
 
         //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let regst1 = RegionsCorr::from("RC[]")?;
+    fn from_str() -> Result<(), String> {
+        let regst1 = RegionsCorr::from_str("RC[]")?;
         println!("regst1 {regst1}");
         assert!(format!("{regst1}") == "RC[]");
 
-        let regst2 = RegionsCorr::from("RC[r1010]")?;
+        let regst2 = RegionsCorr::from_str("RC[r1010]")?;
         println!("regst2 {regst2}");
         assert!(format!("{regst2}") == "RC[r1010]");
 
-        let regst3 = RegionsCorr::from("RC[r1010, r1111]")?;
+        let regst3 = RegionsCorr::from_str("RC[r1010, r1111]")?;
         println!("regst3 {regst3}");
         assert!(format!("{regst3}") == "RC[r1010, r1111]");
 
@@ -592,10 +597,10 @@ mod tests {
 
     #[test]
     fn combine() -> Result<(), String> {
-        let regst1 = RegionsCorr::from("RC[r10, r11, r01]")?;
+        let regst1 = RegionsCorr::from_str("RC[r10, r11, r01]")?;
         let regst2 = regst1.combine();
         println!("{regst1} combined = {regst2}");
-        assert!(regst2 == RegionsCorr::from("RC[r10_1101]")?);
+        assert!(regst2 == RegionsCorr::from_str("RC[r10_1101]")?);
 
         //assert!(1 == 2);
         Ok(())
@@ -603,12 +608,12 @@ mod tests {
 
     #[test]
     fn symmetrical_overlapping_regions() -> Result<(), String> {
-        let regsc1 = RegionsCorr::from("RC[rX10X]")?;
-        let regsc2 = RegionsCorr::from("RC[r1X1X]")?;
+        let regsc1 = RegionsCorr::from_str("RC[rX10X]")?;
+        let regsc2 = RegionsCorr::from_str("RC[r1X1X]")?;
 
         let regsc3 = regsc1.symmetrical_overlapping_regions(&regsc2);
         println!("{regsc1} symmetrical_overlapping_regions {regsc2} = {regsc3}");
-        assert!(regsc3 == RegionsCorr::from("RC[r11XX]")?);
+        assert!(regsc3 == RegionsCorr::from_str("RC[r11XX]")?);
 
         Ok(())
     }
@@ -616,13 +621,13 @@ mod tests {
     // Test intersection, and equivalence to region intersection.
     #[test]
     fn eqv_intersection() -> Result<(), String> {
-        let rc1 = RegionsCorr::from("RC[rX1, r0X]")?;
-        let rc2 = RegionsCorr::from("RC[r1X, rX0]")?;
+        let rc1 = RegionsCorr::from_str("RC[rX1, r0X]")?;
+        let rc2 = RegionsCorr::from_str("RC[r1X, rX0]")?;
         let rc3 = rc1.intersection(&rc2).unwrap();
         println!("{rc1} intersection {rc2} = {rc3}");
         let rc4 = rc3.combine();
-        let rc5 = RegionsCorr::new(vec![SomeRegion::from("rX10X")?
-            .intersection(&SomeRegion::from("r1XX0")?)
+        let rc5 = RegionsCorr::new(vec![SomeRegion::from_str("rX10X")?
+            .intersection(&SomeRegion::from_str("r1XX0")?)
             .unwrap()]);
         println!("{rc4} should be eq {rc5}");
         assert!(rc4 == rc5);
@@ -633,13 +638,13 @@ mod tests {
     // Test union, and equivalence to region union.
     #[test]
     fn eqv_union() -> Result<(), String> {
-        let rc1 = RegionsCorr::from("RC[rX1, r0X]")?;
-        let rc2 = RegionsCorr::from("RC[r1X, rX0]")?;
+        let rc1 = RegionsCorr::from_str("RC[rX1, r0X]")?;
+        let rc2 = RegionsCorr::from_str("RC[r1X, rX0]")?;
         let rc3 = rc1.union(&rc2);
         println!("{rc1} union {rc2} = {rc3}");
         let rc4 = rc3.combine();
         let rc5 = RegionsCorr::new(vec![
-            SomeRegion::from("rX10X")?.union(&SomeRegion::from("r1XX0")?)
+            SomeRegion::from_str("rX10X")?.union(&SomeRegion::from_str("r1XX0")?)
         ]);
         println!("{rc4} should be eq {rc5}");
         assert!(rc4 == rc5);

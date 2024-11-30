@@ -32,7 +32,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SomePlan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -305,7 +305,7 @@ impl SomePlan {
     }
 
     /// Return a String representation of SomePlan.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         if self.is_empty() {
             return String::from("P[]");
         }
@@ -410,8 +410,13 @@ impl SomePlan {
 
     /// Return a plan, given a string representation.
     /// Like Plan[], Plan[r1010-0->0101], or Plan[r101-0->r000-1->r100].
-    pub fn from(plan_str: &str) -> Result<Self, String> {
-        //println!("plan::from: {plan_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("plan::from_str: {plan_str}");
+        let plan_str = str_in.trim();
+
+        if plan_str.is_empty() {
+            return Err("SomePlan::from_str: Empty string?".to_string());
+        }
 
         let mut plan_str2 = String::new();
         let mut last_chr = false;
@@ -422,7 +427,7 @@ impl SomePlan {
                     continue;
                 } else {
                     return Err(format!(
-                        "SomePlan::from: Invalid string {plan_str}, should start with P["
+                        "SomePlan::from_str: Invalid string {plan_str}, should start with P["
                     ));
                 }
             }
@@ -431,7 +436,7 @@ impl SomePlan {
                     continue;
                 } else {
                     return Err(format!(
-                        "SomePlan::from: Invalid string {plan_str}, should start with P["
+                        "SomePlan::from_str: Invalid string {plan_str}, should start with P["
                     ));
                 }
             }
@@ -442,14 +447,14 @@ impl SomePlan {
 
             if last_chr {
                 return Err(format!(
-                    "SomePlan::from: Invalid string, {plan_str} should end with ]"
+                    "SomePlan::from_str: Invalid string, {plan_str} should end with ]"
                 ));
             }
             plan_str2.push_str(chr);
         }
         if !last_chr {
             return Err(format!(
-                "SomePlan::from: Invalid string, {plan_str} should end with ]"
+                "SomePlan::from_str: Invalid string, {plan_str} should end with ]"
             ));
         }
 
@@ -473,7 +478,7 @@ impl SomePlan {
         //println!("token_list {:?}", token_list);
 
         if token_list.len() < 2 {
-            panic!("plan::from: invalid string {plan_str}");
+            panic!("plan::from_str: invalid string {plan_str}");
         }
 
         // Split tokens between region and action, plus region at end.
@@ -501,10 +506,10 @@ impl SomePlan {
 
         for (inx, tokenx) in token_list2.into_iter().enumerate() {
             if inx % 2 == 0 {
-                match SomeRegion::from(&tokenx) {
+                match SomeRegion::from_str(&tokenx) {
                     Ok(regx) => regions.push(regx),
                     Err(errstr) => {
-                        return Err(format!("SomePlan::from: {errstr}"));
+                        return Err(format!("SomePlan::from_str: {errstr}"));
                     }
                 }
             } else if tokenx == "no" {
@@ -512,7 +517,7 @@ impl SomePlan {
             } else {
                 match tokenx.parse::<usize>() {
                     Ok(act_id) => actions.push(Some(act_id)),
-                    Err(error) => return Err(format!("SomePlan::from: {error}")),
+                    Err(error) => return Err(format!("SomePlan::from_str: {error}")),
                 };
             }
 
@@ -539,7 +544,7 @@ impl SomePlan {
 
         match ret_plan.is_valid() {
             Ok(()) => Ok(ret_plan),
-            Err(errstr) => Err(format!("SomePlan::from: {errstr}")),
+            Err(errstr) => Err(format!("SomePlan::from_str: {errstr}")),
         }
     }
 
@@ -585,7 +590,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_pln = SomePlan::from("P[]")?;
+        let tmp_pln = SomePlan::from_str("P[]")?;
         println!("tmp_pln {tmp_pln}");
 
         let str_len = format!("{tmp_pln}").len();
@@ -593,7 +598,7 @@ mod tests {
         println!("str {tmp_pln} len {str_len} calculated len {calc_len}");
         assert!(str_len == calc_len);
 
-        let tmp_pln = SomePlan::from("P[r0000-0->r1111-0->r0011]")?;
+        let tmp_pln = SomePlan::from_str("P[r0000-0->r1111-0->r0011]")?;
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -609,10 +614,10 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let pln1 = SomePlan::from("P[r0x0x-0->r0x1x-1->r1x1x]")?;
+        let pln1 = SomePlan::from_str("P[r0x0x-0->r0x1x-1->r1x1x]")?;
         println!("pln1 {}", pln1);
 
-        let pln2 = SomePlan::from("P[r111x-2->r101x-3->r000x]")?;
+        let pln2 = SomePlan::from_str("P[r111x-2->r101x-3->r000x]")?;
         println!("pln2 {}", pln2);
 
         let Ok(pln3) = pln1.link(&pln2) else {
@@ -627,16 +632,16 @@ mod tests {
 
     #[test]
     fn nop() -> Result<(), String> {
-        let pln1 = SomePlan::from("P[r0X0X-no->r0X0X]")?;
+        let pln1 = SomePlan::from_str("P[r0X0X-no->r0X0X]")?;
         println!("pln1 {pln1}");
 
         Ok(())
     }
 
     #[test]
-    fn from() -> Result<(), String> {
+    fn from_str() -> Result<(), String> {
         let plan1_str = "P[]";
-        let plan1 = match SomePlan::from(plan1_str) {
+        let plan1 = match SomePlan::from_str(plan1_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
         };
@@ -644,7 +649,7 @@ mod tests {
         assert!(format!("{plan1}") == plan1_str);
 
         let plan2_str = "P[r01X-0->r101-1->r011]";
-        let plan2 = match SomePlan::from(plan2_str) {
+        let plan2 = match SomePlan::from_str(plan2_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
         };

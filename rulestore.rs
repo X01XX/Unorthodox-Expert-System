@@ -481,8 +481,14 @@ impl RuleStore {
 
     /// Return a rulestore, given a string representation.
     /// Like [], [X0/11/11/10/00] or [00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx].
-    pub fn from(rs_str: &str) -> Result<Self, String> {
-        //println!("rulestore::from: {rs_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("rulestore::from_str: {str_in}");
+
+        let rs_str = str_in.trim();
+
+        if rs_str.is_empty() {
+            return Err("RuleStore::from_str: Empty string?".to_string());
+        }
 
         let mut rs_str2 = String::new();
         let mut last_chr = false;
@@ -493,7 +499,7 @@ impl RuleStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RuleStore::from: Invalid string, {rs_str} should start with ["
+                        "RuleStore::from_str: Invalid string, {rs_str} should start with ["
                     ));
                 }
             }
@@ -504,14 +510,14 @@ impl RuleStore {
 
             if last_chr {
                 return Err(format!(
-                    "RuleStore::from: Invalid string, {rs_str} should end with ]"
+                    "RuleStore::from_str: Invalid string, {rs_str} should end with ]"
                 ));
             }
             rs_str2.push_str(chr);
         }
         if !last_chr {
             return Err(format!(
-                "RuleStore::from: Invalid string, {rs_str} should end with ]"
+                "RuleStore::from_str: Invalid string, {rs_str} should end with ]"
             ));
         }
 
@@ -543,9 +549,9 @@ impl RuleStore {
         let mut rules = Vec::<SomeRule>::new();
 
         for tokenx in token_list.into_iter() {
-            match SomeRule::from(&tokenx) {
+            match SomeRule::from_str(&tokenx) {
                 Ok(rulx) => rules.push(rulx),
-                Err(errstr) => return Err(format!("RuleStore::from: {errstr}")),
+                Err(errstr) => return Err(format!("RuleStore::from_str: {errstr}")),
             }
         }
         let ret_rulestore = RuleStore::new(rules);
@@ -577,9 +583,9 @@ mod tests {
     // Test restrict_initial_region and initial_region
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
-        let rul_str1 = RuleStore::from("[00/11/11, 00/11/10]")?;
+        let rul_str1 = RuleStore::from_str("[00/11/11, 00/11/10]")?;
 
-        let rul_str2 = RuleStore::from("[11/00/10, 11/00/11]")?;
+        let rul_str2 = RuleStore::from_str("[11/00/10, 11/00/11]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -589,7 +595,7 @@ mod tests {
         };
         println!("rul_str3: {rul_str3}");
 
-        let regx = SomeRegion::from("r101")?;
+        let regx = SomeRegion::from_str("r101")?;
         let rul_str4 = rul_str3.restrict_initial_region(&regx);
         println!("rul_str4: {rul_str4}");
 
@@ -602,8 +608,8 @@ mod tests {
     #[test]
     fn intersection() -> Result<(), String> {
         // Intersect two single-rule RuleStores, it should work.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx]")?;
-        let rul_str2 = RuleStore::from("[X0/11/11/10/00]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx]")?;
+        let rul_str2 = RuleStore::from_str("[X0/11/11/10/00]")?;
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
@@ -612,43 +618,43 @@ mod tests {
         };
         println!("rul_str3: {rul_str3}");
 
-        let rul_str4 = RuleStore::from("[00/11/11/10/00]")?;
+        let rul_str4 = RuleStore::from_str("[00/11/11/10/00]")?;
         println!("rul_str4: {rul_str4}");
 
         assert!(rul_str3 == rul_str4);
 
         // Produce failure due to bit 3, Xx intersect 11 = null.
-        let rul_str1 = RuleStore::from("[00/Xx/XX/Xx/xx]")?;
-        let rul_str2 = RuleStore::from("[X0/11/11/10/00]")?;
+        let rul_str1 = RuleStore::from_str("[00/Xx/XX/Xx/xx]")?;
+        let rul_str2 = RuleStore::from_str("[X0/11/11/10/00]")?;
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
         assert!(rul_str1.intersection(&rul_str2).is_none());
 
         // Intersect two two-rule RuleStores, it should work.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
 
-        let rul_str2 = RuleStore::from("[X1/11/11/10/00, X0/11/11/10/00]")?;
+        let rul_str2 = RuleStore::from_str("[X1/11/11/10/00, X0/11/11/10/00]")?;
 
         let Some(rul_str3) = rul_str1.intersection(&rul_str2) else {
             panic!("This should work!");
         };
         println!("rul_str3: {rul_str3}");
 
-        let rulx = SomeRule::from("00/11/11/10/00")?;
+        let rulx = SomeRule::from_str("00/11/11/10/00")?;
         println!("rulx: {rulx}");
 
         assert!(rul_str3[0] == rulx || rul_str3[1] == rulx);
 
-        let rulx = SomeRule::from("01/11/11/10/00")?;
+        let rulx = SomeRule::from_str("01/11/11/10/00")?;
         println!("rulx: {rulx}");
 
         assert!(rul_str3[0] == rulx || rul_str3[1] == rulx);
 
         // Intersect two two-rule RuleStores, it should not work, due to the left-most bit.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
 
-        let rul_str2 = RuleStore::from("[X1/11/11/10/00, X1/11/11/11/00]")?;
+        let rul_str2 = RuleStore::from_str("[X1/11/11/10/00, X1/11/11/11/00]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -661,22 +667,22 @@ mod tests {
     #[test]
     fn is_subset_of() -> Result<(), String> {
         // Compare one-rule RuleStores.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx]")?;
-        let rul_str2 = RuleStore::from("[00/11/11/10/00]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx]")?;
+        let rul_str2 = RuleStore::from_str("[00/11/11/10/00]")?;
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
         assert!(rul_str2.is_subset_of(&rul_str1));
 
-        let rul_str2 = RuleStore::from("[00/10/11/10/00]")?;
+        let rul_str2 = RuleStore::from_str("[00/10/11/10/00]")?;
         println!("rul_str2: {rul_str2}");
 
         assert!(!rul_str2.is_subset_of(&rul_str1));
 
         // Compare two two-rule RuleStores.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
 
-        let rul_str2 = RuleStore::from("[00/11/11/10/00, 01/11/11/10/00]")?;
+        let rul_str2 = RuleStore::from_str("[00/11/11/10/00, 01/11/11/10/00]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -690,28 +696,28 @@ mod tests {
     #[test]
     fn is_superset_of_rule() -> Result<(), String> {
         // Compare a rule to a one-rule RuleStore.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx]")?;
-        let rul2 = SomeRule::from("00/11/11/10/00")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx]")?;
+        let rul2 = SomeRule::from_str("00/11/11/10/00")?;
         println!("rul_str1: {rul_str1}");
         println!("rul2: {rul2}");
 
         assert!(rul_str1.is_superset_of_rule(&rul2));
 
-        let rul2 = SomeRule::from("00/10/11/10/00")?;
+        let rul2 = SomeRule::from_str("00/10/11/10/00")?;
         println!("rul2: {rul2}");
 
         assert!(!rul_str1.is_superset_of_rule(&rul2));
 
         // Compare rule to a two-rule RuleStore.
-        let rul_str1 = RuleStore::from("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx]")?;
 
-        let rul2 = SomeRule::from("00/11/11/10/00")?;
+        let rul2 = SomeRule::from_str("00/11/11/10/00")?;
         println!("rul_str1: {rul_str1}");
         println!("rul2: {rul2}");
 
         assert!(rul_str1.is_superset_of_rule(&rul2));
 
-        let rul2 = SomeRule::from("00/00/11/10/00")?;
+        let rul2 = SomeRule::from_str("00/00/11/10/00")?;
         println!("rul2: {rul2}");
 
         assert!(!rul_str1.is_superset_of_rule(&rul2));
@@ -722,24 +728,24 @@ mod tests {
     #[test]
     fn union() -> Result<(), String> {
         // Produce /X0/X1/XX/Xx/XX.
-        let rul_str1 = RuleStore::from("[00/01/00/01/xx]")?;
-        let rul_str2 = RuleStore::from("[10/11/11/10/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/01/00/01/xx]")?;
+        let rul_str2 = RuleStore::from_str("[10/11/11/10/xx]")?;
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
         assert!(rul_str1.union(&rul_str2).is_some());
 
         // Fail due to bit 1 being 0X.
-        let rul_str1 = RuleStore::from("[00/01/00/01/xx]")?;
-        let rul_str2 = RuleStore::from("[10/11/11/00/xx]")?;
+        let rul_str1 = RuleStore::from_str("[00/01/00/01/xx]")?;
+        let rul_str2 = RuleStore::from_str("[10/11/11/00/xx]")?;
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
 
         assert!(rul_str1.union(&rul_str2).is_none());
 
-        let rul_str1 = RuleStore::from("[00/11/11, 00/11/10]")?;
+        let rul_str1 = RuleStore::from_str("[00/11/11, 00/11/10]")?;
 
-        let rul_str2 = RuleStore::from("[11/00/10, 11/00/11]")?;
+        let rul_str2 = RuleStore::from_str("[11/00/10, 11/00/11]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -747,9 +753,9 @@ mod tests {
         assert!(rul_str1.union(&rul_str2).is_some());
 
         // Fail due to bit 1 forming 0X.
-        let rul_str1 = RuleStore::from("[00/01/11, 00/00/10]")?;
+        let rul_str1 = RuleStore::from_str("[00/01/11, 00/00/10]")?;
 
-        let rul_str2 = RuleStore::from("[11/00/10, 11/00/11]")?;
+        let rul_str2 = RuleStore::from_str("[11/00/10, 11/00/11]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -757,9 +763,9 @@ mod tests {
         assert!(rul_str1.union(&rul_str2).is_none());
 
         // Fail due to X1 and X0 forming (XX, Xx) and (X0, X1)
-        let rul_str1 = RuleStore::from("[00/01/X1, 00/00/X0]")?;
+        let rul_str1 = RuleStore::from_str("[00/01/X1, 00/00/X0]")?;
 
-        let rul_str2 = RuleStore::from("[11/00/X0, 11/00/X1]")?;
+        let rul_str2 = RuleStore::from_str("[11/00/X0, 11/00/X1]")?;
 
         println!("rul_str1: {rul_str1}");
         println!("rul_str2: {rul_str2}");
@@ -786,11 +792,11 @@ mod tests {
     //  XX/Xx, XX/XX
     #[test]
     fn compatible() -> Result<(), String> {
-        let rul_str1 = RuleStore::from("[11/01, 11/00]")?;
+        let rul_str1 = RuleStore::from_str("[11/01, 11/00]")?;
 
         println!("rul_str1 {rul_str1}");
 
-        let rul_str2 = RuleStore::from("[00/10, 00/11]")?;
+        let rul_str2 = RuleStore::from_str("[00/10, 00/11]")?;
 
         println!("rul_str2 {rul_str2}");
 
@@ -804,10 +810,10 @@ mod tests {
 
     #[test]
     fn subcompatible() -> Result<(), String> {
-        let rul_str1 = RuleStore::from("[11/11/11/xx, 11/11/10/xx]")?;
+        let rul_str1 = RuleStore::from_str("[11/11/11/xx, 11/11/10/xx]")?;
 
         // Test match with first rule.
-        let rul_sub = RuleStore::from("[11/11/11/00]")?;
+        let rul_sub = RuleStore::from_str("[11/11/11/00]")?;
         match rul_str1.subcompatible_index(&rul_sub) {
             Some(0) => println!("{rul_str1} sub {rul_sub} Ok"),
             Some(1) => println!("{rul_str1} sub {rul_sub} s/b Some(0), not Some(1)"),
@@ -815,7 +821,7 @@ mod tests {
         }
 
         // Test match with second rule.
-        let rul_sub = RuleStore::from("[11/11/10/00]")?;
+        let rul_sub = RuleStore::from_str("[11/11/10/00]")?;
         match rul_str1.subcompatible_index(&rul_sub) {
             Some(0) => println!("{rul_str1} sub {rul_sub} s/b Some(1), not Some(0)"),
             Some(1) => println!("{rul_str1} sub {rul_sub} Ok"),
@@ -823,7 +829,7 @@ mod tests {
         }
 
         // Test match with no rules.
-        let rul_sub = RuleStore::from("[10/11/11/00]")?;
+        let rul_sub = RuleStore::from_str("[10/11/11/00]")?;
         match rul_str1.subcompatible_index(&rul_sub) {
             Some(0) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(0)"),
             Some(1) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(1)"),
@@ -831,7 +837,7 @@ mod tests {
         }
 
         // Test match with both rules.
-        let rul_sub = RuleStore::from("[11/11/00/00]")?;
+        let rul_sub = RuleStore::from_str("[11/11/00/00]")?;
         match rul_str1.subcompatible_index(&rul_sub) {
             Some(0) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(0)"),
             Some(1) => println!("{rul_str1} sub {rul_sub} s/b None, not Some(1)"),
@@ -842,16 +848,16 @@ mod tests {
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let rulst1 = RuleStore::from("[]")?;
+    fn from_str() -> Result<(), String> {
+        let rulst1 = RuleStore::from_str("[]")?;
         println!("rulst1 {rulst1}");
         assert!(format!("{rulst1}") == "[]");
 
-        let rulst2 = RuleStore::from("[00/01/XX]")?;
+        let rulst2 = RuleStore::from_str("[00/01/XX]")?;
         println!("rulst2 {rulst2}");
         assert!(format!("{rulst2}") == "[00/01/XX]");
 
-        let rulst3 = RuleStore::from("[X0/11/10/X1, X1/10/11/X0]")?;
+        let rulst3 = RuleStore::from_str("[X0/11/10/X1, X1/10/11/X0]")?;
         println!("rulst3 {rulst3}");
         assert!(format!("{rulst3}") == "[X0/11/10/X1, X1/10/11/X0]");
 

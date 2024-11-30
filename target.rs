@@ -9,7 +9,7 @@ use std::fmt;
 
 impl fmt::Display for ATarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Target :{}", &self.formatted_string())
+        write!(f, "Target :{}", &self.formatted_str())
     }
 }
 
@@ -23,7 +23,7 @@ pub enum ATarget {
 
 impl ATarget {
     /// Return a String representation.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         match self {
             Self::State { state } => format!("{state}"),
             Self::Region { region } => format!("{region}"),

@@ -215,9 +215,13 @@ impl PlansCorr {
 
     /// Return a PlansCorr instance, given a string representation.
     /// Like PC[[], 0], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
-    pub fn from(pc_str_in: &str) -> Result<Self, String> {
-        //println!("regionscorr::from: {pc_str}");
-        let pc_str = pc_str_in.trim();
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("planscorr::from_str: {pc_str}");
+        let pc_str = str_in.trim();
+
+        if pc_str.is_empty() {
+            return Err("PlansCorr::from_str: Empty string?".to_string());
+        }
 
         let mut pc_str2 = String::new();
         let mut last_chr = String::new();
@@ -231,7 +235,7 @@ impl PlansCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
                     ));
                 }
             }
@@ -240,7 +244,7 @@ impl PlansCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
                     ));
                 }
             }
@@ -250,7 +254,7 @@ impl PlansCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "PlansCorr::from: Invalid string, {pc_str} should start with PC["
+                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
                     ));
                 }
             }
@@ -263,7 +267,7 @@ impl PlansCorr {
             }
             if num_right > num_left {
                 return Err(format!(
-                    "PlansCorr::from: Invalid string, {pc_str}, brackets are not balanced."
+                    "PlansCorr::from_str: Invalid string, {pc_str}, brackets are not balanced."
                 ));
             }
 
@@ -272,7 +276,7 @@ impl PlansCorr {
         }
         if last_chr != "]" {
             return Err(format!(
-                "PlansCorr::from: Invalid string, {pc_str} should end with ]"
+                "PlansCorr::from_str: Invalid string, {pc_str} should end with ]"
             ));
         }
         // Remove last right-bracket, balancing PCS[.
@@ -288,7 +292,7 @@ impl PlansCorr {
         }
         if comma == 0 {
             return Err(format!(
-                "PlansCorr::from: Invalid string, {pc_str2} no comma found"
+                "PlansCorr::from_str: Invalid string, {pc_str2} no comma found"
             ));
         }
 
@@ -302,7 +306,7 @@ impl PlansCorr {
             if inx == comma {
                 if !ps_token.is_empty() {
                     return Err(format!(
-                        "PlansCorr::from: Invalid string, {pc_str2} ps_token {ps_token}"
+                        "PlansCorr::from_str: Invalid string, {pc_str2} ps_token {ps_token}"
                     ));
                 }
                 ps_token = tmp_token;
@@ -316,19 +320,19 @@ impl PlansCorr {
 
         // Check that there are two tokens.
         if ps_token.is_empty() || val_token.is_empty() {
-            return Err(format!("PlansCorr::from: Invalid string, {pc_str2}"));
+            return Err(format!("PlansCorr::from_str: Invalid string, {pc_str2}"));
         }
 
         // Get the planscorr token value.
-        let plans = match PlanStore::from(&ps_token) {
+        let plans = match PlanStore::from_str(&ps_token) {
             Ok(plans) => plans,
-            Err(errstr) => return Err(format!("PlansCorr::from: {errstr}")),
+            Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
         };
 
         // Get the value token value.
         let val = match val_token.parse::<isize>() {
             Ok(val) => val,
-            Err(errstr) => return Err(format!("PlansCorr::from: {errstr}")),
+            Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
         };
 
         Ok(Self { plans, rate: val })
@@ -375,19 +379,19 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let plncr1 = PlansCorr::from("PC[[], 0]")?;
+        let plncr1 = PlansCorr::from_str("PC[[], 0]")?;
         let lenx = plncr1.strlen();
         let strx = format!("{plncr1}");
         println!("plncr1 {plncr1} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr2 = PlansCorr::from("PC[[P[r0000-0->r1111]], 0]")?;
+        let plncr2 = PlansCorr::from_str("PC[[P[r0000-0->r1111]], 0]")?;
         let lenx = plncr2.strlen();
         let strx = format!("{plncr2}");
         println!("plncr2 {plncr2} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr3 = PlansCorr::from("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
+        let plncr3 = PlansCorr::from_str("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
         let lenx = plncr3.strlen();
         let strx = format!("{plncr3}");
         println!("plncr3 {plncr3} len {} calced len {lenx}", strx.len());
@@ -398,39 +402,39 @@ mod tests {
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]")?;
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
         println!("initial_regs {initial_regs}");
-        assert!(initial_regs == RegionsCorr::from("RC[r0X, r0X1]")?);
+        assert!(initial_regs == RegionsCorr::from_str("RC[r0X, r0X1]")?);
 
         Ok(())
     }
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]], 0]")?;
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
         println!("result_regs {result_regs}");
-        assert!(result_regs == RegionsCorr::from("RC[r11, r101]")?);
+        assert!(result_regs == RegionsCorr::from_str("RC[r11, r101]")?);
 
         Ok(())
     }
 
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->r1X11]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->r1X11]], 0]")?;
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::from("RC[r11, r0100]")?;
+        let restrict = RegionsCorr::from_str("RC[r11, r0100]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_initial_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].result_region() == SomeRegion::from("r00")?);
-            assert!(*plnsc2[1].result_region() == SomeRegion::from("r1111")?);
+            assert!(*plnsc2[0].result_region() == SomeRegion::from_str("r00")?);
+            assert!(*plnsc2[1].result_region() == SomeRegion::from_str("r1111")?);
         } else {
             return Err("restrict failed?".to_string());
         }
@@ -439,15 +443,15 @@ mod tests {
 
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->1X11]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[rXX-0->rx0], P[r0X0x-1->r0x11-2->1X11]], 0]")?;
         println!("{plnsc1}");
 
-        let restrict = RegionsCorr::from("RC[r00, r1111]")?;
+        let restrict = RegionsCorr::from_str("RC[r00, r1111]")?;
 
         if let Some(plnsc2) = plnsc1.restrict_result_regions(&restrict) {
             println!("plnsc2 {plnsc2}");
-            assert!(*plnsc2[0].initial_region() == SomeRegion::from("r1X")?);
-            assert!(*plnsc2[1].initial_region() == SomeRegion::from("r010X")?);
+            assert!(*plnsc2[0].initial_region() == SomeRegion::from_str("r1X")?);
+            assert!(*plnsc2[1].initial_region() == SomeRegion::from_str("r010X")?);
         } else {
             return Err("restrict failed?".to_string());
         }
@@ -455,16 +459,16 @@ mod tests {
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let plncr1 = PlansCorr::from("PC[[], 0]")?;
+    fn from_str() -> Result<(), String> {
+        let plncr1 = PlansCorr::from_str("PC[[], 0]")?;
         println!("plncr1 {plncr1}");
         assert!(format!("{plncr1}") == "PC[[], 0]");
 
-        let plncr2 = PlansCorr::from("PC[[P[r0000-0->r1111]], 1]")?;
+        let plncr2 = PlansCorr::from_str("PC[[P[r0000-0->r1111]], 1]")?;
         println!("plncr2 {plncr2}");
         assert!(format!("{plncr2}") == "PC[[P[r0000-0->r1111]], 1]");
 
-        let plncr3 = PlansCorr::from("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
+        let plncr3 = PlansCorr::from_str("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
         println!("plncr3 {plncr3}");
         assert!(format!("{plncr3}") == "PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]");
 

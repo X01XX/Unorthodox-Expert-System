@@ -28,18 +28,18 @@ use std::fmt;
 /// They represent a sample, before/after.
 pub struct SomeRule {
     /// A mask for bit change 0->0
-    pub b00: SomeMask,
+    pub m00: SomeMask,
     /// A mask for bit change 0->1
-    pub b01: SomeMask,
+    pub m01: SomeMask,
     /// A mask for bit change 1->1
-    pub b11: SomeMask,
+    pub m11: SomeMask,
     /// A mask for bit change 1->0
-    pub b10: SomeMask,
+    pub m10: SomeMask,
 }
 
 impl fmt::Display for SomeRule {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -47,39 +47,38 @@ impl SomeRule {
     /// Return a new SomeRule instance given an initial state and the corresponding result state.
     pub fn new(smpl: &SomeSample) -> Self {
         Self {
-            b00: smpl
+            m00: smpl
                 .initial
                 .bitwise_not()
                 .bitwise_and_not(&smpl.result)
                 .convert_to_mask(),
-            b01: smpl.result.bitwise_and_not(&smpl.initial).convert_to_mask(),
-            b11: smpl.initial.bitwise_and(&smpl.result).convert_to_mask(),
-            b10: smpl.initial.bitwise_and_not(&smpl.result).convert_to_mask(),
+            m01: smpl.result.bitwise_and_not(&smpl.initial).convert_to_mask(),
+            m11: smpl.initial.bitwise_and(&smpl.result).convert_to_mask(),
+            m10: smpl.initial.bitwise_and_not(&smpl.result).convert_to_mask(),
         }
     }
 
     /// Generate a rule from a string.
     /// Al bit positions must be specified.
-    /// like SomeRule::from("00/01/11/10/XX/xx/Xx/xX/X0/X1")
-    pub fn from(rep: &str) -> Result<Self, String> {
-        // Check for empty string.
+    /// like SomeRule::from_str("00/01/11/10/XX/xx/Xx/xX/X0/X1")
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        let rep = str_in.trim();
+
         if rep.is_empty() {
-            return Err(format!(
-                "SomeRule::from: No bit positions specified in {rep}"
-            ));
+            return Err("SomeRule::from_str: Empty string?".to_string());
         }
 
         // Initialize new mask strings.
-        let mut b00 = String::from("m0b");
-        let mut b01 = String::from("m0b");
-        let mut b11 = String::from("m0b");
-        let mut b10 = String::from("m0b");
+        let mut m00 = String::from("m");
+        let mut m01 = String::from("m");
+        let mut m11 = String::from("m");
+        let mut m10 = String::from("m");
 
         // Gather bit position tokens as pairs of valid characters.
         let mut token = String::with_capacity(2);
 
         for bt in rep.graphemes(true) {
-            if bt == "/" || bt == "_" {
+            if bt == "/" || bt == "_" || bt == " " {
                 continue;
             }
             // Add character to token.
@@ -88,57 +87,57 @@ impl SomeRule {
             // Process finished token.
             if token.len() == 2 {
                 if token == "00" {
-                    b00.push('1');
-                    b01.push('0');
-                    b11.push('0');
-                    b10.push('0');
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('0');
                 } else if token == "01" {
-                    b00.push('0');
-                    b01.push('1');
-                    b11.push('0');
-                    b10.push('0');
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('0');
                 } else if token == "11" {
-                    b00.push('0');
-                    b01.push('0');
-                    b11.push('1');
-                    b10.push('0');
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('0');
                 } else if token == "10" {
-                    b00.push('0');
-                    b01.push('0');
-                    b11.push('0');
-                    b10.push('1');
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('1');
                 } else if token == "XX" || token == "xx" {
-                    b00.push('1');
-                    b01.push('0');
-                    b11.push('1');
-                    b10.push('0');
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('0');
                 } else if token == "Xx" || token == "xX" {
-                    b00.push('0');
-                    b01.push('1');
-                    b11.push('0');
-                    b10.push('1');
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('1');
                 } else if token == "X0" || token == "x0" {
-                    b00.push('1');
-                    b01.push('0');
-                    b11.push('0');
-                    b10.push('1');
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('1');
                 } else if token == "X1" || token == "x1" {
-                    b00.push('0');
-                    b01.push('1');
-                    b11.push('1');
-                    b10.push('0');
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('1');
+                    m10.push('0');
                 } else if token == "1X" || token == "1x" {
-                    b00.push('0');
-                    b01.push('0');
-                    b11.push('1');
-                    b10.push('1');
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('1');
                 } else if token == "0X" || token == "0x" {
-                    b00.push('1');
-                    b01.push('1');
-                    b11.push('0');
-                    b10.push('0');
+                    m00.push('1');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('0');
                 } else {
-                    return Err(format!("SomeRule::from: Unrecognized token {token}"));
+                    return Err(format!("SomeRule::from_str: Unrecognized token {token}"));
                 }
                 token.clear();
             }
@@ -146,16 +145,18 @@ impl SomeRule {
         // Check for unfinished token.
         if token.is_empty() {
         } else {
-            return Err(format!("SomeRule::from: Did not understand token {token}"));
+            return Err(format!(
+                "SomeRule::from_str: Did not understand token {token}"
+            ));
         }
 
         // Get mask instances from bit strings.
-        let b00 = SomeMask::from(&b00)?;
-        let b01 = SomeMask::from(&b01)?;
-        let b11 = SomeMask::from(&b11)?;
-        let b10 = SomeMask::from(&b10)?;
+        let m00 = SomeMask::from_str(&m00)?;
+        let m01 = SomeMask::from_str(&m01)?;
+        let m11 = SomeMask::from_str(&m11)?;
+        let m10 = SomeMask::from_str(&m10)?;
 
-        Ok(Self { b00, b01, b11, b10 })
+        Ok(Self { m00, m01, m11, m10 })
     }
 
     /// Return true if a rule is a subset of another.
@@ -182,14 +183,14 @@ impl SomeRule {
 
     /// Return true if a rule is valid after a union (no 1X or 0X bits)
     pub fn is_valid_union(&self) -> bool {
-        self.b00.bitwise_and(&self.b01).is_low() && self.b11.bitwise_and(&self.b10).is_low()
+        self.m00.bitwise_and(&self.m01).is_low() && self.m11.bitwise_and(&self.m10).is_low()
     }
 
     /// Return true if a rule is valid after an intersection,
     /// that is no bit positions are zero in all 4 masks.
     pub fn is_valid_intersection(&self) -> bool {
-        self.b00
-            .bitwise_or(&self.b01.bitwise_or(&self.b11.bitwise_or(&self.b10)))
+        self.m00
+            .bitwise_or(&self.m01.bitwise_or(&self.m11.bitwise_or(&self.m10)))
             .is_high()
     }
 
@@ -206,24 +207,24 @@ impl SomeRule {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let rule2 = Self {
-            b00: self.b00.bitwise_or(&other.b00),
-            b01: self.b01.bitwise_or(&other.b01),
-            b11: self.b11.bitwise_or(&other.b11),
-            b10: self.b10.bitwise_or(&other.b10),
+            m00: self.m00.bitwise_or(&other.m00),
+            m01: self.m01.bitwise_or(&other.m01),
+            m11: self.m11.bitwise_or(&other.m11),
+            m10: self.m10.bitwise_or(&other.m10),
         };
         if rule2.is_valid_union() {
             return Some(rule2);
         }
 
         // Pare down rule.
-        let not_zero_x_mask = rule2.b00.bitwise_and(&rule2.b01).bitwise_not();
-        let not_one_x_mask = rule2.b11.bitwise_and(&rule2.b10).bitwise_not();
+        let not_zero_x_mask = rule2.m00.bitwise_and(&rule2.m01).bitwise_not();
+        let not_one_x_mask = rule2.m11.bitwise_and(&rule2.m10).bitwise_not();
 
         let rule3 = Self {
-            b00: rule2.b00.bitwise_and(&not_zero_x_mask),
-            b01: rule2.b01.bitwise_and(&not_zero_x_mask),
-            b11: rule2.b11.bitwise_and(&not_one_x_mask),
-            b10: rule2.b10.bitwise_and(&not_one_x_mask),
+            m00: rule2.m00.bitwise_and(&not_zero_x_mask),
+            m01: rule2.m01.bitwise_and(&not_zero_x_mask),
+            m11: rule2.m11.bitwise_and(&not_one_x_mask),
+            m10: rule2.m10.bitwise_and(&not_one_x_mask),
         };
         // Check for any null bit positions.
         if rule3.is_valid_intersection() {
@@ -237,10 +238,10 @@ impl SomeRule {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let ret_rule = Self {
-            b00: self.b00.bitwise_or(&other.b00),
-            b01: self.b01.bitwise_or(&other.b01),
-            b11: self.b11.bitwise_or(&other.b11),
-            b10: self.b10.bitwise_or(&other.b10),
+            m00: self.m00.bitwise_or(&other.m00),
+            m01: self.m01.bitwise_or(&other.m01),
+            m11: self.m11.bitwise_or(&other.m11),
+            m10: self.m10.bitwise_or(&other.m10),
         };
         if ret_rule.is_valid_union() {
             return Some(ret_rule);
@@ -253,10 +254,10 @@ impl SomeRule {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         let ret_rule = Self {
-            b00: self.b00.bitwise_and(&other.b00),
-            b01: self.b01.bitwise_and(&other.b01),
-            b11: self.b11.bitwise_and(&other.b11),
-            b10: self.b10.bitwise_and(&other.b10),
+            m00: self.m00.bitwise_and(&other.m00),
+            m01: self.m01.bitwise_and(&other.m01),
+            m11: self.m11.bitwise_and(&other.m11),
+            m10: self.m10.bitwise_and(&other.m10),
         };
         if ret_rule.is_valid_intersection() {
             return Some(ret_rule);
@@ -266,10 +267,10 @@ impl SomeRule {
 
     /// Return the initial region of a rule.
     pub fn initial_region(&self) -> SomeRegion {
-        let st_high = self.b11.bitwise_or(&self.b10).convert_to_state();
+        let st_high = self.m11.bitwise_or(&self.m10).convert_to_state();
         let st_low = self
-            .b00
-            .bitwise_or(&self.b01)
+            .m00
+            .bitwise_or(&self.m01)
             .bitwise_not()
             .convert_to_state();
 
@@ -278,15 +279,15 @@ impl SomeRule {
 
     /// Return the result region of a rule.
     pub fn result_region(&self) -> SomeRegion {
-        let st_high = self.b11.bitwise_or(&self.b01).convert_to_state();
+        let st_high = self.m11.bitwise_or(&self.m01).convert_to_state();
         let st_low = self
-            .b00
-            .bitwise_or(&self.b10)
+            .m00
+            .bitwise_or(&self.m10)
             .bitwise_not()
             .convert_to_state();
 
         // Change X->x positions to indicate a change, instead of appearing as X->X.
-        let x_xnot_mask = self.b01.bitwise_and(&self.b10);
+        let x_xnot_mask = self.m01.bitwise_and(&self.m10);
 
         SomeRegion::new(vec![
             st_high.bitwise_and_not(&x_xnot_mask),
@@ -314,9 +315,9 @@ impl SomeRule {
             );
         };
         let toggle: SomeMask = self
-            .b01
+            .m01
             .bitwise_and_not(sta)
-            .bitwise_or(&self.b10.bitwise_and(sta));
+            .bitwise_or(&self.m10.bitwise_and(sta));
         sta.bitwise_xor(&toggle)
     }
 
@@ -333,10 +334,10 @@ impl SomeRule {
             let ones = reg_int.high_state().convert_to_mask();
 
             Self {
-                b00: self.b00.bitwise_and(&zeros),
-                b01: self.b01.bitwise_and(&zeros),
-                b11: self.b11.bitwise_and(&ones),
-                b10: self.b10.bitwise_and(&ones),
+                m00: self.m00.bitwise_and(&zeros),
+                m01: self.m01.bitwise_and(&zeros),
+                m11: self.m11.bitwise_and(&ones),
+                m10: self.m10.bitwise_and(&ones),
             }
         } else {
             panic!("other does not intersect rule initial region {init_reg}");
@@ -358,10 +359,10 @@ impl SomeRule {
             let ones = reg_int.high_state().convert_to_mask();
 
             Self {
-                b00: self.b00.bitwise_and(&zeros),
-                b01: self.b01.bitwise_and(&ones),
-                b11: self.b11.bitwise_and(&ones),
-                b10: self.b10.bitwise_and(&zeros),
+                m00: self.m00.bitwise_and(&zeros),
+                m01: self.m01.bitwise_and(&ones),
+                m11: self.m11.bitwise_and(&ones),
+                m10: self.m10.bitwise_and(&zeros),
             }
         } else {
             panic!("{regx} does not intersect rule result region {rslt_reg}");
@@ -369,13 +370,13 @@ impl SomeRule {
     }
 
     /// Return a string representation of SomeRule.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut strrc = String::with_capacity(self.strlen());
 
-        let m00 = format!("{}", self.b00);
-        let m01 = format!("{}", self.b01);
-        let m11 = format!("{}", self.b11);
-        let m10 = format!("{}", self.b10);
+        let m00 = format!("{}", self.m00);
+        let m01 = format!("{}", self.m01);
+        let m11 = format!("{}", self.m11);
+        let m10 = format!("{}", self.m10);
 
         for (((c00, c01), c11), c10) in m00
             .graphemes(true)
@@ -450,7 +451,7 @@ impl SomeRule {
     /// Of the wanted changes in a rule, the rule initial region may be manipulated to
     /// focus in on the desired changes.
     ///
-    /// The change argument contains masks of changes (b01, b10) that are sought.
+    /// The change argument contains masks of changes (m01, m10) that are sought.
     ///
     /// For rule bit positions that are X->x, X->0 or X->1,
     /// the X value can be changed to focus on the desired change,
@@ -461,13 +462,13 @@ impl SomeRule {
         let wanted_changes = rule_to_goal.wanted_changes();
 
         debug_assert!(wanted_changes
-            .b01
-            .bitwise_or(&wanted_changes.b10)
+            .m01
+            .bitwise_or(&wanted_changes.m10)
             .is_not_low()); // Some changes are needed.
 
         // Check if any rule changes are needed.
-        if self.b01.bitwise_and(&wanted_changes.b01).is_low()
-            && self.b10.bitwise_and(&wanted_changes.b10).is_low()
+        if self.m01.bitwise_and(&wanted_changes.m01).is_low()
+            && self.m10.bitwise_and(&wanted_changes.m10).is_low()
         {
             return None;
         }
@@ -475,10 +476,10 @@ impl SomeRule {
         let mut rule_tmp = self.clone();
 
         // Get rule X->x mask.
-        let x_not_x = rule_tmp.b01.bitwise_and(&rule_tmp.b10);
+        let x_not_x = rule_tmp.m01.bitwise_and(&rule_tmp.m10);
 
         // Mask out unneeded 1->0 changes in X->x bit positions.
-        let not_10 = wanted_changes.b01.bitwise_and(&x_not_x);
+        let not_10 = wanted_changes.m01.bitwise_and(&x_not_x);
 
         // Change selected X->x bit positions to 0->1.
         if not_10.is_not_low() {
@@ -486,7 +487,7 @@ impl SomeRule {
         }
 
         // Mask out unneeded 0->1 changes in X->x bit positions.
-        let not_01 = wanted_changes.b10.bitwise_and(&x_not_x);
+        let not_01 = wanted_changes.m10.bitwise_and(&x_not_x);
 
         // Change selected X->x bit positions to 1->0.
         if not_01.is_not_low() {
@@ -524,10 +525,10 @@ impl SomeRule {
         debug_assert!(wanted.is_not_low());
 
         // Get a mask of wanted 0->1 changes in target rule.
-        let msk01 = self.b01.bitwise_and(&wanted.b01);
+        let msk01 = self.m01.bitwise_and(&wanted.m01);
 
         // Get a mask of wanted 1->0 changes in target rule.
-        let msk10 = self.b10.bitwise_and(&wanted.b10);
+        let msk10 = self.m10.bitwise_and(&wanted.m10);
 
         debug_assert!(msk01.is_not_low() || msk10.is_not_low()); // Target rule must have at least one wanted change.
 
@@ -537,17 +538,17 @@ impl SomeRule {
         //format!("rule2 {rule2}");
 
         // Get a mask of wanted 0->1 changes in combined rule.
-        let msk01 = rule2.b01.bitwise_and(&wanted.b01);
+        let msk01 = rule2.m01.bitwise_and(&wanted.m01);
 
         // Get a mask of wanted 1->0 changes in combined rule.
-        let msk10 = rule2.b10.bitwise_and(&wanted.b10);
+        let msk10 = rule2.m10.bitwise_and(&wanted.m10);
 
         // Check if any 0->1 changes passed through.
-        if rule2.b01.bitwise_and(&msk01).is_not_low() {
+        if rule2.m01.bitwise_and(&msk01).is_not_low() {
             return false;
         }
         // Check if any 1->0 changes passed through.
-        if rule2.b10.bitwise_and(&msk10).is_not_low() {
+        if rule2.m10.bitwise_and(&msk10).is_not_low() {
             return false;
         }
         true
@@ -555,7 +556,7 @@ impl SomeRule {
 
     /// Return a SomeChange instance.
     pub fn to_change(&self) -> SomeChange {
-        SomeChange::new(self.b01.clone(), self.b10.clone())
+        SomeChange::new(self.m01.clone(), self.m10.clone())
     }
 
     /// Return a rule for translating from a region to another region.
@@ -587,22 +588,22 @@ impl SomeRule {
         let one_to_x = from_1.bitwise_and(&to_x);
 
         SomeRule {
-            b00: from_0
+            m00: from_0
                 .bitwise_and(&to_0)
                 .bitwise_or(&x_to_0)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&zero_to_x),
-            b01: from_0
+            m01: from_0
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
                 .bitwise_or(&zero_to_x)
                 .bitwise_or(&x_to_xnot),
-            b11: from_1
+            m11: from_1
                 .bitwise_and(&to_1)
                 .bitwise_or(&x_to_1)
                 .bitwise_or(&x_to_x)
                 .bitwise_or(&one_to_x),
-            b10: from_1
+            m10: from_1
                 .bitwise_and(&to_0)
                 .bitwise_or(&x_to_0)
                 .bitwise_or(&one_to_x)
@@ -633,21 +634,21 @@ impl SomeRule {
         let one_to_x = to_x.bitwise_and(from);
 
         SomeRule {
-            b00: to_0.bitwise_and(&from_0).bitwise_or(&zero_to_x),
-            b01: to_1.bitwise_and(&from_0),
-            b11: to_1.bitwise_and(from).bitwise_or(&one_to_x),
-            b10: to_0.bitwise_and(from),
+            m00: to_0.bitwise_and(&from_0).bitwise_or(&zero_to_x),
+            m01: to_1.bitwise_and(&from_0),
+            m11: to_1.bitwise_and(from).bitwise_or(&one_to_x),
+            m10: to_0.bitwise_and(from),
         }
     }
 
     /// Return the number of bits changed in a rule.
     pub fn num_bits_changed(&self) -> usize {
-        self.b01.bitwise_or(&self.b10).num_one_bits()
+        self.m01.bitwise_or(&self.m10).num_one_bits()
     }
 
     /// Return true if a rule causes predictable change.
     pub fn causes_predictable_change(&self) -> bool {
-        self.b10.is_not_low() || self.b01.is_not_low()
+        self.m10.is_not_low() || self.m01.is_not_low()
     }
 
     /// Combine two rules into a single, aggregate, rule.
@@ -677,38 +678,38 @@ impl SomeRule {
         assert!(self.result_region().intersects(&other.initial_region()));
 
         Self {
-            b00: self
-                .b00
-                .bitwise_and(&other.b00)
-                .bitwise_or(&self.b01.bitwise_and(&other.b10)),
-            b01: self
-                .b01
-                .bitwise_and(&other.b11)
-                .bitwise_or(&self.b00.bitwise_and(&other.b01)),
-            b11: self
-                .b11
-                .bitwise_and(&other.b11)
-                .bitwise_or(&self.b10.bitwise_and(&other.b01)),
-            b10: self
-                .b10
-                .bitwise_and(&other.b00)
-                .bitwise_or(&self.b11.bitwise_and(&other.b10)),
+            m00: self
+                .m00
+                .bitwise_and(&other.m00)
+                .bitwise_or(&self.m01.bitwise_and(&other.m10)),
+            m01: self
+                .m01
+                .bitwise_and(&other.m11)
+                .bitwise_or(&self.m00.bitwise_and(&other.m01)),
+            m11: self
+                .m11
+                .bitwise_and(&other.m11)
+                .bitwise_or(&self.m10.bitwise_and(&other.m01)),
+            m10: self
+                .m10
+                .bitwise_and(&other.m00)
+                .bitwise_or(&self.m11.bitwise_and(&other.m10)),
         }
     }
 
     /// Return the number bits used in a rule's masks.
     pub fn num_bits(&self) -> usize {
-        self.b00.num_bits()
+        self.m00.num_bits()
     }
 
     /// Return a rule with selected 1 bit positions masked off.
     fn mask_out_ones(&self, msk_out: &SomeMask) -> Self {
         let msk_in = msk_out.bitwise_not();
         let ret = Self {
-            b00: self.b00.clone(),
-            b01: self.b01.clone(),
-            b11: self.b11.bitwise_and(&msk_in),
-            b10: self.b10.bitwise_and(&msk_in),
+            m00: self.m00.clone(),
+            m01: self.m01.clone(),
+            m11: self.m11.bitwise_and(&msk_in),
+            m10: self.m10.bitwise_and(&msk_in),
         };
         assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
         ret
@@ -718,10 +719,10 @@ impl SomeRule {
     fn mask_out_zeros(&self, msk_out: &SomeMask) -> Self {
         let msk_in = msk_out.bitwise_not();
         let ret = Self {
-            b00: self.b00.bitwise_and(&msk_in),
-            b01: self.b01.bitwise_and(&msk_in),
-            b11: self.b11.clone(),
-            b10: self.b10.clone(),
+            m00: self.m00.bitwise_and(&msk_in),
+            m01: self.m01.bitwise_and(&msk_in),
+            m11: self.m11.clone(),
+            m10: self.m10.clone(),
         };
         assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
         ret
@@ -745,34 +746,26 @@ impl SomeRule {
     pub fn unwanted_changes(&self) -> SomeChange {
         let care_mask = self.change_care_mask();
 
-        let b00 = self.b00.bitwise_and(&care_mask);
-        let b11 = self.b11.bitwise_and(&care_mask);
+        let m00 = self.m00.bitwise_and(&care_mask);
+        let m11 = self.m11.bitwise_and(&care_mask);
 
-        SomeChange::new(b00, b11)
+        SomeChange::new(m00, m11)
     }
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.
 impl StrLen for SomeRule {
     fn strlen(&self) -> usize {
-        let len1 = self.b00.strlen();
-        if len1 < 6 {
-            ((len1 - 1) * 3) - 1 // rightmost position is 2 chars.
-        } else {
-            let num4 = len1 / 5;
-            let mut extra = len1 % 5;
-            extra = extra.saturating_sub(1); // factor out the 'm' prefix.
-            (num4 * 4 * 3) + (extra * 3) - 1 // rightmost position is 2 chars.
-        }
+        (3 * self.num_bits()) - 1
     }
 }
 
 impl AccessChanges for SomeRule {
-    fn b01(&self) -> &SomeMask {
-        &self.b01
+    fn m01(&self) -> &SomeMask {
+        &self.m01
     }
-    fn b10(&self) -> &SomeMask {
-        &self.b10
+    fn m10(&self) -> &SomeMask {
+        &self.m10
     }
 }
 
@@ -789,20 +782,20 @@ mod tests {
 
     #[test]
     fn parsed_union() -> Result<(), String> {
-        let rul1 = SomeRule::from("XX/XX/Xx/Xx/X0/X0")?;
-        let rul2 = SomeRule::from("X0/X1/X0/X1/01/11")?;
+        let rul1 = SomeRule::from_str("XX/XX/Xx/Xx/X0/X0")?;
+        let rul2 = SomeRule::from_str("X0/X1/X0/X1/01/11")?;
         if let Some(rint) = rul1.parsed_union(&rul2) {
             println!("{} int {} = {}", rul1, rul2, rint);
-            assert!(rint == SomeRule::from("00/11/10/01/10/00")?);
+            assert!(rint == SomeRule::from_str("00/11/10/01/10/00")?);
         } else {
             return Err(format!("{} int {} is None?", rul1, rul2));
         }
 
-        let rul1 = SomeRule::from("X1/X1/XX/XX/Xx/Xx")?;
-        let rul2 = SomeRule::from("00/10/01/10/00/11")?;
+        let rul1 = SomeRule::from_str("X1/X1/XX/XX/Xx/Xx")?;
+        let rul2 = SomeRule::from_str("00/10/01/10/00/11")?;
         if let Some(rint) = rul1.parsed_union(&rul2) {
             println!("{} int {} = {}", rul1, rul2, rint);
-            assert!(rint == SomeRule::from("11/01/11/00/10/01")?);
+            assert!(rint == SomeRule::from_str("11/01/11/00/10/01")?);
         } else {
             return Err(format!("{} int {} is None?", rul1, rul2));
         }
@@ -812,7 +805,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000_0000->0b0000_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000_0000->s0000_0000")?);
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -820,8 +813,8 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_rul = SomeRule::new(&SomeSample::from(
-            "0b0000_0000_0000_0000->0b0000_0000_0000_0000",
+        let tmp_rul = SomeRule::new(&SomeSample::from_str(
+            "s0000_0000_0000_0000->s0000_0000_0000_0000",
         )?); //tmp_sta.clone(), tmp_sta.clone()));
 
         let strrep = format!("{tmp_rul}");
@@ -830,7 +823,7 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_rul = SomeRule::new(&SomeSample::from("0b0_0000->0b0_0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0_0000->s0_0000")?);
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -838,7 +831,7 @@ mod tests {
         println!("str {tmp_rul} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000->0b0000")?); //(tmp_sta.clone(), tmp_sta.clone()));
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000->s0000")?);
 
         let strrep = format!("{tmp_rul}");
         let len = strrep.len();
@@ -851,16 +844,16 @@ mod tests {
 
     #[test]
     fn new() -> Result<(), String> {
-        let rule_from_sample = SomeRule::new(&SomeSample::from("0b0101->0b0011")?); //(
+        let rule_from_sample = SomeRule::new(&SomeSample::from_str("s0101->s0011")?);
 
         let rule_from_masks = SomeRule {
-            b00: SomeMask::from("0x7")?.bitwise_not(),
-            b01: SomeMask::from("0b0010")?,
-            b11: SomeMask::from("0b0001")?,
-            b10: SomeMask::from("0b0100")?,
+            m00: SomeMask::from_str("m0111")?.bitwise_not(),
+            m01: SomeMask::from_str("m0010")?,
+            m11: SomeMask::from_str("m0001")?,
+            m10: SomeMask::from_str("m0100")?,
         };
 
-        let rule_from_string = SomeRule::from("00/10/01/11")?;
+        let rule_from_string = SomeRule::from_str("00/10/01/11")?;
 
         println!("rule_from_sample: {rule_from_sample} rule_from_masks: {rule_from_masks}");
         assert!(rule_from_sample == rule_from_masks);
@@ -873,12 +866,12 @@ mod tests {
 
     #[test]
     fn initial_region() -> Result<(), String> {
-        let rulx = SomeRule::from("XX/Xx/X0/X1_00/01/11/10")?;
+        let rulx = SomeRule::from_str("XX/Xx/X0/X1_00/01/11/10")?;
 
         println!("initial region {}", rulx.initial_region());
-        assert!(rulx.initial_region() == SomeRegion::from("rXXXX_0011")?);
+        assert!(rulx.initial_region() == SomeRegion::from_str("rXXXX_0011")?);
 
-        println!("result region {}", rulx.result_region());
+        println!("result region  {}", rulx.result_region());
         // Check result formatted string, to differentiate between X->X and X->x.
         assert!(format!("{}", rulx.result_region()) == "rXx01_0110");
 
@@ -887,7 +880,7 @@ mod tests {
 
     #[test]
     fn result_region() -> Result<(), String> {
-        let rulx = SomeRule::from("XX/Xx/X0/X1_00/01/11/10")?;
+        let rulx = SomeRule::from_str("XX/Xx/X0/X1_00/01/11/10")?;
         println!("result region {}", rulx.result_region());
 
         assert!(format!("{}", rulx.result_region()) == "rXx01_0110");
@@ -897,9 +890,9 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let rul1 = SomeRule::from("01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
-        let rul2 = SomeRule::from("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul3 = SomeRule::from("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
+        let rul2 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
+        let rul3 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
         let Some(rul_int) = rul1.intersection(&rul2) else {
             panic!("this should work!");
         };
@@ -912,8 +905,8 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let rul1 = SomeRule::from("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul2 = SomeRule::from("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
+        let rul2 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
 
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul2.is_subset_of(&rul1));
@@ -924,8 +917,8 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let rul1 = SomeRule::from("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul2 = SomeRule::from("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
+        let rul2 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
 
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.is_superset_of(&rul2));
@@ -936,9 +929,9 @@ mod tests {
 
     #[test]
     fn is_valid_intersection() -> Result<(), String> {
-        let rul1 = SomeRule::from("XX")?;
-        let rul2 = SomeRule::from("X1")?;
-        let rul3 = SomeRule::from("00")?;
+        let rul1 = SomeRule::from_str("XX")?;
+        let rul2 = SomeRule::from_str("X1")?;
+        let rul3 = SomeRule::from_str("00")?;
 
         println!("rul1: {rul1} rul2: {rul2} rul3: {rul3}");
         assert!(rul1.intersection(&rul2).is_some());
@@ -949,23 +942,23 @@ mod tests {
 
     #[test]
     fn is_valid_union() -> Result<(), String> {
-        let rul1 = SomeRule::from("00")?;
-        let rul2 = SomeRule::from("01")?;
+        let rul1 = SomeRule::from_str("00")?;
+        let rul2 = SomeRule::from_str("01")?;
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.union(&rul2).is_none());
 
-        let rul1 = SomeRule::from("11")?;
-        let rul2 = SomeRule::from("10")?;
+        let rul1 = SomeRule::from_str("11")?;
+        let rul2 = SomeRule::from_str("10")?;
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.union(&rul2).is_none());
 
-        let rul1 = SomeRule::from("11")?;
-        let rul2 = SomeRule::from("01")?;
+        let rul1 = SomeRule::from_str("11")?;
+        let rul2 = SomeRule::from_str("01")?;
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.union(&rul2).is_some());
 
-        let rul1 = SomeRule::from("x1")?;
-        let rul2 = SomeRule::from("00")?;
+        let rul1 = SomeRule::from_str("x1")?;
+        let rul2 = SomeRule::from_str("00")?;
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.union(&rul2).is_none());
 
@@ -975,49 +968,49 @@ mod tests {
     #[test]
     fn sequence_blocks_changes() -> Result<(), String> {
         // All possible change pass-through conditions can be tested at once.
-        let rul1 = SomeRule::from("01/01/01/10/10/10")?;
-        let rul2 = SomeRule::from("11/X1/XX/00/X0/XX")?;
-        let chg1 = SomeChange::from("01/01/01/10/10/10")?;
+        let rul1 = SomeRule::from_str("01/01/01/10/10/10")?;
+        let rul2 = SomeRule::from_str("11/X1/XX/00/X0/XX")?;
+        let chg1 = SomeChange::from_str("01/01/01/10/10/10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Change non pass-through conditions must be tested one-by-one.
 
         // Test 0->1 non pass-through conditions.
-        let rul1 = SomeRule::from("01")?;
-        let rul2 = SomeRule::from("10")?;
-        let chg1 = SomeChange::from("01")?;
+        let rul1 = SomeRule::from_str("01")?;
+        let rul2 = SomeRule::from_str("10")?;
+        let chg1 = SomeChange::from_str("01")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("01")?;
+        let rul2 = SomeRule::from_str("01")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("X0")?;
+        let rul2 = SomeRule::from_str("X0")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("Xx")?;
+        let rul2 = SomeRule::from_str("Xx")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
         // Test 1->0 non pass-through conditions.
-        let rul1 = SomeRule::from("10")?;
-        let rul2 = SomeRule::from("01")?;
-        let chg1 = SomeChange::from("10")?;
+        let rul1 = SomeRule::from_str("10")?;
+        let rul2 = SomeRule::from_str("01")?;
+        let chg1 = SomeChange::from_str("10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("10")?;
+        let rul2 = SomeRule::from_str("10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("X1")?;
+        let rul2 = SomeRule::from_str("X1")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
-        let rul2 = SomeRule::from("Xx")?;
+        let rul2 = SomeRule::from_str("Xx")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
         assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
 
@@ -1026,17 +1019,17 @@ mod tests {
 
     #[test]
     fn restrict_for_changes() -> Result<(), String> {
-        let rul1 = SomeRule::from("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1/X0/X1")?;
+        let rul1 = SomeRule::from_str("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1/X0/X1")?;
 
         let rule_to_goal = SomeRule::new_region_to_region(
-            &SomeRegion::from("10_0001_100011")?,
-            &SomeRegion::from("XX_X010_010011")?,
+            &SomeRegion::from_str("10_0001_100011")?,
+            &SomeRegion::from_str("XX_X010_010011")?,
         );
 
         println!("rule_to_goal {rule_to_goal}");
         println!("rul1         {rul1}");
 
-        let rul3 = SomeRule::from("X0/X1/Xx/10_01/10/X0/X1_X0/X1/X0/X1")?;
+        let rul3 = SomeRule::from_str("X0/X1/Xx/10_01/10/X0/X1_X0/X1/X0/X1")?;
 
         if let Some(rul2) = rul1.restrict_for_changes(&rule_to_goal) {
             println!("rul2         {rul2}");
@@ -1051,62 +1044,62 @@ mod tests {
 
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
-        let rul1 = SomeRule::from("X1/X0/Xx/Xx")?;
-        let rul2 = rul1.restrict_initial_region(&SomeRegion::from("r10X1")?);
+        let rul1 = SomeRule::from_str("X1/X0/Xx/Xx")?;
+        let rul2 = rul1.restrict_initial_region(&SomeRegion::from_str("r10X1")?);
 
         println!("rul2: {rul2}");
-        assert!(rul2 == SomeRule::from("11/00/Xx/10")?);
+        assert!(rul2 == SomeRule::from_str("11/00/Xx/10")?);
 
         Ok(())
     }
 
     #[test]
     fn restrict_result_region() -> Result<(), String> {
-        let rul1 = SomeRule::from("Xx/Xx/XX/XX")?;
-        let rul2 = rul1.restrict_result_region(&SomeRegion::from("r1010")?);
+        let rul1 = SomeRule::from_str("Xx/Xx/XX/XX")?;
+        let rul2 = rul1.restrict_result_region(&SomeRegion::from_str("r1010")?);
 
         println!("rul2: {rul2}");
-        assert!(rul2 == SomeRule::from("01/10/11/00")?);
+        assert!(rul2 == SomeRule::from_str("01/10/11/00")?);
 
         Ok(())
     }
 
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
-        let rul1 = SomeRule::from("Xx/XX/x1/x0/xx/xx")?;
-        let sta1 = SomeState::from("0b000110")?;
+        let rul1 = SomeRule::from_str("Xx/XX/x1/x0/xx/xx")?;
+        let sta1 = SomeState::from_str("s000110")?;
 
         let sta2 = rul1.result_from_initial_state(&sta1);
         println!("rul1: {rul1} sta1: {sta1} sta2: {sta2}");
 
-        assert!(sta2 == SomeState::from("0b101010")?);
+        assert!(sta2 == SomeState::from_str("s101010")?);
 
         Ok(())
     }
 
     #[test]
     fn result_from_initial_region() -> Result<(), String> {
-        let rul1 = SomeRule::from("XX/01/XX/10/x1/x1/x0/x0/Xx/Xx/Xx/XX/XX/XX")?;
-        let reg1 = SomeRegion::from("r00_11_01_01_x01_x01")?;
+        let rul1 = SomeRule::from_str("XX/01/XX/10/x1/x1/x0/x0/Xx/Xx/Xx/XX/XX/XX")?;
+        let reg1 = SomeRegion::from_str("r00_11_01_01_x01_x01")?;
 
         let reg2 = rul1.result_from_initial_region(&reg1);
         println!("rul1: {rul1} reg1: {reg1} result: {reg2}");
 
-        assert!(reg2 == SomeRegion::from("r01_10_11_00_x10_x01")?);
+        assert!(reg2 == SomeRegion::from_str("r01_10_11_00_x10_x01")?);
 
         Ok(())
     }
 
     #[test]
     fn union() -> Result<(), String> {
-        let rul1 = SomeRule::from("00/01/00/01/xx")?;
-        let rul2 = SomeRule::from("00/01/10/10/11")?;
+        let rul1 = SomeRule::from_str("00/01/00/01/xx")?;
+        let rul2 = SomeRule::from_str("00/01/10/10/11")?;
 
         let Some(rul3) = rul1.union(&rul2) else {
             panic!("This should work!");
         };
         println!("rul3 = {rul3}");
-        assert!(rul3 == SomeRule::from("00/01/x0/Xx/xx")?);
+        assert!(rul3 == SomeRule::from_str("00/01/x0/Xx/xx")?);
 
         Ok(())
     }
@@ -1114,125 +1107,125 @@ mod tests {
     #[test]
     fn combine_sequence() -> Result<(), String> {
         // Test 0->0
-        let rul1 = SomeRule::from("00/00/00/00/00/00")?;
-        let rul2 = SomeRule::from("00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("00/00/00/00/00/00")?;
+        let rul2 = SomeRule::from_str("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("00/01/00/01/00/01")?;
+        let rul4 = SomeRule::from_str("00/01/00/01/00/01")?;
         assert!(rul3 == rul4);
 
         // Test 0->1
-        let rul1 = SomeRule::from("01/01/01/01/01/01")?;
-        let rul2 = SomeRule::from("11/10/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("01/01/01/01/01/01")?;
+        let rul2 = SomeRule::from_str("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("01/00/00/01/01/00")?;
+        let rul4 = SomeRule::from_str("01/00/00/01/01/00")?;
         assert!(rul3 == rul4);
 
         // Test 1->1
-        let rul1 = SomeRule::from("11/11/11/11/11/11")?;
-        let rul2 = SomeRule::from("11/10/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("11/11/11/11/11/11")?;
+        let rul2 = SomeRule::from_str("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("11/10/10/11/11/10")?;
+        let rul4 = SomeRule::from_str("11/10/10/11/11/10")?;
         assert!(rul3 == rul4);
 
         // Test 1->0
-        let rul1 = SomeRule::from("10/10/10/10/10/10")?;
-        let rul2 = SomeRule::from("00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("10/10/10/10/10/10")?;
+        let rul2 = SomeRule::from_str("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("10/11/10/11/10/11")?;
+        let rul4 = SomeRule::from_str("10/11/10/11/10/11")?;
         assert!(rul3 == rul4);
 
         // Test X->0
-        let rul1 = SomeRule::from("X0/X0/X0/X0/X0/X0")?;
-        let rul2 = SomeRule::from("00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("X0/X0/X0/X0/X0/X0")?;
+        let rul2 = SomeRule::from_str("00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("X0/X1/X0/X1/X0/X1")?;
+        let rul4 = SomeRule::from_str("X0/X1/X0/X1/X0/X1")?;
         assert!(rul3 == rul4);
 
         // Test X->1
-        let rul1 = SomeRule::from("X1/X1/X1/X1/X1/X1")?;
-        let rul2 = SomeRule::from("11/10/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("X1/X1/X1/X1/X1/X1")?;
+        let rul2 = SomeRule::from_str("11/10/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("X1/X0/X0/X1/X1/X0")?;
+        let rul4 = SomeRule::from_str("X1/X0/X0/X1/X1/X0")?;
         assert!(rul3 == rul4);
 
         // Test X->X
-        let rul1 = SomeRule::from("XX/XX/XX/XX/XX/XX/XX/XX")?;
-        let rul2 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul4 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
 
         // Test X->X
-        let rul1 = SomeRule::from("XX/XX/XX/XX/XX/XX/XX/XX")?;
-        let rul2 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul4 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
 
         // Test X->X
-        let rul1 = SomeRule::from("XX/XX/XX/XX/XX/XX/XX/XX")?;
-        let rul2 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("XX/XX/XX/XX/XX/XX/XX/XX")?;
+        let rul2 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul4 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         assert!(rul3 == rul4);
 
         // Test X->x
-        let rul1 = SomeRule::from("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
-        let rul2 = SomeRule::from("11/10/00/01/X0/X1/XX/Xx")?;
+        let rul1 = SomeRule::from_str("Xx/Xx/Xx/Xx/Xx/Xx/Xx/Xx")?;
+        let rul2 = SomeRule::from_str("11/10/00/01/X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
-        let rul4 = SomeRule::from("01/00/10/11/X0/X1/Xx/XX")?;
+        let rul4 = SomeRule::from_str("01/00/10/11/X0/X1/Xx/XX")?;
         assert!(rul3 == rul4);
 
         // Test 1->X. This is normally invalid in a rule, it is interpreted as "change don't care"
         let rul1 = SomeRule::new_region_to_region(
-            &SomeRegion::from("1111_1111")?,
-            &SomeRegion::from("XXXX_XXXX")?,
+            &SomeRegion::from_str("1111_1111")?,
+            &SomeRegion::from_str("XXXX_XXXX")?,
         );
 
-        let rul2 = SomeRule::from("11/10/00/01_X0/X1/XX/Xx")?;
+        let rul2 = SomeRule::from_str("11/10/00/01_X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
         let rul4 = SomeRule::new_region_to_region(
-            &SomeRegion::from("1111_1111")?,
-            &SomeRegion::from("1001_01XX")?,
+            &SomeRegion::from_str("1111_1111")?,
+            &SomeRegion::from_str("1001_01XX")?,
         );
 
         assert!(rul3 == rul4);
 
         // Test 0->X. This is normally invalid in a rule, it is interpreted as "change don't care"
         let rul1 = SomeRule::new_region_to_region(
-            &SomeRegion::from("0000_0000")?,
-            &SomeRegion::from("XXXX_XXXX")?,
+            &SomeRegion::from_str("0000_0000")?,
+            &SomeRegion::from_str("XXXX_XXXX")?,
         );
 
-        let rul2 = SomeRule::from("11/10/00/01_X0/X1/XX/Xx")?;
+        let rul2 = SomeRule::from_str("11/10/00/01_X0/X1/XX/Xx")?;
         let rul3 = rul1.combine_sequence(&rul2);
-        println!("rul3 {}", rul3.formatted_string());
+        println!("rul3 {}", rul3.to_string());
 
         let rul4 = SomeRule::new_region_to_region(
-            &SomeRegion::from("0000_0000")?,
-            &SomeRegion::from("1001_01XX")?,
+            &SomeRegion::from_str("0000_0000")?,
+            &SomeRegion::from_str("1001_01XX")?,
         );
 
         assert!(rul3 == rul4);
@@ -1242,28 +1235,28 @@ mod tests {
 
     #[test]
     fn new_region_to_region() -> Result<(), String> {
-        let reg1 = SomeRegion::from("r000_111_XXX_Xx")?;
-        let reg2 = SomeRegion::from("r01X_01X_01X_xX")?;
+        let reg1 = SomeRegion::from_str("r000_111_XXX_Xx")?;
+        let reg2 = SomeRegion::from_str("r01X_01X_01X_xX")?;
         let rul1 = SomeRule::new_region_to_region(&reg1, &reg2);
         println!("reg1: {reg1} reg2: {reg2} rul1: {rul1}");
 
-        assert!(rul1 == SomeRule::from("00/01/0X_10/11/1X/X0_X1/XX_Xx/Xx")?);
+        assert!(rul1 == SomeRule::from_str("00/01/0X_10/11/1X/X0_X1/XX_Xx/Xx")?);
 
         Ok(())
     }
 
     #[test]
     fn mutually_exclusive() -> Result<(), String> {
-        let chg1 = SomeChange::from("Xx/XX")?;
+        let chg1 = SomeChange::from_str("Xx/XX")?;
 
-        let rul1 = SomeRule::from("01/01")?;
-        let rul2 = SomeRule::from("11/10")?;
+        let rul1 = SomeRule::from_str("01/01")?;
+        let rul2 = SomeRule::from_str("11/10")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
         println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(!rslt);
 
-        let rul1 = SomeRule::from("01/01")?;
-        let rul2 = SomeRule::from("10/11")?;
+        let rul1 = SomeRule::from_str("01/01")?;
+        let rul2 = SomeRule::from_str("10/11")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
         println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(rslt);
@@ -1274,13 +1267,13 @@ mod tests {
     #[test]
     fn change_care_mask() -> Result<(), String> {
         let rul1 = SomeRule::new_region_to_region(
-            &SomeRegion::from("0010_01XX")?,
-            &SomeRegion::from("1001_XXXX")?,
+            &SomeRegion::from_str("0010_01XX")?,
+            &SomeRegion::from_str("1001_XXXX")?,
         );
         let msk = rul1.change_care_mask();
         println!("care {msk}");
 
-        assert!(msk == SomeMask::from("1111_0000")?);
+        assert!(msk == SomeMask::from_str("1111_0000")?);
 
         Ok(())
     }
@@ -1288,14 +1281,14 @@ mod tests {
     #[test]
     fn wanted_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_region_to_region(
-            &SomeRegion::from("XX_0101_01XX")?,
-            &SomeRegion::from("01_0110_XXXX")?,
+            &SomeRegion::from_str("XX_0101_01XX")?,
+            &SomeRegion::from_str("01_0110_XXXX")?,
         );
         let cng = rul1.wanted_changes();
         println!("wanted {cng}");
 
-        assert!(cng.b01 == SomeMask::from("01_0010_0000")?);
-        assert!(cng.b10 == SomeMask::from("10_0001_0000")?);
+        assert!(cng.m01 == SomeMask::from_str("01_0010_0000")?);
+        assert!(cng.m10 == SomeMask::from_str("10_0001_0000")?);
 
         Ok(())
     }
@@ -1303,14 +1296,14 @@ mod tests {
     #[test]
     fn unwanted_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_region_to_region(
-            &SomeRegion::from("XX_0101_01XX")?,
-            &SomeRegion::from("01_0110_XXXX")?,
+            &SomeRegion::from_str("XX_0101_01XX")?,
+            &SomeRegion::from_str("01_0110_XXXX")?,
         );
         let cng = rul1.unwanted_changes();
         println!("unwanted {cng}");
 
-        assert!(cng.b01 == SomeMask::from("10_1000_0000")?);
-        assert!(cng.b10 == SomeMask::from("01_0100_0000")?);
+        assert!(cng.m01 == SomeMask::from_str("10_1000_0000")?);
+        assert!(cng.m10 == SomeMask::from_str("01_0100_0000")?);
 
         Ok(())
     }

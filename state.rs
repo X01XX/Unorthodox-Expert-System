@@ -33,7 +33,7 @@ pub struct SomeState {
 /// Implement the fmt::Display Trait for a SomeState instance.
 impl fmt::Display for SomeState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -46,7 +46,7 @@ impl SomeState {
     /// Return a State from a string.
     /// Each bit must be specified.
     ///
-    /// if let Ok(sta) = SomeState::from("0b0101")) {
+    /// if let Ok(sta) = SomeState::from_str("0b0101")) {
     ///    println!("State {sta}");
     /// } else {
     ///    panic!("Invalid State");
@@ -54,24 +54,30 @@ impl SomeState {
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// A first character of "s" is supported for cut-and-paste from output on console.
-    pub fn from(str: &str) -> Result<Self, String> {
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeState::from_str: Empty string?".to_string());
+        }
+
         // Check for first character.
-        if let Some(char0) = str.graphemes(true).nth(0) {
+        if let Some(char0) = str2.graphemes(true).nth(0) {
             // Check the first character.
-            if char0 == "s" || char0 == "S" {
+            if char0 == "s" {
                 // Create the result from the not-first characters.
-                match SomeBits::from(&str.to_string()[1..]) {
+                match SomeBits::from_str(&str2.to_string()[1..]) {
                     Ok(bts) => Ok(Self { bts }),
                     Err(error) => Err(format!("SomeState::from {error}")),
                 }
             } else {
-                match SomeBits::from(str) {
+                match SomeBits::from_str(str2) {
                     Ok(bts) => Ok(Self { bts }),
                     Err(error) => Err(format!("SomeState::from {error}")),
                 }
             }
         } else {
-            Err("SomeState::from: Empty string?".to_string())
+            Err("SomeState::from_str: Empty string?".to_string())
         }
     } // end from
 
@@ -103,8 +109,8 @@ impl SomeState {
     }
 
     /// Return a string used to represent a state.
-    fn formatted_string(&self) -> String {
-        format!("s{}", self.bts)
+    fn formatted_str(&self) -> String {
+        format!("s{}", self.bts.formatted_str_terse())
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.
@@ -195,7 +201,7 @@ impl BitsRef for SomeState {
 /// Implement the trait StrLen for SomeState.
 impl StrLen for SomeState {
     fn strlen(&self) -> usize {
-        self.bts.strlen() + 1
+        self.bts.strlen()
     }
 }
 
@@ -265,35 +271,35 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_sta = SomeState::from("0x00")?;
+        let tmp_sta = SomeState::from_str("s0000_0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::from("0")?;
+        let tmp_sta = SomeState::from_str("0")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::from("00_0000")?;
+        let tmp_sta = SomeState::from_str("00_0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::from("0_0000")?;
+        let tmp_sta = SomeState::from_str("0_0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
         println!("str {tmp_sta} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_sta = SomeState::from("0000")?;
+        let tmp_sta = SomeState::from_str("0000")?;
         let strrep = format!("{tmp_sta}");
         let len = strrep.len();
         let calc_len = tmp_sta.strlen();
@@ -305,13 +311,13 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let sta1 = SomeState::from("0b1010")?;
-        let sta2 = SomeState::from("0b1010")?;
+        let sta1 = SomeState::from_str("s1010")?;
+        let sta2 = SomeState::from_str("s1010")?;
         println!("sta1 {sta1}");
         println!("sta2 {sta2}");
         assert!(sta1 == sta2);
 
-        let sta3 = SomeState::from("0b1001")?;
+        let sta3 = SomeState::from_str("s1001")?;
         println!("sta3 {sta3}");
         assert!(sta1 != sta3);
 
@@ -320,12 +326,19 @@ mod tests {
 
     #[test]
     fn combine() -> Result<(), String> {
-        let sta2 = SomeState::from("10")?;
-        let sta3 = SomeState::from("101")?;
+        let sta2 = SomeState::from_str("10")?;
+        let sta3 = SomeState::from_str("101")?;
         let sta5 = sta2.combine(&sta3);
         println!("{sta2} combine {sta3} = {sta5}");
-        assert!(sta5 == SomeState::from("10101")?);
+        assert!(sta5 == SomeState::from_str("10101")?);
 
+        Ok(())
+    }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        // Test reflection.
+        assert!(format!("{}", SomeState::from_str("s1101")?) == "s1101");
         Ok(())
     }
 }

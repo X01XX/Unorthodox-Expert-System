@@ -17,7 +17,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlanStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -94,7 +94,7 @@ impl PlanStore {
     }
 
     /// Return a String representation of a PlanStore.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut flg = 0;
 
         let mut rc_str = String::with_capacity(self.strlen());
@@ -182,8 +182,13 @@ impl PlanStore {
 
     /// Return a planstore, given a string representation.
     /// Like [], [P[r001-0>r101]] or [P[r001-0>r101], P[r101-0>r101]].
-    pub fn from(ps_str: &str) -> Result<Self, String> {
-        //println!("planstore::from: {ps_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("planstore::from_str: {ps_str}");
+        let ps_str = str_in.trim();
+
+        if ps_str.is_empty() {
+            return Err("PlansStore::from_str: Empty string?".to_string());
+        }
 
         let mut ps_str2 = String::new();
         let mut last_chr = String::new();
@@ -194,7 +199,7 @@ impl PlanStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "PlanStore::from: Invalid string, {ps_str} should start with ["
+                        "PlanStore::from_str: Invalid string, {ps_str} should start with ["
                     ));
                 }
             }
@@ -204,7 +209,7 @@ impl PlanStore {
         }
         if last_chr != "]" {
             return Err(format!(
-                "PlanStore::from: Invalid string, {ps_str} should end with ]"
+                "PlanStore::from_str: Invalid string, {ps_str} should end with ]"
             ));
         }
 
@@ -242,9 +247,9 @@ impl PlanStore {
         let mut plans = Vec::<SomePlan>::new();
 
         for tokenx in token_list.into_iter() {
-            match SomePlan::from(&tokenx) {
+            match SomePlan::from_str(&tokenx) {
                 Ok(regx) => plans.push(regx),
-                Err(errstr) => return Err(format!("PlanStore::from: {errstr}")),
+                Err(errstr) => return Err(format!("PlanStore::from_str: {errstr}")),
             }
         }
         let ret_planstore = PlanStore::new(plans);
@@ -289,16 +294,16 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let mut plnstr = PlanStore::from("[]")?;
-        let fstr = plnstr.formatted_string();
+        let mut plnstr = PlanStore::from_str("[]")?;
+        let fstr = plnstr.to_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);
         if fstr.len() != sb {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
 
-        plnstr.push(SomePlan::from("P[r0000_0000-0->r0000_0000]")?);
-        let fstr = plnstr.formatted_string();
+        plnstr.push(SomePlan::from_str("P[r0000_0000-0->r0000_0000]")?);
+        let fstr = plnstr.to_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);
         if fstr.len() != sb {
@@ -308,16 +313,16 @@ mod tests {
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let plnst1 = PlanStore::from("[]")?;
+    fn from_str() -> Result<(), String> {
+        let plnst1 = PlanStore::from_str("[]")?;
         println!("plnst1 {plnst1}");
         assert!(format!("{plnst1}") == "[]");
 
-        let plnst2 = PlanStore::from("[P[r0000-0->r1111]]")?;
+        let plnst2 = PlanStore::from_str("[P[r0000-0->r1111]]")?;
         println!("plnst2 {plnst2}");
         assert!(format!("{plnst2}") == "[P[r0000-0->r1111]]");
 
-        let plnst3 = PlanStore::from("[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        let plnst3 = PlanStore::from_str("[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
         println!("plnst3 {plnst3}");
         assert!(format!("{plnst3}") == "[P[r0000-0->r1111], P[r0000-0->r1100]]");
 

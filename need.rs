@@ -16,7 +16,7 @@ use std::fmt;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -206,7 +206,7 @@ impl SomeNeed {
     } // end dom_id
 
     /// Return a String representation of SomeNeed.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         match self {
             Self::AddGroup {
                 group_region,

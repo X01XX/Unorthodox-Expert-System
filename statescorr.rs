@@ -67,8 +67,13 @@ impl StatesCorr {
 
     /// Return a statescorr, given a string representation.
     /// Like SC[], SC[s1010], or SC[s101, s100].
-    pub fn from(sc_str: &str) -> Result<Self, String> {
-        //println!("statescorr::from: {sc_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("statescorr::from_str: {str_in}");
+        let sc_str = str_in.trim();
+
+        if sc_str.is_empty() {
+            return Err("StatesCorr::from_str: Empty string?".to_string());
+        }
 
         let mut sc_str2 = String::new();
         let mut last_chr = false;
@@ -79,7 +84,7 @@ impl StatesCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "StatesCorr::from: Invalid string, {sc_str} should start with SC["
+                        "StatesCorr::from_str: Invalid string, {sc_str} should start with SC["
                     ));
                 }
             }
@@ -88,7 +93,7 @@ impl StatesCorr {
                     continue;
                 } else {
                     return Err(format!(
-                        "StatesCorr::from: Invalid string, {sc_str} should start with SC["
+                        "StatesCorr::from_str: Invalid string, {sc_str} should start with SC["
                     ));
                 }
             }
@@ -100,21 +105,21 @@ impl StatesCorr {
 
             if last_chr {
                 return Err(format!(
-                    "StatesCorr::from: Invalid string, {sc_str} should end with ]"
+                    "StatesCorr::from_str: Invalid string, {sc_str} should end with ]"
                 ));
             }
             sc_str2.push_str(chr);
         }
         if !last_chr {
             return Err(format!(
-                "StatesCorr::from: Invalid string, {sc_str} should end with ]"
+                "StatesCorr::from_str: Invalid string, {sc_str} should end with ]"
             ));
         }
 
         //println!("sc_str2 {sc_str2}");
-        match StateStore::from(&sc_str2) {
+        match StateStore::from_str(&sc_str2) {
             Ok(states) => Ok(Self { states }),
-            Err(errstr) => Err(format!("StatesCorr::from: {errstr}")),
+            Err(errstr) => Err(format!("StatesCorr::from_str: {errstr}")),
         }
     }
 
@@ -158,16 +163,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn from() -> Result<(), String> {
-        let stast1 = StatesCorr::from("SC[]")?;
+    fn from_str() -> Result<(), String> {
+        let stast1 = StatesCorr::from_str("SC[]")?;
         println!("stast1 {stast1}");
         assert!(format!("{stast1}") == "SC[]");
 
-        let stast2 = StatesCorr::from("SC[s1010]")?;
+        let stast2 = StatesCorr::from_str("SC[s1010]")?;
         println!("stast2 {stast2}");
         assert!(format!("{stast2}") == "SC[s1010]");
 
-        let stast3 = StatesCorr::from("SC[s1010, s1111]")?;
+        let stast3 = StatesCorr::from_str("SC[s1010, s1111]")?;
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == "SC[s1010, s1111]");
 

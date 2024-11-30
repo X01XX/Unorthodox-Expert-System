@@ -24,7 +24,7 @@ use rayon::prelude::*;
 
 impl fmt::Display for ActionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -211,7 +211,7 @@ impl ActionStore {
     }
 
     /// Return a String representation of an ActionStore.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut rc_str = String::new();
 
         for actx in &self.items {

@@ -29,7 +29,7 @@ pub struct SomeMask {
 /// Display trait for SomeMask
 impl fmt::Display for SomeMask {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -56,7 +56,7 @@ impl SomeMask {
     /// Return a Mask from a string.
     /// All characters must be specified.
     ///
-    /// if let Ok(msk) = SomeMask::from("0b0101")) {
+    /// if let Ok(msk) = SomeMask::from_str("0b0101")) {
     ///    println!("Mask {}", msk);
     /// } else {
     ///    panic!("Invalid Mask");
@@ -64,24 +64,30 @@ impl SomeMask {
     /// A prefix of "0x" can be used to specify hexadecimal characters.
     ///
     /// A first character of "m" is supported for cut-and-paste from output on console.
-    pub fn from(str: &str) -> Result<Self, String> {
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeMask::from_str: Empty string?".to_string());
+        }
+
         // Check for first character.
-        if let Some(char0) = str.graphemes(true).nth(0) {
+        if let Some(char0) = str2.graphemes(true).nth(0) {
             // Check the first character.
-            if char0 == "m" || char0 == "M" {
+            if char0 == "m" {
                 // Create the result from the not-first characters.
-                match SomeBits::from(&str.to_string()[1..]) {
+                match SomeBits::from_str(&str2.to_string()[1..]) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeMask::from: {error}")),
+                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
                 }
             } else {
-                match SomeBits::from(str) {
+                match SomeBits::from_str(str2) {
                     Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeMask::from: {error}")),
+                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
                 }
             }
         } else {
-            Err("SomeMask::from: Empty string?".to_string())
+            Err("SomeMask::from_str: Empty string?".to_string())
         }
     } // end from
 
@@ -130,8 +136,8 @@ impl SomeMask {
     }
 
     /// Return a formatted string.
-    fn formatted_string(&self) -> String {
-        format!("m{}", self.bts)
+    fn formatted_str(&self) -> String {
+        format!("m{}", self.bts.formatted_str_terse())
     }
 
     /// A string to display under a printed state to indicate changes.
@@ -218,7 +224,7 @@ impl BitsRef for SomeMask {
 /// Implement the trait StrLen for SomeMask.
 impl StrLen for SomeMask {
     fn strlen(&self) -> usize {
-        self.bts.strlen() + 1
+        self.bts.strlen()
     }
 }
 
@@ -228,35 +234,21 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_msk = SomeMask::from("0")?;
+        let tmp_msk = SomeMask::from_str("m0")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::from("0x0000")?;
+        let tmp_msk = SomeMask::from_str("m0000")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
         println!("str {tmp_msk} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_msk = SomeMask::from("0b00_0000")?;
-        let strrep = format!("{tmp_msk}");
-        let len = strrep.len();
-        let calc_len = tmp_msk.strlen();
-        println!("str {tmp_msk} len {len} calculated len {calc_len}");
-        assert!(len == calc_len);
-
-        let tmp_msk = SomeMask::from("0b0_0000")?;
-        let strrep = format!("{tmp_msk}");
-        let len = strrep.len();
-        let calc_len = tmp_msk.strlen();
-        println!("str {tmp_msk} len {len} calculated len {calc_len}");
-        assert!(len == calc_len);
-
-        let tmp_msk = SomeMask::from("0x0")?;
+        let tmp_msk = SomeMask::from_str("m00_0000")?;
         let strrep = format!("{tmp_msk}");
         let len = strrep.len();
         let calc_len = tmp_msk.strlen();
@@ -268,15 +260,22 @@ mod tests {
 
     #[test]
     fn eq() -> Result<(), String> {
-        let msk1 = SomeMask::from("0b1010")?;
-        let msk2 = SomeMask::from("0b1010")?;
+        let msk1 = SomeMask::from_str("m1010")?;
+        let msk2 = SomeMask::from_str("m1010")?;
         println!("msk1: {msk1} msk2: {msk2}");
         assert!(msk1 == msk2);
 
-        let msk3 = SomeMask::from("0b1001")?;
+        let msk3 = SomeMask::from_str("m1001")?;
         println!("msk1: {msk1} msk3: {msk3}");
         assert!(msk1 != msk3);
 
+        Ok(())
+    }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        // Test reflection.
+        assert!(format!("{}", SomeMask::from_str("m1101")?) == "m1101");
         Ok(())
     }
 }

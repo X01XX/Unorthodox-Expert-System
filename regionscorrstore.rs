@@ -325,8 +325,13 @@ impl RegionsCorrStore {
 
     /// Return a RegionsCorrStore instance, given a string representation.
     /// Like RCS[], RCS[RC[r0010]] or RCS[RC[r1010], RC[r1111]].
-    pub fn from(rcs_str: &str) -> Result<Self, String> {
-        //println!("regionscorrstore::from: {rcs_str}");
+    pub fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("regionscorrstore::from_str: {str_in}");
+        let rcs_str = str_in.trim();
+
+        if rcs_str.is_empty() {
+            return Err("RegionsCorrStore::from_str: Empty string?".to_string());
+        }
 
         // Unwrap RCS[], check that brackets are balanced overall.
         let mut rcs_str2 = String::new();
@@ -343,7 +348,7 @@ impl RegionsCorrStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorrStore::from: Invalid string, {rcs_str} should start with RCS["
+                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
                     ));
                 }
             }
@@ -352,7 +357,7 @@ impl RegionsCorrStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorrStore::from: Invalid string, {rcs_str} should start with RCS["
+                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
                     ));
                 }
             }
@@ -361,7 +366,7 @@ impl RegionsCorrStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorrStore::from: Invalid string, {rcs_str} should start with RCS["
+                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
                     ));
                 }
             }
@@ -371,7 +376,7 @@ impl RegionsCorrStore {
                     continue;
                 } else {
                     return Err(format!(
-                        "RegionsCorrStore::from: Invalid string, {rcs_str} should start with RCS["
+                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
                     ));
                 }
             }
@@ -383,7 +388,7 @@ impl RegionsCorrStore {
             }
             if num_right > num_left {
                 return Err(format!(
-                    "RegionsCorrStore::from: Invalid string, {rcs_str}, brackets are not balanced."
+                    "RegionsCorrStore::from_str: Invalid string, {rcs_str}, brackets are not balanced."
                 ));
             }
             last_chr = chr.to_string();
@@ -391,12 +396,12 @@ impl RegionsCorrStore {
         }
         if num_right != num_left {
             return Err(format!(
-                "RegionsCorrStore::from: Invalid string, {rcs_str}, brackets are not balanced."
+                "RegionsCorrStore::from_str: Invalid string, {rcs_str}, brackets are not balanced."
             ));
         }
         if last_chr != "]" {
             return Err(format!(
-                "RegionsCorrStore::from: Invalid string, {rcs_str} should end with ]"
+                "RegionsCorrStore::from_str: Invalid string, {rcs_str} should end with ]"
             ));
         }
         // Remove last right-bracket, balancing RCS[.
@@ -421,9 +426,9 @@ impl RegionsCorrStore {
 
             if chr == "," && num_left == num_right {
                 //println!("pc_str {pc_str}");
-                match RegionsCorr::from(&pc_str) {
+                match RegionsCorr::from_str(&pc_str) {
                     Ok(pcx) => rcs.push(pcx),
-                    Err(errstr) => return Err(format!("RegionsCorrStore::from: {errstr}")),
+                    Err(errstr) => return Err(format!("RegionsCorrStore::from_str: {errstr}")),
                 }
                 pc_str = String::new();
                 continue;
@@ -434,9 +439,9 @@ impl RegionsCorrStore {
 
         if pc_str.is_empty() {
         } else {
-            match RegionsCorr::from(&pc_str) {
+            match RegionsCorr::from_str(&pc_str) {
                 Ok(pcx) => rcs.push(pcx),
-                Err(errstr) => return Err(format!("RegionsCorrStore::from: {errstr}")),
+                Err(errstr) => return Err(format!("RegionsCorrStore::from_str: {errstr}")),
             }
         }
 
@@ -538,11 +543,11 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let regstr1 = RegionsCorrStore::from("RCS[RC[rx1X1], RC[r1xx1]]")?;
+        let regstr1 = RegionsCorrStore::from_str("RCS[RC[rx1X1], RC[r1xx1]]")?;
         println!("regstr1 {regstr1}");
 
         // Test single RegionsCorr superset.
-        let sub1 = RegionsCorrStore::from("RCS[RC[r11x1]]")?;
+        let sub1 = RegionsCorrStore::from_str("RCS[RC[r11x1]]")?;
         println!("sub1 {sub1}");
 
         if regstr1.is_superset_of(&sub1) {
@@ -552,7 +557,7 @@ mod tests {
         }
 
         // Test intersections that add up to a superset.
-        let sub2 = RegionsCorrStore::from("RCS[RC[r1x01]]")?;
+        let sub2 = RegionsCorrStore::from_str("RCS[RC[r1x01]]")?;
         println!("sub2 {sub2}");
 
         if regstr1.is_superset_of(&sub2) {
@@ -562,7 +567,7 @@ mod tests {
         }
 
         // Test intersections that do not add up to a superset.
-        let sub3 = RegionsCorrStore::from("RCS[RC[r100x]]")?;
+        let sub3 = RegionsCorrStore::from_str("RCS[RC[r100x]]")?;
         println!("sub3 {sub3}");
 
         if regstr1.is_superset_of(&sub3) {
@@ -572,7 +577,7 @@ mod tests {
         }
 
         // Test no intersections.
-        let sub4 = RegionsCorrStore::from("RCS[RC[r1x00]]")?;
+        let sub4 = RegionsCorrStore::from_str("RCS[RC[r1x00]]")?;
         println!("sub4 {sub4}");
 
         if regstr1.is_superset_of(&sub4) {
@@ -585,15 +590,15 @@ mod tests {
     }
 
     #[test]
-    fn from() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from("RCS[]")?;
+    fn from_str() -> Result<(), String> {
+        let rcs1 = RegionsCorrStore::from_str("RCS[]")?;
         println!("rcs1 {rcs1}");
 
-        let rcs2 = RegionsCorrStore::from("RCS[RC[r0X10, r100]]")?;
+        let rcs2 = RegionsCorrStore::from_str("RCS[RC[r0X10, r100]]")?;
         println!("rcs2 {rcs2}");
         assert!(rcs2.len() == 1);
 
-        let rcs3 = RegionsCorrStore::from("RCS[RC[r0X10, r100], RC[r0X11, r101]]")?;
+        let rcs3 = RegionsCorrStore::from_str("RCS[RC[r0X10, r100], RC[r0X11, r101]]")?;
         println!("rcs3 {rcs3}");
         assert!(rcs3.len() == 2);
 
@@ -603,82 +608,82 @@ mod tests {
     #[test]
     fn split_by_intersections() -> Result<(), String> {
         // Test empty RCS.
-        let rcs1 = RegionsCorrStore::from("RCS[]")?;
+        let rcs1 = RegionsCorrStore::from_str("RCS[]")?;
         let fragments1 = rcs1.split_by_intersections();
         println!("fragments1 {fragments1}");
         assert!(fragments1.len() == 0);
 
         // Test single RCSs.
-        let rcs2 = RegionsCorrStore::from("RCS[RC[r0x11]]")?;
+        let rcs2 = RegionsCorrStore::from_str("RCS[RC[r0x11]]")?;
         let fragments2 = rcs2.split_by_intersections();
         println!("fragments2 {fragments2}");
         assert!(fragments2.len() == 1);
 
         // Test two non-intersecting RCSs.
-        let rcs3 = RegionsCorrStore::from("RCS[RC[r0011], RC[r1xx1]]")?;
+        let rcs3 = RegionsCorrStore::from_str("RCS[RC[r0011], RC[r1xx1]]")?;
         let fragments3 = rcs3.split_by_intersections();
         println!("fragments3 {fragments3}");
         assert!(fragments3.len() == 2);
 
         // Test two intersecting RCSs.
-        let rcs4 = RegionsCorrStore::from("RCS[RC[rX011], RC[r1xx1]]")?;
+        let rcs4 = RegionsCorrStore::from_str("RCS[RC[rX011], RC[r1xx1]]")?;
         let fragments4 = rcs4.split_by_intersections();
         println!("fragments4 {fragments4}");
         assert!(fragments4.len() == 4);
-        assert!(fragments4.contains(&RegionsCorr::from("RC[r0011]")?));
-        assert!(fragments4.contains(&RegionsCorr::from("RC[r1X01]")?));
-        assert!(fragments4.contains(&RegionsCorr::from("RC[r11X1]")?));
-        assert!(fragments4.contains(&RegionsCorr::from("RC[r1011]")?));
+        assert!(fragments4.contains(&RegionsCorr::from_str("RC[r0011]")?));
+        assert!(fragments4.contains(&RegionsCorr::from_str("RC[r1X01]")?));
+        assert!(fragments4.contains(&RegionsCorr::from_str("RC[r11X1]")?));
+        assert!(fragments4.contains(&RegionsCorr::from_str("RC[r1011]")?));
 
         // Test two intersecting, multi-region, RCSs.
-        let rcs5 = RegionsCorrStore::from("RCS[RC[rX10X, X1X1], RC[rX1X1, X10X]]")?;
+        let rcs5 = RegionsCorrStore::from_str("RCS[RC[rX10X, X1X1], RC[rX1X1, X10X]]")?;
         let fragments5 = rcs5.split_by_intersections();
         println!("fragments5 {fragments5}");
         assert!(fragments5.len() == 5);
-        assert!(fragments5.contains(&RegionsCorr::from("RC[rX100, rX1X1]")?));
-        assert!(fragments5.contains(&RegionsCorr::from("RC[rX10X, rX111]")?));
-        assert!(fragments5.contains(&RegionsCorr::from("RC[rX111, rX10X]")?));
-        assert!(fragments5.contains(&RegionsCorr::from("RC[rX1X1, rX100]")?));
-        assert!(fragments5.contains(&RegionsCorr::from("RC[rX101, rX101]")?));
+        assert!(fragments5.contains(&RegionsCorr::from_str("RC[rX100, rX1X1]")?));
+        assert!(fragments5.contains(&RegionsCorr::from_str("RC[rX10X, rX111]")?));
+        assert!(fragments5.contains(&RegionsCorr::from_str("RC[rX111, rX10X]")?));
+        assert!(fragments5.contains(&RegionsCorr::from_str("RC[rX1X1, rX100]")?));
+        assert!(fragments5.contains(&RegionsCorr::from_str("RC[rX101, rX101]")?));
 
         // Test two intersecting, one-region, RCSs, *equivalent* to the above RCSs.
-        let rcs6 = RegionsCorrStore::from("RCS[RC[rX10X_X1X1], RC[rX1X1_X10X]]")?;
+        let rcs6 = RegionsCorrStore::from_str("RCS[RC[rX10X_X1X1], RC[rX1X1_X10X]]")?;
         let fragments6 = rcs6.split_by_intersections();
         println!("fragments6 {fragments6}");
         assert!(fragments6.len() == 5);
-        assert!(fragments6.contains(&RegionsCorr::from("RC[rX100_X1X1]")?));
-        assert!(fragments6.contains(&RegionsCorr::from("RC[rX10X_X111]")?));
-        assert!(fragments6.contains(&RegionsCorr::from("RC[rX111_X10X]")?));
-        assert!(fragments6.contains(&RegionsCorr::from("RC[rX1X1_X100]")?));
-        assert!(fragments6.contains(&RegionsCorr::from("RC[rX101_X101]")?));
+        assert!(fragments6.contains(&RegionsCorr::from_str("RC[rX100_X1X1]")?));
+        assert!(fragments6.contains(&RegionsCorr::from_str("RC[rX10X_X111]")?));
+        assert!(fragments6.contains(&RegionsCorr::from_str("RC[rX111_X10X]")?));
+        assert!(fragments6.contains(&RegionsCorr::from_str("RC[rX1X1_X100]")?));
+        assert!(fragments6.contains(&RegionsCorr::from_str("RC[rX101_X101]")?));
 
         // Test four one-region, RCSs.
         let rcs7 =
-            RegionsCorrStore::from("RCS[RC[r0_X10X], RC[r0_X1X1], RC[r1_X10X], RC[r1_X1X1]]")?;
+            RegionsCorrStore::from_str("RCS[RC[r0_X10X], RC[r0_X1X1], RC[r1_X10X], RC[r1_X1X1]]")?;
         let fragments7 = rcs7.split_by_intersections();
         println!("fragments7 {fragments7}");
         assert!(fragments7.len() == 6);
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X100]")?));
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X111]")?));
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X100]")?));
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X111]")?));
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r0_X101]")?));
-        assert!(fragments7.contains(&RegionsCorr::from("RC[r1_X101]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r0_X100]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r0_X111]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r1_X100]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r1_X111]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r0_X101]")?));
+        assert!(fragments7.contains(&RegionsCorr::from_str("RC[r1_X101]")?));
 
         Ok(())
     }
 
     #[test]
     fn to_regionstore() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from("RCS[RC[r0011], RC[r1xx1]]")?;
+        let rcs1 = RegionsCorrStore::from_str("RCS[RC[r0011], RC[r1xx1]]")?;
         let rs1 = rcs1.to_regionstore();
         println!("{rcs1} to {rs1}");
-        assert!(rs1 == RegionStore::from("[r0011, r1xx1]")?);
+        assert!(rs1 == RegionStore::from_str("[r0011, r1xx1]")?);
 
-        let rcs1 = RegionsCorrStore::from("RCS[RC[r00, r11], RC[r1x, rx1]]")?;
+        let rcs1 = RegionsCorrStore::from_str("RCS[RC[r00, r11], RC[r1x, rx1]]")?;
         let rs1 = rcs1.to_regionstore();
         println!("{rcs1} to {rs1}");
-        assert!(rs1 == RegionStore::from("[r0011, r1xx1]")?);
+        assert!(rs1 == RegionStore::from_str("[r0011, r1xx1]")?);
 
         Ok(())
     }
@@ -686,12 +691,12 @@ mod tests {
     // Test subtract, and equivalence to regionstore subtraction.
     #[test]
     fn eqv_subtract() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from("RCS[RC[rX1, r0X]]")?;
-        let rcs2 = RegionsCorrStore::from("RCS[RC[r1X, rX1]]")?;
+        let rcs1 = RegionsCorrStore::from_str("RCS[RC[rX1, r0X]]")?;
+        let rcs2 = RegionsCorrStore::from_str("RCS[RC[r1X, rX1]]")?;
         let rcs3 = rcs1.subtract(&rcs2);
         println!("{rcs1} - {rcs2} = {rcs3}");
         let rs1 = rcs3.to_regionstore();
-        let rs2 = RegionStore::from("[rX10X]")?.subtract(&RegionStore::from("[1XX1]")?);
+        let rs2 = RegionStore::from_str("[rX10X]")?.subtract(&RegionStore::from_str("[1XX1]")?);
         println!("{rs1} should be eq {rs2}");
         assert!(rs1 == rs2);
 
@@ -701,11 +706,11 @@ mod tests {
     // Test split_by_intersections, and equivalence to regionstore split_by_intersections.
     #[test]
     fn eqv_split() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from("RCS[RC[rX1, r0X], RC[r1X, rX1]]")?;
+        let rcs1 = RegionsCorrStore::from_str("RCS[RC[rX1, r0X], RC[r1X, rX1]]")?;
         let rcs2 = rcs1.split_by_intersections();
         println!("{rcs1} split = {rcs2}");
         let rs1 = rcs2.to_regionstore();
-        let rs2 = RegionStore::from("[rX10X, r1XX1]")?.split_by_intersections();
+        let rs2 = RegionStore::from_str("[rX10X, r1XX1]")?.split_by_intersections();
         println!("{rs1} should be eq {rs2}");
         assert!(rs1 == rs2);
 

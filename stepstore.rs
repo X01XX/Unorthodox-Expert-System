@@ -13,7 +13,7 @@ use std::slice::{Iter, IterMut};
 
 impl fmt::Display for StepStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string(""))
+        write!(f, "{}", self.formatted_str(""))
     }
 }
 
@@ -88,7 +88,7 @@ impl StepStore {
     }
 
     /// Return a string representing a StepStore.
-    fn formatted_string(&self, prefix: &str) -> String {
+    fn formatted_str(&self, prefix: &str) -> String {
         let mut rc_str = String::with_capacity(prefix.len() + self.strlen());
         rc_str.push_str(prefix);
         rc_str.push('[');
@@ -114,21 +114,21 @@ impl StepStore {
             true
         });
 
-        let mut b01 = Vec::<SomeMask>::new();
+        let mut m01 = Vec::<SomeMask>::new();
 
-        if required_change.b01.is_not_low() {
-            b01 = required_change.b01.split();
+        if required_change.m01.is_not_low() {
+            m01 = required_change.m01.split();
         }
 
-        let mut b10 = Vec::<SomeMask>::new();
+        let mut m10 = Vec::<SomeMask>::new();
 
-        if required_change.b10.is_not_low() {
-            b10 = required_change.b10.split();
+        if required_change.m10.is_not_low() {
+            m10 = required_change.m10.split();
         }
 
-        let b01_len = b01.len();
-        let b10_len = b10.len();
-        let tot_len = b01_len + b10_len;
+        let m01_len = m01.len();
+        let m10_len = m10.len();
+        let tot_len = m01_len + m10_len;
 
         let mut ret_vec = Vec::<Vec<&SomeStep>>::with_capacity(tot_len);
 
@@ -144,23 +144,23 @@ impl StepStore {
         for stepx in &self.items {
             let edge_mask = stepx.initial.edge_mask();
 
-            // Check for matching b01 changes
-            for (inx, b01x) in b01.iter().enumerate() {
-                if stepx.rule.b01.bitwise_and(b01x).is_not_low()
-                    && b01x.bitwise_and(&edge_mask).is_not_low()
+            // Check for matching m01 changes
+            for (inx, m01x) in m01.iter().enumerate() {
+                if stepx.rule.m01.bitwise_and(m01x).is_not_low()
+                    && m01x.bitwise_and(&edge_mask).is_not_low()
                 {
                     ret_vec[inx].push(stepx);
                 }
-            } // next b01x
+            } // next m01x
 
-            // Check for matching b10 changes
-            for (inx, b10x) in b10.iter().enumerate() {
-                if stepx.rule.b10.bitwise_and(b10x).is_not_low()
-                    && b10x.bitwise_and(&edge_mask).is_not_low()
+            // Check for matching m10 changes
+            for (inx, m10x) in m10.iter().enumerate() {
+                if stepx.rule.m10.bitwise_and(m10x).is_not_low()
+                    && m10x.bitwise_and(&edge_mask).is_not_low()
                 {
-                    ret_vec[inx + b01_len].push(stepx);
+                    ret_vec[inx + m01_len].push(stepx);
                 }
-            } // next b01x
+            } // next m01x
         } // next stepx
 
         ret_vec
@@ -355,9 +355,11 @@ impl StrLen for StepStore {
     fn strlen(&self) -> usize {
         let mut rc_len = 2;
 
-        if self.is_not_empty() {
-            rc_len += self.items.len() * self.items[0].strlen();
-            rc_len += (self.items.len() - 1) * 2;
+        for (inx, itemx) in self.items.iter().enumerate() {
+            if inx > 0 {
+                rc_len += 2; // for ", "
+            }
+            rc_len += itemx.strlen();
         }
 
         rc_len
@@ -373,7 +375,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000_0000->0b0000_0000")?);
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000_0000->s0000_0000")?);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);

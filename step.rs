@@ -11,7 +11,7 @@ use std::fmt;
 
 impl fmt::Display for SomeStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_string())
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -143,7 +143,7 @@ impl SomeStep {
     }
 
     /// Return a string representing a step.
-    fn formatted_string(&self) -> String {
+    fn formatted_str(&self) -> String {
         let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
         rcstr.push_str(&self.initial.to_string());
@@ -199,12 +199,14 @@ impl SomeStep {
 /// Implement the trait StrLen for SomeStep.
 impl StrLen for SomeStep {
     fn strlen(&self) -> usize {
-        let mut len = 8 + (2 * self.initial.strlen());
-        // 1 = space separator. 5 = "Alt: ".
+        let mut len = 2; // [...]
+        len += 6; // " -00> "
+        len += 2 * self.initial.strlen(); // two regions.
+                                          // 6 = " Alt: ".
         len += match &self.alt_rule {
-            AltRuleHint::NoAlt {} => 1 + 5 + 4,
-            AltRuleHint::AltNoChange {} => 1 + 5 + 9,
-            AltRuleHint::AltRule { rule } => 1 + 5 + rule.strlen(),
+            AltRuleHint::NoAlt {} => 6 + 4,
+            AltRuleHint::AltNoChange {} => 6 + 9,
+            AltRuleHint::AltRule { rule } => 6 + rule.strlen(),
         };
         len
     }
@@ -226,7 +228,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_rul = SomeRule::new(&SomeSample::from("0b0000->0b0010")?);
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000->s0010")?);
         let tmp_stp = SomeStep::new(0, tmp_rul.clone(), AltRuleHint::NoAlt {});
 
         let strrep = format!("{tmp_stp}");
@@ -243,7 +245,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_alt = SomeRule::new(&SomeSample::from("0b0010->0b0000")?); //(tmp_sta2.clone(), tmp_sta));
+        let tmp_alt = SomeRule::new(&SomeSample::from_str("s0010->s0000")?);
         let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::AltRule { rule: tmp_alt });
 
         let strrep = format!("{tmp_stp}");
@@ -251,23 +253,32 @@ mod tests {
         let calc_len = tmp_stp.strlen();
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
+
+        let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000_0000->s0000_0000")?);
+        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
+        let strrep = format!("{tmp_stp}");
+        let len = strrep.len();
+        let calc_len = tmp_stp.strlen();
+        println!("str {tmp_stp} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
         //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn nop() -> Result<(), String> {
-        let tmp_reg = SomeRegion::from("r0X0X")?;
+        let tmp_reg = SomeRegion::from_str("r0X0X")?;
         let tmp_stp = SomeStep::new_no_op(&tmp_reg);
         println!("nop stop {tmp_stp}");
 
-        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::from("r0XX1")?);
+        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::from_str("r0XX1")?);
         println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::from("r0X01")?);
+        assert!(stpx.initial == SomeRegion::from_str("r0X01")?);
 
-        let stpx = tmp_stp.restrict_result_region(&SomeRegion::from("rX00X")?);
+        let stpx = tmp_stp.restrict_result_region(&SomeRegion::from_str("rX00X")?);
         println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::from("r000X")?);
+        assert!(stpx.initial == SomeRegion::from_str("r000X")?);
 
         //assert!(1 == 2);
         Ok(())
