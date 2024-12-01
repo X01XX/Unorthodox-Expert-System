@@ -304,4 +304,13 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let cng1_str = "00/11_/01/10/11/00";
+        let cng1 = SomeChange::from_str(&cng1_str)?;
+        println!("str {cng1_str} cng1 {cng1}");
+        //assert!(1 == 2);
+        Ok(())
+    }
 }

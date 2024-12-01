@@ -49,7 +49,6 @@ impl MaskStore {
     }
 
     /// Return true if the store is not empty.
-    #[allow(dead_code)]
     pub fn is_not_empty(&self) -> bool {
         !self.items.is_empty()
     }
@@ -60,7 +59,6 @@ impl MaskStore {
     }
 
     /// Return true if a MaskStore contains a mask.
-    #[allow(dead_code)]
     pub fn contains(&self, mskx: &SomeMask) -> bool {
         self.items.contains(mskx)
     }
@@ -188,9 +186,10 @@ mod tests {
         println!("mskst2 {mskst2}");
         assert!(format!("{mskst2}") == "[m1010]");
 
-        let mskst3 = MaskStore::from_str("[m1010, m1111]")?;
+        let mskst3_str = "[m1010, m1111]";
+        let mskst3 = MaskStore::from_str(&mskst3_str)?;
         println!("mskst3 {mskst3}");
-        assert!(format!("{mskst3}") == "[m1010, m1111]");
+        assert!(format!("{mskst3}") == mskst3_str);
 
         //assert!(1 == 2);
         Ok(())

@@ -431,7 +431,7 @@ impl SomeRegion {
         let reg_int = self.intersection(other).unwrap();
 
         // Split by X over 0 or 1.
-        let x_over_not_xs: Vec<SomeMask> = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
+        let x_over_not_xs = self.x_mask().bitwise_and(&reg_int.edge_mask()).split();
 
         for mskx in x_over_not_xs.iter() {
             if mskx.bitwise_and(reg_int.first_state()).is_low() {
@@ -468,7 +468,7 @@ impl SomeRegion {
         }
 
         // Split by X over 0 or 1, where the result will be a superset of the second argument state.
-        let x_over_not_xs: Vec<SomeMask> = self
+        let x_over_not_xs = self
             .x_mask()
             .bitwise_and(&substa.bitwise_xor(supsta))
             .split();

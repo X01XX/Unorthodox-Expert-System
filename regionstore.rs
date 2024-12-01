@@ -883,11 +883,11 @@ mod tests {
         println!("regst2 {regst2}");
         assert!(format!("{regst2}") == "[r1010]");
 
-        let regst3 = RegionStore::from_str("[r1010, r1111]")?;
+        let regst3_str = "[r1010, r1111]";
+        let regst3 = RegionStore::from_str(&regst3_str)?;
         println!("regst3 {regst3}");
-        assert!(format!("{regst3}") == "[r1010, r1111]");
+        assert!(format!("{regst3}") == regst3_str);
 
-        //assert!(1 == 2);
         Ok(())
     }
 

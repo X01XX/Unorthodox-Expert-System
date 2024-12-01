@@ -179,9 +179,10 @@ mod tests {
         println!("mskst2 {mskst2}");
         assert!(format!("{mskst2}") == "MC[m1010]");
 
-        let mskst3 = MasksCorr::from_str("MC[m1010, m1111]")?;
+        let mskst3_str = "MC[m1010, m1111]";
+        let mskst3 = MasksCorr::from_str(&mskst3_str)?;
         println!("mskst3 {mskst3}");
-        assert!(format!("{mskst3}") == "MC[m1010, m1111]");
+        assert!(format!("{mskst3}") == mskst3_str);
 
         //assert!(1 == 2);
         Ok(())

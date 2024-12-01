@@ -596,9 +596,10 @@ mod tests {
         println!("regst2 {regst2}");
         assert!(format!("{regst2}") == "RC[r1010]");
 
-        let regst3 = RegionsCorr::from_str("RC[r1010, r1111]")?;
+        let regst3_str = "RC[r1010, r1111]";
+        let regst3 = RegionsCorr::from_str(&regst3_str)?;
         println!("regst3 {regst3}");
-        assert!(format!("{regst3}") == "RC[r1010, r1111]");
+        assert!(format!("{regst3}") == regst3_str);
 
         Ok(())
     }

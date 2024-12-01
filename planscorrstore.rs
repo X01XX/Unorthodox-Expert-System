@@ -14,7 +14,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlansCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PCS[{}]", tools::vec_string(&self.items))
+        write!(f, "PCS{}", tools::vec_string(&self.items))
     }
 }
 
@@ -403,13 +403,13 @@ mod tests {
         println!("pcs2 {pcs2}");
         assert!(pcs2.len() == 1);
 
-        let pcs3 = PlansCorrStore::from_str(
-            "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0], PC[[P[r00-0->r01], P[r000-1->r100]], 0]]",
-        )?;
+        let pcs3_str =
+            "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0], PC[[P[r00-0->r01], P[r000-1->r100]], 0]]";
+        let pcs3 = PlansCorrStore::from_str(&pcs3_str)?;
         println!("pcs3 {pcs3}");
-        assert!(pcs3.len() == 2);
+        println!("str  {pcs3_str}");
+        assert!(format!("{pcs3}") == pcs3_str);
 
-        //assert!(1 == 2);
         Ok(())
     }
 

@@ -12,6 +12,7 @@
 
 use crate::bits::BitsRef;
 use crate::bits::SomeBits;
+use crate::maskstore::MaskStore;
 use crate::state::SomeState;
 use crate::tools::{self, StrLen};
 
@@ -127,12 +128,14 @@ impl SomeMask {
 
     /// Return a vector of one-bit masks.
     /// Could be called like MaskStore { avec: [a mask object].split() }
-    pub fn split(&self) -> Vec<Self> {
-        self.bts
-            .split()
-            .into_iter()
-            .map(|bitx| Self { bts: bitx })
-            .collect()
+    pub fn split(&self) -> MaskStore {
+        MaskStore::new(
+            self.bts
+                .split()
+                .into_iter()
+                .map(|bitx| Self { bts: bitx })
+                .collect(),
+        )
     }
 
     /// Return a formatted string.
@@ -281,6 +284,22 @@ mod tests {
         let mask_str = "m01_1101";
         assert!(format!("{}", SomeMask::from_str(&mask_str)?) == mask_str);
 
+        Ok(())
+    }
+
+    #[test]
+    fn split() -> Result<(), String> {
+        let msx = SomeMask::from_str("0000")?.split();
+        println!("msx {msx}");
+        assert!(msx.len() == 0);
+
+        let msx = SomeMask::from_str("1010")?.split();
+        println!("msx {msx}");
+        assert!(msx.len() == 2);
+        assert!(msx.contains(&SomeMask::from_str("0010")?));
+        assert!(msx.contains(&SomeMask::from_str("1000")?));
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

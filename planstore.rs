@@ -322,9 +322,10 @@ mod tests {
         println!("plnst2 {plnst2}");
         assert!(format!("{plnst2}") == "[P[r0000-0->r1111]]");
 
-        let plnst3 = PlanStore::from_str("[P[r0000-0->r1111], P[r0000-0->r1100]]")?;
+        let plnst3_str = "[P[r0000-0->r1111], P[r0000-0->r1100]]";
+        let plnst3 = PlanStore::from_str(&plnst3_str)?;
         println!("plnst3 {plnst3}");
-        assert!(format!("{plnst3}") == "[P[r0000-0->r1111], P[r0000-0->r1100]]");
+        assert!(format!("{plnst3}") == plnst3_str);
 
         Ok(())
     }

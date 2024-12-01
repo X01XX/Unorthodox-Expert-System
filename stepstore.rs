@@ -2,7 +2,6 @@
 
 use crate::bits::vec_same_num_bits;
 use crate::change::SomeChange;
-use crate::mask::SomeMask;
 use crate::step::SomeStep;
 use crate::tools::{self, StrLen};
 
@@ -114,17 +113,9 @@ impl StepStore {
             true
         });
 
-        let mut m01 = Vec::<SomeMask>::new();
+        let m01 = required_change.m01.split();
 
-        if required_change.m01.is_not_low() {
-            m01 = required_change.m01.split();
-        }
-
-        let mut m10 = Vec::<SomeMask>::new();
-
-        if required_change.m10.is_not_low() {
-            m10 = required_change.m10.split();
-        }
+        let m10 = required_change.m10.split();
 
         let m01_len = m01.len();
         let m10_len = m10.len();

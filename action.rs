@@ -944,7 +944,7 @@ impl SomeAction {
         let edge_msks = regx.edge_mask().split();
 
         // Rate adjacent external states
-        for edge_bit in &edge_msks {
+        for edge_bit in edge_msks.iter() {
             let sta_adj = stax.bitwise_xor(edge_bit).as_state();
 
             let stats = self.groups.in_one_anchor(&sta_adj);
@@ -1171,10 +1171,10 @@ impl SomeAction {
 
         let change_bits = regx.edge_mask().bitwise_and(&max_reg.x_mask());
 
-        let edge_msks: Vec<SomeMask> = change_bits.split();
+        let edge_msks = change_bits.split();
 
-        for mskx in edge_msks {
-            let adj_sta = anchor_sta.bitwise_xor(&mskx).as_state();
+        for mskx in edge_msks.iter() {
+            let adj_sta = anchor_sta.bitwise_xor(mskx).as_state();
 
             //println!("*** for group {} checking adj sqr {}", regx, adj_sta);
 
@@ -1292,10 +1292,10 @@ impl SomeAction {
         }
 
         // Confirm a group by checking for internal adjacent squares.
-        let x_msks: Vec<SomeMask> = regx.x_mask().split();
+        let x_msks = regx.x_mask().split();
 
-        for mskx in x_msks {
-            let adj_sta = anchor_sta.bitwise_xor(&mskx).as_state();
+        for mskx in x_msks.iter() {
+            let adj_sta = anchor_sta.bitwise_xor(mskx).as_state();
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {

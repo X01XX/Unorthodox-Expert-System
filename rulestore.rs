@@ -857,9 +857,10 @@ mod tests {
         println!("rulst2 {rulst2}");
         assert!(format!("{rulst2}") == "[00/01/XX]");
 
-        let rulst3 = RuleStore::from_str("[X0/11/10/X1, X1/10/11/X0]")?;
+        let rulst3_str = "[X0/11/10/X1, X1/10/11/X0]";
+        let rulst3 = RuleStore::from_str(&rulst3_str)?;
         println!("rulst3 {rulst3}");
-        assert!(format!("{rulst3}") == "[X0/11/10/X1, X1/10/11/X0]");
+        assert!(format!("{rulst3}") == rulst3_str);
 
         //assert!(1 == 2);
         Ok(())

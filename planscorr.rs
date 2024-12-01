@@ -469,9 +469,10 @@ mod tests {
         println!("plncr2 {plncr2}");
         assert!(format!("{plncr2}") == "PC[[P[r0000-0->r1111]], 1]");
 
-        let plncr3 = PlansCorr::from_str("PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]")?;
+        let plncr3_str = "PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]";
+        let plncr3 = PlansCorr::from_str(&plncr3_str)?;
         println!("plncr3 {plncr3}");
-        assert!(format!("{plncr3}") == "PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]");
+        assert!(format!("{plncr3}") == plncr3_str);
 
         Ok(())
     }

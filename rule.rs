@@ -1295,4 +1295,14 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let rul1_str = "01/01/Xx/XX_X0/X1/00/11";
+        let rul1 = SomeRule::from_str(rul1_str)?;
+        println!("rul1 {rul1}");
+        assert!(format!("{rul1}") == rul1_str);
+
+        Ok(())
+    }
 } // end tests

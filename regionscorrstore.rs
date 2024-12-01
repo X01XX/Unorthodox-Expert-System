@@ -12,7 +12,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.items))
+        write!(f, "RCS{}", tools::vec_string(&self.items))
     }
 }
 
@@ -598,9 +598,10 @@ mod tests {
         println!("rcs2 {rcs2}");
         assert!(rcs2.len() == 1);
 
-        let rcs3 = RegionsCorrStore::from_str("RCS[RC[r0X10, r100], RC[r0X11, r101]]")?;
+        let rcs3_str = "RCS[RC[r0X10, r100], RC[r0X11, r101]]";
+        let rcs3 = RegionsCorrStore::from_str(&rcs3_str)?;
         println!("rcs3 {rcs3}");
-        assert!(rcs3.len() == 2);
+        assert!(format!("{rcs3}") == rcs3_str);
 
         Ok(())
     }
