@@ -2690,13 +2690,13 @@ mod tests {
         } else {
             println!("agg cncs (1) None");
         }
-        assert!(act0.aggregate_changes() == Some(&SomeChange::from_str("00/00/10/00")?));
+        assert!(act0.aggregate_changes() == Some(&SomeChange::from_str("../../10/..")?));
 
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
 
         if let Some(change2) = act0.aggregate_changes() {
             println!("change2 {change2}");
-            assert!(*change2 == SomeChange::from_str("00/00/10/00")?);
+            assert!(*change2 == SomeChange::from_str("../../10/..")?);
         } else {
             return Err("Test 2 failed".to_string());
         }
@@ -2713,7 +2713,7 @@ mod tests {
 
         if let Some(change3) = act0.aggregate_changes() {
             println!("change3 {change3}");
-            assert!(*change3 == SomeChange::from_str("01/00/10/10")?);
+            assert!(*change3 == SomeChange::from_str("01/../10/10")?);
         } else {
             return Err("Test 3 failed".to_string());
         }
@@ -2725,7 +2725,7 @@ mod tests {
 
         if let Some(change4) = act0.aggregate_changes() {
             println!("change4 {change4}");
-            assert!(*change4 == SomeChange::from_str("01/00/10/00")?);
+            assert!(*change4 == SomeChange::from_str("01/../10/..")?);
         } else {
             return Err("Test 4 failed".to_string());
         }

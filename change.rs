@@ -95,20 +95,13 @@ impl SomeChange {
 
     /// Return a string to represent a SomeChange instance.
     fn formatted_str(&self) -> String {
-        let mut strrc = String::with_capacity(10);
-
-        if self.m01.is_not_low() {
-            strrc.push_str(&format!("0->1: {}", self.m01));
-            if self.m10.is_not_low() {
-                strrc.push_str(&format!(", 1->0: {}", self.m10));
-            }
-        } else if self.m10.is_not_low() {
-            strrc.push_str(&format!("1->0: {}", self.m10));
-        } else {
-            strrc.push_str("(none)");
+        SomeRule {
+            m00: self.m10.new_low(),
+            m01: self.m01.clone(),
+            m11: self.m10.new_low(),
+            m10: self.m10.clone(),
         }
-
-        strrc
+        .formatted_str()
     }
 
     /// Return a change for translating from a state to a region.
@@ -148,7 +141,15 @@ impl SomeChange {
         }
 
         match SomeRule::from_str(str2) {
-            Ok(ruls) => Ok(ruls.to_change()),
+            Ok(ruls) => {
+                if ruls.m00.is_not_low() {
+                    Err("SomeChange::from_str: invalid token, 00, X0 or XX?".to_string())
+                } else if ruls.m11.is_not_low() {
+                    Err("SomeChange::from_str: invalid token, 11, X1 or XX?".to_string())
+                } else {
+                    Ok(ruls.to_change())
+                }
+            }
             Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),
         }
     }
@@ -255,10 +256,10 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let cng1 = SomeChange::from_str("X1/X0/XX/Xx_00/01/11/10")?;
+        let cng1 = SomeChange::from_str("01/10/../Xx_../01/../10")?;
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::from_str("11/X0/XX/01_00/01/11/10")?;
+        let cng2 = SomeChange::from_str("../10/../01_../01/../10")?;
         println!("cng2 {cng2}");
 
         assert!(cng2.is_subset_of(&cng1));
@@ -269,16 +270,16 @@ mod tests {
 
     #[test]
     fn difference() -> Result<(), String> {
-        let cng1 = SomeChange::from_str("X1/X0/XX/Xx_00/01/11/10")?;
+        let cng1 = SomeChange::from_str("01/10/../Xx_../01/../10")?;
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::from_str("11/X0/XX/01_00/01/11/10")?;
+        let cng2 = SomeChange::from_str("../10/../01_../01/../10")?;
         println!("cng2 {cng2}");
 
         let cng3 = cng1.difference(&cng2);
         println!("cng3 {cng3}");
 
-        let cng4 = SomeChange::from_str("01/00/00/10_00/00/11/11")?;
+        let cng4 = SomeChange::from_str("01/../../10_../../../..")?;
         println!("cng4 {cng4}");
 
         assert!(cng3 == cng4);
@@ -297,7 +298,7 @@ mod tests {
         let cng1 = SomeChange::new_state_to_region(&sta1, &reg1);
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::from_str("00/11_/01/10/11/00")?;
+        let cng2 = SomeChange::from_str("../.._/01/10/../..")?;
         println!("cng2 {cng2}");
 
         assert!(cng1 == cng2);
@@ -307,9 +308,10 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let cng1_str = "00/11_/01/10/11/00";
+        let cng1_str = "01/10/Xx/..";
         let cng1 = SomeChange::from_str(&cng1_str)?;
         println!("str {cng1_str} cng1 {cng1}");
+        assert!(format!("{cng1}") == cng1_str);
         //assert!(1 == 2);
         Ok(())
     }

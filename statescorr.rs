@@ -172,9 +172,10 @@ mod tests {
         println!("stast2 {stast2}");
         assert!(format!("{stast2}") == "SC[s1010]");
 
-        let stast3 = StatesCorr::from_str("SC[s1010, s1111]")?;
+        let stast3_str = "SC[s1010, s1111]";
+        let stast3 = StatesCorr::from_str(&stast3_str)?;
         println!("stast3 {stast3}");
-        assert!(format!("{stast3}") == "SC[s1010, s1111]");
+        assert!(format!("{stast3}") == stast3_str);
 
         //assert!(1 == 2);
         Ok(())

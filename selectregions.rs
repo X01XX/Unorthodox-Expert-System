@@ -468,4 +468,14 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let regst3_str = "SR[RC[r1010, r1111], -1]";
+        let regst3 = SelectRegions::from_str(&regst3_str)?;
+        println!("regst3 {regst3}");
+        assert!(format!("{regst3}") == regst3_str);
+
+        Ok(())
+    }
 }

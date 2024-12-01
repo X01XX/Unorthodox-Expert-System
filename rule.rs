@@ -22,7 +22,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[readonly::make]
+//#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 /// A struct of four masks with the same number of bits.
 /// They represent a sample, before/after.
@@ -130,6 +130,11 @@ impl SomeRule {
                 } else if token == "0X" || token == "0x" {
                     m00.push('1');
                     m01.push('1');
+                    m11.push('0');
+                    m10.push('0');
+                } else if token == ".." {
+                    m00.push('0');
+                    m01.push('0');
                     m11.push('0');
                     m10.push('0');
                 } else {
@@ -358,7 +363,7 @@ impl SomeRule {
     }
 
     /// Return a string representation of SomeRule.
-    fn formatted_str(&self) -> String {
+    pub fn formatted_str(&self) -> String {
         let mut strrc = String::with_capacity(self.strlen());
 
         let m00 = format!("{}", self.m00);
@@ -1235,7 +1240,7 @@ mod tests {
 
     #[test]
     fn mutually_exclusive() -> Result<(), String> {
-        let chg1 = SomeChange::from_str("Xx/XX")?;
+        let chg1 = SomeChange::from_str("Xx/..")?;
 
         let rul1 = SomeRule::from_str("01/01")?;
         let rul2 = SomeRule::from_str("11/10")?;
