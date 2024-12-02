@@ -1,4 +1,3 @@
-//#![allow(dead_code)]
 /*
  * Unorthodox Expert System
  *
@@ -1257,32 +1256,43 @@ fn usage() {
     println!("                               Then use this command, with the need target.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
-    println!("\n    A need number is an integer, zero or greater, where such a need exists.");
-    println!("\n    A state starts with an 's0b' or 's0x', followed by one, or more, digits.");
+    println!("\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done.");
+    println!(
+        "\n    A state starts with an 's' character, followed by one, or more, binary digits."
+    );
     println!("\n    A region starts with an 'r' character, followed by one, or more, zero, one, X or x characters.");
-    println!("    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.");
+    println!("    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.  Two states is a goal.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. All bit positions must be specified.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
-    println!("\n    If there is an select region for the CDD, when no more needs can be done, the program will seek to change the current state");
-    println!("    to be in an select region.");
-    println!("\n    If there is another select region the current state is not in, after a (3 * number-regions-in) steps, the program will get bored");
-    println!("    and seek to move the current state to a different select region, or to an intersection of select regions.");
+    println!("          The bar for this is fairly low.");
+    println!("          Additional samples can cycle the pn and pnc values through all possible combinations.");
+    println!("\n    A Select Region is an arbitrary region, across all domains, with a given value, positive or negative.");
+    println!("\n        Plans, to satisfy a need, are made to avoid negative select regions, if possible.");
+    println!("\n        Finding the current state within a negative select region, the program will attempt to exit the region.");
+    println!("\n    A plan to satisfy a need may be shown in one of two ways.");
+    println!("\n        At Target - The current state is within the need target, a sample can be taken immediately.");
+    println!("\n        PCS[PC[P[0:1], P[1:3]], PC[P[0:3,2]]]/3/6/-1 - Changes need to be made to the current state to be within the need target.");
+    println!("\n            PCS[ ... ]/3/6/-1 - A Plan Corresponding (per domain) Store, to change 3 bits, using plans that change 6 bits, passing through -1 valued regions.");
+    println!("\n            PC[ .. ] - A Plan Corresponding (per domain). No more than one plan per domain. If more than one plan, the plans will be run in parallel.");
+    println!("\n            P[ .. ] - A Plan. One, or more, actions for a single domain.");
+    println!("\n            0:3,2 - For domain 0, run action 3, then action 2.");
+    println!("\n    Once the current state is within the need target, most (but not all) needs require an additional action to get a sample.");
+    println!("\n    Needs that cannot be done.  Lets say the current state is s0000, there is a need for s1000, and no action that changes");
     println!(
-        "\n    \"P:0[]\" means Plan: Domain 0. The current state can be used to satisfy the need."
+        "    the left-most bit.  Using the command \"cs s1000\" will get things moving again."
     );
-    println!("\n    \"P:1[2,3]/1/2/+5\" means Plan: Domain 1. Run action 2, then action 3, to change the current state to satisfy the need.");
-    println!("    The number of desired bit changes is 1.");
-    println!("    The number of bit changes in the plan that cause the desired bit changes is 2.");
-    println!("    The regions the plan passes through have an aggregate rating of positive 5.");
-    println!("\n    Once the current state is correct, most (but not all) needs require an additional action to get a sample.");
-    println!("\n    Needs that cannot be done.  Lets say the current state is s00000000, there is a need for s10000000, and an action that changes");
-    println!("    the left-most two bits.  From state s00.. the only option is state s11.. using that action.  Using the command \"cs s10<any 6 more bits>\"");
-    println!("    will get things moving again.");
-    println!("\n    After no more needs can be done, select region seeking logic will be used.  If there is more than one select");
-    println!("    region, repeatedly pressing enter will increase the boredom duration, after the value of the select regions");
-    println!("    the current state is in, a different select region will be sought.");
+    println!("\n        If there is only one square that makes a change that no other square makes, and that square has not happened to be sampled,");
+    println!(
+        "        the understanding of the logic will be deficient until the square is sampled."
+    );
+    println!(
+        "\n    After no more needs can be done, positive select region seeking logic will be used."
+    );
+    println!("    Repeatedly pressing the Enter key will increase the boredom duration.");
+    println!("    If there is more than one positive select region, when the boredom value reaches the the select region value,");
+    println!("    a different select region will be sought.");
 }
 
 ///Pause for input from user.

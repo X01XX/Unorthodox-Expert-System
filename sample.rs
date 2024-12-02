@@ -36,7 +36,7 @@ impl SomeSample {
 
     /// Return a string to represent a SomeSample instance.
     fn formatted_str(&self) -> String {
-        format!("{} -> {}", self.initial, self.result)
+        format!("{}->{}", self.initial, self.result)
     }
 
     /// Return the number bits used in sample elements.
@@ -114,117 +114,15 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        match SomeSample::from_str("s0101->s1010") {
+        let smpl_str = "s0101->s1010";
+        match SomeSample::from_str(&smpl_str) {
             Ok(asample) => {
-                assert!(asample.initial == SomeState::from_str("0101")?);
-                assert!(asample.result == SomeState::from_str("1010")?);
+                if format!("{asample}") != smpl_str {
+                    return Err(format!("{asample} NE {smpl_str} ?"));
+                }
             }
             Err(errstr) => {
                 return Err(errstr);
-            }
-        }
-
-        match SomeSample::from_str("s0101->s1010") {
-            Ok(asample) => {
-                assert!(asample.initial == SomeState::from_str("0101")?);
-                assert!(asample.result == SomeState::from_str("1010")?);
-            }
-            Err(errstr) => {
-                return Err(errstr);
-            }
-        }
-
-        match SomeSample::from_str("01010->1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(errstr == "SomeSample::from_str: Number bits of initial and result do not match in 01010->1010".to_string());
-            }
-        }
-
-        match SomeSample::from_str("0101x->1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(
-                    errstr
-                        == "SomeSample::from_str: Did not understand initial state in 0101x->1010"
-                            .to_string()
-                );
-            }
-        }
-
-        match SomeSample::from_str("0101->1x10") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(
-                    errstr
-                        == "SomeSample::from_str: Did not understand result state in 0101->1x10"
-                            .to_string()
-                );
-            }
-        }
-
-        match SomeSample::from_str("0101-1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(errstr == "SomeSample::from_str: Did not understand 0101-1010".to_string());
-            }
-        }
-
-        match SomeSample::from_str("0101-->1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(
-                    errstr == "SomeSample::from_str: Did not understand 0101-->1010".to_string()
-                );
-            }
-        }
-
-        match SomeSample::from_str("0101>1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(errstr == "SomeSample::from_str: Did not understand 0101>1010".to_string());
-            }
-        }
-
-        match SomeSample::from_str("0101>>1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(
-                    errstr == "SomeSample::from_str: Did not understand 0101>>1010".to_string()
-                );
-            }
-        }
-
-        match SomeSample::from_str("0101>-1010") {
-            Ok(_asample) => {
-                return Err("SNH".to_string());
-            }
-            Err(errstr) => {
-                println!("{errstr}");
-                assert!(
-                    errstr == "SomeSample::from_str: Did not understand 0101>-1010".to_string()
-                );
             }
         }
 

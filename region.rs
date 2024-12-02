@@ -843,7 +843,17 @@ mod tests {
             }
         }
 
-        match SomeRegion::from_str("r0001") {
+        match SomeRegion::from_str("r00X1") {
+            Ok(regx) => {
+                println!("regx {regx}");
+                assert!(regx.num_bits() == 4);
+            }
+            Err(error) => {
+                return Err(error);
+            }
+        }
+
+        match SomeRegion::from_str("s0001") {
             Ok(regx) => {
                 println!("regx {regx}");
                 assert!(regx.num_bits() == 4);
