@@ -8,11 +8,10 @@ use crate::maskstore::MaskStore;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-
-use std::fmt;
-
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for MasksCorr {
@@ -64,9 +63,54 @@ impl MasksCorr {
         self.masks.iter()
     }
 
-    /// Return a maskscorr, given a string representation.
+    /// Return true if corresponding regions in two MasksCorr have the same number of bits.
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
+    }
+
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for regx in self.masks.iter() {
+            ret_vec.push(regx.num_bits());
+        }
+        ret_vec
+    }
+
+    /// Return the number of bits set to one.
+    pub fn num_one_bits(&self) -> usize {
+        let mut count = 0;
+        for mskx in self.iter() {
+            count += mskx.num_one_bits();
+        }
+        count
+    }
+} // end impl MasksCorr
+
+impl Index<usize> for MasksCorr {
+    type Output = SomeMask;
+    fn index(&self, i: usize) -> &SomeMask {
+        &self.masks[i]
+    }
+}
+
+impl IndexMut<usize> for MasksCorr {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.masks[i]
+    }
+}
+
+impl tools::CorrespondingItems for MasksCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
+    }
+}
+
+impl FromStr for MasksCorr {
+    type Err = String;
+    /// Return a MasksCorr, given a string representation.
     /// Like SC[], SC[s1010], or SC[s101, s100].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("maskscorr::from_str: {str_in}");
         let mc_str = str_in.trim();
 
@@ -120,48 +164,6 @@ impl MasksCorr {
             Ok(masks) => Ok(Self { masks }),
             Err(errstr) => Err(format!("MasksCorr::from_str: {errstr}")),
         }
-    }
-
-    /// Return true if corresponding regions in two MasksCorr have the same number of bits.
-    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
-        self.num_bits_vec() == other.num_bits_vec()
-    }
-
-    /// Return a vector of corresponding num_bits.
-    pub fn num_bits_vec(&self) -> Vec<usize> {
-        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
-        for regx in self.masks.iter() {
-            ret_vec.push(regx.num_bits());
-        }
-        ret_vec
-    }
-
-    /// Return the number of bits set to one.
-    pub fn num_one_bits(&self) -> usize {
-        let mut count = 0;
-        for mskx in self.iter() {
-            count += mskx.num_one_bits();
-        }
-        count
-    }
-} // end impl MasksCorr
-
-impl Index<usize> for MasksCorr {
-    type Output = SomeMask;
-    fn index(&self, i: usize) -> &SomeMask {
-        &self.masks[i]
-    }
-}
-
-impl IndexMut<usize> for MasksCorr {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.masks[i]
-    }
-}
-
-impl tools::CorrespondingItems for MasksCorr {
-    fn num_bits_vec(&self) -> Vec<usize> {
-        self.num_bits_vec()
     }
 }
 

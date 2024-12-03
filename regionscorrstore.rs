@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorrStore {
@@ -323,9 +324,92 @@ impl RegionsCorrStore {
         other.subtract(self).is_empty()
     }
 
+    /// Extend a RegionsCorrStore by emptying another RegionsCorrStore.
+    pub fn append(&mut self, mut other: Self) {
+        self.items.append(&mut other.items);
+    }
+
+    /// Return a reference to the last item in an instance.
+    pub fn last(&self) -> Option<&RegionsCorr> {
+        self.items.last()
+    }
+
+    /// Return indicies of first intersection found between two instances.
+    pub fn intersecting_pair(&self, other: &Self) -> Option<(usize, usize)> {
+        for (inx, rcx) in self.iter().enumerate() {
+            for (iny, rcy) in other.iter().enumerate() {
+                if rcx.intersects(rcy) {
+                    return Some((inx, iny));
+                }
+            }
+        }
+        None
+    }
+
+    /// Return indicies of first intersection found between two instances.
+    pub fn adjacent_pair(&self, other: &Self) -> Option<(usize, usize)> {
+        for (inx, rcx) in self.iter().enumerate() {
+            for (iny, rcy) in other.iter().enumerate() {
+                if rcx.is_adjacent(rcy) {
+                    return Some((inx, iny));
+                }
+            }
+        }
+        None
+    }
+
+    /// Truncate after the first X items of an instance.
+    pub fn truncate(&mut self, limit: usize) {
+        self.items.truncate(limit);
+    }
+
+    /// Reverse the order of items in an instance.
+    pub fn reverse(&mut self) {
+        self.items.reverse();
+    }
+} // end impl RegionsCorrStore.
+
+impl Index<usize> for RegionsCorrStore {
+    type Output = RegionsCorr;
+    fn index(&self, i: usize) -> &RegionsCorr {
+        &self.items[i]
+    }
+}
+
+impl IndexMut<usize> for RegionsCorrStore {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.items[i]
+    }
+}
+
+impl IntoIterator for RegionsCorrStore {
+    type Item = RegionsCorr;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+/// Implement the trait StrLen for RegionsCorrStore.
+impl StrLen for RegionsCorrStore {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.is_not_empty() {
+            rc_len += self.items.len() * self.items[0].strlen();
+            rc_len += (self.items.len() - 1) * 2;
+        }
+
+        rc_len
+    }
+}
+
+impl FromStr for RegionsCorrStore {
+    type Err = String;
     /// Return a RegionsCorrStore instance, given a string representation.
     /// Like RCS[], RCS[RC[r0010]] or RCS[RC[r1010], RC[r1111]].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("regionscorrstore::from_str: {str_in}");
         let rcs_str = str_in.trim();
 
@@ -446,86 +530,6 @@ impl RegionsCorrStore {
         }
 
         Ok(rcs)
-    }
-
-    /// Extend a RegionsCorrStore by emptying another RegionsCorrStore.
-    pub fn append(&mut self, mut other: Self) {
-        self.items.append(&mut other.items);
-    }
-
-    /// Return a reference to the last item in an instance.
-    pub fn last(&self) -> Option<&RegionsCorr> {
-        self.items.last()
-    }
-
-    /// Return indicies of first intersection found between two instances.
-    pub fn intersecting_pair(&self, other: &Self) -> Option<(usize, usize)> {
-        for (inx, rcx) in self.iter().enumerate() {
-            for (iny, rcy) in other.iter().enumerate() {
-                if rcx.intersects(rcy) {
-                    return Some((inx, iny));
-                }
-            }
-        }
-        None
-    }
-
-    /// Return indicies of first intersection found between two instances.
-    pub fn adjacent_pair(&self, other: &Self) -> Option<(usize, usize)> {
-        for (inx, rcx) in self.iter().enumerate() {
-            for (iny, rcy) in other.iter().enumerate() {
-                if rcx.is_adjacent(rcy) {
-                    return Some((inx, iny));
-                }
-            }
-        }
-        None
-    }
-
-    /// Truncate after the first X items of an instance.
-    pub fn truncate(&mut self, limit: usize) {
-        self.items.truncate(limit);
-    }
-
-    /// Reverse the order of items in an instance.
-    pub fn reverse(&mut self) {
-        self.items.reverse();
-    }
-} // end impl RegionsCorrStore.
-
-impl Index<usize> for RegionsCorrStore {
-    type Output = RegionsCorr;
-    fn index(&self, i: usize) -> &RegionsCorr {
-        &self.items[i]
-    }
-}
-
-impl IndexMut<usize> for RegionsCorrStore {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.items[i]
-    }
-}
-
-impl IntoIterator for RegionsCorrStore {
-    type Item = RegionsCorr;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.into_iter()
-    }
-}
-
-/// Implement the trait StrLen for RegionsCorrStore.
-impl StrLen for RegionsCorrStore {
-    fn strlen(&self) -> usize {
-        let mut rc_len = 2;
-
-        if self.is_not_empty() {
-            rc_len += self.items.len() * self.items[0].strlen();
-            rc_len += (self.items.len() - 1) * 2;
-        }
-
-        rc_len
     }
 }
 

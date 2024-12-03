@@ -14,6 +14,7 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 /// Display trait for SomeBits
@@ -115,104 +116,6 @@ impl SomeBits {
         }
 
         Self { num_bits, ints }
-    }
-
-    /// Return a bits instance from a string, like b1010_10101.
-    /// All bits needed must be specified.
-    ///
-    /// The "b" prefix may be omitted.
-    ///
-    /// if let Ok(bts) = SomeBits::from_str("0101")) {
-    ///    println!("bts {}", &bts);
-    /// } else {
-    ///    panic!("Invalid bits string");
-    /// }
-    ///
-    /// An underscore, "_", character can be used as a visual separator, and is ignored.
-    /// Spaces are ignored.
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        // println!("SomeBits::from_str: {str_in}");
-        let str2 = str_in.trim();
-
-        if str2.is_empty() {
-            return Err("SomeBits::from_str: Empty string?".to_string());
-        }
-
-        // Count the number of bits.
-        let mut num_bits: Bitint = 0;
-
-        for (inx, chr) in str2.graphemes(true).enumerate() {
-            if inx == 0 && chr == "b" {
-                continue;
-            }
-
-            // Check for visual separator.
-            if chr == "_" || chr == " " {
-                continue;
-            }
-
-            if chr == "0" || chr == "1" {
-                num_bits += 1;
-            } else {
-                return Err(format!(
-                    "SomeBits::from_str: String {str_in}, invalid binary digit {chr}?"
-                ));
-            }
-        }
-
-        if num_bits == 0 {
-            return Err(format!(
-                "SomeBits::from_str: String {str_in}, no valid digits?"
-            ));
-        }
-
-        let mut ints = Vec::<Bitint>::with_capacity(Self::number_bits_to_ints(num_bits) as usize);
-
-        // let mut ints = Vec::<Bitint>::new();
-
-        // Fill int vec.
-        //let mut num_bits: usize = 0;
-        let mut cur_bits: usize = 0;
-        let mut cur_int = 0;
-
-        for chr in str2.graphemes(true).rev() {
-            // Check for ignored characters.
-            if chr == "_" || chr == " " || chr == "b" {
-                continue;
-            }
-
-            // Get character value.
-            if let Ok(digit) = Bitint::from_str_radix(chr, 2) {
-                cur_int += digit << cur_bits;
-                cur_bits += 1;
-            } else {
-                return Err(format!(
-                    "SomeBits::from_str: String {str_in}, invalid binary digit {chr}?"
-                ));
-            }
-
-            if cur_bits == Bitint::BITS as usize {
-                ints.push(cur_int);
-                cur_int = 0;
-                cur_bits = 0;
-            }
-        }
-        if num_bits == 0 {
-            return Err(format!(
-                "SomeBits::from_str: String {str_in}, no valid digits?"
-            ));
-        }
-
-        if cur_bits > 0 {
-            ints.push(cur_int);
-        }
-
-        ints.reverse();
-
-        Ok(Self {
-            num_bits: num_bits as Bitint,
-            ints,
-        })
     }
 
     /// Return a vector of bits where each has only
@@ -432,6 +335,104 @@ impl SomeBits {
         self.b_xor(bts1).b_and(&self.b_xor(bts2)).is_low()
     }
 } // end impl SomeBits
+
+/// Return a bits instance from a string, like b1010_10101.
+/// All bits needed must be specified.
+/// A first character of "b" is optional, and supported, for cut-and-paste from output on console.
+/// An underscore, "_", character can be used as a visual separator, and is ignored.
+/// Spaces are ignored.
+impl FromStr for SomeBits {
+    type Err = String;
+    /// Return SomeBits from a string, like b1010_10101.
+    /// All bits needed must be specified.
+    /// A first character of "b" is optional, and supported, for cut-and-paste from output on console.
+    /// An underscore, "_", character can be used as a visual separator, and is ignored.
+    /// Spaces are ignored.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        // println!("SomeBits::from_str: {str_in}");
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeBits::from_str: Empty string?".to_string());
+        }
+
+        // Count the number of bits.
+        let mut num_bits: Bitint = 0;
+
+        for (inx, chr) in str2.graphemes(true).enumerate() {
+            if inx == 0 && chr == "b" {
+                continue;
+            }
+
+            // Check for visual separator.
+            if chr == "_" || chr == " " {
+                continue;
+            }
+
+            if chr == "0" || chr == "1" {
+                num_bits += 1;
+            } else {
+                return Err(format!(
+                    "SomeBits::from_str: String {str_in}, invalid binary digit {chr}?"
+                ));
+            }
+        }
+
+        if num_bits == 0 {
+            return Err(format!(
+                "SomeBits::from_str: String {str_in}, no valid digits?"
+            ));
+        }
+
+        let mut ints = Vec::<Bitint>::with_capacity(Self::number_bits_to_ints(num_bits) as usize);
+
+        // let mut ints = Vec::<Bitint>::new();
+
+        // Fill int vec.
+        //let mut num_bits: usize = 0;
+        let mut cur_bits: usize = 0;
+        let mut cur_int = 0;
+
+        for chr in str2.graphemes(true).rev() {
+            // Check for ignored characters.
+            if chr == "_" || chr == " " || chr == "b" {
+                continue;
+            }
+
+            // Get character value.
+            if let Ok(digit) = Bitint::from_str_radix(chr, 2) {
+                cur_int += digit << cur_bits;
+                cur_bits += 1;
+            } else {
+                return Err(format!(
+                    "SomeBits::from_str: String {str_in}, invalid binary digit {chr}?"
+                ));
+            }
+
+            if cur_bits == Bitint::BITS as usize {
+                ints.push(cur_int);
+                cur_int = 0;
+                cur_bits = 0;
+            }
+        }
+        if num_bits == 0 {
+            return Err(format!(
+                "SomeBits::from_str: String {str_in}, no valid digits?"
+            ));
+        }
+
+        if cur_bits > 0 {
+            ints.push(cur_int);
+        }
+
+        ints.reverse();
+
+        Ok(Self {
+            num_bits: num_bits as Bitint,
+            ints,
+        })
+    }
+}
 
 /// Define the BitsRef trait, so SomeBits, SomeMask, and SomeState structs can interact at the SomeBits level.
 /// The structs are often used for different things, but may interact,

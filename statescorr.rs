@@ -9,10 +9,10 @@ use crate::statestore::StateStore;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-
-use std::fmt;
+use std::str::FromStr;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -65,9 +65,46 @@ impl StatesCorr {
         self.states.iter()
     }
 
-    /// Return a statescorr, given a string representation.
+    /// Return a vector of corresponding num_bits.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
+        for regx in self.states.iter() {
+            ret_vec.push(regx.num_bits());
+        }
+        ret_vec
+    }
+} // end impl StatesCorr
+
+impl Index<usize> for StatesCorr {
+    type Output = SomeState;
+    fn index(&self, i: usize) -> &SomeState {
+        &self.states[i]
+    }
+}
+
+impl IndexMut<usize> for StatesCorr {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.states[i]
+    }
+}
+
+impl tools::AvecRef for StatesCorr {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        self.states.avec_ref()
+    }
+}
+
+impl tools::CorrespondingItems for StatesCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
+    }
+}
+
+impl FromStr for StatesCorr {
+    type Err = String;
+    /// Return a StatesCorr, given a string representation.
     /// Like SC[], SC[s1010], or SC[s101, s100].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("statescorr::from_str: {str_in}");
         let sc_str = str_in.trim();
 
@@ -121,40 +158,6 @@ impl StatesCorr {
             Ok(states) => Ok(Self { states }),
             Err(errstr) => Err(format!("StatesCorr::from_str: {errstr}")),
         }
-    }
-
-    /// Return a vector of corresponding num_bits.
-    pub fn num_bits_vec(&self) -> Vec<usize> {
-        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
-        for regx in self.states.iter() {
-            ret_vec.push(regx.num_bits());
-        }
-        ret_vec
-    }
-} // end impl StatesCorr
-
-impl Index<usize> for StatesCorr {
-    type Output = SomeState;
-    fn index(&self, i: usize) -> &SomeState {
-        &self.states[i]
-    }
-}
-
-impl IndexMut<usize> for StatesCorr {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.states[i]
-    }
-}
-
-impl tools::AvecRef for StatesCorr {
-    fn avec_ref(&self) -> &Vec<impl NumBits> {
-        self.states.avec_ref()
-    }
-}
-
-impl tools::CorrespondingItems for StatesCorr {
-    fn num_bits_vec(&self) -> Vec<usize> {
-        self.num_bits_vec()
     }
 }
 

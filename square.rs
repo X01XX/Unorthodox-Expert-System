@@ -339,6 +339,7 @@ impl NumBits for SomeSquare {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     // Test multiple additions to a square, cycle through all pn and pnc values.
     #[test]

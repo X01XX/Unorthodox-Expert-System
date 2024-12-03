@@ -8,6 +8,7 @@ use crate::tools::{vec_refs, vec_string, AvecRef};
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+use std::str::FromStr;
 
 use std::fmt;
 
@@ -79,9 +80,52 @@ impl StateStore {
         }
     }
 
-    /// Return a statestore, given a string representation.
+    /// Return a vector of references.
+    pub fn vec_refs(&self) -> Vec<&SomeState> {
+        vec_refs(&self.items[..])
+    }
+
+    /// Return the region formed by states in a non-empty StateStore.
+    pub fn x_mask(&self) -> SomeMask {
+        debug_assert!(self.is_not_empty());
+
+        let mut ret = SomeMask::new(self[0].bts.new_low());
+        for stax in self.iter().skip(1) {
+            ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]));
+        }
+        ret
+    }
+
+    // Return the items vector.
+    pub fn vec(self) -> Vec<SomeState> {
+        self.items
+    }
+} // end impl StateStore
+
+impl Index<usize> for StateStore {
+    type Output = SomeState;
+    fn index(&self, i: usize) -> &SomeState {
+        &self.items[i]
+    }
+}
+
+impl IndexMut<usize> for StateStore {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.items[i]
+    }
+}
+
+impl AvecRef for StateStore {
+    fn avec_ref(&self) -> &Vec<impl NumBits> {
+        &self.items
+    }
+}
+
+impl FromStr for StateStore {
+    type Err = String;
+    /// Return a StateStore, given a string representation.
     /// Like [] or [s1010, s0101].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("statestore::from_str: {str_in}");
         let statestore_str = str_in.trim();
 
@@ -148,46 +192,6 @@ impl StateStore {
         //println!("ret_statestore {ret_statestore}");
 
         Ok(ret_statestore)
-    }
-
-    /// Return a vector of references.
-    pub fn vec_refs(&self) -> Vec<&SomeState> {
-        vec_refs(&self.items[..])
-    }
-
-    /// Return the region formed by states in a non-empty StateStore.
-    pub fn x_mask(&self) -> SomeMask {
-        debug_assert!(self.is_not_empty());
-
-        let mut ret = SomeMask::new(self[0].bts.new_low());
-        for stax in self.iter().skip(1) {
-            ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]));
-        }
-        ret
-    }
-
-    // Return the items vector.
-    pub fn vec(self) -> Vec<SomeState> {
-        self.items
-    }
-} // end impl StateStore
-
-impl Index<usize> for StateStore {
-    type Output = SomeState;
-    fn index(&self, i: usize) -> &SomeState {
-        &self.items[i]
-    }
-}
-
-impl IndexMut<usize> for StateStore {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.items[i]
-    }
-}
-
-impl AvecRef for StateStore {
-    fn avec_ref(&self) -> &Vec<impl NumBits> {
-        &self.items
     }
 }
 

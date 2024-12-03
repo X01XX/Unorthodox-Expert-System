@@ -8,6 +8,7 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -131,29 +132,6 @@ impl SomeChange {
         self.m01.num_bits()
     }
 
-    /// Return a sample from a rule string.
-    /// Like "Xx/XX/01/10/00/11".
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        let str2 = str_in.trim();
-
-        if str2.is_empty() {
-            return Err("SomeChange::from_str: Empty string?".to_string());
-        }
-
-        match SomeRule::from_str(str2) {
-            Ok(ruls) => {
-                if ruls.m00.is_not_low() {
-                    Err("SomeChange::from_str: invalid token, 00, X0 or XX?".to_string())
-                } else if ruls.m11.is_not_low() {
-                    Err("SomeChange::from_str: invalid token, 11, X1 or XX?".to_string())
-                } else {
-                    Ok(ruls.as_change())
-                }
-            }
-            Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),
-        }
-    }
-
     /// Return a change after doing a bitwise and operation with a given mask.
     pub fn bitwise_and(&self, amask: &SomeMask) -> Self {
         SomeChange {
@@ -183,6 +161,35 @@ impl AccessChanges for SomeChange {
 impl NumBits for SomeChange {
     fn num_bits(&self) -> usize {
         self.num_bits()
+    }
+}
+
+impl FromStr for SomeChange {
+    type Err = String;
+    /// Return SomeChange from a rule string.
+    /// Like "01/10/Xx/..", other rule bit position representations are disallowed.
+    /// Each bit position must be specified.
+    /// An underscore, "_", character can be used as a visual separator, and is ignored.
+    /// Spaces are ignored.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeChange::from_str: Empty string?".to_string());
+        }
+
+        match SomeRule::from_str(str2) {
+            Ok(ruls) => {
+                if ruls.m00.is_not_low() {
+                    Err("SomeChange::from_str: invalid token, 00, X0 or XX?".to_string())
+                } else if ruls.m11.is_not_low() {
+                    Err("SomeChange::from_str: invalid token, 11, X1 or XX?".to_string())
+                } else {
+                    Ok(ruls.as_change())
+                }
+            }
+            Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),
+        }
     }
 }
 

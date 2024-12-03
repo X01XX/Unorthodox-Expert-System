@@ -4,11 +4,10 @@ use crate::mask::SomeMask;
 use crate::tools::vec_string;
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
-
-use std::fmt;
-
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for MaskStore {
@@ -67,10 +66,26 @@ impl MaskStore {
     pub fn len(&self) -> usize {
         self.items.len()
     }
+} // end impl MaskStore
 
+impl Index<usize> for MaskStore {
+    type Output = SomeMask;
+    fn index(&self, i: usize) -> &SomeMask {
+        &self.items[i]
+    }
+}
+
+impl IndexMut<usize> for MaskStore {
+    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
+        &mut self.items[i]
+    }
+}
+
+impl FromStr for MaskStore {
+    type Err = String;
     /// Return a maskstore, given a string representation.
     /// Like [] or [s1010, s0101].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("maskstore::from_str: {str_in}");
         let maskstore_str = str_in.trim();
 
@@ -137,19 +152,6 @@ impl MaskStore {
         //println!("ret_maskstore {ret_maskstore}");
 
         Ok(ret_maskstore)
-    }
-} // end impl MaskStore
-
-impl Index<usize> for MaskStore {
-    type Output = SomeMask;
-    fn index(&self, i: usize) -> &SomeMask {
-        &self.items[i]
-    }
-}
-
-impl IndexMut<usize> for MaskStore {
-    fn index_mut<'a>(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.items[i]
     }
 }
 

@@ -19,6 +19,7 @@ use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
+use std::str::FromStr;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -41,44 +42,6 @@ impl SomeState {
     pub fn new(bts: SomeBits) -> Self {
         Self { bts }
     }
-
-    /// Return a State from a string.
-    /// Each bit must be specified.
-    ///
-    /// if let Ok(sta) = SomeState::from_str("0b0101")) {
-    ///    println!("State {sta}");
-    /// } else {
-    ///    panic!("Invalid State");
-    /// }
-    /// A prefix of "0x" can be used to specify hexadecimal characters.
-    ///
-    /// A first character of "s" is supported for cut-and-paste from output on console.
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        let str2 = str_in.trim();
-
-        if str2.is_empty() {
-            return Err("SomeState::from_str: Empty string?".to_string());
-        }
-
-        // Check for first character.
-        if let Some(char0) = str2.graphemes(true).nth(0) {
-            // Check the first character.
-            if char0 == "s" {
-                // Create the result from the not-first characters.
-                match SomeBits::from_str(&str2.to_string()[1..]) {
-                    Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeState::from {error}")),
-                }
-            } else {
-                match SomeBits::from_str(str2) {
-                    Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeState::from {error}")),
-                }
-            }
-        } else {
-            Err("SomeState::from_str: Empty string?".to_string())
-        }
-    } // end from
 
     /// Return a new state, all zeros.
     pub fn new_low(&self) -> Self {
@@ -251,6 +214,41 @@ impl tools::AccessStates for SomeState {
     }
     fn num_bits(&self) -> usize {
         self.num_bits()
+    }
+}
+
+impl FromStr for SomeState {
+    type Err = String;
+    /// Return SomeState from a string.
+    /// Each bit must be specified.
+    /// A first character of "s" is optional, and supported, for cut-and-paste from output on console.
+    /// An underscore, "_", character can be used as a visual separator, and is ignored.
+    /// Spaces are ignored.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeState::from_str: Empty string?".to_string());
+        }
+
+        // Check for first character.
+        if let Some(char0) = str2.graphemes(true).nth(0) {
+            // Check the first character.
+            if char0 == "s" {
+                // Create the result from the not-first characters.
+                match SomeBits::from_str(&str2.to_string()[1..]) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(format!("SomeState::from {error}")),
+                }
+            } else {
+                match SomeBits::from_str(str2) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(format!("SomeState::from {error}")),
+                }
+            }
+        } else {
+            Err("SomeState::from_str: Empty string?".to_string())
+        }
     }
 }
 

@@ -240,6 +240,7 @@ pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
 mod tests {
     use super::*;
     use crate::state::SomeState;
+    use std::str::FromStr;
 
     #[test]
     fn anyxofn() -> Result<(), String> {

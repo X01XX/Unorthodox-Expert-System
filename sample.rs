@@ -5,6 +5,7 @@ use crate::state::SomeState;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]
@@ -43,11 +44,14 @@ impl SomeSample {
     pub fn num_bits(&self) -> usize {
         self.initial.num_bits()
     }
+}
 
+impl FromStr for SomeSample {
+    type Err = String;
     /// Return a sample from a string.
     /// Prefixes that can be used, none, 0b, 0x, s.
     /// Like "0001->0b1111", "s0101->0xa".
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         let s_str = str_in.trim();
 
         if s_str.is_empty() {

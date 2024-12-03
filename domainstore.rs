@@ -1645,6 +1645,7 @@ mod tests {
     use super::*;
     use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
+    use std::str::FromStr;
 
     /// Return the number of supersets of a StateStore
     fn number_supersets_of_states(select: &SelectRegionsStore, stas: &StatesCorr) -> usize {

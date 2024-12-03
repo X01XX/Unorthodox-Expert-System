@@ -86,6 +86,7 @@ extern crate rand;
 use std::fs::File;
 use std::path::Path;
 use std::process;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 /// Get and react to arguments given.

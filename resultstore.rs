@@ -205,6 +205,7 @@ impl ResultStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn most_recent_result() -> Result<(), String> {

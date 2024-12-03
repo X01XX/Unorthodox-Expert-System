@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+use std::str::FromStr;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -343,88 +344,6 @@ impl RegionStore {
         other.subtract(self).is_empty()
     }
 
-    /// Return a regionstore, given a string representation.
-    /// Like [], [r1010] or [r1010, r0101].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        //println!("regionscorrstore::from_str: {str_in}");
-        let rs_str = str_in.trim();
-
-        if rs_str.is_empty() {
-            return Err("RegionsStore::from_str: Empty string?".to_string());
-        }
-
-        let mut rs_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in rs_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionStore::from_str: Invalid string, {rs_str} should start with ["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
-                ));
-            }
-            rs_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err(format!(
-                "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
-            ));
-        }
-
-        if rs_str2.is_empty() {
-            return Ok(RegionStore::new(vec![]));
-        }
-
-        // Split string into <region> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
-
-        for chr in rs_str2.graphemes(true) {
-            if chr == "," || chr == " " {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-            } else {
-                token.push_str(chr);
-            }
-        }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
-        }
-        //println!("token_list {:?}", token_list);
-
-        // println!("token_list2 {:?}", token_list2);
-
-        // Tally up tokens.
-        let mut regions = Vec::<SomeRegion>::new();
-
-        for tokenx in token_list.into_iter() {
-            match SomeRegion::from_str(&tokenx) {
-                Ok(regx) => regions.push(regx),
-                Err(errstr) => return Err(format!("RegionStore::from_str: {errstr}")),
-            }
-        }
-        let ret_regionstore = RegionStore::new(regions);
-
-        Ok(ret_regionstore)
-    }
-
     /// Extend a RegionStore by emptying another RegionStore.
     pub fn append(&mut self, mut other: Self) {
         self.items.append(&mut other.items);
@@ -569,9 +488,95 @@ impl tools::StrLen for RegionStore {
     }
 }
 
+impl FromStr for RegionStore {
+    type Err = String;
+    /// Return a regionstore, given a string representation.
+    /// Like [], [r1010] or [r1010, r0101].
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("regionscorrstore::from_str: {str_in}");
+        let rs_str = str_in.trim();
+
+        if rs_str.is_empty() {
+            return Err("RegionsStore::from_str: Empty string?".to_string());
+        }
+
+        let mut rs_str2 = String::new();
+        let mut last_chr = false;
+
+        for (inx, chr) in rs_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "[" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "RegionStore::from_str: Invalid string, {rs_str} should start with ["
+                    ));
+                }
+            }
+            if chr == "]" {
+                last_chr = true;
+                continue;
+            }
+
+            if last_chr {
+                return Err(format!(
+                    "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
+                ));
+            }
+            rs_str2.push_str(chr);
+        }
+        if !last_chr {
+            return Err(format!(
+                "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
+            ));
+        }
+
+        if rs_str2.is_empty() {
+            return Ok(RegionStore::new(vec![]));
+        }
+
+        // Split string into <region> tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+
+        for chr in rs_str2.graphemes(true) {
+            if chr == "," || chr == " " {
+                if token.is_empty() {
+                } else {
+                    token_list.push(token);
+                    token = String::new();
+                }
+            } else {
+                token.push_str(chr);
+            }
+        }
+        if token.is_empty() {
+        } else {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        // println!("token_list2 {:?}", token_list2);
+
+        // Tally up tokens.
+        let mut regions = Vec::<SomeRegion>::new();
+
+        for tokenx in token_list.into_iter() {
+            match SomeRegion::from_str(&tokenx) {
+                Ok(regx) => regions.push(regx),
+                Err(errstr) => return Err(format!("RegionStore::from_str: {errstr}")),
+            }
+        }
+        let ret_regionstore = RegionStore::new(regions);
+
+        Ok(ret_regionstore)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn possible_regions_by_negative_inference() -> Result<(), String> {

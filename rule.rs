@@ -21,6 +21,7 @@ use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 
 //#[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -52,112 +53,6 @@ impl SomeRule {
             m11: smpl.initial.bitwise_and(&smpl.result),
             m10: smpl.initial.bitwise_and_not(&smpl.result),
         }
-    }
-
-    /// Generate a rule from a string.
-    /// Al bit positions must be specified.
-    /// like SomeRule::from_str("00/01/11/10/XX/xx/Xx/xX/X0/X1")
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        let rep = str_in.trim();
-
-        if rep.is_empty() {
-            return Err("SomeRule::from_str: Empty string?".to_string());
-        }
-
-        // Initialize new mask strings.
-        let mut m00 = String::from("m");
-        let mut m01 = String::from("m");
-        let mut m11 = String::from("m");
-        let mut m10 = String::from("m");
-
-        // Gather bit position tokens as pairs of valid characters.
-        let mut token = String::with_capacity(2);
-
-        for bt in rep.graphemes(true) {
-            if bt == "/" || bt == "_" || bt == " " {
-                continue;
-            }
-            // Add character to token.
-            token.push_str(bt);
-
-            // Process finished token.
-            if token.len() == 2 {
-                if token == "00" {
-                    m00.push('1');
-                    m01.push('0');
-                    m11.push('0');
-                    m10.push('0');
-                } else if token == "01" {
-                    m00.push('0');
-                    m01.push('1');
-                    m11.push('0');
-                    m10.push('0');
-                } else if token == "11" {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('1');
-                    m10.push('0');
-                } else if token == "10" {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('0');
-                    m10.push('1');
-                } else if token == "XX" || token == "xx" {
-                    m00.push('1');
-                    m01.push('0');
-                    m11.push('1');
-                    m10.push('0');
-                } else if token == "Xx" || token == "xX" {
-                    m00.push('0');
-                    m01.push('1');
-                    m11.push('0');
-                    m10.push('1');
-                } else if token == "X0" || token == "x0" {
-                    m00.push('1');
-                    m01.push('0');
-                    m11.push('0');
-                    m10.push('1');
-                } else if token == "X1" || token == "x1" {
-                    m00.push('0');
-                    m01.push('1');
-                    m11.push('1');
-                    m10.push('0');
-                } else if token == "1X" || token == "1x" {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('1');
-                    m10.push('1');
-                } else if token == "0X" || token == "0x" {
-                    m00.push('1');
-                    m01.push('1');
-                    m11.push('0');
-                    m10.push('0');
-                } else if token == ".." {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('0');
-                    m10.push('0');
-                } else {
-                    return Err(format!("SomeRule::from_str: Unrecognized token {token}"));
-                }
-                token.clear();
-            }
-        }
-        // Check for unfinished token.
-        if token.is_empty() {
-        } else {
-            return Err(format!(
-                "SomeRule::from_str: Did not understand token {token}"
-            ));
-        }
-
-        // Get mask instances from bit strings.
-        let m00 = SomeMask::from_str(&m00)?;
-        let m01 = SomeMask::from_str(&m01)?;
-        let m11 = SomeMask::from_str(&m11)?;
-        let m10 = SomeMask::from_str(&m10)?;
-
-        Ok(Self { m00, m01, m11, m10 })
     }
 
     /// Return true if a rule is a subset of another.
@@ -527,11 +422,11 @@ impl SomeRule {
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
-        SomeRule::new(&SomeSample::new(
+        Self::new(&SomeSample::new(
             from.first_state().clone(),
             to.first_state().clone(),
         ))
-        .union(&SomeRule::new(&SomeSample::new(
+        .union(&Self::new(&SomeSample::new(
             from.far_state(),
             to.far_state(),
         )))
@@ -679,6 +574,116 @@ impl AccessChanges for SomeRule {
 impl NumBits for SomeRule {
     fn num_bits(&self) -> usize {
         self.num_bits()
+    }
+}
+
+impl FromStr for SomeRule {
+    type Err = String;
+
+    /// Generate a rule from a string.
+    /// All bit positions must be specified.
+    /// like SomeRule::from_str("00/01/11/10/XX/xx/Xx/xX/X0/X1")
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        let rep = str_in.trim();
+
+        if rep.is_empty() {
+            return Err("SomeRule::from_str: Empty string?".to_string());
+        }
+
+        // Initialize new mask strings.
+        let mut m00 = String::from("m");
+        let mut m01 = String::from("m");
+        let mut m11 = String::from("m");
+        let mut m10 = String::from("m");
+
+        // Gather bit position tokens as pairs of valid characters.
+        let mut token = String::with_capacity(2);
+
+        for bt in rep.graphemes(true) {
+            if bt == "/" || bt == "_" || bt == " " {
+                continue;
+            }
+            // Add character to token.
+            token.push_str(bt);
+
+            // Process finished token.
+            if token.len() == 2 {
+                if token == "00" {
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('0');
+                } else if token == "01" {
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('0');
+                } else if token == "11" {
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('0');
+                } else if token == "10" {
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('1');
+                } else if token == "XX" || token == "xx" {
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('0');
+                } else if token == "Xx" || token == "xX" {
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('1');
+                } else if token == "X0" || token == "x0" {
+                    m00.push('1');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('1');
+                } else if token == "X1" || token == "x1" {
+                    m00.push('0');
+                    m01.push('1');
+                    m11.push('1');
+                    m10.push('0');
+                } else if token == "1X" || token == "1x" {
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('1');
+                    m10.push('1');
+                } else if token == "0X" || token == "0x" {
+                    m00.push('1');
+                    m01.push('1');
+                    m11.push('0');
+                    m10.push('0');
+                } else if token == ".." {
+                    m00.push('0');
+                    m01.push('0');
+                    m11.push('0');
+                    m10.push('0');
+                } else {
+                    return Err(format!("SomeRule::from_str: Unrecognized token {token}"));
+                }
+                token.clear();
+            }
+        }
+        // Check for unfinished token.
+        if token.is_empty() {
+        } else {
+            return Err(format!(
+                "SomeRule::from_str: Did not understand token {token}"
+            ));
+        }
+
+        // Get mask instances from bit strings.
+        let m00 = SomeMask::from_str(&m00)?;
+        let m01 = SomeMask::from_str(&m01)?;
+        let m11 = SomeMask::from_str(&m11)?;
+        let m10 = SomeMask::from_str(&m10)?;
+
+        Ok(Self { m00, m01, m11, m10 })
     }
 }
 

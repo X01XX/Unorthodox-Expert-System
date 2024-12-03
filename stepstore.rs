@@ -363,6 +363,7 @@ mod tests {
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
     use crate::step::{AltRuleHint, SomeStep};
+    use std::str::FromStr;
 
     #[test]
     fn strlen() -> Result<(), String> {

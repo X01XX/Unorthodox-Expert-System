@@ -14,6 +14,7 @@ use crate::tools;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 use std::fmt;
@@ -213,9 +214,45 @@ impl PlansCorr {
         num_alt
     }
 
+    /// Return true if corresponding regions in two vectors have the same number of bits.
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
+    }
+}
+
+impl Index<usize> for PlansCorr {
+    type Output = SomePlan;
+    fn index(&self, i: usize) -> &SomePlan {
+        &self.plans[i]
+    }
+}
+
+/// Implement the trait StrLen for PlansCorr.
+impl tools::StrLen for PlansCorr {
+    fn strlen(&self) -> usize {
+        let mut rtlen = 4; // PC[]
+        rtlen += self.plans.strlen();
+
+        if self.rate < 0 {
+            rtlen += 4; // , -1
+        } else {
+            rtlen += 3; // , 0
+        };
+        rtlen
+    }
+}
+
+impl tools::CorrespondingItems for PlansCorr {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.num_bits_vec()
+    }
+}
+
+impl FromStr for PlansCorr {
+    type Err = String;
     /// Return a PlansCorr instance, given a string representation.
     /// Like PC[[], 0], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planscorr::from_str: {pc_str}");
         let pc_str = str_in.trim();
 
@@ -336,39 +373,6 @@ impl PlansCorr {
         };
 
         Ok(Self { plans, rate: val })
-    }
-
-    /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
-        self.num_bits_vec() == other.num_bits_vec()
-    }
-}
-
-impl Index<usize> for PlansCorr {
-    type Output = SomePlan;
-    fn index(&self, i: usize) -> &SomePlan {
-        &self.plans[i]
-    }
-}
-
-/// Implement the trait StrLen for PlansCorr.
-impl tools::StrLen for PlansCorr {
-    fn strlen(&self) -> usize {
-        let mut rtlen = 4; // PC[]
-        rtlen += self.plans.strlen();
-
-        if self.rate < 0 {
-            rtlen += 4; // , -1
-        } else {
-            rtlen += 3; // , 0
-        };
-        rtlen
-    }
-}
-
-impl tools::CorrespondingItems for PlansCorr {
-    fn num_bits_vec(&self) -> Vec<usize> {
-        self.num_bits_vec()
     }
 }
 

@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
+use std::str::FromStr;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -88,88 +89,6 @@ impl SomeRegion {
             self.states[0].bitwise_xor(&self.x_mask()).as_state()
         }
     }
-
-    /// Return a Region from a string.
-    /// All bits must be specified.
-    ///
-    /// if let Ok(regx) = SomeRegion::from_str("1_01x1")) {
-    ///    println!("Region {}", regx);
-    /// } else {
-    ///    panic!("Invalid Region");
-    /// }
-    ///
-    /// A state string can be used, like "s0b101010" or s0x34", making
-    /// a region with no X bit positions.
-    ///
-    /// The case of an X bit position gives information about the two states that form the region.
-    /// X = (1, 0).
-    /// x = (0, 1).
-    /// XxXx = (1010, 0101).
-    ///
-    /// A first character of "r", or "s", is supported for cut-and-paste from output on console.
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        let str2 = str_in.trim();
-
-        if str2.is_empty() {
-            return Err("SomeRegion::from_str: Empty string?".to_string());
-        }
-
-        let mut skip = 0;
-        // Check the first character.
-        if let Some(char0) = str2.graphemes(true).nth(0) {
-            if char0 == "r" {
-                skip = 1;
-            } else if char0 == "s" {
-                // Create a region from a single state.
-                // An advantage is that hexadecimal digits can be used if there are no X-bit positions.
-                let stax = SomeState::from_str(str2)?;
-                return Ok(SomeRegion::new(vec![stax]));
-            }
-        } else {
-            return Err("SomeRegion::from_str: Empty string?".to_string());
-        }
-
-        // Translate the region string into two state strings.
-        let mut b_high = String::from("s");
-        let mut b_low = String::from("s");
-
-        for chr in str2.graphemes(true).skip(skip) {
-            if chr == "0" {
-                b_high.push('0');
-                b_low.push('0');
-            } else if chr == "1" {
-                b_high.push('1');
-                b_low.push('1');
-            } else if chr == "X" {
-                b_high.push('1');
-                b_low.push('0');
-            } else if chr == "x" {
-                b_high.push('0');
-                b_low.push('1');
-            } else if chr == "_" {
-                continue;
-            } else if chr == "+" {
-                continue; // A region copied from the console might end with a +
-            } else {
-                return Err(format!(
-                    "SomeRegion::from_str: String {str2}, invalid character {chr}?"
-                ));
-            }
-        } // end for chr
-
-        if b_high.len() == 1 {
-            return Err(format!(
-                "SomeRegion::from_str: String {str2}, no valid character?"
-            ));
-        }
-
-        // Translate state strings to state instances.
-        let sta_high = SomeState::from_str(&b_high)?;
-        let sta_low = SomeState::from_str(&b_low)?;
-
-        // Return region from states.
-        Ok(Self::new(vec![sta_high, sta_low]))
-    } // end from
 
     /// Return a String representation of a Region.
     /// The case of an X bit position gives information about the first state, and far state, of the region.
@@ -631,12 +550,91 @@ impl NumBits for SomeRegion {
     }
 }
 
+impl FromStr for SomeRegion {
+    type Err = String;
+    /// Return SomeRegion from a string.
+    /// Each bit must be specified.
+    /// A first character of "r" is optional, and supported, for cut-and-paste from output on console.
+    /// A state string can be used, like "s1010", making a region with no X bit positions.
+    /// An underscore, "_", character can be used as a visual separator, and is ignored.
+    /// Spaces are ignored.
+    ///
+    /// The case of an X bit position gives information about the two states, and their order, that form the region.
+    /// X = (1, 0).
+    /// x = (0, 1).
+    /// XxXx = (1010, 0101), xxxX = (0001, 1110).
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeRegion::from_str: Empty string?".to_string());
+        }
+
+        let mut skip = 0;
+        // Check the first character.
+        if let Some(char0) = str2.graphemes(true).nth(0) {
+            if char0 == "r" {
+                skip = 1;
+            } else if char0 == "s" {
+                // Create a region from a single state.
+                // An advantage is that hexadecimal digits can be used if there are no X-bit positions.
+                let stax = SomeState::from_str(str2)?;
+                return Ok(SomeRegion::new(vec![stax]));
+            }
+        } else {
+            return Err("SomeRegion::from_str: Empty string?".to_string());
+        }
+
+        // Translate the region string into two state strings.
+        let mut b_high = String::from("s");
+        let mut b_low = String::from("s");
+
+        for chr in str2.graphemes(true).skip(skip) {
+            if chr == "0" {
+                b_high.push('0');
+                b_low.push('0');
+            } else if chr == "1" {
+                b_high.push('1');
+                b_low.push('1');
+            } else if chr == "X" {
+                b_high.push('1');
+                b_low.push('0');
+            } else if chr == "x" {
+                b_high.push('0');
+                b_low.push('1');
+            } else if chr == "_" {
+                continue;
+            } else if chr == "+" {
+                continue; // A region copied from the console might end with a +
+            } else {
+                return Err(format!(
+                    "SomeRegion::from_str: String {str2}, invalid character {chr}?"
+                ));
+            }
+        } // end for chr
+
+        if b_high.len() == 1 {
+            return Err(format!(
+                "SomeRegion::from_str: String {str2}, no valid character?"
+            ));
+        }
+
+        // Translate state strings to state instances.
+        let sta_high = SomeState::from_str(&b_high)?;
+        let sta_low = SomeState::from_str(&b_low)?;
+
+        // Return region from states.
+        Ok(Self::new(vec![sta_high, sta_low]))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use crate::regionstore::RegionStore;
     use crate::tools::vec_string;
+    use std::str::FromStr;
 
     #[test]
     fn state_far_from() -> Result<(), String> {

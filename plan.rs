@@ -24,10 +24,10 @@ use crate::stepstore::StepStore;
 use crate::tools::StrLen;
 
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
-
-use std::fmt;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SomePlan {
@@ -408,10 +408,47 @@ impl SomePlan {
         rng
     }
 
-    /// Return a plan, given a string representation.
-    /// Like Plan[], Plan[r1010-0->0101], or Plan[r101-0->r000-1->r100].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        //println!("plan::from_str: {plan_str}");
+    // Return true if a plan is valid.
+    pub fn is_valid(&self) -> Result<(), String> {
+        let mut last_step: Option<&SomeStep> = None;
+        for stepx in self.iter() {
+            if let Some(stepy) = last_step {
+                if stepy.result != stepx.initial {
+                    return Err(format!(
+                        "SomePlan::is_valid: step result {} != following step initial {}",
+                        stepy.result, stepx.initial
+                    ));
+                }
+            }
+            last_step = Some(stepx);
+        }
+        Ok(())
+    }
+} // end impl SomePlan
+
+impl Index<usize> for SomePlan {
+    type Output = SomeStep;
+    fn index(&self, i: usize) -> &SomeStep {
+        &self.steps[i]
+    }
+}
+
+/// Implement the trait StrLen for SomePlan.
+impl StrLen for SomePlan {
+    fn strlen(&self) -> usize {
+        if self.is_empty() {
+            return 3;
+        }
+        let reg_len = self.initial_region().strlen();
+        reg_len * (self.len() + 1) + (4 * self.len()) + 3
+    }
+}
+
+impl FromStr for SomePlan {
+    type Err = String;
+    /// Return SomePlan, given a string representation.
+    /// Like Plan[], Plan[r1010-0->r0101], or Plan[r101-0->r000-1->r100].
+    fn from_str(str_in: &str) -> Result<Self, String> {
         let plan_str = str_in.trim();
 
         if plan_str.is_empty() {
@@ -546,41 +583,6 @@ impl SomePlan {
             Ok(()) => Ok(ret_plan),
             Err(errstr) => Err(format!("SomePlan::from_str: {errstr}")),
         }
-    }
-
-    // Return true if a plan is valid.
-    pub fn is_valid(&self) -> Result<(), String> {
-        let mut last_step: Option<&SomeStep> = None;
-        for stepx in self.iter() {
-            if let Some(stepy) = last_step {
-                if stepy.result != stepx.initial {
-                    return Err(format!(
-                        "SomePlan::is_valid: step result {} != following step initial {}",
-                        stepy.result, stepx.initial
-                    ));
-                }
-            }
-            last_step = Some(stepx);
-        }
-        Ok(())
-    }
-} // end impl SomePlan
-
-impl Index<usize> for SomePlan {
-    type Output = SomeStep;
-    fn index(&self, i: usize) -> &SomeStep {
-        &self.steps[i]
-    }
-}
-
-/// Implement the trait StrLen for SomePlan.
-impl StrLen for SomePlan {
-    fn strlen(&self) -> usize {
-        if self.is_empty() {
-            return 3;
-        }
-        let reg_len = self.initial_region().strlen();
-        reg_len * (self.len() + 1) + (4 * self.len()) + 3
     }
 }
 

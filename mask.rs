@@ -18,6 +18,7 @@ use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]
@@ -53,44 +54,6 @@ impl SomeMask {
             bts: self.bts.new_high(),
         }
     }
-
-    /// Return a Mask from a string.
-    /// All characters must be specified.
-    ///
-    /// if let Ok(msk) = SomeMask::from_str("0b0101")) {
-    ///    println!("Mask {}", msk);
-    /// } else {
-    ///    panic!("Invalid Mask");
-    /// }
-    /// A prefix of "0x" can be used to specify hexadecimal characters.
-    ///
-    /// A first character of "m" is supported for cut-and-paste from output on console.
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        let str2 = str_in.trim();
-
-        if str2.is_empty() {
-            return Err("SomeMask::from_str: Empty string?".to_string());
-        }
-
-        // Check for first character.
-        if let Some(char0) = str2.graphemes(true).nth(0) {
-            // Check the first character.
-            if char0 == "m" {
-                // Create the result from the not-first characters.
-                match SomeBits::from_str(&str2.to_string()[1..]) {
-                    Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
-                }
-            } else {
-                match SomeBits::from_str(str2) {
-                    Ok(bts) => Ok(Self { bts }),
-                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
-                }
-            }
-        } else {
-            Err("SomeMask::from_str: Empty string?".to_string())
-        }
-    } // end from
 
     /// Return true if the mask is all zeros.
     pub fn is_low(&self) -> bool {
@@ -228,6 +191,41 @@ impl BitsRef for SomeMask {
 impl tools::StrLen for SomeMask {
     fn strlen(&self) -> usize {
         self.bts.strlen()
+    }
+}
+
+impl FromStr for SomeMask {
+    type Err = String;
+    /// Return SomeMask from a string.
+    /// Each bit must be specified.
+    /// A first character of "m" is optional, and supported, for cut-and-paste from output on console.
+    /// An underscore, "_", character can be used as a visual separator, and is ignored.
+    /// Spaces are ignored.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        let str2 = str_in.trim();
+
+        if str2.is_empty() {
+            return Err("SomeMask::from_str: Empty string?".to_string());
+        }
+
+        // Check for first character.
+        if let Some(char0) = str2.graphemes(true).nth(0) {
+            // Check the first character.
+            if char0 == "m" {
+                // Create the result from the not-first characters.
+                match SomeBits::from_str(&str2.to_string()[1..]) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
+                }
+            } else {
+                match SomeBits::from_str(str2) {
+                    Ok(bts) => Ok(Self { bts }),
+                    Err(error) => Err(format!("SomeMask::from_str: {error}")),
+                }
+            }
+        } else {
+            Err("SomeMask::from_str: Empty string?".to_string())
+        }
     }
 }
 

@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
+use std::str::FromStr;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -415,10 +416,29 @@ impl RuleStore {
         } // next rulx
         ret
     }
+} // end impl RuleStore
 
+impl Index<usize> for RuleStore {
+    type Output = SomeRule;
+    fn index(&self, i: usize) -> &SomeRule {
+        &self.items[i]
+    }
+}
+
+impl IntoIterator for RuleStore {
+    type Item = SomeRule;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+impl FromStr for RuleStore {
+    type Err = String;
     /// Return a rulestore, given a string representation.
     /// Like [], [X0/11/11/10/00] or [00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("rulestore::from_str: {str_in}");
 
         let rs_str = str_in.trim();
@@ -494,22 +514,6 @@ impl RuleStore {
         let ret_rulestore = RuleStore::new(rules);
 
         Ok(ret_rulestore)
-    }
-} // end impl RuleStore
-
-impl Index<usize> for RuleStore {
-    type Output = SomeRule;
-    fn index(&self, i: usize) -> &SomeRule {
-        &self.items[i]
-    }
-}
-
-impl IntoIterator for RuleStore {
-    type Item = SomeRule;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.into_iter()
     }
 }
 

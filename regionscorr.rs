@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
+use std::str::FromStr;
 
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -225,62 +226,6 @@ impl RegionsCorr {
         self.num_bits_vec() == other.num_bits_vec()
     }
 
-    /// Return a RegionsCorr instance, given a string representation.
-    /// Like RC[], RC[r1010], or RC[r101, r1000].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
-        //println!("regionscorr::from_str: {str_in}");
-        let rc_str = str_in.trim();
-
-        if rc_str.is_empty() {
-            return Err("RegionsCorr::from_str: Empty string?".to_string());
-        }
-
-        let mut rc_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in rc_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "R" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                rc_str2.push_str(chr);
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
-                ));
-            }
-            rc_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err(format!(
-                "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
-            ));
-        }
-
-        let regions = RegionStore::from_str(&rc_str2)?;
-
-        Ok(Self { regions })
-    }
-
     /// Return a vector of corresponding num_bits.
     pub fn num_bits_vec(&self) -> Vec<usize> {
         let mut ret_vec = Vec::<usize>::with_capacity(self.len());
@@ -389,6 +334,65 @@ impl tools::AvecRef for RegionsCorr {
 impl tools::CorrespondingItems for RegionsCorr {
     fn num_bits_vec(&self) -> Vec<usize> {
         self.num_bits_vec()
+    }
+}
+
+impl FromStr for RegionsCorr {
+    type Err = String;
+    /// Return a RegionsCorr instance, given a string representation.
+    /// Like RC[], RC[r1010], or RC[r101, r1000].
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("regionscorr::from_str: {str_in}");
+        let rc_str = str_in.trim();
+
+        if rc_str.is_empty() {
+            return Err("RegionsCorr::from_str: Empty string?".to_string());
+        }
+
+        let mut rc_str2 = String::new();
+        let mut last_chr = false;
+
+        for (inx, chr) in rc_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "R" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
+                    ));
+                }
+            }
+            if inx == 1 {
+                if chr == "C" {
+                    continue;
+                } else {
+                    return Err(format!(
+                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
+                    ));
+                }
+            }
+            if chr == "]" {
+                last_chr = true;
+                rc_str2.push_str(chr);
+                continue;
+            }
+
+            if last_chr {
+                return Err(format!(
+                    "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
+                ));
+            }
+            rc_str2.push_str(chr);
+        }
+        if !last_chr {
+            return Err(format!(
+                "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
+            ));
+        }
+
+        let regions = RegionStore::from_str(&rc_str2)?;
+
+        Ok(Self { regions })
     }
 }
 

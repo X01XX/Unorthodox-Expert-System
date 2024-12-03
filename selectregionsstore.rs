@@ -419,6 +419,7 @@ impl IntoIterator for SelectRegionsStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn split_by_intersections1() -> Result<(), String> {

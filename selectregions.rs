@@ -15,6 +15,7 @@ use unicode_segmentation::UnicodeSegmentation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
+use std::str::FromStr;
 
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -199,9 +200,42 @@ impl SelectRegions {
         ret_vec
     }
 
+    /// Return a vector of num bits used by regions.
+    pub fn num_bits_vec(&self) -> Vec<usize> {
+        self.regions.num_bits_vec()
+    }
+
+    /// Return true if corresponding regions in two vectors have the same number of bits.
+    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
+        self.num_bits_vec() == other.num_bits_vec()
+    }
+}
+
+/// Implement the trait StrLen for SomeRegion.
+impl tools::StrLen for SelectRegions {
+    fn strlen(&self) -> usize {
+        let mut ret = 4;
+        // Add Regions.
+        ret += self.regions.strlen();
+        // Add separator.
+        ret += 2;
+        // Add value len.
+        ret += if self.net_value.abs() < 10 { 2 } else { 3 };
+        ret
+    }
+}
+
+impl tools::CorrespondingItems for SelectRegions {
+    fn num_bits_vec(&self) -> Vec<usize> {
+        self.regions.num_bits_vec()
+    }
+}
+
+impl FromStr for SelectRegions {
+    type Err = String;
     /// Return a SelectRegions instance, given a string representation.
     /// Like SR[RC[r1010], 1], or SR[RC[r101, r100], -1].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("selectregions::from_str: {str_in}");
         let sr_str = str_in.trim();
 
@@ -313,36 +347,6 @@ impl SelectRegions {
         };
 
         Ok(Self::new(rcx, val))
-    }
-
-    /// Return a vector of num bits used by regions.
-    pub fn num_bits_vec(&self) -> Vec<usize> {
-        self.regions.num_bits_vec()
-    }
-
-    /// Return true if corresponding regions in two vectors have the same number of bits.
-    pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
-        self.num_bits_vec() == other.num_bits_vec()
-    }
-}
-
-/// Implement the trait StrLen for SomeRegion.
-impl tools::StrLen for SelectRegions {
-    fn strlen(&self) -> usize {
-        let mut ret = 4;
-        // Add Regions.
-        ret += self.regions.strlen();
-        // Add separator.
-        ret += 2;
-        // Add value len.
-        ret += if self.net_value.abs() < 10 { 2 } else { 3 };
-        ret
-    }
-}
-
-impl tools::CorrespondingItems for SelectRegions {
-    fn num_bits_vec(&self) -> Vec<usize> {
-        self.regions.num_bits_vec()
     }
 }
 

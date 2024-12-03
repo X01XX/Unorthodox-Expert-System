@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlansCorrStore {
@@ -244,10 +245,20 @@ impl PlansCorrStore {
 
         self.items.push(pcx);
     }
+}
 
+impl Index<usize> for PlansCorrStore {
+    type Output = PlansCorr;
+    fn index(&self, i: usize) -> &PlansCorr {
+        &self.items[i]
+    }
+}
+
+impl FromStr for PlansCorrStore {
+    type Err = String;
     /// Return a PlansCorrStore instance, given a string representation.
     /// Like PCS[], PCS[PC[P[r001-0>r101]]] or PCS[PC[P[r001-0>r101]], PC[P[r101-0>r101]]].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planscorrstore::from_str: {pcs_str}");
         let pcs_str = str_in.trim();
 
@@ -370,13 +381,6 @@ impl PlansCorrStore {
         }
 
         Ok(pcs)
-    }
-}
-
-impl Index<usize> for PlansCorrStore {
-    type Output = PlansCorr;
-    fn index(&self, i: usize) -> &PlansCorr {
-        &self.items[i]
     }
 }
 

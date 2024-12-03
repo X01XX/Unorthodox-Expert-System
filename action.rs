@@ -2489,6 +2489,7 @@ impl SomeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     impl SomeAction {
         /// Set a group anchor, given a group region and anchor state.

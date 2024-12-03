@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlanStore {
@@ -142,15 +143,6 @@ impl PlanStore {
         ret_regs
     }
 
-    /// Return a PlanStore with duplicates deleted.
-    pub fn _delete_duplicates(&self) -> Self {
-        let mut ret_store = PlanStore::new(vec![]);
-        for planx in self.iter() {
-            ret_store.push(planx.clone()); // only adds non-duplicates.
-        }
-        ret_store
-    }
-
     /// Return true if a PlanStore contains a plan.
     pub fn contains(&self, planx: &SomePlan) -> bool {
         for itemx in self.items.iter() {
@@ -179,10 +171,43 @@ impl PlanStore {
         self.items.swap(inx, last_inx);
         self.items.pop().unwrap()
     }
+} // end impl PlanStore
 
+impl Index<usize> for PlanStore {
+    type Output = SomePlan;
+    fn index(&self, i: usize) -> &SomePlan {
+        &self.items[i]
+    }
+}
+
+/// Implement the trait StrLen for SomePlan.
+impl tools::StrLen for PlanStore {
+    fn strlen(&self) -> usize {
+        let mut cnt = 2; // brackets.
+        for (inx, planx) in self.items.iter().enumerate() {
+            if inx > 0 {
+                cnt += 2; // comma space
+            }
+            cnt += planx.strlen();
+        }
+        cnt
+    }
+}
+
+impl IntoIterator for PlanStore {
+    type Item = SomePlan;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+impl FromStr for PlanStore {
+    type Err = String;
     /// Return a planstore, given a string representation.
     /// Like [], [P[r001-0>r101]] or [P[r001-0>r101], P[r101-0>r101]].
-    pub fn from_str(str_in: &str) -> Result<Self, String> {
+    fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planstore::from_str: {ps_str}");
         let ps_str = str_in.trim();
 
@@ -255,36 +280,6 @@ impl PlanStore {
         let ret_planstore = PlanStore::new(plans);
 
         Ok(ret_planstore)
-    }
-} // end impl PlanStore
-
-impl Index<usize> for PlanStore {
-    type Output = SomePlan;
-    fn index(&self, i: usize) -> &SomePlan {
-        &self.items[i]
-    }
-}
-
-/// Implement the trait StrLen for SomePlan.
-impl tools::StrLen for PlanStore {
-    fn strlen(&self) -> usize {
-        let mut cnt = 2; // brackets.
-        for (inx, planx) in self.items.iter().enumerate() {
-            if inx > 0 {
-                cnt += 2; // comma space
-            }
-            cnt += planx.strlen();
-        }
-        cnt
-    }
-}
-
-impl IntoIterator for PlanStore {
-    type Item = SomePlan;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.into_iter()
     }
 }
 

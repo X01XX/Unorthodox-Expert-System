@@ -363,6 +363,7 @@ impl NumBits for SomeGroup {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
 
     #[test]
     fn check_subset_sample() -> Result<(), String> {

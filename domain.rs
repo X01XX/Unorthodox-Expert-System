@@ -1043,6 +1043,7 @@ mod tests {
     use super::*;
     use crate::domainstore::DomainStore;
     use crate::target::ATarget;
+    use std::str::FromStr;
 
     // Test running a plan using an alt-rule (change) group.
     #[test]
