@@ -195,59 +195,29 @@ impl SomeRule {
             .is_high()
     }
 
-    /// Return a valid union, if possible, by restricting
-    /// the initial region as needed to get rid of 0/X and 1/X bit
-    /// positions.
-    /// XX + X0 -> 00, XX + X1 -> 11.
-    /// Xx + X0 -> 10, Xx + X1 -> 01.
-    /// X0 + 01 -> 10, X0 + 11 -> 00.
-    /// X1 + 00 -> 11, X1 + 10 -> 01.
-    /// XX + 01 -> 11, XX + 10 -> 00.
-    /// Xx + 00 -> 10, Xx + 11 -> 01.
-    pub fn parsed_union(&self, other: &Self) -> Option<Self> {
+    /// Return a valid union, or None.
+    pub fn valid_union(&self, other: &Self) -> Option<Self> {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        let rule2 = Self {
-            m00: self.m00.bitwise_or(&other.m00),
-            m01: self.m01.bitwise_or(&other.m01),
-            m11: self.m11.bitwise_or(&other.m11),
-            m10: self.m10.bitwise_or(&other.m10),
-        };
-        if rule2.is_valid_union() {
-            return Some(rule2);
-        }
+        let unx = self.union(other);
 
-        // Pare down rule.
-        let not_zero_x_mask = rule2.m00.bitwise_and(&rule2.m01).bitwise_not();
-        let not_one_x_mask = rule2.m11.bitwise_and(&rule2.m10).bitwise_not();
-
-        let rule3 = Self {
-            m00: rule2.m00.bitwise_and(&not_zero_x_mask),
-            m01: rule2.m01.bitwise_and(&not_zero_x_mask),
-            m11: rule2.m11.bitwise_and(&not_one_x_mask),
-            m10: rule2.m10.bitwise_and(&not_one_x_mask),
-        };
-        // Check for any null bit positions.
-        if rule3.is_valid_intersection() {
-            return Some(rule3);
+        if unx.is_valid_union() {
+            Some(unx)
+        } else {
+            None
         }
-        None
     }
 
-    /// Return a logical OR of two rules. The result may be invalid.
-    pub fn union(&self, other: &Self) -> Option<Self> {
+    /// Return a logical OR of two rules. The result may not pass is_valid_union.
+    pub fn union(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        let ret_rule = Self {
+        Self {
             m00: self.m00.bitwise_or(&other.m00),
             m01: self.m01.bitwise_or(&other.m01),
             m11: self.m11.bitwise_or(&other.m11),
             m10: self.m10.bitwise_or(&other.m10),
-        };
-        if ret_rule.is_valid_union() {
-            return Some(ret_rule);
         }
-        None
     }
 
     /// Return a logical AND of two rules.  The result may be invalid.
@@ -417,7 +387,7 @@ impl SomeRule {
             } else if msk == 6 {
                 strrc.push_str("X1/");
             } else if msk == 7 {
-                strrc.push_str("11,0X?/"); // Will fail is_valid_union, parsed_union can remove 0X.
+                strrc.push_str("00,01,11?/"); // Will fail is_valid_union.
             } else if msk == 8 {
                 strrc.push_str("10/");
             } else if msk == 9 {
@@ -425,15 +395,15 @@ impl SomeRule {
             } else if msk == 10 {
                 strrc.push_str("Xx/");
             } else if msk == 11 {
-                strrc.push_str("10,0X?/"); // Will fail is_valid_union, parsed_union can remove 0X.
+                strrc.push_str("00,01,10?/"); // Will fail is_valid_union.
             } else if msk == 12 {
                 strrc.push_str("1X/"); // Will fail is_valid_union.
             } else if msk == 13 {
-                strrc.push_str("00,1X?/"); // Will fail is_valid_union, parsed_union can remove 1X.
+                strrc.push_str("00,11,10?/"); // Will fail is_valid_union.
             } else if msk == 14 {
-                strrc.push_str("01,1X?/"); // Will fail is_valid_union, parsed_union can remove  1X.
+                strrc.push_str("01,11,10?/"); // Will fail is_valid_union.
             } else if msk == 15 {
-                strrc.push_str("0X?,1X?/"); // Will fail is_valid_union.
+                strrc.push_str("00,01,11,10?/"); // Will fail is_valid_union.
             }
         } // next i
 
@@ -548,90 +518,33 @@ impl SomeRule {
     }
 
     /// Return a SomeChange instance.
-    pub fn to_change(&self) -> SomeChange {
+    pub fn as_change(&self) -> SomeChange {
         SomeChange::new(self.m01.clone(), self.m10.clone())
     }
 
     /// Return a rule for translating from a region to another region.
-    /// The result may have a 0->X, or 1->X, bit position, in which case it will not pass a is-valid-union-test.
+    /// The result may not pass is_valid_union.
     pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
-        let from_x = from.x_mask();
-        let from_1 = from.edge_ones_mask();
-        let from_0 = from.edge_zeros_mask();
-
-        let to_x = to.x_mask();
-        let to_1 = to.edge_ones_mask();
-        let to_0 = to.edge_zeros_mask();
-
-        let x_to_0 = from_x.bitwise_and(&to_0);
-        let x_to_1 = from_x.bitwise_and(&to_1);
-        let x_to_x = from_x.bitwise_and(&to_x).bitwise_and(
-            &from
-                .first_state()
-                .bitwise_xor(&to.first_state().bitwise_not()),
-        );
-        let x_to_xnot = from_x
-            .bitwise_and(&to_x)
-            .bitwise_and(&from.first_state().bitwise_xor(to.first_state()));
-
-        // Incorporate usually dissallowed bit changes, interpreted as "change don't care".
-        let zero_to_x = from_0.bitwise_and(&to_x);
-        let one_to_x = from_1.bitwise_and(&to_x);
-
-        SomeRule {
-            m00: from_0
-                .bitwise_and(&to_0)
-                .bitwise_or(&x_to_0)
-                .bitwise_or(&x_to_x)
-                .bitwise_or(&zero_to_x),
-            m01: from_0
-                .bitwise_and(&to_1)
-                .bitwise_or(&x_to_1)
-                .bitwise_or(&zero_to_x)
-                .bitwise_or(&x_to_xnot),
-            m11: from_1
-                .bitwise_and(&to_1)
-                .bitwise_or(&x_to_1)
-                .bitwise_or(&x_to_x)
-                .bitwise_or(&one_to_x),
-            m10: from_1
-                .bitwise_and(&to_0)
-                .bitwise_or(&x_to_0)
-                .bitwise_or(&one_to_x)
-                .bitwise_or(&x_to_xnot),
-        }
+        SomeRule::new(&SomeSample::new(
+            from.first_state().clone(),
+            to.first_state().clone(),
+        ))
+        .union(&SomeRule::new(&SomeSample::new(
+            from.far_state(),
+            to.far_state(),
+        )))
     }
 
     /// Return a rule for translating from a state to a region.
-    /// The result of the rule may be equal to, or subset of (1->1 instead of 1->X,
-    /// 0->0 instead of 0->X), the second region.
-    /// The minimum changes are sought, so X->x-not becomes X->X.
-    /// It can be thought that:
-    /// 0->1 and 1->0 changes are required, but compared to another change may be missing,
-    /// or if in the other change may be unwanted.
-    /// For X->0, the change is optional, a 0 input will be no change.
-    /// For X->1, the change is optional, a 1 input will be no change.
-    /// Anything -> X, is a don't care.
+    /// The result may not pass is_valid_union.
     pub fn _new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
-        let from_0 = from.bitwise_not();
-
-        let to_x = to.x_mask();
-        let to_1 = to.edge_ones_mask();
-        let to_0 = to.edge_zeros_mask();
-
-        let zero_to_x = to_x.bitwise_and(&from_0);
-        let one_to_x = to_x.bitwise_and(from);
-
-        SomeRule {
-            m00: to_0.bitwise_and(&from_0).bitwise_or(&zero_to_x),
-            m01: to_1.bitwise_and(&from_0),
-            m11: to_1.bitwise_and(from).bitwise_or(&one_to_x),
-            m10: to_0.bitwise_and(from),
-        }
+        SomeRule::new(&SomeSample::new(from.clone(), to.first_state().clone())).union(
+            &SomeRule::new(&SomeSample::new(from.clone(), to.far_state())),
+        )
     }
 
     /// Return the number of bits changed in a rule.
@@ -653,7 +566,7 @@ impl SomeRule {
             return self.combine_sequence2(other);
         }
 
-        // Get a rule that will connect the twe rules.
+        // Get a rule that will connect the two rules.
         let rule_between =
             Self::new_region_to_region(&self.result_region(), &other.initial_region());
 
@@ -728,7 +641,7 @@ impl SomeRule {
 
     /// Return a change containing wanted changes to achieve the rule goal.
     pub fn wanted_changes(&self) -> SomeChange {
-        self.to_change().bitwise_and(&self.change_care_mask())
+        self.as_change().bitwise_and(&self.change_care_mask())
     }
 
     /// Return a change containing unwanted changes to achieve the rule goal.
@@ -772,29 +685,6 @@ impl NumBits for SomeRule {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn parsed_union() -> Result<(), String> {
-        let rul1 = SomeRule::from_str("XX/XX/Xx/Xx/X0/X0")?;
-        let rul2 = SomeRule::from_str("X0/X1/X0/X1/01/11")?;
-        if let Some(rint) = rul1.parsed_union(&rul2) {
-            println!("{} int {} = {}", rul1, rul2, rint);
-            assert!(rint == SomeRule::from_str("00/11/10/01/10/00")?);
-        } else {
-            return Err(format!("{} int {} is None?", rul1, rul2));
-        }
-
-        let rul1 = SomeRule::from_str("X1/X1/XX/XX/Xx/Xx")?;
-        let rul2 = SomeRule::from_str("00/10/01/10/00/11")?;
-        if let Some(rint) = rul1.parsed_union(&rul2) {
-            println!("{} int {} = {}", rul1, rul2, rint);
-            assert!(rint == SomeRule::from_str("11/01/11/00/10/01")?);
-        } else {
-            return Err(format!("{} int {} is None?", rul1, rul2));
-        }
-
-        Ok(())
-    }
 
     #[test]
     fn strlen() -> Result<(), String> {
@@ -938,22 +828,22 @@ mod tests {
         let rul1 = SomeRule::from_str("00")?;
         let rul2 = SomeRule::from_str("01")?;
         println!("rul1: {rul1} rul2: {rul2}");
-        assert!(rul1.union(&rul2).is_none());
+        assert!(!rul1.union(&rul2).is_valid_union());
 
         let rul1 = SomeRule::from_str("11")?;
         let rul2 = SomeRule::from_str("10")?;
         println!("rul1: {rul1} rul2: {rul2}");
-        assert!(rul1.union(&rul2).is_none());
+        assert!(!rul1.union(&rul2).is_valid_union());
 
         let rul1 = SomeRule::from_str("11")?;
         let rul2 = SomeRule::from_str("01")?;
         println!("rul1: {rul1} rul2: {rul2}");
-        assert!(rul1.union(&rul2).is_some());
+        assert!(rul1.union(&rul2).is_valid_union());
 
         let rul1 = SomeRule::from_str("x1")?;
         let rul2 = SomeRule::from_str("00")?;
         println!("rul1: {rul1} rul2: {rul2}");
-        assert!(rul1.union(&rul2).is_none());
+        assert!(!rul1.union(&rul2).is_valid_union());
 
         Ok(())
     }
@@ -1085,14 +975,11 @@ mod tests {
 
     #[test]
     fn union() -> Result<(), String> {
-        let rul1 = SomeRule::from_str("00/01/00/01/xx")?;
-        let rul2 = SomeRule::from_str("00/01/10/10/11")?;
-
-        let Some(rul3) = rul1.union(&rul2) else {
-            panic!("This should work!");
-        };
+        let rul1 = SomeRule::from_str("00/00/00/00_00/00/00/00")?;
+        let rul2 = SomeRule::from_str("00/01/11/10_X1/X0/XX/Xx")?;
+        let rul3 = rul1.union(&rul2);
         println!("rul3 = {rul3}");
-        assert!(rul3 == SomeRule::from_str("00/01/x0/Xx/xx")?);
+        assert!(format!("{rul3}") == "00/0X/XX/X0_00,01,11?/X0/XX/00,01,10?");
 
         Ok(())
     }

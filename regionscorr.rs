@@ -220,18 +220,6 @@ impl RegionsCorr {
         self.distance(other) == 0
     }
 
-    /// Make minimum changes to a RegionsCorr so that it will be a subset of another.
-    pub fn translate_to(&self, other: &Self) -> Self {
-        debug_assert!(self.is_congruent(other));
-
-        let mut ret_regs = Self::with_capacity(self.len());
-
-        for (regx, regy) in self.iter().zip(other.iter()) {
-            ret_regs.push(regx.translate_to(regy));
-        }
-        ret_regs
-    }
-
     /// Return true if corresponding regions in two vectors have the same number of bits.
     pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
@@ -320,26 +308,24 @@ impl RegionsCorr {
         debug_assert!(self.is_adjacent(other));
 
         let mut adj_count = 0;
-        let mut alt_self = RegionsCorr::new(vec![]);
-        let mut alt_other = RegionsCorr::new(vec![]);
+        let mut ret_regs = RegionsCorr::new(vec![]);
 
         for (item1, item2) in self.regions.iter().zip(other.regions.iter()) {
-            if item1.intersects(item2) {
-                alt_self.push(item1.clone());
-                alt_other.push(item2.clone());
+            if let Some(item3) = item1.intersection(item2) {
+                ret_regs.push(item3);
             } else if item1.is_adjacent(item2) {
                 adj_count += 1;
-                if adj_count > 1 {
-                    panic!("regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent");
-                }
-                let msk = item1.diff_edge_mask(item2);
-                alt_self.push(item1.set_to_x(&msk));
-                alt_other.push(item2.set_to_x(&msk));
+                ret_regs.push(item1.symmetrical_overlapping_region(item2));
             } else {
                 panic!("regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent");
             }
         }
-        alt_self.intersection(&alt_other).unwrap()
+        if adj_count != 1 {
+            panic!(
+                "regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent"
+            );
+        }
+        ret_regs
     }
 
     /// Return a difference edge mask for two RegionsCorrs.
@@ -517,33 +503,6 @@ mod tests {
         println!("{regstr1} intersects {regstr3} is {intb}");
 
         assert!(intb);
-
-        Ok(())
-    }
-
-    #[test]
-    fn translate_to() -> Result<(), String> {
-        let regstr1 = RegionsCorr::from_str("RC[r0x0x, r1x00]")?;
-
-        let regstr2 = RegionsCorr::from_str("RC[r11x1, r1xx1]")?;
-
-        let regstr3 = regstr1.translate_to(&regstr2);
-        println!("{regstr1} transate_to {regstr2} is {regstr3}");
-
-        let mut regstrtmp = RegionsCorr::with_capacity(2);
-        regstrtmp.push(SomeRegion::from_str("r1101")?);
-        regstrtmp.push(SomeRegion::from_str("r1x01")?);
-
-        assert!(regstr3 == regstrtmp);
-
-        let regstr4 = RegionsCorr::from_str("RC[r010x, rx10x]")?;
-
-        let regstr5 = regstr1.translate_to(&regstr4);
-        println!("{regstr1} transate_to {regstr4} is {regstr5}");
-
-        let regstrtmp = RegionsCorr::from_str("RC[r010x, r1100]")?;
-
-        assert!(regstr5 == regstrtmp);
 
         Ok(())
     }

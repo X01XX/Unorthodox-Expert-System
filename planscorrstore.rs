@@ -461,9 +461,10 @@ mod tests {
         println!("plnscstr {plnscstr}");
 
         let restrict_regs = RegionsCorr::from_str("RC[r0X, r00X]")?;
+        println!("restrict_regs {restrict_regs}");
 
         if let Some(restricted) = plnscstr.restrict_result_regions(&restrict_regs) {
-            println!("resricted {restricted}");
+            println!("resricted plan {restricted}");
             let initial_regs = restricted.initial_regions();
             println!("initial regs {initial_regs}");
             assert!(initial_regs == RegionsCorr::from_str("RC[r1X, rX1X]")?);

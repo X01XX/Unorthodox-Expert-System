@@ -495,26 +495,6 @@ impl SomeRegion {
         self.states.len()
     }
 
-    /// Translate one region into another.
-    pub fn translate_to(&self, other: &Self) -> Self {
-        debug_assert_eq!(self.num_bits(), other.num_bits());
-
-        // Calc self bit position masks.
-        let self_x = self.x_mask();
-        let self_1 = self.edge_ones_mask();
-        let self_0 = self.edge_zeros_mask();
-
-        // Calc other bit position masks.
-        let other_1 = other.edge_ones_mask();
-        let other_0 = other.edge_zeros_mask();
-
-        // Calc needed changes.
-        let to_0 = self_x.bitwise_or(&self_1).bitwise_and(&other_0);
-        let to_1 = self_x.bitwise_or(&self_0).bitwise_and(&other_1);
-
-        self.set_to_ones(&to_1).set_to_zeros(&to_0)
-    }
-
     /// Retun the number of bits used to describe region states.
     pub fn num_bits(&self) -> usize {
         self.states[0].num_bits()
@@ -572,6 +552,17 @@ impl SomeRegion {
         }
         // states2 is already at the minimum.
         states2.vec()
+    }
+
+    /// Return the symmetrical overlapping region for two adjacent regions.
+    pub fn symmetrical_overlapping_region(&self, other: &SomeRegion) -> Self {
+        debug_assert!(self.is_adjacent(other));
+
+        let msk = self.diff_edge_mask(other);
+
+        self.set_to_x(&msk)
+            .intersection(&other.set_to_x(&msk))
+            .expect("SNH")
     }
 } // end impl SomeRegion
 
@@ -680,21 +671,6 @@ mod tests {
 
         assert!(reg2 == SomeRegion::from_str("XXXX01X")?);
 
-        Ok(())
-    }
-
-    #[test]
-    fn translate_to() -> Result<(), String> {
-        let reg1 = SomeRegion::from_str("XX0101X")?;
-        let reg2 = SomeRegion::from_str("10XX10X")?;
-        println!("reg1 {reg1}");
-        println!("reg2 {reg2}");
-
-        let reg3 = reg1.translate_to(&reg2);
-        println!("reg3 {reg3}");
-        if reg3 != SomeRegion::from_str("r100110X")? {
-            return Err(format!("{reg3} ??"));
-        }
         Ok(())
     }
 

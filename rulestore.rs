@@ -191,8 +191,12 @@ impl RuleStore {
         debug_assert!(self[0].num_bits() == other[0].num_bits());
 
         if self.len() == 1 {
-            let rulx = self.items[0].union(&other.items[0])?;
-            return Some(Self::new(vec![rulx]));
+            let rulx = self.items[0].union(&other.items[0]);
+            if rulx.is_valid_union() {
+                return Some(Self::new(vec![rulx]));
+            } else {
+                return None;
+            }
         }
 
         if self.len() == 2 {
@@ -201,7 +205,7 @@ impl RuleStore {
             let rul0 = self.items[0].union(&other.items[0]);
             let rul1 = self.items[1].union(&other.items[1]);
 
-            if rul0.is_none() || rul1.is_none() {
+            if !rul0.is_valid_union() || !rul1.is_valid_union() {
                 ordera = false;
             }
 
@@ -210,7 +214,7 @@ impl RuleStore {
             let rul2 = self.items[0].union(&other.items[1]);
             let rul3 = self.items[1].union(&other.items[0]);
 
-            if rul2.is_none() || rul3.is_none() {
+            if !rul2.is_valid_union() || !rul3.is_valid_union() {
                 orderb = false;
             }
 
@@ -225,80 +229,11 @@ impl RuleStore {
             }
 
             if ordera {
-                return Some(Self::new(vec![rul0.expect("SNH"), rul1.expect("SNH")]));
+                return Some(Self::new(vec![rul0, rul1]));
             }
 
             // Must be orderb == true.
-            return Some(Self::new(vec![rul2.expect("SNH"), rul3.expect("SNH")]));
-        } // end if self.len() == 2
-
-        panic!("unexpected RuleStore length");
-    }
-
-    /// Return a valid union, if possible, by restricting
-    /// the initial region as needed to get rid of 0/X and 1/X bit
-    /// positions.
-    pub fn parsed_union(&self, other: &Self) -> Option<Self> {
-        //println!("\nrulestore parsed_union {} and {}", self, other);
-        assert!(self.is_not_empty() && other.is_not_empty());
-        debug_assert!(self[0].num_bits() == other[0].num_bits());
-
-        if self.len() == 1 {
-            let rulx = self.items[0].parsed_union(&other.items[0])?;
-            return Some(Self::new(vec![rulx]));
-        }
-
-        if self.len() == 2 {
-            let mut ordera = true;
-
-            let rul0 = self.items[0].parsed_union(&other.items[0]);
-            let rul1 = self.items[1].parsed_union(&other.items[1]);
-
-            if let Some(ref rulx) = rul0 {
-                if let Some(ref ruly) = rul1 {
-                    if rulx.initial_region() != ruly.initial_region() {
-                        ordera = false;
-                    }
-                } else {
-                    ordera = false;
-                }
-            } else {
-                ordera = false;
-            }
-
-            let mut orderb = true;
-
-            let rul2 = self.items[0].parsed_union(&other.items[1]);
-            let rul3 = self.items[1].parsed_union(&other.items[0]);
-
-            if let Some(ref rulx) = rul2 {
-                if let Some(ref ruly) = rul3 {
-                    if rulx.initial_region() != ruly.initial_region() {
-                        orderb = false;
-                    }
-                } else {
-                    orderb = false;
-                }
-            } else {
-                orderb = false;
-            }
-
-            // For any Pn::Two RuleStore, there must be at least one single-bit position of 0->1 and 0->0 alternating result,
-            // or a 1->0 and 1->1 alternating result.
-            //
-            // To join two Pn::Two RuleStores in one of two possible sequences, there must be at least one matching initial single-bit position
-            // with an alternating result.
-            if ordera == orderb {
-                // Both true or both false.
-                return None;
-            }
-
-            if ordera {
-                return Some(Self::new(vec![rul0.expect("SNH"), rul1.expect("SNH")]));
-            }
-
-            // Must be orderb == true.
-            return Some(Self::new(vec![rul2.expect("SNH"), rul3.expect("SNH")]));
+            return Some(Self::new(vec![rul2, rul3]));
         } // end if self.len() == 2
 
         panic!("unexpected RuleStore length");
@@ -315,19 +250,20 @@ impl RuleStore {
         assert!(other.len() == 1);
         debug_assert!(self[0].num_bits() == other[0].num_bits());
 
-        let zero = self[0].union(&other[0]).is_some();
-        let one = self[1].union(&other[0]).is_some();
+        let zero = self[0].union(&other[0]);
+        let one = self[1].union(&other[0]);
 
-        if zero && one {
-            return None;
+        if !zero.is_valid_union() {
+            if !one.is_valid_union() {
+                None
+            } else {
+                Some(1)
+            }
+        } else if !one.is_valid_union() {
+            Some(0)
+        } else {
+            None
         }
-        if zero {
-            return Some(0);
-        }
-        if one {
-            return Some(1);
-        }
-        None
     }
 
     /// Return true if two one-rule RuleStores,
@@ -344,12 +280,13 @@ impl RuleStore {
             .is_superset_of(&self.initial_region()));
 
         if self.len() == 1 {
-            return self[0].union(&other[0]).is_some();
+            return self[0].union(&other[0]).is_valid_union();
         }
 
         // Must be two-rule RuleStores.
-        (self[0].union(&other[0]).is_some() && self[1].union(&other[1]).is_some())
-            ^ (self[0].union(&other[1]).is_some() && self[1].union(&other[0]).is_some())
+        (self[0].union(&other[0]).is_valid_union() && self[1].union(&other[1]).is_valid_union())
+            ^ (self[0].union(&other[1]).is_valid_union()
+                && self[1].union(&other[0]).is_valid_union())
     }
 
     /// Return a vector iterator.

@@ -357,12 +357,12 @@ impl SomeDomain {
                     let rulx = rule_to.combine_sequence(&stepx.rule);
 
                     let step_num_unwanted_changes = rulx
-                        .to_change()
+                        .as_change()
                         .intersection(&unwanted_changes)
                         .number_changes();
 
                     let step_num_wanted_changes = rulx
-                        .to_change()
+                        .as_change()
                         .intersection(&wanted_changes)
                         .number_changes();
 
@@ -411,7 +411,7 @@ impl SomeDomain {
                         let rulx = stepx.rule.restrict_initial_region(from_reg);
                         (
                             wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.to_change()
+                            rulx.as_change()
                                 .intersection(&unwanted_changes)
                                 .number_changes(),
                         )
@@ -419,7 +419,7 @@ impl SomeDomain {
                         let rulx = stepx.rule.restrict_result_region(goal_reg);
                         (
                             wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.to_change()
+                            rulx.as_change()
                                 .intersection(&unwanted_changes)
                                 .number_changes(),
                         )
@@ -428,7 +428,7 @@ impl SomeDomain {
                         let rulx = rule_to.combine_sequence(&stepx.rule);
                         (
                             wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.to_change()
+                            rulx.as_change()
                                 .intersection(&unwanted_changes)
                                 .number_changes(),
                         )

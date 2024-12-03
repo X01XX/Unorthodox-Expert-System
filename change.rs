@@ -147,7 +147,7 @@ impl SomeChange {
                 } else if ruls.m11.is_not_low() {
                     Err("SomeChange::from_str: invalid token, 11, X1 or XX?".to_string())
                 } else {
-                    Ok(ruls.to_change())
+                    Ok(ruls.as_change())
                 }
             }
             Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),

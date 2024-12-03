@@ -50,7 +50,7 @@ impl GroupStore {
                 if let Some(changes) = aggregate_changes {
                     aggregate_changes = Some(changes.union(rulx));
                 } else {
-                    aggregate_changes = Some(rulx.to_change());
+                    aggregate_changes = Some(rulx.as_change());
                 }
             }
         }
