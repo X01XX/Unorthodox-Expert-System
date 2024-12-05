@@ -10,6 +10,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
+use std::str::FromStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SelectRegionsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -416,6 +418,105 @@ impl IntoIterator for SelectRegionsStore {
     }
 }
 
+impl FromStr for SelectRegionsStore {
+    type Err = String;
+    /// Return a SelectRegionsStore instance, given a string representation.
+    /// Like [], [SR[RC[r1010], 1]], or [SR[RC[r101, r100], -1], SR[RC[r111, r101], 0]].
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("selectregionsstore::from_str: {str_in}");
+        let src_str = str_in.trim();
+
+        if src_str.is_empty() {
+            return Err("SelectRegionsStore::from_str: Empty string?".to_string());
+        }
+
+        // Strip off "SRS[ ... ]". Check that the brackets are balanced.
+        let mut src_str2 = String::new();
+        let mut left = 0;
+        let mut right = 0;
+
+        for (inx, chr) in src_str.graphemes(true).enumerate() {
+            if inx == 0 {
+                if chr == "[" {
+                    left += 1;
+                    continue;
+                } else {
+                    return Err(format!(
+                        "SelectRegionsStore::from_str: Invalid string, {src_str} should start with ["
+                    ));
+                }
+            }
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!(
+                        "SelectRegionsStore::from_str: Invalid string, {src_str}"
+                    ));
+                }
+            }
+
+            src_str2.push_str(chr);
+        }
+        if left != right {
+            return Err(format!(
+                "SelectRegionsStore::from_str: Invalid string, {src_str}"
+            ));
+        }
+
+        // Remove last right-bracket, balancing first left bracket.
+        src_str2.remove(src_str2.len() - 1);
+
+        // Split string into <SelectRegions> tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+        left = 0;
+        right = 0;
+
+        for chr in src_str2.graphemes(true) {
+            if token.is_empty() && (chr == " " || chr == ",") {
+                continue;
+            }
+
+            token.push_str(chr);
+
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!(
+                        "SelectRegionsStore::from_str: Invalid string, {src_str}"
+                    ));
+                }
+            }
+            if left == right && left > 0 {
+                token_list.push(token);
+                token = String::new();
+                left = 0;
+                right = 0;
+            }
+        }
+        //println!("token_list {:?}", token_list);
+
+        // Tally up tokens.
+        let mut sregions = Vec::<SelectRegions>::new();
+
+        for tokenx in token_list.into_iter() {
+            match SelectRegions::from_str(&tokenx) {
+                Ok(regx) => sregions.push(regx),
+                Err(errstr) => return Err(format!("6SelectRegionsStore::from_str: {errstr}")),
+            }
+        }
+        let ret_store = SelectRegionsStore::new(sregions);
+
+        Ok(ret_store)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -431,13 +532,8 @@ mod tests {
         assert!(frags == srs1);
 
         // Try with no intersections
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-
-        let regstr1 = SelectRegions::from_str("SR[RC[r0xx1, r1x1x], -1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[r1x0x, rx1x1], 2]")?;
-        srs1.push(regstr2);
+        let srs1 =
+            SelectRegionsStore::from_str("[SR[RC[r0xx1, r1x1x], -1], SR[RC[r1x0x, rx1x1], 2]]")?;
 
         let frags = srs1.split_by_intersections();
         println!("Fragments of:");
@@ -456,13 +552,8 @@ mod tests {
     #[test]
     fn split_by_intersections2() -> Result<(), String> {
         // Try one level of intersection.
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-
-        let regstr1 = SelectRegions::from_str("SR[RC[r0x0x, r0x0x], 1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[rx1x1, rx1x1], 2]")?;
-        srs1.push(regstr2);
+        let srs1 =
+            SelectRegionsStore::from_str("[SR[RC[r0x0x, r0x0x], 1], SR[RC[rx1x1, rx1x1], 2]]")?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
@@ -516,16 +607,8 @@ mod tests {
     #[test]
     fn split_by_intersections3() -> Result<(), String> {
         // Try two levels of intersection.
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-
-        let regstr1 = SelectRegions::from_str("SR[RC[r0x0x], 1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[rx1x1], 2]")?;
-        srs1.push(regstr2);
-
-        let regstr3 = SelectRegions::from_str("SR[RC[rx10x], 3]")?;
-        srs1.push(regstr3);
+        let srs1 =
+            SelectRegionsStore::from_str("[SR[RC[r0x0x], 1], SR[RC[rx1x1], 2], SR[RC[rx10x], 3]]")?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
@@ -580,15 +663,9 @@ mod tests {
     #[test]
     fn split_by_intersections4() -> Result<(), String> {
         // Try one level of intersection, two region select regions..
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::from_str("SR[RC[r0xx1, r1x1x], -1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[rxx0x, rx1x1], 2]")?;
-        srs1.push(regstr2);
-
-        let regstr3 = SelectRegions::from_str("SR[RC[rxxxx, rxxxx], 1]")?;
-        srs1.push(regstr3);
+        let srs1 = SelectRegionsStore::from_str(
+            "[SR[RC[r0xx1, r1x1x], -1], SR[RC[rxx0x, rx1x1], 2], SR[RC[rxxxx, rxxxx], 1]]",
+        )?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
@@ -642,16 +719,8 @@ mod tests {
     #[test]
     fn split_by_intersections5() -> Result<(), String> {
         // Try three levels of intersection.
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-
-        let regstr1 = SelectRegions::from_str("SR[RC[r0xxx], 4]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[rxx1x], 3]")?;
-        srs1.push(regstr2);
-
-        let regstr3 = SelectRegions::from_str("SR[RC[rx1x1], 2]")?;
-        srs1.push(regstr3);
+        let srs1 =
+            SelectRegionsStore::from_str("[SR[RC[r0xxx], 4], SR[RC[rxx1x], 3], SR[RC[rx1x1], 2]]")?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
@@ -897,16 +966,9 @@ mod tests {
 
     #[test]
     fn split_by_intersections6() -> Result<(), String> {
-        // Try one level of intersection.
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::from_str("SR[RC[r0x0x], 1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[r0x1x], 2]")?;
-        srs1.push(regstr2);
-
-        let regstr3 = SelectRegions::from_str("SR[RC[r01x1], -1]")?;
-        srs1.push(regstr3);
+        let srs1 = SelectRegionsStore::from_str(
+            "[SR[RC[r0x0x], 1], SR[RC[r0x1x], 2], SR[RC[r01x1], -1]]",
+        )?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
@@ -975,15 +1037,9 @@ mod tests {
     #[test]
     fn split_by_intersections7() -> Result<(), String> {
         // Try one level of intersection.
-        let mut srs1 = SelectRegionsStore::new(vec![]);
-        let regstr1 = SelectRegions::from_str("SR[RC[rxx0x], 1]")?;
-        srs1.push(regstr1);
-
-        let regstr2 = SelectRegions::from_str("SR[RC[rxx1x], 2]")?;
-        srs1.push(regstr2);
-
-        let regstr3 = SelectRegions::from_str("SR[RC[r11x1], -1]")?;
-        srs1.push(regstr3);
+        let srs1 = SelectRegionsStore::from_str(
+            "[SR[RC[rxx0x], 1], SR[RC[rxx1x], 2], SR[RC[r11x1], -1]]",
+        )?;
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
