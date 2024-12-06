@@ -832,8 +832,9 @@ impl DomainStore {
         let mut in_pos = false;
         let mut in_neg = false;
 
-        for selx in self.select.iter() {
-            if selx.net_value != 0 && selx.is_superset_of_states(&all_states) {
+        let supersets = self.select.supersets_of_states(&all_states);
+        for selx in supersets.iter() {
+            if selx.net_value != 0 {
                 in_str += &format!("in {}, {} ", selx.regions, selx.net_value);
                 if selx.net_value > 0 {
                     in_pos = true;

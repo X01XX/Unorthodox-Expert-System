@@ -103,38 +103,6 @@ impl SelectRegionsStore {
         self.items.push(select);
     }
 
-    /// Add a SelectRegionsStore, deleting supersets.
-    pub fn push_nosups(&mut self, select: SelectRegions) {
-        debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(&select));
-
-        //print!("{} push {}", self, select);
-        // Don't add a superset.
-        if self.any_subsets_of(&select) {
-            return;
-        }
-        // Identify supersets by index.
-        let mut del = self
-            .items
-            .iter()
-            .enumerate()
-            .filter_map(|(inx, regstx)| {
-                if regstx.regions.is_superset_of(&select.regions) {
-                    Some(inx)
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<usize>>();
-
-        // Remove subsets, highest indicies first.
-        del.sort();
-        for inx in del.iter().rev() {
-            tools::remove_unordered(&mut self.items, *inx);
-        }
-        // Add new select instance.
-        self.items.push(select);
-    }
-
     /// Return the length of an instance.
     pub fn len(&self) -> usize {
         self.items.len()
@@ -158,16 +126,6 @@ impl SelectRegionsStore {
     /// Return an mut iterator
     pub fn iter_mut(&mut self) -> IterMut<SelectRegions> {
         self.items.iter_mut()
-    }
-
-    /// Return a Vector of SelectRegions not supersets of a given RegionsCorr.
-    pub fn _not_supersets_of(&self, regs: &RegionsCorr) -> Vec<&SelectRegions> {
-        debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(regs));
-
-        self.items
-            .iter()
-            .filter(|regsx| !regsx.regions.is_superset_of(regs))
-            .collect()
     }
 
     /// Return true if any SelectRegions is a superset of a StateStore.
@@ -222,52 +180,6 @@ impl SelectRegionsStore {
         false
     }
 
-    /// Return true if any SelectRegion is a region subset of another.
-    fn any_subsets_of(&self, slrx: &SelectRegions) -> bool {
-        debug_assert!(self.is_empty() || self.items[0].is_congruent(slrx));
-
-        for regsx in &self.items {
-            if regsx.regions.is_subset_of(&slrx.regions) {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Return the intersection of a SelectRegionStore and a Selectregions instance.
-    pub fn intersection_item(&self, slrx: &SelectRegions) -> Option<Self> {
-        debug_assert!(self.is_empty() || self.items[0].is_congruent(slrx));
-
-        let mut ret = Self::new(vec![]);
-        for inx in 0..self.len() {
-            if let Some(regs) = self[inx].intersection(slrx) {
-                ret.push_nosubs(regs);
-            }
-        }
-        if ret.is_empty() {
-            return None;
-        }
-        Some(ret)
-    }
-
-    /// Return the intersection of a SelectRegionStore and a Selectregions instance.
-    pub fn intersection(&self, other: &SelectRegionsStore) -> Option<Self> {
-        debug_assert!(self.is_empty() || other.is_empty() || self[0].is_congruent(&other[0]));
-
-        let mut ret = Self::new(vec![]);
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                if let Some(regs) = self[inx].intersection(&other[iny]) {
-                    ret.push_nosubs(regs);
-                }
-            }
-        }
-        if ret.is_empty() {
-            return None;
-        }
-        Some(ret)
-    }
-
     /// Return true if any item intersects a given SelectRegion.
     pub fn any_intersection_of(&self, slrx: &SelectRegions) -> bool {
         debug_assert!(self.is_empty() || self.items[0].is_congruent(slrx));
@@ -314,18 +226,6 @@ impl SelectRegionsStore {
             }
         }
         false
-    }
-
-    /// Append from another store.
-    pub fn append(&mut self, mut other: Self) {
-        debug_assert!(self.is_empty() || other.is_empty() || self.items[0].is_congruent(&other[0]));
-
-        self.items.append(&mut other.items);
-    }
-
-    /// Pop the last item.
-    pub fn pop(&mut self) -> Option<SelectRegions> {
-        self.items.pop()
     }
 
     /// Subtract a SelectRegions.
@@ -522,6 +422,126 @@ mod tests {
     use super::*;
     use std::str::FromStr;
 
+    /// Check fragments of a SRS for various error conditions.
+    fn check_fragments(
+        srs1: &SelectRegionsStore,
+        frags: &SelectRegionsStore,
+    ) -> Result<(), String> {
+        // Check for non-subset intersections.
+        for selx in frags.iter() {
+            for sely in srs1.iter() {
+                if selx.intersects(sely) && !selx.is_subset_of(sely) {
+                    return Err(format!("{selx} intersects {sely} ?"));
+                }
+            }
+        }
+
+        // Check fragments cover whole area.
+        let dif = srs1.subtract(&frags);
+        println!("dif {}", dif);
+        if dif.is_not_empty() {
+            return Err(format!("diff is {dif} ?"));
+        }
+
+        // Check fragment values.
+        for selx in frags.iter() {
+            let mut pos_val = 0;
+            let mut neg_val = 0;
+            // Gather values from start SelectRegionsStore.
+            for sely in srs1.iter() {
+                if selx.is_subset_of(sely) {
+                    pos_val += sely.pos_value;
+                    neg_val += sely.neg_value;
+                }
+            }
+            if pos_val != selx.pos_value {
+                return Err(format!(
+                    "selx {selx} pos_val {pos_val} NE selx.pos_value {} ?",
+                    selx.pos_value
+                ));
+            }
+            if neg_val != selx.neg_value {
+                return Err(format!(
+                    "selx {selx} neg_val {neg_val} NE selx.neg_value {} ?",
+                    selx.neg_value
+                ));
+            }
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_the_checker() -> Result<(), String> {
+        // Check for non-subset intersections.
+        let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
+        let frags = SelectRegionsStore::from_str("[SR[RC[r1x01], -1]]")?;
+        match check_fragments(&srs1, &frags) {
+            Ok(()) => return Err("Failed check for non-subset intersections.".to_string()),
+            Err(errstr) => {
+                println!("{}", errstr);
+                assert!(errstr == "SR[RC[r1x01], -1] intersects SR[RC[rX1X1], +2] ?")
+            }
+        }
+
+        // Check fragments cover whole area.
+        let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
+        let frags = SelectRegionsStore::from_str(
+            "[SR[RC[r1101], 1], SR[RC[r1X00], -1], SR[RC[r100X], -1]]",
+        )?;
+        match check_fragments(&srs1, &frags) {
+            Ok(()) => return Err("Failed Check fragments cover whole area..".to_string()),
+            Err(errstr) => {
+                println!("{}", errstr);
+                assert!(errstr == "diff is [SR[RC[rX111], +2], SR[RC[r01X1], +2]] ?")
+            }
+        }
+
+        // Check fragment values.
+        let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
+        // Check bad positive value.
+        let frags =
+            SelectRegionsStore::from_str("[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], -1], SR[RC[r01X1], 2], SR[RC[rX111], 2]]")?;
+        match check_fragments(&srs1, &frags) {
+            Ok(()) => return Err("Failed Check fragments values.".to_string()),
+            Err(errstr) => {
+                println!("{}", errstr);
+                assert!(errstr == "selx SR[RC[r1101], -1] pos_val 2 NE selx.pos_value 0 ?")
+            }
+        }
+        // Check bad negative value.
+        let frags =
+            SelectRegionsStore::from_str("[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], 2], SR[RC[r01X1], 2], SR[RC[rX111], 2]]")?;
+        match check_fragments(&srs1, &frags) {
+            Ok(()) => return Err("Failed Check fragments values.".to_string()),
+            Err(errstr) => {
+                println!("{}", errstr);
+                assert!(errstr == "selx SR[RC[r1101], +2] neg_val -1 NE selx.neg_value 0 ?")
+            }
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
+        let mut frags = srs1.split_by_intersections();
+        frags.push(SelectRegions::from_str("SR[RC[r0111], 2]")?);
+        match check_fragments(&srs1, &frags) {
+            Ok(()) => return Err("Failed Check fragments are supersets.".to_string()),
+            Err(errstr) => {
+                println!("{}", errstr);
+                assert!(errstr == "SR[RC[rX111], +2] is a superset of SR[RC[r0111], +2]");
+            }
+        }
+        Ok(())
+    }
+
     #[test]
     fn split_by_intersections1() -> Result<(), String> {
         // Try with empty RegionStore.
@@ -545,8 +565,11 @@ mod tests {
             println!("    {srsx}");
         }
 
-        assert!(frags == srs1);
-        Ok(())
+        if frags == srs1 {
+            Ok(())
+        } else {
+            Err(format!("{frags} NE srs1 {srs1} ?"))
+        }
     }
 
     #[test]
@@ -559,49 +582,7 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 9);
 
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other, or intersect.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 
     #[test]
@@ -614,50 +595,7 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 6);
 
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 
     #[test]
@@ -671,49 +609,7 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 20);
 
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 
     #[test]
@@ -726,110 +622,7 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 10);
 
-        // Check 3-level intersection.
-        let selx = SelectRegions::from_str("SR[RC[r0111], 9]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check 2-level intersection (1 of 4).
-        let selx = SelectRegions::from_str("SR[RC[r0101], 6]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check 2-level intersection (2 of 4).
-        let selx = SelectRegions::from_str("SR[RC[r1111], 5]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check 2-level intersection (3 of 4).
-        let selx = SelectRegions::from_str("SR[RC[r001x], 7]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check 2-level intersection (4 of 4).
-        let selx = SelectRegions::from_str("SR[RC[r0x10], 7]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check no intersection (1 of 5).
-        let selx = SelectRegions::from_str("SR[RC[r1101], 2]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check no intersection (2 of 5).
-        let selx = SelectRegions::from_str("SR[RC[r000x], 4]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check no intersection (3 of 5).
-        let selx = SelectRegions::from_str("SR[RC[r0x00], 4]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check no intersection (4 of 5).
-        let selx = SelectRegions::from_str("SR[RC[r101x], 3]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check no intersection (5 of 5).
-        let selx = SelectRegions::from_str("SR[RC[r1x10], 3]")?;
-        if !frags.contains(&selx) {
-            return Err(format!("fragments {frags} does not contain {selx}"));
-        }
-
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 
     #[test]
@@ -898,8 +691,6 @@ mod tests {
         } else {
             return Err(format!("{} - {} = {} ?", srs3, regstr1, srs4));
         }
-
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -960,7 +751,6 @@ mod tests {
                 ));
             }
         }
-
         Ok(())
     }
 
@@ -974,64 +764,7 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 6);
 
-        let selx = SelectRegions::from_str("SR[RC[r0101], 1]")?;
-        let sely = SelectRegions::from_str("SR[RC[r0101], -1]")?;
-        if let Some(selz) = sely.intersection(&selx) {
-            if !frags.contains(&selz) {
-                return Err(format!("fragments {frags} does not contain {selz}"));
-            }
-        }
-        let selx = SelectRegions::from_str("SR[RC[r0111], 2]")?;
-        let sely = SelectRegions::from_str("SR[RC[r0111], -1]")?;
-        if let Some(selz) = sely.intersection(&selx) {
-            if !frags.contains(&selz) {
-                return Err(format!("fragments {frags} does not contain {selz}"));
-            }
-        }
-
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 
     #[test]
@@ -1045,95 +778,6 @@ mod tests {
         println!("fragments of {srs1} are {frags} len {}", frags.len());
         assert!(frags.len() == 8);
 
-        let selx = SelectRegions::from_str("SR[RC[r1111], 2]")?;
-        let sely = SelectRegions::from_str("SR[RC[r1111], -1]")?;
-        if let Some(selz) = sely.intersection(&selx) {
-            if !frags.contains(&selz) {
-                return Err(format!("fragments {frags} does not contain {selz}"));
-            }
-        }
-
-        let selx = SelectRegions::from_str("SR[RC[r1101], 1]")?;
-        let sely = SelectRegions::from_str("SR[RC[r1101], -1]")?;
-        if let Some(selz) = sely.intersection(&selx) {
-            if !frags.contains(&selz) {
-                return Err(format!("fragments {frags} does not contain {selz}"));
-            }
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[rxx00], 1]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[rx00x], 1]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[r0x0x], 1]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[rxx10], 2]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[rx01x], 2]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        let selz = SelectRegions::from_str("SR[RC[r0x1x], 2]")?;
-        if !frags.contains(&selz) {
-            return Err(format!("fragments {frags} does not contain {selz}"));
-        }
-
-        // Check for non-subset intersections.
-        for selx in frags.iter() {
-            for sely in srs1.iter() {
-                if selx.intersects(sely) && !selx.is_subset_of(sely) {
-                    return Err(format!("{selx} intersects {sely} ?"));
-                }
-            }
-        }
-
-        // Check fragments cover whole area.
-        let dif = srs1.subtract(&frags);
-        println!("dif {}", dif);
-        assert!(dif.is_empty());
-
-        // Check fragment values.
-        for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
-                }
-            }
-            assert!(pos_val == selx.pos_value);
-            assert!(neg_val == selx.neg_value);
-            assert!(pos_val + neg_val == selx.net_value);
-        }
-
-        // Check no fragments are supersets (or equal) any other.
-        // Check each possible pair.
-        for inx in 0..(frags.len() - 1) {
-            for iny in (inx + 1)..frags.len() {
-                if frags[inx].is_superset_of(&frags[iny]) {
-                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
-                }
-                if frags[iny].is_superset_of(&frags[inx]) {
-                    return Err(format!("{} is a superset of {}", frags[iny], frags[inx]));
-                }
-            }
-        }
-
-        Ok(())
+        check_fragments(&srs1, &frags)
     }
 }

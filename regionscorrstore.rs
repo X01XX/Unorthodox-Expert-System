@@ -130,18 +130,6 @@ impl RegionsCorrStore {
         false
     }
 
-    /// Return true if there is any subset of a given RegionsCorrStore.
-    fn any_subset_of(&self, rcx: &RegionsCorr) -> bool {
-        debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
-
-        for rcy in self.iter() {
-            if rcy.is_subset_of(rcx) {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Return true if there is any intersection of a given RegionsCorr.
     pub fn any_intersection_of(&self, rcx: &RegionsCorr) -> bool {
         debug_assert!(self.is_empty() || self[0].is_congruent(rcx));
@@ -171,23 +159,6 @@ impl RegionsCorrStore {
         }
     }
 
-    /// Delete supersets of a given RegionsCorr.
-    fn delete_supersets_of(&mut self, rcx: &RegionsCorr) {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
-
-        let mut del = Vec::<usize>::new();
-
-        for (inx, rcy) in self.iter().enumerate() {
-            if rcy.is_superset_of(rcx) {
-                del.push(inx);
-            }
-        }
-        // Remove items, if any, highest index first.
-        for inx in del.iter().rev() {
-            self.items.remove(*inx);
-        }
-    }
-
     /// Add a region to the vector, deleting subsets.
     pub fn push_nosubs(&mut self, rcx: RegionsCorr) {
         debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
@@ -196,17 +167,6 @@ impl RegionsCorrStore {
             return;
         }
         self.delete_subsets_of(&rcx);
-        self.items.push(rcx);
-    }
-
-    /// Add a region to the vector, deleting supersets.
-    pub fn push_nosups(&mut self, rcx: RegionsCorr) {
-        debug_assert!(self.is_empty() || self[0].num_bits_vec() == rcx.num_bits_vec());
-
-        if self.any_subset_of(&rcx) {
-            return;
-        }
-        self.delete_supersets_of(&rcx);
         self.items.push(rcx);
     }
 
@@ -674,6 +634,21 @@ mod tests {
         assert!(fragments7.contains(&RegionsCorr::from_str("RC[r1_X111]")?));
         assert!(fragments7.contains(&RegionsCorr::from_str("RC[r0_X101]")?));
         assert!(fragments7.contains(&RegionsCorr::from_str("RC[r1_X101]")?));
+
+        // Test four one-region, RCSs.
+        let rcs8 = RegionsCorrStore::from_str("RCS[RC[rX10X], RC[r0XX1], RC[rX11X], RC[r0X1X]]")?;
+        let fragments8 = rcs8.split_by_intersections();
+        println!("fragments8 {fragments8}");
+        assert!(fragments8.len() == 9);
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[rX100]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r110X]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r111X]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0001]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0101]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0011]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0111]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0010]")?));
+        assert!(fragments8.contains(&RegionsCorr::from_str("RC[r0110]")?));
 
         Ok(())
     }
