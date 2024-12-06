@@ -2270,10 +2270,11 @@ mod tests {
         dmxs.boredom = 0;
         dmxs.boredom_limit = 0;
 
-        let num_sup = number_supersets_of_states(
-            &dmxs.select,
-            &StatesCorr::new(vec![first_state.clone(), state2.clone()]),
-        );
+        let mut stasc = StatesCorr::with_capacity(2);
+        stasc.push(first_state.clone());
+        stasc.push(state2.clone());
+
+        let num_sup = number_supersets_of_states(&dmxs.select, &stasc);
         println!("\nNumber supersets: {num_sup}",);
         assert!(num_sup == 0);
 

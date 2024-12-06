@@ -35,15 +35,6 @@ pub struct PlansCorr {
 }
 
 impl PlansCorr {
-    /// Return a new, empty, PlansCorr instance.
-    pub fn new(plans: Vec<SomePlan>) -> Self {
-        debug_assert!(!plans.is_empty());
-        Self {
-            plans: PlanStore::new(plans),
-            rate: 0,
-        }
-    }
-
     /// Return a new, empty, PlansCorr instance, with a given capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);

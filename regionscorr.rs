@@ -46,7 +46,7 @@ impl Eq for RegionsCorr {}
 
 impl RegionsCorr {
     /// Return a new, RegionsCorr.
-    pub fn new(regions: Vec<SomeRegion>) -> Self {
+    pub fn _new(regions: Vec<SomeRegion>) -> Self {
         //debug_assert!(!regions.is_empty());
         Self {
             regions: RegionStore::new(regions),
@@ -244,7 +244,10 @@ impl RegionsCorr {
         for regy in self.regions.iter().skip(1) {
             regx = regx.combine(regy);
         }
-        Self::new(vec![regx])
+
+        let mut ret_regs = Self::with_capacity(1);
+        ret_regs.push(regx);
+        ret_regs
     }
 
     /// Return symmetrical_overlapping_regions for two adjacent RegionsCorrs.
@@ -253,7 +256,7 @@ impl RegionsCorr {
         debug_assert!(self.is_adjacent(other));
 
         let mut adj_count = 0;
-        let mut ret_regs = RegionsCorr::new(vec![]);
+        let mut ret_regs = RegionsCorr::with_capacity(self.len());
 
         for (item1, item2) in self.regions.iter().zip(other.regions.iter()) {
             if let Some(item3) = item1.intersection(item2) {
@@ -598,9 +601,12 @@ mod tests {
         let rc3 = rc1.intersection(&rc2).unwrap();
         println!("{rc1} intersection {rc2} = {rc3}");
         let rc4 = rc3.combine();
-        let rc5 = RegionsCorr::new(vec![SomeRegion::from_str("rX10X")?
-            .intersection(&SomeRegion::from_str("r1XX0")?)
-            .unwrap()]);
+        let mut rc5 = RegionsCorr::with_capacity(1);
+        rc5.push(
+            SomeRegion::from_str("rX10X")?
+                .intersection(&SomeRegion::from_str("r1XX0")?)
+                .unwrap(),
+        );
         println!("{rc4} should be eq {rc5}");
         assert!(rc4 == rc5);
 
@@ -615,9 +621,8 @@ mod tests {
         let rc3 = rc1.union(&rc2);
         println!("{rc1} union {rc2} = {rc3}");
         let rc4 = rc3.combine();
-        let rc5 = RegionsCorr::new(vec![
-            SomeRegion::from_str("rX10X")?.union(&SomeRegion::from_str("r1XX0")?)
-        ]);
+        let mut rc5 = RegionsCorr::with_capacity(1);
+        rc5.push(SomeRegion::from_str("rX10X")?.union(&SomeRegion::from_str("r1XX0")?));
         println!("{rc4} should be eq {rc5}");
         assert!(rc4 == rc5);
 

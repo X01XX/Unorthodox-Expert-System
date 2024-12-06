@@ -30,13 +30,6 @@ pub struct StatesCorr {
 }
 
 impl StatesCorr {
-    /// Return a new, empty, StatesCorr instance.
-    pub fn new(states: Vec<SomeState>) -> Self {
-        Self {
-            states: StateStore::new(states),
-        }
-    }
-
     /// Return a new, empty, StatesCorr instance, with a specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);

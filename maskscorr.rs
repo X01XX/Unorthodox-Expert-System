@@ -28,14 +28,7 @@ pub struct MasksCorr {
 }
 
 impl MasksCorr {
-    /// Return a new, empty, MasksCorr inmsknce.
-    pub fn new(masks: Vec<SomeMask>) -> Self {
-        Self {
-            masks: MaskStore::new(masks),
-        }
-    }
-
-    /// Return a new, empty, MasksCorr inmsknce, with a specified capacity.
+    /// Return a new, empty, MasksCorr instance, with a specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);
         Self {
