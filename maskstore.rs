@@ -1,7 +1,7 @@
 //! The MaskStore struct. A vector of SomeMask structs.
 
 use crate::mask::SomeMask;
-use crate::tools::vec_string;
+use crate::tools::{self, vec_string};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -152,6 +152,29 @@ impl FromStr for MaskStore {
         //println!("ret_maskstore {ret_maskstore}");
 
         Ok(ret_maskstore)
+    }
+}
+
+impl IntoIterator for MaskStore {
+    type Item = SomeMask;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.items.into_iter()
+    }
+}
+
+/// Implement the trait StrLen for MasksStore.
+impl tools::StrLen for MaskStore {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2;
+
+        if self.is_not_empty() {
+            rc_len += self.items.len() * self.items[0].strlen();
+            rc_len += (self.items.len() - 1) * 2;
+        }
+
+        rc_len
     }
 }
 

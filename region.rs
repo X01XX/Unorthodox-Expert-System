@@ -183,7 +183,7 @@ impl SomeRegion {
 
     /// Return a mask of edge (non-X) bits.
     pub fn edge_mask(&self) -> SomeMask {
-        self.high_state().bitwise_eqv(&self.low_state())
+        self.first_state().bitwise_eqv(&self.far_state())
     }
 
     /// Return mask of x bit positions.
@@ -194,6 +194,17 @@ impl SomeRegion {
             self.states[0].bitwise_xor(&self.states[1])
         } else {
             self.high_state().bitwise_xor(&self.low_state())
+        }
+    }
+
+    /// Return mask of one-bit positions.
+    pub fn ones_edges(&self) -> SomeMask {
+        if self.states.len() == 1 {
+            self.states[0].as_mask()
+        } else if self.states.len() == 2 {
+            self.states[0].bitwise_and(&self.states[1])
+        } else {
+            self.high_state().bitwise_and(&self.low_state())
         }
     }
 

@@ -56,6 +56,16 @@ impl MasksCorr {
         self.masks.iter()
     }
 
+    /// Return true if a MasksCorr is all low.
+    pub fn is_low(&self) -> bool {
+        for mskx in self.iter() {
+            if mskx.is_not_low() {
+                return false;
+            }
+        }
+        true
+    }
+
     /// Return true if corresponding regions in two MasksCorr have the same number of bits.
     pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
@@ -64,8 +74,8 @@ impl MasksCorr {
     /// Return a vector of corresponding num_bits.
     pub fn num_bits_vec(&self) -> Vec<usize> {
         let mut ret_vec = Vec::<usize>::with_capacity(self.len());
-        for regx in self.masks.iter() {
-            ret_vec.push(regx.num_bits());
+        for mskx in self.masks.iter() {
+            ret_vec.push(mskx.num_bits());
         }
         ret_vec
     }
@@ -77,6 +87,47 @@ impl MasksCorr {
             count += mskx.num_one_bits();
         }
         count
+    }
+
+    /// Return the bitwise OR of two MasksCorrs.
+    pub fn bitwise_or(&self, other: &Self) -> Self {
+        let mut ret_masks = Self::with_capacity(self.len());
+
+        for (mskx, msky) in self.iter().zip(other.iter()) {
+            ret_masks.push(mskx.bitwise_or(msky));
+        }
+        ret_masks
+    }
+
+    /// Return the bitwise AND of two MasksCorrs.
+    pub fn bitwise_and(&self, other: &Self) -> Self {
+        let mut ret_masks = Self::with_capacity(self.len());
+
+        for (mskx, msky) in self.iter().zip(other.iter()) {
+            ret_masks.push(mskx.bitwise_and(msky));
+        }
+        ret_masks
+    }
+
+    /// Return a MasksCorr split into single-1 bit masks.
+    pub fn split(&self) -> Vec<Self> {
+        let mut ret_masks = Vec::<Self>::new();
+
+        for (inx, mskx) in self.iter().enumerate() {
+            let masks = mskx.split();
+            for msky in masks.iter() {
+                let mut tmp_msk = Self::with_capacity(self.len());
+                for iny in 0..self.len() {
+                    if iny == inx {
+                        tmp_msk.push(msky.clone());
+                    } else {
+                        tmp_msk.push(self[iny].new_low());
+                    }
+                }
+                ret_masks.push(tmp_msk);
+            }
+        }
+        ret_masks
     }
 } // end impl MasksCorr
 
@@ -157,6 +208,13 @@ impl FromStr for MasksCorr {
             Ok(masks) => Ok(Self { masks }),
             Err(errstr) => Err(format!("MasksCorr::from_str: {errstr}")),
         }
+    }
+}
+
+/// Implement the trait StrLen for RegionsCorr.
+impl tools::StrLen for MasksCorr {
+    fn strlen(&self) -> usize {
+        2 + self.masks.strlen()
     }
 }
 

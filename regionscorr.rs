@@ -45,14 +45,6 @@ impl PartialEq for RegionsCorr {
 impl Eq for RegionsCorr {}
 
 impl RegionsCorr {
-    /// Return a new, RegionsCorr.
-    pub fn _new(regions: Vec<SomeRegion>) -> Self {
-        //debug_assert!(!regions.is_empty());
-        Self {
-            regions: RegionStore::new(regions),
-        }
-    }
-
     /// Return a new RegionsCorr instance, empty, with a specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);
@@ -134,7 +126,7 @@ impl RegionsCorr {
         true
     }
 
-    /// Return the intersection, if any, of two RegionStoresCorrs.
+    /// Return the intersection, if any, of two RegionsCorrs.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.is_congruent(other));
 
@@ -151,7 +143,7 @@ impl RegionsCorr {
         Some(ret)
     }
 
-    /// Return the union, of two RegionStoresCorrs.
+    /// Return the union, of two RegionsCorrs.
     pub fn union(&self, other: &Self) -> Self {
         debug_assert!(self.is_congruent(other));
 
@@ -159,6 +151,28 @@ impl RegionsCorr {
 
         for (x, y) in self.iter().zip(other.iter()) {
             ret.push(x.union(y));
+        }
+
+        ret
+    }
+
+    /// Return the x-mask of a RegionsCorr.
+    pub fn x_mask(&self) -> MasksCorr {
+        let mut ret = MasksCorr::with_capacity(self.len());
+
+        for regx in self.iter() {
+            ret.push(regx.x_mask());
+        }
+
+        ret
+    }
+
+    /// Return the edge-mask of a RegionsCorr.
+    pub fn edge_mask(&self) -> MasksCorr {
+        let mut ret = MasksCorr::with_capacity(self.len());
+
+        for regx in self.iter() {
+            ret.push(regx.edge_mask());
         }
 
         ret
@@ -178,9 +192,19 @@ impl RegionsCorr {
         self.diff_edge_mask(other).num_one_bits()
     }
 
+    /// Return a mask of one edge bit positions of a RegionsCorr.
+    fn ones_edges(&self) -> MasksCorr {
+        let mut ret_mask = MasksCorr::with_capacity(self.len());
+        for regx in self.iter() {
+            ret_mask.push(regx.ones_edges());
+        }
+        ret_mask
+    }
+
     /// Return RegionsCorr minus another.
     pub fn subtract(&self, subtrahend: &Self) -> Vec<Self> {
         debug_assert!(self.is_congruent(subtrahend));
+        //println!("regionscorr::subtract {self} - {subtrahend}");
 
         let mut ret = Vec::<Self>::new();
 
@@ -194,21 +218,17 @@ impl RegionsCorr {
             return ret;
         }
 
-        for (inx, (regx, regy)) in self.iter().zip(subtrahend.iter()).enumerate() {
-            let remainders = regx.subtract(regy);
+        let sub_mask = self.x_mask().bitwise_and(&subtrahend.edge_mask());
 
-            for reg_rem in &remainders {
-                // Copy self, except for one region with one bit changed.
-                let mut one_result = Self::with_capacity(self.len());
-                for (iny, regm) in self.iter().enumerate() {
-                    if iny == inx {
-                        one_result.push(reg_rem.clone());
-                    } else {
-                        one_result.push(regm.clone());
-                    }
-                }
-                // Save fragment to return.
-                ret.push(one_result);
+        let sub_masks = sub_mask.split();
+
+        let ones_edges = subtrahend.ones_edges();
+
+        for smskx in sub_masks.iter() {
+            if ones_edges.bitwise_and(smskx).is_low() {
+                ret.push(self.set_to_ones(smskx));
+            } else {
+                ret.push(self.set_to_zeros(smskx));
             }
         }
         ret
@@ -250,30 +270,43 @@ impl RegionsCorr {
         ret_regs
     }
 
+    /// Set region bit positions to X, given a mask.
+    fn set_to_x(&self, masks: &MasksCorr) -> Self {
+        let mut ret_regs = Self::with_capacity(self.len());
+        for (regx, mskx) in self.iter().zip(masks.iter()) {
+            ret_regs.push(regx.set_to_x(mskx));
+        }
+        ret_regs
+    }
+
+    /// Set region bit positions to 0, given a mask.
+    fn set_to_zeros(&self, masks: &MasksCorr) -> Self {
+        let mut ret_regs = Self::with_capacity(self.len());
+        for (regx, mskx) in self.iter().zip(masks.iter()) {
+            ret_regs.push(regx.set_to_zeros(mskx));
+        }
+        ret_regs
+    }
+
+    /// Set region bit positions to 1, given a mask.
+    fn set_to_ones(&self, masks: &MasksCorr) -> Self {
+        let mut ret_regs = Self::with_capacity(self.len());
+        for (regx, mskx) in self.iter().zip(masks.iter()) {
+            ret_regs.push(regx.set_to_ones(mskx));
+        }
+        ret_regs
+    }
+
     /// Return symmetrical_overlapping_regions for two adjacent RegionsCorrs.
     pub fn symmetrical_overlapping_regions(&self, other: &Self) -> Self {
         debug_assert!(self.is_congruent(other));
-        debug_assert!(self.is_adjacent(other));
 
-        let mut adj_count = 0;
-        let mut ret_regs = RegionsCorr::with_capacity(self.len());
+        let dif_mask = self.diff_edge_mask(other);
+        assert!(dif_mask.num_one_bits() == 1);
 
-        for (item1, item2) in self.regions.iter().zip(other.regions.iter()) {
-            if let Some(item3) = item1.intersection(item2) {
-                ret_regs.push(item3);
-            } else if item1.is_adjacent(item2) {
-                adj_count += 1;
-                ret_regs.push(item1.symmetrical_overlapping_region(item2));
-            } else {
-                panic!("regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent");
-            }
-        }
-        if adj_count != 1 {
-            panic!(
-                "regionscorr::symmetrical_overlapping_regions: {self} and {other} are not adjacent"
-            );
-        }
-        ret_regs
+        self.set_to_x(&dif_mask)
+            .intersection(&other.set_to_x(&dif_mask))
+            .expect("SNH")
     }
 
     /// Return a difference edge mask for two RegionsCorrs.
@@ -317,14 +350,7 @@ impl IndexMut<usize> for RegionsCorr {
 /// Implement the trait StrLen for RegionsCorr.
 impl tools::StrLen for RegionsCorr {
     fn strlen(&self) -> usize {
-        let mut rc_len = 4;
-
-        if self.is_not_empty() {
-            rc_len += self.regions.len() * self.regions[0].strlen();
-            rc_len += (self.regions.len() - 1) * 2;
-        }
-
-        rc_len
+        2 + self.regions.strlen()
     }
 }
 
