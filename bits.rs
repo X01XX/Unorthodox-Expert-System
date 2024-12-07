@@ -53,15 +53,13 @@ impl SomeBits {
         }
     }
 
-    /// Combine two bit instances, where the num_bits sum of both is LE one Bitint.
-    /// I can visualize 4 bits, in a 2-D K-Map.  Maybe 6 bits in 3-D K-Map.  Both of which are less than fits in u8.
+    /// Combine two SomeBits instances, in the order given, into an equal, or larger, instance.
     pub fn combine(&self, other: &SomeBits) -> Self {
-        assert!(self.num_bits + other.num_bits <= Bitint::BITS as Bitint);
+        let new_size = self.num_bits as usize + other.num_bits as usize;
 
-        Self {
-            num_bits: (self.num_bits + other.num_bits) as Bitint,
-            ints: vec![(self.ints[0] << other.num_bits) + other.ints[0]; 1],
-        }
+        self.enlarge(new_size)
+            .shift_left(other.num_bits as usize)
+            .b_or(&other.enlarge(new_size))
     }
 
     /// Return the number of integers needed to represent a number of bits.
@@ -334,6 +332,98 @@ impl SomeBits {
 
         self.b_xor(bts1).b_and(&self.b_xor(bts2)).is_low()
     }
+
+    /// Shift SomeBits instance a given number of bits to the left.
+    pub fn shift_left(&self, num_bits: usize) -> Self {
+        //println!("SomeBits::shift_left: {self}, {:?}, by {num_bits} bits", self.ints);
+        if num_bits == 0 {
+            return self.clone();
+        }
+
+        if num_bits > self.num_bits as usize {
+            return self.new_low();
+        }
+
+        let mut ints = self.ints.clone();
+
+        // Shift left a number of Bitints.
+        if num_bits >= Bitint::BITS as usize {
+            let num_shift = num_bits / Bitint::BITS as usize;
+
+            // Shift ints.
+            for (targ, inx) in (num_shift..self.ints.len()).enumerate() {
+                ints[targ] = ints[inx];
+            }
+            //println!("ints shifted {:?}", ints);
+            // Zero out ints.
+            for inx in num_shift..self.ints.len() {
+                ints[inx] = 0;
+            }
+            //println!("ints zeroed {:?}", ints);
+        }
+
+        // Shift extra bits, if any.
+        let extra: usize = num_bits % Bitint::BITS as usize;
+        //println!("extra {extra}");
+
+        if extra > 0 {
+            let carry_mask: Bitint = Bitint::MAX << (Bitint::BITS as usize - extra);
+            //println!("carry_mask {carry_mask}");
+            let mut last_carry = 0;
+
+            for int_inx in (0..ints.len()).rev() {
+                //println!("int_inx {int_inx} value {}", ints[int_inx]);
+
+                let next_carry: Bitint =
+                    (ints[int_inx] & carry_mask) >> (Bitint::BITS as usize - extra);
+                //println!("last_carry {last_carry} next_carry {next_carry}");
+
+                ints[int_inx] = (ints[int_inx] << extra) + last_carry;
+
+                last_carry = next_carry;
+            }
+            //println!("ints shifted by bits {:?}", ints);
+        }
+
+        // Mask off last carry.
+        let extra: usize = self.num_bits as usize % Bitint::BITS as usize;
+        if extra > 0 {
+            let maskx = Bitint::MAX as Bitint >> (Bitint::BITS as usize - extra);
+            //println!("maskx {maskx}");
+            ints[0] &= maskx;
+        }
+
+        Self {
+            num_bits: self.num_bits,
+            ints,
+        }
+    }
+
+    /// Return a SomeBits copy that has more bits allowed.
+    pub fn enlarge(&self, num_bits: usize) -> Self {
+        assert!(num_bits >= self.num_bits as usize);
+
+        // Calc number integers needed.
+        let mut num_ints = num_bits / Bitint::BITS as usize;
+        if num_bits % Bitint::BITS as usize > 0 {
+            num_ints += 1;
+        }
+        let mut ints = Vec::<Bitint>::with_capacity(num_ints);
+
+        // Push zero ints, as needed.
+        while num_ints > self.ints.len() {
+            ints.push(0 as Bitint);
+            num_ints -= 1;
+        }
+        // Add self.ints.
+        for intx in self.ints.iter() {
+            ints.push(*intx);
+        }
+        Self {
+            num_bits: num_bits as Bitint,
+            ints,
+        }
+    }
 } // end impl SomeBits
 
 /// Return a bits instance from a string, like b1010_10101.
@@ -501,6 +591,45 @@ mod tests {
         }
 
         SomeBits { num_bits, ints }
+    }
+
+    #[test]
+    fn shift_left() -> Result<(), String> {
+        // Shift by u8 bits.
+        let bits1 = SomeBits::from_str("b0101_1000_1010")?;
+        println!("bits1 {bits1}");
+        let bits2 = bits1.shift_left(8);
+        println!("bits2 {bits2}");
+        assert!(bits2 == SomeBits::from_str("b1010_0000_0000")?);
+
+        // Shift by < u8 bits
+        let bits3 = SomeBits::from_str("b0101_1000_1010")?;
+        println!("bits3 {bits3}");
+        let bits4 = bits3.shift_left(4);
+        println!("bits4 {bits4}");
+        assert!(bits4 == SomeBits::from_str("b1000_1010_0000")?);
+
+        // Shift by u8 + 1 bits.
+        let bits5 = SomeBits::from_str("b0101_1000_1010")?;
+        println!("bits5 {bits5}");
+        let bits6 = bits5.shift_left(9);
+        println!("bits6 {bits6}");
+        assert!(bits6 == SomeBits::from_str("b0100_0000_0000")?);
+
+        //assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn enlarge() -> Result<(), String> {
+        let bits1 = SomeBits::from_str("b0101")?;
+        println!("bits1 {bits1}");
+        let bits2 = bits1.enlarge(9);
+        println!("bits2 {bits2}");
+        assert!(bits2 == SomeBits::from_str("b0_0000_0101")?);
+
+        //assert!(1 == 2);
+        Ok(())
     }
 
     #[test]
@@ -1045,11 +1174,11 @@ mod tests {
 
     #[test]
     fn combine() -> Result<(), String> {
-        let bits2 = SomeBits::from_str("10")?;
-        let bits3 = SomeBits::from_str("101")?;
+        let bits2 = SomeBits::from_str("11_1010")?;
+        let bits3 = SomeBits::from_str("1_0101")?;
         let bits5 = bits2.combine(&bits3);
         println!("{bits2} combine {bits3} = {bits5}");
-        assert!(bits5 == SomeBits::from_str("10101")?);
+        assert!(bits5 == SomeBits::from_str("111_0101_0101")?);
 
         Ok(())
     }

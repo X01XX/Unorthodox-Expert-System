@@ -60,7 +60,7 @@ impl RegionsCorrStore {
 
     /// For an instance containing RegionsCorr items with more than one region,
     /// return a RegionsCorrStore with the RegionsCorr items combined.
-    pub fn combined(&self) -> Self {
+    pub fn combine(&self) -> Self {
         let mut ret = Self::with_capacity(self.len());
         for rcx in self.iter() {
             ret.push(rcx.combine());

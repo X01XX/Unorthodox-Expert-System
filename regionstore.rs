@@ -322,9 +322,9 @@ impl RegionStore {
 
         assert!(state1 != state2);
 
-        let not_first_state = Self::new(max_poss_reg.subtract(state1));
+        let not_first_state = max_poss_reg.subtract(state1);
 
-        let not_second_state = Self::new(max_poss_reg.subtract(state2));
+        let not_second_state = max_poss_reg.subtract(state2);
 
         not_first_state.union(&not_second_state)
     }
@@ -779,15 +779,15 @@ mod tests {
         let state_6 = SomeState::from_str("s0110")?;
         let state_a = SomeState::from_str("s1010")?;
 
-        let not_state_6 = RegionStore::new(max_reg.subtract(&state_6));
-        let not_state_a = RegionStore::new(max_reg.subtract(&state_a));
+        let not_state_6 = max_reg.subtract(&state_6);
+        let not_state_a = max_reg.subtract(&state_a);
         let rslt = rslt.intersection(&not_state_6.union(&not_state_a));
 
         let state_4 = SomeState::from_str("s0100")?;
         let state_d = SomeState::from_str("s1101")?;
 
-        let not_state_4 = RegionStore::new(max_reg.subtract(&state_4));
-        let not_state_d = RegionStore::new(max_reg.subtract(&state_d));
+        let not_state_4 = max_reg.subtract(&state_4);
+        let not_state_d = max_reg.subtract(&state_d);
 
         let rslt = rslt.intersection(&not_state_4.union(&not_state_d));
 

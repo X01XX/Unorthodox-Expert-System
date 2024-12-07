@@ -53,7 +53,7 @@ impl SomeState {
         Self::new(self.bts.new_high())
     }
 
-    /// Combine two state instances, where the combination can fit in one Bitint.
+    /// Combine two state instances, in the order given, into an equal, or larger, instance.
     pub fn combine(&self, other: &SomeState) -> Self {
         Self {
             bts: self.bts.combine(&other.bts),

@@ -5,6 +5,7 @@
 
 use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
+use crate::regionstore::RegionStore;
 use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::tools::{self, AccessStates, StrLen};
@@ -60,11 +61,11 @@ impl SomeRegion {
 
         // Return new region.
         Self {
-            states: StateStore::new(Self::minimum_states(states)),
+            states: Self::minimum_states(states),
         }
     }
 
-    /// Combine two region instances, where the combination can fit in one Bitint.
+    /// Combine two region instances, in the order given, into an equal, or larger, instance.
     pub fn combine(&self, other: &SomeRegion) -> Self {
         Self::new(vec![
             self.high_state().combine(&other.high_state()),
@@ -343,14 +344,14 @@ impl SomeRegion {
 
     /// Given a region, and a second region, return the
     /// first region minus the second.
-    pub fn subtract(&self, other: &impl tools::AccessStates) -> Vec<Self> {
+    pub fn subtract(&self, other: &impl tools::AccessStates) -> RegionStore {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
-        let mut ret_vec = Vec::<Self>::new();
+        let mut ret_vec = RegionStore::new(vec![]);
 
         // If no intersection, return self.
         if !self.intersects(other) {
-            return vec![self.clone()];
+            return RegionStore::new(vec![self.clone()]);
         }
 
         // If other is a superset, return empty vector.
@@ -442,7 +443,7 @@ impl SomeRegion {
 
     /// Given a non-empty vector of states, return a StateStore of the minimum
     /// states required to define the region they imply.
-    pub fn minimum_states(states: Vec<SomeState>) -> Vec<SomeState> {
+    pub fn minimum_states(states: Vec<SomeState>) -> StateStore {
         assert!(!states.is_empty());
 
         // Remove duplicates.
@@ -454,7 +455,7 @@ impl SomeRegion {
         }
         // Easy result.
         if states2.len() < 3 {
-            return states2.vec();
+            return states2;
         }
 
         let xmsk = states2.x_mask();
@@ -472,7 +473,7 @@ impl SomeRegion {
 
                 // Return the first match.
                 if xmsk2 == xmsk {
-                    let mut ret = Vec::<SomeState>::with_capacity(any);
+                    let mut ret = StateStore::with_capacity(any);
                     for stax in opx.iter() {
                         ret.push((*stax).clone());
                     }
@@ -481,7 +482,7 @@ impl SomeRegion {
             }
         }
         // states2 is already at the minimum.
-        states2.vec()
+        states2
     }
 
     /// Return the symmetrical overlapping region for two adjacent regions.
@@ -643,8 +644,6 @@ impl FromStr for SomeRegion {
 mod tests {
     use super::*;
     use crate::bits::SomeBits;
-    use crate::regionstore::RegionStore;
-    use crate::tools::vec_string;
     use std::str::FromStr;
 
     #[test]
@@ -1209,7 +1208,7 @@ mod tests {
     fn subtract() -> Result<(), String> {
         let reg0 = SomeRegion::from_str("rX10X")?;
         let reg1 = SomeRegion::from_str("r0XX1")?;
-        let regs = RegionStore::new(reg0.subtract(&reg1));
+        let regs = reg0.subtract(&reg1);
         println!("{reg0} subtract {reg1} = {regs}");
 
         assert!(regs.len() == 2);
@@ -1219,13 +1218,13 @@ mod tests {
 
         // Test subtract a superset.
         let reg3 = SomeRegion::from_str("rXXX1")?;
-        let regs = RegionStore::new(reg1.subtract(&reg3));
+        let regs = reg1.subtract(&reg3);
         println!("{reg0} subtract {reg3} = {regs}");
         assert!(regs.is_empty());
 
         // Test no intersection.
         let reg3 = SomeRegion::from_str("rXX11")?;
-        let regs = RegionStore::new(reg0.subtract(&reg3));
+        let regs = reg0.subtract(&reg3);
         println!("{reg0} subtract {reg3} = {regs}");
         assert!(regs.len() == 1);
         assert!(regs.contains(&reg0));
@@ -1249,13 +1248,13 @@ mod tests {
         // Test just one.
         let stas0 = vec![SomeState::from_str("s1010")?];
         let mins0 = SomeRegion::minimum_states(stas0);
-        println!("0 {}", vec_string(&mins0));
+        println!("0 {mins0}");
         assert!(mins0.len() == 1);
 
         // Test dups.
         let stas1 = vec![SomeState::from_str("s1010")?, SomeState::from_str("s1010")?];
         let mins1 = SomeRegion::minimum_states(stas1);
-        println!("1 {}", vec_string(&mins1));
+        println!("1 {mins1}");
         assert!(mins1.len() == 1);
 
         // test dups.
@@ -1265,7 +1264,7 @@ mod tests {
             SomeState::from_str("s1010")?,
         ];
         let mins2 = SomeRegion::minimum_states(stas2);
-        println!("2 {}", vec_string(&mins2));
+        println!("2 {mins2}");
         assert!(mins2.len() == 2);
 
         // Test skip between state.
@@ -1275,7 +1274,7 @@ mod tests {
             SomeState::from_str("s1111")?,
         ];
         let mins3 = SomeRegion::minimum_states(stas3);
-        println!("3 {}", vec_string(&mins3));
+        println!("3 {mins3}");
         assert!(mins3.len() == 2);
 
         // Test three states, all required.
@@ -1285,7 +1284,7 @@ mod tests {
             SomeState::from_str("s1011")?,
         ];
         let mins4 = SomeRegion::minimum_states(stas4);
-        println!("4 {}", vec_string(&mins4));
+        println!("4 {mins4}");
         assert!(mins4.len() == 3);
 
         // Test skip between state.
@@ -1296,7 +1295,7 @@ mod tests {
             SomeState::from_str("s0010")?,
         ];
         let mins5 = SomeRegion::minimum_states(stas5);
-        println!("5 {}", vec_string(&mins5));
+        println!("5 {mins5}");
         assert!(mins5.len() == 3);
 
         //assert!(1 == 2);

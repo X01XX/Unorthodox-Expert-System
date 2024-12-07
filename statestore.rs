@@ -95,11 +95,6 @@ impl StateStore {
         }
         ret
     }
-
-    // Return the items vector.
-    pub fn vec(self) -> Vec<SomeState> {
-        self.items
-    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

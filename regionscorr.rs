@@ -255,8 +255,7 @@ impl RegionsCorr {
         ret_vec
     }
 
-    /// Return a single-region RegionsCorr from a multi-region RegionsCorr,
-    /// where the sum of the regions num_bits is LE a single Bitint.
+    /// Return a single-region RegionsCorr from a multi-region RegionsCorr.
     pub fn combine(&self) -> Self {
         assert!(self.len() > 1);
 
