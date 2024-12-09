@@ -120,7 +120,7 @@ impl DomainStore {
     /// Duplicates are not allowed.
     pub fn add_select(&mut self, selx: SelectRegions) {
         // Require some aggregate value.
-        if selx.net_value == 0 {
+        if selx.value == 0 {
             println!("add_select: {} SR value zero, skipped.", selx);
             return;
         }
@@ -149,9 +149,9 @@ impl DomainStore {
 
         // Separate fragments by value.
         for selx in fragments {
-            if selx.net_value > 0 {
-                if selx.net_value > self.max_pos_value {
-                    self.max_pos_value = selx.net_value;
+            if selx.value > 0 {
+                if selx.value > self.max_pos_value {
+                    self.max_pos_value = selx.value;
                 }
                 self.select_net_positive.push(selx);
             }
@@ -159,10 +159,10 @@ impl DomainStore {
 
         println!(" ");
         if self.select_net_positive.is_empty() {
-            println!("Net-positive SR fragments: None");
+            println!("Net-Positive SR fragments: None");
         } else {
             println!(
-                "Net-positive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
+                "Net-Positive SR fragments, each a subset of one or more SRs, no partial intersections. ({}):\n",
                 self.select_net_positive.len()
             );
             for selx in self.select_net_positive.iter() {
@@ -177,7 +177,7 @@ impl DomainStore {
         let mut non_neg_select = RegionsCorrStore::new(vec![self.maximum_regions()]);
 
         for selx in self.select.iter() {
-            if selx.neg_value < 0 {
+            if selx.value < 0 {
                 non_neg_select = non_neg_select.subtract_regionscorr(&selx.regions);
             }
         }
@@ -185,10 +185,10 @@ impl DomainStore {
 
         println!(" ");
         if self.rc_non_negative.is_empty() {
-            println!("Non-negative RCs: None");
+            println!("Non-Negative RCs: None");
         } else {
             println!(
-                "Non-negative RCs, maximum RC regions minus negative SR regions ({}):\n",
+                "Non-Negative RCs, maximum RC regions minus negative SR regions ({}):\n",
                 self.rc_non_negative.len()
             );
             for rcx in self.rc_non_negative.iter() {
@@ -204,7 +204,7 @@ impl DomainStore {
         // Calc negative fragments.
         let mut select_negative = SelectRegionsStore::new(vec![]);
         for selx in self.select.iter() {
-            if selx.pos_value == 0 && selx.neg_value < 0 {
+            if selx.value < 0 {
                 select_negative.push(selx.clone());
             }
         }
@@ -212,9 +212,9 @@ impl DomainStore {
 
         println!(" ");
         if self.select_negative.is_empty() {
-            println!("Negative SR fragments: None");
+            println!("Net-Negative SR fragments: None");
         } else {
-            println!("Negative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
+            println!("Net-Negative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
             for selx in self.select_negative.iter() {
                 println!("  {selx}");
             }
@@ -712,7 +712,7 @@ impl DomainStore {
                 .is_superset_states(&self.all_current_states())
             {
                 ret = true;
-                boredom_limit += optregs.net_value;
+                boredom_limit += optregs.value;
             }
         }
         if boredom_limit > 0 {
@@ -759,7 +759,7 @@ impl DomainStore {
         }
 
         // Check current status within a select region, or not.
-        let rate = self.select.rate_regions(&all_regs);
+        let rate = self.select.supersets_sum(&all_regs);
         if rate > 0 {
             self.boredom += 1;
             if self.boredom <= self.boredom_limit {
@@ -788,7 +788,7 @@ impl DomainStore {
             if psupx.is_superset_of_states(&all_states) {
                 continue;
             }
-            let adjust = (self.max_pos_value - psupx.net_value) + self.times_visited[inx] as isize;
+            let adjust = (self.max_pos_value - psupx.value) + self.times_visited[inx] as isize;
             let mut needx = SomeNeed::ToSelectRegions {
                 target: ATarget::SelectRegions {
                     select: psupx.clone(),
@@ -834,9 +834,9 @@ impl DomainStore {
 
         let supersets = self.select.supersets_of_states(&all_states);
         for selx in supersets.iter() {
-            if selx.net_value != 0 {
-                in_str += &format!("in {}, {} ", selx.regions, selx.net_value);
-                if selx.net_value > 0 {
+            if selx.value != 0 {
+                in_str += &format!("in {}, {} ", selx.regions, selx.value);
+                if selx.value > 0 {
                     in_pos = true;
                 } else {
                     in_neg = true;
@@ -969,8 +969,8 @@ impl DomainStore {
     pub fn most_negative_rate(&self, rcx: &RegionsCorr) -> isize {
         let mut min_val = 0;
         for selx in self.select_negative.iter() {
-            if selx.neg_value < min_val && selx.regions.is_superset_of(rcx) {
-                min_val = selx.neg_value;
+            if selx.value < min_val && selx.regions.is_superset_of(rcx) {
+                min_val = selx.value;
             }
         }
         //println!("min_val of {rcx} is {min_val}");
@@ -1000,8 +1000,8 @@ impl DomainStore {
         // Make a list of negative values in self.select_negative.
         let mut neg_values = Vec::<isize>::new();
         for selx in self.select_negative.iter() {
-            if !neg_values.contains(&selx.neg_value) {
-                neg_values.push(selx.neg_value);
+            if !neg_values.contains(&selx.value) {
+                neg_values.push(selx.value);
             }
         }
 
@@ -1039,7 +1039,7 @@ impl DomainStore {
             neg_inx += 1;
 
             for selx in self.select_negative.iter() {
-                if selx.neg_value == *nvx {
+                if selx.value == *nvx {
                     //println!("  adding neg value {nvx}");
                     fragments.push(&selx.regions);
                 }
@@ -1071,7 +1071,7 @@ impl DomainStore {
             }
             current_rate = neg_values[neg_inx];
             for selx in self.select_negative.iter() {
-                if selx.neg_value == current_rate {
+                if selx.value == current_rate {
                     //println!("  found {selx}");
                     fragments.push(&selx.regions);
                 }
@@ -1401,10 +1401,10 @@ impl DomainStore {
                         }
 
                         for sel_regx in self.select.iter() {
-                            if sel_regx.net_value < 0
+                            if sel_regx.value < 0
                                 && sel_regx.regions.is_superset_states(&cur_states)
                             {
-                                print!(" in {:+}, {}", sel_regx.regions, sel_regx.net_value);
+                                print!(" in {:+}, {}", sel_regx.regions, sel_regx.value);
                             }
                         }
 

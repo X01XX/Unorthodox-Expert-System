@@ -24,21 +24,6 @@ pub struct RegionsCorrStore {
     pub items: Vec<RegionsCorr>,
 }
 
-impl PartialEq for RegionsCorrStore {
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for regx in &self.items {
-            if !other.contains(regx) {
-                return false;
-            }
-        }
-        true
-    }
-}
-impl Eq for RegionsCorrStore {}
-
 impl RegionsCorrStore {
     /// Return a new, RegionsCorrStore.
     pub fn new(items: Vec<RegionsCorr>) -> Self {

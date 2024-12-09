@@ -1646,7 +1646,6 @@ mod tests {
     }
 
     /// Test duplicate select regions.
-    #[should_panic]
     #[test]
     fn select_duplicate() {
         // Create DomainStore.
@@ -1658,7 +1657,7 @@ mod tests {
         // Load select regions
         dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]").unwrap());
         dmxs.add_select(SelectRegions::from_str("SR[RC[r01x1], -1]").unwrap());
-        dmxs.calc_select();
+        assert!(dmxs.select.len() == 1);
     }
 
     /// Test no select regions.

@@ -354,42 +354,34 @@ impl SomeBits {
             for (targ, inx) in (num_shift..self.ints.len()).enumerate() {
                 ints[targ] = ints[inx];
             }
-            //println!("ints shifted {:?}", ints);
             // Zero out ints.
             for inx in num_shift..self.ints.len() {
                 ints[inx] = 0;
             }
-            //println!("ints zeroed {:?}", ints);
         }
 
         // Shift extra bits, if any.
         let extra: usize = num_bits % Bitint::BITS as usize;
-        //println!("extra {extra}");
 
         if extra > 0 {
             let carry_mask: Bitint = Bitint::MAX << (Bitint::BITS as usize - extra);
-            //println!("carry_mask {carry_mask}");
+
             let mut last_carry = 0;
 
             for int_inx in (0..ints.len()).rev() {
-                //println!("int_inx {int_inx} value {}", ints[int_inx]);
-
                 let next_carry: Bitint =
                     (ints[int_inx] & carry_mask) >> (Bitint::BITS as usize - extra);
-                //println!("last_carry {last_carry} next_carry {next_carry}");
 
                 ints[int_inx] = (ints[int_inx] << extra) + last_carry;
 
                 last_carry = next_carry;
             }
-            //println!("ints shifted by bits {:?}", ints);
         }
 
         // Mask off last carry.
         let extra: usize = self.num_bits as usize % Bitint::BITS as usize;
         if extra > 0 {
             let maskx = Bitint::MAX as Bitint >> (Bitint::BITS as usize - extra);
-            //println!("maskx {maskx}");
             ints[0] &= maskx;
         }
 

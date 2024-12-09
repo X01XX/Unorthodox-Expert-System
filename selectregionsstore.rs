@@ -19,21 +19,6 @@ impl fmt::Display for SelectRegionsStore {
     }
 }
 
-impl PartialEq for SelectRegionsStore {
-    fn eq(&self, other: &Self) -> bool {
-        if self.len() != other.len() {
-            return false;
-        }
-        for regx in &self.items {
-            if !other.contains(regx) {
-                return false;
-            }
-        }
-        true
-    }
-}
-impl Eq for SelectRegionsStore {}
-
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A struct of SelectRegions.
@@ -47,18 +32,12 @@ impl SelectRegionsStore {
     pub fn new(items: Vec<SelectRegions>) -> Self {
         let mut ret_srs = Self { items: vec![] };
 
-        // Test for duplicates.
+        // Avoid region-duplicates.
         for selx in items {
             ret_srs.push(selx);
         }
-        ret_srs
-    }
 
-    /// Return a new SelectRegions instance, empty, with a specified capacity.
-    pub fn with_capacity(num: usize) -> Self {
-        Self {
-            items: Vec::<SelectRegions>::with_capacity(num),
-        }
+        ret_srs
     }
 
     /// Add a SelectRegionsStore.
@@ -67,9 +46,9 @@ impl SelectRegionsStore {
         //print!("{} push {}", self, select);
         debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(&select));
 
-        assert!(!self.contains(&select));
-
-        self.items.push(select);
+        if !self.contains_regionscorr(&select.regions) {
+            self.items.push(select);
+        }
     }
 
     /// Add a SelectRegionsStore, deleting subsets.
@@ -141,14 +120,14 @@ impl SelectRegionsStore {
     }
 
     /// Return the sum of values of SelectRegions that are superset of a given RegionsCorr.
-    pub fn rate_regions(&self, regs: &RegionsCorr) -> isize {
+    pub fn supersets_sum(&self, regs: &RegionsCorr) -> isize {
         debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(regs));
 
         self.items
             .iter()
             .filter_map(|selx| {
                 if selx.regions.is_superset_of(regs) {
-                    Some(selx.net_value)
+                    Some(selx.value)
                 } else {
                     None
                 }
@@ -161,7 +140,7 @@ impl SelectRegionsStore {
         debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(regs));
 
         for selx in self.items.iter() {
-            if selx.net_value < 0 && selx.regions.is_superset_of(regs) {
+            if selx.value < 0 && selx.regions.is_superset_of(regs) {
                 return true;
             }
         }
@@ -215,13 +194,21 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Return true if an equal RegionsCorr is already in the SelectRegionsStore.
+    /// Return true if a SelectRegionsStore contains a given SelectRegions.
     pub fn contains(&self, slrx: &SelectRegions) -> bool {
         //println!("selectregionsstore::contains: store: {self} arg: {slrx}");
         debug_assert!(self.is_empty() || self.items[0].is_congruent(slrx));
 
+        self.items.contains(slrx)
+    }
+
+    /// Return true if an equal RegionsCorr is already in the SelectRegionsStore.
+    pub fn contains_regionscorr(&self, rcx: &RegionsCorr) -> bool {
+        //println!("selectregionsstore::contains_regionscorr: store: {self} arg: {rcx}");
+        debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(rcx));
+
         for regstrx in &self.items {
-            if regstrx.regions == slrx.regions {
+            if regstrx.regions == *rcx {
                 return true;
             }
         }
@@ -248,7 +235,7 @@ impl SelectRegionsStore {
         ret_str
     }
 
-    /// Subtract a selectregionstore from another.
+    /// Subtract a SelectRegionStore from another.
     pub fn subtract(&self, other: &Self) -> Self {
         debug_assert!(self.is_empty() || other.is_empty() || self.items[0].is_congruent(&other[0]));
 
@@ -278,22 +265,18 @@ impl SelectRegionsStore {
         // Calc intersections.
         fragments = fragments.split_by_intersections();
 
-        //println!("fragments: {fragments}");
-
         let mut sel_fragments = Vec::<SelectRegions>::with_capacity(fragments.len());
         for regsx in fragments {
             // Calc positive and negative value for RegionsCorr.
-            let mut pos_value = 0;
-            let mut neg_value = 0;
+            let mut value = 0;
             for sely in self.iter() {
                 if sely.regions.is_superset_of(&regsx) {
-                    pos_value += sely.pos_value;
-                    neg_value += sely.neg_value;
+                    value += sely.value;
                 }
             }
+
             // Create a SelectRegions for the RegionsCorr.
-            let mut selx = SelectRegions::new(regsx, 1);
-            selx.set_values(pos_value, neg_value);
+            let selx = SelectRegions::new(regsx, value);
 
             // Save SelectRegions to vector.
             sel_fragments.push(selx);
@@ -445,25 +428,17 @@ mod tests {
 
         // Check fragment values.
         for selx in frags.iter() {
-            let mut pos_val = 0;
-            let mut neg_val = 0;
+            let mut val = 0;
             // Gather values from start SelectRegionsStore.
             for sely in srs1.iter() {
                 if selx.is_subset_of(sely) {
-                    pos_val += sely.pos_value;
-                    neg_val += sely.neg_value;
+                    val += sely.value;
                 }
             }
-            if pos_val != selx.pos_value {
+            if val != selx.value {
                 return Err(format!(
-                    "selx {selx} pos_val {pos_val} NE selx.pos_value {} ?",
-                    selx.pos_value
-                ));
-            }
-            if neg_val != selx.neg_value {
-                return Err(format!(
-                    "selx {selx} neg_val {neg_val} NE selx.neg_value {} ?",
-                    selx.neg_value
+                    "selx {selx} val {val} NE selx.value {} ?",
+                    selx.value
                 ));
             }
         }
@@ -514,7 +489,7 @@ mod tests {
             Ok(()) => return Err("Failed Check fragments values.".to_string()),
             Err(errstr) => {
                 println!("{}", errstr);
-                assert!(errstr == "selx SR[RC[r1101], -1] pos_val 2 NE selx.pos_value 0 ?")
+                assert!(errstr == "selx SR[RC[r1101], -1] val 1 NE selx.value -1 ?")
             }
         }
         // Check bad negative value.
@@ -524,7 +499,7 @@ mod tests {
             Ok(()) => return Err("Failed Check fragments values.".to_string()),
             Err(errstr) => {
                 println!("{}", errstr);
-                assert!(errstr == "selx SR[RC[r1101], +2] neg_val -1 NE selx.neg_value 0 ?")
+                assert!(errstr == "selx SR[RC[r1101], +2] val 1 NE selx.value 2 ?")
             }
         }
 
@@ -549,7 +524,7 @@ mod tests {
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} is {frags}");
-        assert!(frags == srs1);
+        assert!(frags.is_empty());
 
         // Try with no intersections
         let srs1 =
@@ -565,7 +540,7 @@ mod tests {
             println!("    {srsx}");
         }
 
-        if frags == srs1 {
+        if frags.len() == 2 {
             Ok(())
         } else {
             Err(format!("{frags} NE srs1 {srs1} ?"))

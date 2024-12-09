@@ -20,7 +20,7 @@ use std::str::FromStr;
 impl fmt::Display for SelectRegions {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut str = self.regions.to_string();
-        str.push_str(&format!(", {:+}", self.net_value));
+        str.push_str(&format!(", {:+}", self.value));
         write!(f, "SR[{}]", str)
     }
 }
@@ -35,13 +35,13 @@ impl PartialEq for SelectRegions {
                 return false;
             }
         }
-        if self.net_value != other.net_value {
+        if self.value != other.value {
             return false;
         }
         true
     }
 }
-impl Eq for SelectRegions {}
+//impl Eq for SelectRegions {}
 
 #[readonly::make]
 #[derive(Debug, Default, Serialize, Deserialize, Clone)]
@@ -50,12 +50,8 @@ pub struct SelectRegions {
     /// If the regions are all X, except for one, then it affects only one domain.
     /// Otherwise, it affects a combination of domains where the corsponding region is not all X.
     pub regions: RegionsCorr,
-    /// A positive value for being in the select state.
-    pub pos_value: isize,
-    /// A negative value for being in the select state.
-    pub neg_value: isize,
-    /// A net value for being in the select state.
-    pub net_value: isize,
+    /// A value associated with being in the select state.
+    pub value: isize,
 }
 
 impl Index<usize> for SelectRegions {
@@ -69,23 +65,8 @@ impl SelectRegions {
     /// Return a new SelectRegions instance.
     pub fn new(regions: RegionsCorr, value: isize) -> Self {
         debug_assert!(!regions.is_empty());
-        debug_assert!(value != 0);
 
-        if value < 0 {
-            Self {
-                regions,
-                pos_value: 0,
-                neg_value: value,
-                net_value: value,
-            }
-        } else {
-            Self {
-                regions,
-                pos_value: value,
-                neg_value: 0,
-                net_value: value,
-            }
-        }
+        Self { regions, value }
     }
 
     /// Return the intersection of two SelectRegions.
@@ -93,16 +74,9 @@ impl SelectRegions {
         debug_assert!(self.is_congruent(other));
 
         if let Some(regions) = self.regions.intersection(&other.regions) {
-            let pos_value = self.pos_value + other.pos_value;
-            let neg_value = self.neg_value + other.neg_value;
-            let net_value = pos_value + neg_value;
+            let value = self.value + other.value;
 
-            Some(Self {
-                regions,
-                pos_value,
-                neg_value,
-                net_value,
-            })
+            Some(Self { regions, value })
         } else {
             None
         }
@@ -160,15 +134,6 @@ impl SelectRegions {
         self.regions.intersects(&other.regions)
     }
 
-    // Set the positive value.
-    pub fn set_values(&mut self, pos_value: isize, neg_value: isize) {
-        debug_assert!(pos_value != 0 || neg_value != 0);
-
-        self.pos_value = pos_value;
-        self.neg_value = neg_value;
-        self.net_value = pos_value + neg_value;
-    }
-
     /// Subtract a SelectRegions from another.
     /// Fragments, if any, retain the same value.
     pub fn subtract(&self, other: &Self) -> Vec<Self> {
@@ -184,19 +149,12 @@ impl SelectRegions {
             for regsz in regs {
                 ret_vec.push(Self {
                     regions: regsz,
-                    pos_value: self.pos_value,
-                    neg_value: self.neg_value,
-                    net_value: self.net_value,
+                    value: self.value,
                 });
             }
         } else {
             return vec![self.clone()];
         }
-        //println!("subtract {other} from {self} = ");
-        //for selx in ret_vec.iter() {
-        //    print!(" {selx}");
-        //}
-        //println!(" ");
         ret_vec
     }
 
@@ -220,7 +178,7 @@ impl tools::StrLen for SelectRegions {
         // Add separator.
         ret += 2;
         // Add value len.
-        ret += if self.net_value.abs() < 10 { 2 } else { 3 };
+        ret += if self.value.abs() < 10 { 2 } else { 3 };
         ret
     }
 }
@@ -395,9 +353,7 @@ mod tests {
         if let Some(srsint) = srs1.intersection(&srs2) {
             println!("srs1 int srs2 = {srsint}");
             assert!(srsint.regions == RegionsCorr::from_str("RC[r0x11, r1x11]")?);
-            assert!(srsint.pos_value == 3);
-            assert!(srsint.neg_value == -5);
-            assert!(srsint.net_value == -2);
+            assert!(srsint.value == -2);
         } else {
             return Err("No intersection of srs1 and srs2".to_string());
         }
@@ -411,6 +367,26 @@ mod tests {
 
     #[test]
     fn subtract() -> Result<(), String> {
+        let srs1 = SelectRegions::from_str("SR[RC[rXXXX], 3]")?;
+        println!("srs1 {srs1}");
+
+        let srs2 = SelectRegions::from_str("SR[RC[r0xx1], -5]")?;
+        println!("srs2 {srs2}");
+
+        let srs3 = SelectRegions::from_str("SR[RC[rxx0x], -5]")?;
+        println!("srs3 {srs3}");
+
+        let srssub12 = SelectRegionsStore::new(srs1.subtract(&srs2));
+        println!("srs1 {srs1} - {srs2} = {srssub12}");
+        assert!(srssub12.len() == 2);
+        assert!(srssub12.contains(&SelectRegions::from_str("SR[RC[rXXX0], 3]")?));
+        assert!(srssub12.contains(&SelectRegions::from_str("SR[RC[r1XXX], 3]")?));
+
+        let srssub13 = SelectRegionsStore::new(srs1.subtract(&srs3));
+        println!("srs1 {srs1} - {srs3} = {srssub13}");
+        assert!(srssub13.len() == 1);
+        assert!(srssub13.contains(&SelectRegions::from_str("SR[RC[rXX1X], 3]")?));
+
         let srs1 = SelectRegions::from_str("SR[RC[r0xx1, r1x1x], 3]")?;
         println!("srs1 {srs1}");
 
@@ -426,21 +402,8 @@ mod tests {
             println!("    {}", srsx);
         }
         assert!(srssub.len() == 2);
-        let srsx = SelectRegions {
-            regions: RegionsCorr::from_str("RC[r0x01, r1x1x]")?,
-            pos_value: 3,
-            neg_value: 0,
-            net_value: 3,
-        };
-        assert!(srssub.contains(&srsx));
-
-        let srsy = SelectRegions {
-            regions: RegionsCorr::from_str("RC[r0xx1, r1x10]")?,
-            pos_value: 3,
-            neg_value: 0,
-            net_value: 3,
-        };
-        assert!(srssub.contains(&srsy));
+        assert!(srssub.contains(&SelectRegions::from_str("SR[RC[r0x01, r1x1x], 3]")?));
+        assert!(srssub.contains(&SelectRegions::from_str("SR[RC[r0xx1, r1x10], 3]")?));
 
         let srssub = srs1.subtract(&srs3);
         println!("srs1 sub srs3:");
@@ -449,26 +412,6 @@ mod tests {
         }
         assert!(srssub.len() == 1);
         assert!(srssub[0] == srs1);
-
-        Ok(())
-    }
-
-    #[test]
-    fn subtract2() -> Result<(), String> {
-        let srs1 = SelectRegions::from_str("SR[RC[rXXXX], 3]")?;
-        println!("srs1 {srs1}");
-
-        let srs2 = SelectRegions::from_str("SR[RC[r0xx1], -5]")?;
-        println!("srs2 {srs2}");
-
-        let srs3 = SelectRegions::from_str("SR[RC[rxx0x], -5]")?;
-        println!("srs3 {srs3}");
-
-        let srssub12 = SelectRegionsStore::new(srs1.subtract(&srs2));
-        println!("srs1 {srs1} - {srs2} = {srssub12}");
-
-        let srssub13 = SelectRegionsStore::new(srs1.subtract(&srs3));
-        println!("srs1 {srs1} - {srs3} = {srssub13}");
 
         Ok(())
     }
