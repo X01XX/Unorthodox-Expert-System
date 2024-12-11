@@ -103,7 +103,7 @@ impl SomeMask {
 
     /// Return a formatted string.
     fn formatted_str(&self) -> String {
-        format!("m{}", self.bts.formatted_str_terse())
+        format!("m{}", self.bts.formatted_str())
     }
 
     /// A string to display under a printed state to indicate changes.

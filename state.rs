@@ -72,7 +72,7 @@ impl SomeState {
 
     /// Return a string used to represent a state.
     fn formatted_str(&self) -> String {
-        format!("s{}", self.bts.formatted_str_terse())
+        format!("s{}", self.bts.formatted_str())
     }
 
     /// Return a SomeState instance, representing a bitwise And of a state and another instance that supports the BitsRef Trait.

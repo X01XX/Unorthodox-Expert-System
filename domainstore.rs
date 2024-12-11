@@ -1379,7 +1379,8 @@ impl DomainStore {
     pub fn print_planscorrstore_detail2(&self, planscsx: &PlansCorrStore, states: &StatesCorr) {
         let mut cur_states = states.clone();
 
-        for planscx in planscsx.iter() {
+        for (pc_id, planscx) in planscsx.iter().enumerate() {
+            println!("\nPC: {pc_id}");
             for (dom_id, planx) in planscx.iter().enumerate() {
                 if planx.causes_change() {
                     println!("\n  Domain: {}, Plan:", dom_id);

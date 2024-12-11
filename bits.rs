@@ -20,7 +20,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Display trait for SomeBits
 impl fmt::Display for SomeBits {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_str())
+        write!(f, "b{}", self.formatted_str())
     }
 }
 
@@ -296,13 +296,8 @@ impl SomeBits {
         self.b_xor(other).num_one_bits() == 1
     }
 
-    /// Create a formatted string for an instance.
-    pub fn formatted_str(&self) -> String {
-        format!("b{}", self.formatted_str_terse())
-    }
-
     /// Create a formatted string for an instance, without a prefix.
-    pub fn formatted_str_terse(&self) -> String {
+    pub fn formatted_str(&self) -> String {
         let mut astr = String::with_capacity(self.strlen());
 
         for bit_num in (0..self.num_bits as usize).rev() {

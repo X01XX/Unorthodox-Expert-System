@@ -352,8 +352,7 @@ mod tests {
 
         if let Some(srsint) = srs1.intersection(&srs2) {
             println!("srs1 int srs2 = {srsint}");
-            assert!(srsint.regions == RegionsCorr::from_str("RC[r0x11, r1x11]")?);
-            assert!(srsint.value == -2);
+            assert!(srsint == SelectRegions::from_str("SR[RC[r0x11, r1x11], -2]")?);
         } else {
             return Err("No intersection of srs1 and srs2".to_string());
         }

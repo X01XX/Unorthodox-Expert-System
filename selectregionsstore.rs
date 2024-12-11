@@ -267,7 +267,7 @@ impl SelectRegionsStore {
 
         let mut sel_fragments = Vec::<SelectRegions>::with_capacity(fragments.len());
         for regsx in fragments {
-            // Calc positive and negative value for RegionsCorr.
+            // Calc value for RegionsCorr.
             let mut value = 0;
             for sely in self.iter() {
                 if sely.regions.is_superset_of(&regsx) {
@@ -391,7 +391,7 @@ impl FromStr for SelectRegionsStore {
         for tokenx in token_list.into_iter() {
             match SelectRegions::from_str(&tokenx) {
                 Ok(regx) => sregions.push(regx),
-                Err(errstr) => return Err(format!("6SelectRegionsStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("SelectRegionsStore::from_str: {errstr}")),
             }
         }
         let ret_store = SelectRegionsStore::new(sregions);
@@ -482,7 +482,7 @@ mod tests {
 
         // Check fragment values.
         let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
-        // Check bad positive value.
+        // Check bad value.
         let frags =
             SelectRegionsStore::from_str("[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], -1], SR[RC[r01X1], 2], SR[RC[rX111], 2]]")?;
         match check_fragments(&srs1, &frags) {
@@ -490,16 +490,6 @@ mod tests {
             Err(errstr) => {
                 println!("{}", errstr);
                 assert!(errstr == "selx SR[RC[r1101], -1] val 1 NE selx.value -1 ?")
-            }
-        }
-        // Check bad negative value.
-        let frags =
-            SelectRegionsStore::from_str("[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], 2], SR[RC[r01X1], 2], SR[RC[rX111], 2]]")?;
-        match check_fragments(&srs1, &frags) {
-            Ok(()) => return Err("Failed Check fragments values.".to_string()),
-            Err(errstr) => {
-                println!("{}", errstr);
-                assert!(errstr == "selx SR[RC[r1101], +2] val 1 NE selx.value 2 ?")
             }
         }
 

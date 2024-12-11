@@ -9,7 +9,7 @@ use std::fmt;
 
 impl fmt::Display for ATarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Target :{}", &self.formatted_str())
+        write!(f, "{}", &self.formatted_str())
     }
 }
 
