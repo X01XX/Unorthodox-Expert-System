@@ -37,6 +37,10 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
+use std::str::FromStr;
+use unicode_segmentation::UnicodeSegmentation;
+
+const CLEANUP_TRIGGER: usize = 5;
 
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -77,14 +81,7 @@ pub struct SomeAction {
 
 impl SomeAction {
     /// Return a new SomeAction struct.
-    pub fn new(
-        act_id: usize,
-        dom_id: usize,
-        cur_state: &SomeState,
-        rules: Vec<RuleStore>,
-        cleanup_trigger: usize,
-    ) -> Self {
-        assert!(cleanup_trigger > 0);
+    pub fn new(act_id: usize, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) -> Self {
         SomeAction {
             id: act_id,
             dom_id,
@@ -97,8 +94,43 @@ impl SomeAction {
             remainder_check_regions: RegionStore::new(vec![]),
             aggregate_changes: None,
             agg_chgs_updated: false,
-            cleanup_trigger,
+            cleanup_trigger: CLEANUP_TRIGGER,
         }
+    }
+
+    /// Return a new SomeAction struct.
+    pub fn new2(rules: Vec<RuleStore>) -> Self {
+        assert!(!rules.is_empty());
+        let num_bits = rules[0].num_bits().expect("SNH");
+        SomeAction {
+            id: 0,
+            dom_id: 0,
+            num_bits: rules[0].num_bits().expect("SNH"),
+            groups: GroupStore::new(vec![]),
+            squares: SquareStore::new(HashMap::new(), num_bits),
+            do_something: ActionInterface::new(rules),
+            cleanup_number_new_squares: 0,
+            check_remainder: false,
+            remainder_check_regions: RegionStore::new(vec![]),
+            aggregate_changes: None,
+            agg_chgs_updated: false,
+            cleanup_trigger: CLEANUP_TRIGGER,
+        }
+    }
+
+    /// Return the number of bits used in an action.
+    pub fn num_bits(&self) -> usize {
+        self.num_bits
+    }
+
+    /// Set the id field.
+    pub fn set_id(&mut self, id: usize) {
+        self.id = id;
+    }
+
+    /// Set the domain id field.
+    pub fn set_dom_id(&mut self, dom_id: usize) {
+        self.dom_id = dom_id;
     }
 
     /// Add a new square from a sample.
@@ -2287,7 +2319,7 @@ impl SomeAction {
 
     /// Return a String representation of SomeAction.
     fn formatted_str(&self) -> String {
-        let mut rc_str = String::from("A(ID: ");
+        let mut rc_str = String::from("ACT(ID: ");
 
         rc_str += &self.id.to_string();
 
@@ -2483,7 +2515,143 @@ impl SomeAction {
             false
         }
     }
+
+    // Set the cleanup trigger value.
+    pub fn set_cleanup(&mut self, trigger: usize) {
+        assert!(trigger > 0);
+        self.cleanup_trigger = trigger;
+    }
 } // end impl SomeAction
+
+impl FromStr for SomeAction {
+    type Err = String;
+    /// Return a SomeAction instance, given a string representation.
+    ///
+    /// Like D[[rulestores, affecting different regions, for an action], ...]
+    ///
+    ///    ------- Rules for 0XXX -------  -- For 10XX ---  -- For 11XX ---
+    /// ACT[ [[00/XX/XX/XX], [01/XX/XX/XX]], [[11/01/XX/XX]], [[10/11/Xx/XX]] ]
+    ///
+    /// All the rules must use the same number of bits.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("SomeAction::from_str: {str_in}");
+        let src_str = str_in.trim();
+
+        if src_str.is_empty() {
+            return Err("SomeAction::from_str: Empty string?".to_string());
+        }
+
+        // Strip off "ACT[ ... ]". Check that the brackets are balanced.
+        let mut src_str2 = String::new();
+        let mut left = 0;
+        let mut right = 0;
+
+        for (inx, chr) in src_str.graphemes(true).enumerate() {
+            if chr == "\n" {
+                continue;
+            }
+            if inx == 0 {
+                if chr != "A" {
+                    return Err(format!(
+                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
+                    ));
+                }
+                continue;
+            }
+            if inx == 1 {
+                if chr != "C" {
+                    return Err(format!(
+                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
+                    ));
+                }
+                continue;
+            }
+            if inx == 2 {
+                if chr != "T" {
+                    return Err(format!(
+                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
+                    ));
+                }
+                continue;
+            }
+            if inx == 3 {
+                if chr != "[" {
+                    return Err(format!(
+                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
+                    ));
+                }
+                left += 1;
+                continue;
+            }
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+                }
+            }
+
+            src_str2.push_str(chr);
+        }
+        if left != right {
+            return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+        }
+
+        // Remove last right-bracket, balancing first left bracket.
+        src_str2.remove(src_str2.len() - 1);
+
+        // Split substring into tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+        left = 0;
+        right = 0;
+
+        for chr in src_str2.graphemes(true) {
+            if left == right && (chr == "," || chr == " ") {
+                continue;
+            }
+
+            token.push_str(chr);
+
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+                }
+            }
+            if left == right && left > 0 {
+                token_list.push(token);
+                token = String::new();
+                left = 0;
+                right = 0;
+            }
+        }
+        if !token.is_empty() {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        let mut rs_vec = Vec::<RuleStore>::new();
+
+        // Generate vectors of RuleStores for each action.
+        for tokenx in token_list.iter() {
+            //println!("rulestores for an action: {tokenx}");
+            rs_vec.push(RuleStore::from_str(tokenx)?);
+        }
+
+        if rs_vec.is_empty() {
+            return Err(format!("SomeAction::from_str: Empty RuleStore, {src_str}"));
+        }
+        let actx = SomeAction::new2(rs_vec);
+
+        Ok(actx)
+    }
+}
 
 // Some action tests are made from the domain level.
 #[cfg(test)]
@@ -2506,7 +2674,7 @@ mod tests {
     fn two_result_group() -> Result<(), String> {
         // Init action
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Put in two incompatible one-result squares, but both subset of the
         // later two-result squares.
@@ -2537,7 +2705,7 @@ mod tests {
     fn groups_formed_1() -> Result<(), String> {
         // Init action
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Eval sample that other samples will be incompatible with.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0111->s0111")?);
@@ -2564,7 +2732,7 @@ mod tests {
     fn possible_region() -> Result<(), String> {
         // Init Action.
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         let max_reg = SomeRegion::from_str("rXXXX")?;
 
@@ -2596,7 +2764,7 @@ mod tests {
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0000->s0000")?);
@@ -2620,7 +2788,7 @@ mod tests {
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 0.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0000->s0000")?);
@@ -2650,7 +2818,7 @@ mod tests {
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
@@ -2674,7 +2842,7 @@ mod tests {
     fn aggregate_changes() -> Result<(), String> {
         // Init action.
         let sx = SomeState::from_str("s0000")?;
-        let mut act0 = SomeAction::new(0, 0, &sx, vec![], 5);
+        let mut act0 = SomeAction::new(0, 0, &sx, vec![]);
 
         // Set up square 2.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
@@ -2731,6 +2899,16 @@ mod tests {
             return Err("Test 4 failed".to_string());
         }
 
+        Ok(())
+    }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let actx = SomeAction::from_str("ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]")?;
+        println!("act {actx}");
+        println!("rules {}", tools::vec_string(&actx.do_something.rules));
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

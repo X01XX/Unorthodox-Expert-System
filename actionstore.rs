@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use std::ops::{Index, IndexMut};
-use std::slice::Iter;
+use std::slice::{Iter, IterMut};
 
 use rayon::prelude::*;
 
@@ -56,20 +56,14 @@ impl ActionStore {
     }
 
     /// Add a new action to the ActionStore.
-    pub fn add_action(
-        &mut self,
-        dom_id: usize,
-        cur_state: &SomeState,
-        rules: Vec<RuleStore>,
-        cleanup_trigger: usize,
-    ) {
-        self.items.push(SomeAction::new(
-            self.items.len(),
-            dom_id,
-            cur_state,
-            rules,
-            cleanup_trigger,
-        ));
+    pub fn add_action(&mut self, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) {
+        self.items
+            .push(SomeAction::new(self.items.len(), dom_id, cur_state, rules));
+    }
+
+    /// Add a new action to the ActionStore.
+    pub fn push(&mut self, actx: SomeAction) {
+        self.items.push(actx);
     }
 
     /// Check limited flag due to new changes.
@@ -137,6 +131,11 @@ impl ActionStore {
     /// Return an iterator
     pub fn iter(&self) -> Iter<SomeAction> {
         self.items.iter()
+    }
+
+    /// Return a vector mut iterator.
+    pub fn iter_mut(&mut self) -> IterMut<SomeAction> {
+        self.items.iter_mut()
     }
 
     /// Return the expected maximum reachable region, based on the current state

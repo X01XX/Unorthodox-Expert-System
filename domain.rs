@@ -13,6 +13,7 @@
 //! When the current state is in at least one optimal region, sets and counts down a boredom value.
 //! The boredom value is greater if the the current state is in multiple optimal regions (intersection).
 
+use crate::action::SomeAction;
 use crate::actionstore::ActionStore;
 use crate::change::SomeChange;
 use crate::need::SomeNeed;
@@ -33,6 +34,8 @@ use rand::Rng;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PathStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -126,6 +129,14 @@ impl SomeDomain {
         }
     }
 
+    /// Set the domain id, update same in all actions.
+    pub fn set_id(&mut self, id: usize) {
+        self.id = id;
+        for actx in self.actions.iter_mut() {
+            actx.set_dom_id(id);
+        }
+    }
+
     /// Return a reference to the current, internal, state.
     pub fn current_state(&self) -> &SomeState {
         &self.cur_state
@@ -134,11 +145,17 @@ impl SomeDomain {
     /// Add a SomeAction instance to the store.
     /// The rules will be used to generate responses to running the action
     /// against various states.
-    pub fn add_action(&mut self, rules: Vec<RuleStore>, cleanup_trigger: usize) {
+    pub fn add_action(&mut self, rules: Vec<RuleStore>) {
         debug_assert!(rules.is_empty() || rules[0].num_bits().unwrap() == self.num_bits());
 
-        self.actions
-            .add_action(self.id, &self.cur_state, rules, cleanup_trigger);
+        self.actions.add_action(self.id, &self.cur_state, rules);
+    }
+
+    /// Add a new action.
+    pub fn push(&mut self, mut actx: SomeAction) {
+        actx.set_id(self.actions.len());
+        actx.set_dom_id(self.id);
+        self.actions.push(actx);
     }
 
     /// Return needs gathered from all actions.
@@ -868,6 +885,10 @@ impl SomeDomain {
 
         rc_str.push(')');
 
+        for actx in self.actions.iter() {
+            rc_str.push_str(&format!("\n    Action {actx}"));
+        }
+
         rc_str
     }
 
@@ -1036,13 +1057,176 @@ impl SomeDomain {
         assert!(act_id < self.actions.len());
         self.actions[act_id].cleanup(needs);
     }
+
+    /// Set cleanup trigger for an action.
+    pub fn set_cleanup(&mut self, act_id: usize, trigger: usize) {
+        assert!(act_id < self.actions.len());
+
+        self.actions[act_id].set_cleanup(trigger);
+    }
 } // end impl SomeDomain
+
+impl FromStr for SomeDomain {
+    type Err = String;
+    /// Return a SomeDomain instance, given a string representation.
+    ///
+    /// "DOMAIN[ ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]] ]"
+    ///
+    /// All the rules must use the same number of bits.
+    fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("SomeDomain::from_str: {str_in}");
+        let src_str = str_in.trim();
+
+        if src_str.is_empty() {
+            return Err("SomeDomain::from_str: Empty string?".to_string());
+        }
+
+        // Strip off "DOMAIN[ ... ]". Check that the brackets are balanced.
+        let mut src_str2 = String::new();
+        let mut left = 0;
+        let mut right = 0;
+
+        for (inx, chr) in src_str.graphemes(true).enumerate() {
+            if chr == "\n" {
+                continue;
+            }
+            if inx == 0 {
+                if chr != "D" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 1 {
+                if chr != "O" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 2 {
+                if chr != "M" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 3 {
+                if chr != "A" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 4 {
+                if chr != "I" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 5 {
+                if chr != "N" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                continue;
+            }
+            if inx == 6 {
+                if chr != "[" {
+                    return Err(format!(
+                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
+                    ));
+                }
+                left += 1;
+                continue;
+            }
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+                }
+            }
+
+            src_str2.push_str(chr);
+        }
+        if left != right {
+            return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+        }
+
+        // Remove last right-bracket, balancing first left bracket.
+        src_str2.remove(src_str2.len() - 1);
+
+        // Split substring into tokens.
+        let mut token = String::new();
+        let mut token_list = Vec::<String>::new();
+        left = 0;
+        right = 0;
+
+        for chr in src_str2.graphemes(true) {
+            if left == right && (chr == "," || chr == " ") {
+                continue;
+            }
+
+            token.push_str(chr);
+
+            if chr == "[" {
+                left += 1;
+            }
+            if chr == "]" {
+                right += 1;
+                if right > left {
+                    return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+                }
+            }
+            if left == right && left > 0 {
+                token_list.push(token);
+                token = String::new();
+                left = 0;
+                right = 0;
+            }
+        }
+        if !token.is_empty() {
+            token_list.push(token);
+        }
+        //println!("token_list {:?}", token_list);
+
+        let mut act_vec = Vec::<SomeAction>::new();
+
+        // Push each action.
+        for tokenx in token_list.iter() {
+            act_vec.push(SomeAction::from_str(tokenx)?);
+        }
+
+        let num_bits = act_vec[0].num_bits();
+
+        let mut domx = SomeDomain::new(0, SomeState::new_random(num_bits));
+
+        for actx in act_vec {
+            //println!("adding actx: {actx}");
+            assert!(actx.num_bits() == num_bits);
+            domx.push(actx);
+        }
+
+        Ok(domx)
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domainstore::DomainStore;
     use crate::target::ATarget;
+    //use crate::statescorr::StatesCorr;
     use std::str::FromStr;
 
     // Test running a plan using an alt-rule (change) group.
@@ -1052,7 +1236,7 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[00/11/01/11, 00/11/00/10]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         let sta_5 = SomeState::from_str("s0101")?;
 
@@ -1122,7 +1306,7 @@ mod tests {
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
 
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[00/XX/01/XX]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         // Form first group.
         dm0.cur_state = SomeState::from_str("s0101")?; // -> 0111
@@ -1165,13 +1349,16 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dmxs = DomainStore::new();
         dmxs.add_domain(SomeState::from_str("s0000")?);
+
         let dm0 = &mut dmxs[0];
 
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+
+        // dmxs.set_cur_states(&StatesCorr::from_str("SC[s0001]")?);
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1212,10 +1399,10 @@ mod tests {
         dmxs.add_domain(SomeState::from_str("s0000")?);
         let dm0 = &mut dmxs[0];
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
+        dm0.add_action(vec![]);
 
         // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1260,7 +1447,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1315,7 +1502,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1402,7 +1589,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1434,7 +1621,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         let max_reg = SomeRegion::from_str("rXXXX")?;
 
@@ -1508,7 +1695,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
@@ -1561,7 +1748,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
@@ -1602,7 +1789,7 @@ mod tests {
         // Create a domain that uses two integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000_0000_0000_0000")?);
         dm0.cur_state = SomeState::from_str("s0000_0000_0000_0001")?;
-        dm0.add_action(vec![], 5);
+        dm0.add_action(vec![]);
 
         // Create group for region XXX1010X101010XX.
         dm0.eval_sample_arbitrary(
@@ -1638,7 +1825,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
         dm0.cur_state = SomeState::from_str("s0011")?;
-        dm0.add_action(vec![], 5); // Act 0
+        dm0.add_action(vec![]); // Act 0
 
         // Start groups.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
@@ -1720,19 +1907,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1, 5);
+        dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2, 5);
+        dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3, 5);
+        dm0.add_action(ruls3);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -1788,19 +1975,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1, 5);
+        dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2, 5);
+        dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3, 5);
+        dm0.add_action(ruls3);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -1861,19 +2048,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1, 5);
+        dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2, 5);
+        dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3, 5);
+        dm0.add_action(ruls3);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -1933,19 +2120,19 @@ mod tests {
 
         // Set up action 0, changing bit 0.
         let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0, 5);
+        dm0.add_action(ruls0);
 
         // Set up action 1, changing bit 1.
         let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1, 5);
+        dm0.add_action(ruls1);
 
         // Set up action 2, changing bit 2.
         let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2, 5);
+        dm0.add_action(ruls2);
 
         // Set up action 3, changing bit 3.
         let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3, 5);
+        dm0.add_action(ruls3);
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -2011,6 +2198,21 @@ mod tests {
         } else {
             return Err("No shortcuts (1) found".to_string());
         }
+        Ok(())
+    }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        //                                         Act 0, rules for two regions.                Act 1            Act 2.
+        let domx = match SomeDomain::from_str(
+            "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]] ]",
+        ) {
+            Ok(domx) => domx,
+            Err(errstr) => return Err(format!("{errstr}")),
+        };
+        println!("{domx}");
+
+        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

@@ -6,7 +6,7 @@
 use crate::bits::vec_same_num_bits;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::tools;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -57,6 +57,13 @@ impl RuleStore {
             }
         }
         Self { items }
+    }
+
+    /// Return a new RuleStore instance, empty, with a specified capacity.
+    pub fn with_capacity(num: usize) -> Self {
+        Self {
+            items: Vec::<SomeRule>::with_capacity(num),
+        }
     }
 
     /// Return true if a RuleStore contains a rule.
@@ -440,80 +447,97 @@ impl FromStr for RuleStore {
     /// Like [], [X0/11/11/10/00] or [00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("rulestore::from_str: {str_in}");
+        let src_str = str_in.trim();
 
-        let rs_str = str_in.trim();
-
-        if rs_str.is_empty() {
+        if src_str.is_empty() {
             return Err("RuleStore::from_str: Empty string?".to_string());
         }
 
-        let mut rs_str2 = String::new();
-        let mut last_chr = false;
+        // Strip off "[ ... ]". Check that the brackets are balanced.
+        let mut src_str2 = String::new();
+        let mut left = 0;
+        let mut right = 0;
 
-        for (inx, chr) in rs_str.graphemes(true).enumerate() {
+        for (inx, chr) in src_str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "[" {
+                    left += 1;
                     continue;
                 } else {
                     return Err(format!(
-                        "RuleStore::from_str: Invalid string, {rs_str} should start with ["
+                        "RuleStore::from_str: Invalid string, {src_str} should start with ["
                     ));
                 }
             }
+            if chr == "[" {
+                left += 1;
+            }
             if chr == "]" {
-                last_chr = true;
-                continue;
+                right += 1;
+                if right > left {
+                    return Err(format!("RuleStore::from_str: Invalid string, {src_str}"));
+                }
             }
 
-            if last_chr {
-                return Err(format!(
-                    "RuleStore::from_str: Invalid string, {rs_str} should end with ]"
-                ));
-            }
-            rs_str2.push_str(chr);
+            src_str2.push_str(chr);
         }
-        if !last_chr {
-            return Err(format!(
-                "RuleStore::from_str: Invalid string, {rs_str} should end with ]"
-            ));
+        if left != right {
+            return Err(format!("RuleStore::from_str: Invalid string, {src_str}"));
         }
 
-        if rs_str2.is_empty() {
-            return Ok(RuleStore::new(vec![]));
-        }
+        // Remove last right-bracket, balancing first left bracket.
+        src_str2.remove(src_str2.len() - 1);
+        //println!("src_str2 {src_str2}");
 
-        // Split string into <rule> tokens.
+        // Split string into <Rule> tokens.
         let mut token = String::new();
         let mut token_list = Vec::<String>::new();
 
-        for chr in rs_str2.graphemes(true) {
-            if chr == "," || chr == " " {
+        for chr in src_str2.graphemes(true) {
+            if chr == " " || chr == "," {
                 if token.is_empty() {
                 } else {
                     token_list.push(token);
                     token = String::new();
                 }
-            } else {
-                token.push_str(chr);
+                continue;
             }
+
+            token.push_str(chr);
         }
         if token.is_empty() {
         } else {
             token_list.push(token);
         }
+        //println!("token_list {:?}", token_list);
 
         // Tally up tokens.
-        let mut rules = Vec::<SomeRule>::new();
+        let mut ret_store = RuleStore::with_capacity(token_list.len());
 
         for tokenx in token_list.into_iter() {
             match SomeRule::from_str(&tokenx) {
-                Ok(rulx) => rules.push(rulx),
+                Ok(rulx) => ret_store.push(rulx),
                 Err(errstr) => return Err(format!("RuleStore::from_str: {errstr}")),
             }
         }
-        let ret_rulestore = RuleStore::new(rules);
 
-        Ok(ret_rulestore)
+        Ok(ret_store)
+    }
+}
+
+/// Implement the trait StrLen for RuleStore.
+impl StrLen for RuleStore {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2;
+
+        for (inx, itemx) in self.items.iter().enumerate() {
+            if inx > 0 {
+                rc_len += 2; // for ", "
+            }
+            rc_len += itemx.strlen();
+        }
+
+        rc_len
     }
 }
 

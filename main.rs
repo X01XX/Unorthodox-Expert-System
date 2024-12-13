@@ -29,7 +29,6 @@ use std::env;
 mod action;
 mod actionstore;
 mod bits;
-use crate::bits::SomeBits;
 mod group;
 mod groupstore;
 mod mask;
@@ -66,12 +65,11 @@ mod step;
 mod stepstore;
 use domainstore::{DomainStore, InxPlan, NeedPlan};
 mod actioninterface;
-mod planstore;
-mod selectregions;
-use crate::selectregions::SelectRegions;
 mod planscorr;
 mod planscorrstore;
+mod planstore;
 mod regionscorrstore;
+mod selectregions;
 mod selectregionsstore;
 mod target;
 use crate::target::ATarget;
@@ -385,122 +383,49 @@ pub fn print_can_do(dmxs: &DomainStore, can_do: &[InxPlan], needs: &NeedStore) {
 /// Initialize a Domain Store, with two domains and 11 actions.
 fn domainstore_init() -> DomainStore {
     // Start a DomainStore
-    let mut dmxs = DomainStore::new();
 
-    dmxs.add_domain(SomeState::new(SomeBits::new_random(5)));
-    dmxs.add_domain(SomeState::new(SomeBits::new_random(16)));
+    let dmxs2 = match DomainStore::from_str(
+        "DS[
+    DOMAIN[
+        ACT[[XX_11/XX/00/Xx],
+            [XX_00/XX/11/Xx],
+            [XX_XX/11/XX/10],
+            [XX_11/00/10/XX, XX_11/01/11/XX],
+            [XX_11/XX/10/00, XX_11/Xx/11/00],
+            [XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX],
+            [XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]], 
+        ACT[[XX_XX/Xx/11/XX], [XX_XX/XX/01/XX]],
+        ACT[[XX_XX/XX/10/XX], [XX_XX/Xx/00/XX]],
+        ACT[[Xx_11/XX/XX/XX], [XX_01/XX/XX/XX]],
+        ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]],
+        ACT[[XX_XX/XX/XX/XX]]],
 
-    // Add actions 0 through 9 to Domain 0;
-    let ruls0: Vec<RuleStore> = vec![
-        RuleStore::from_str("[XX_11/XX/00/Xx]").expect("SNH"),
-        RuleStore::from_str("[XX_00/XX/11/Xx]").expect("SNH"),
-        RuleStore::from_str("[XX_XX/11/XX/10]").expect("SNH"),
-        RuleStore::from_str("[XX_11/00/10/XX, XX_11/01/11/XX]").expect("SNH"),
-        RuleStore::from_str("[XX_11/XX/10/00, XX_11/Xx/11/00]").expect("SNH"),
-        RuleStore::from_str("[XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX]").expect("SNH"),
-        RuleStore::from_str("[XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]").expect("SNH"),
-    ];
-    dmxs[0].add_action(ruls0, 5);
+    DOMAIN[
+        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
+        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX],
+            [XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX],
+            [XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]]],
 
-    let ruls1: Vec<RuleStore> = vec![
-        RuleStore::from_str("[XX_XX/Xx/11/XX]").expect("SNH"),
-        RuleStore::from_str("[XX_XX/XX/01/XX]").expect("SNH"),
-    ];
-    dmxs[0].add_action(ruls1, 5);
+    SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3],
+    SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2],
+    SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3],
+    SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1],
+    SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1],
+    SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]
+    ]",
+    ) {
+        Ok(dmxs2) => dmxs2,
+        Err(errstr) => panic!("{errstr}"),
+    };
 
-    let ruls2: Vec<RuleStore> = vec![
-        RuleStore::from_str("[XX_XX/XX/10/XX]").expect("SNH"),
-        RuleStore::from_str("[XX_XX/Xx/00/XX]").expect("SNH"),
-    ];
-    dmxs[0].add_action(ruls2, 5);
+    dmxs2.print_select_stores_info();
 
-    let ruls3: Vec<RuleStore> = vec![
-        RuleStore::from_str("[Xx_11/XX/XX/XX]").expect("SNH"),
-        RuleStore::from_str("[XX_01/XX/XX/XX]").expect("SNH"),
-    ];
-    dmxs[0].add_action(ruls3, 5);
-
-    let ruls4: Vec<RuleStore> = vec![
-        RuleStore::from_str("[XX_10/XX/XX/XX]").expect("SNH"),
-        RuleStore::from_str("[Xx_00/XX/XX/XX]").expect("SNH"),
-    ];
-    dmxs[0].add_action(ruls4, 5);
-
-    let ruls5: Vec<RuleStore> = vec![RuleStore::from_str("[XX_XX/XX/XX/XX]").expect("SNH")];
-    dmxs[0].add_action(ruls5, 5);
-
-    // Add actions 0 through 6 to domain 1.
-    let ruls0: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls0, 5);
-
-    let ruls1: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls1, 5);
-
-    let ruls2: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls2, 5);
-
-    let ruls3: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls3, 5);
-
-    let ruls4: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls4, 5);
-
-    let ruls5: Vec<RuleStore> =
-        vec![
-            RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]").expect("SNH"),
-        ];
-    dmxs[1].add_action(ruls5, 5);
-
-    let ruls6: Vec<RuleStore> = vec![
-        RuleStore::from_str("[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX]").expect("SNH"),
-        RuleStore::from_str("[XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX]").expect("SNH"),
-        RuleStore::from_str("[XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]").expect("SNH"),
-    ];
-    dmxs[1].add_action(ruls6, 5);
-
-    // Add select regions.
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3]").expect("SNH"),
-    );
-
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2]").expect("SNH"),
-    );
-
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3]").expect("SNH"),
-    );
-
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1]").expect("SNH"),
-    );
-
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1]").expect("SNH"),
-    );
-
-    dmxs.add_select(
-        SelectRegions::from_str("SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]").expect("SNH"),
-    );
-
-    dmxs.calc_select();
-
-    dmxs
+    dmxs2
 }
 
 /// Do one session to end.
@@ -1371,41 +1296,24 @@ fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
 mod tests {
     use super::*;
     use crate::regionscorr::RegionsCorr;
+    use crate::selectregions::SelectRegions;
 
     /// Test the cleanup of unneeded groups.
     /// First use of running a full session from a test function.
     #[test]
     fn cleanup() -> Result<(), String> {
         // Create DomainStore.
-        let mut dmxs = DomainStore::new();
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX]]],
+        ]",
+        )?;
 
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
-
-        // Set up action 4, changing bits 1 and 3.
-        let ruls4: Vec<RuleStore> = vec![
-            RuleStore::from_str("[XX/11/01/Xx]")?,
-            RuleStore::from_str("[11/XX/10/Xx]")?,
-            RuleStore::from_str("[Xx/00/00/XX]")?,
-            RuleStore::from_str("[01/XX/11/XX]")?,
-        ];
-        dmxs[0].add_action(ruls4, 500); // Effectively, turn off clean_up.
+        dmxs[0].set_cleanup(4, 500); // Effectively, turn off clean_up for action 4.
 
         do_session(&mut dmxs);
 
@@ -1467,7 +1375,6 @@ mod tests {
         let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
         assert!(!grpx.limited);
 
-        //assert!(1 == 2);
         // Do cleanup to delete unneeded groups.
         dmxs.cleanup(0, 4, &NeedStore::new(vec![]));
 
@@ -1483,7 +1390,6 @@ mod tests {
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1491,31 +1397,15 @@ mod tests {
     /// Program develops rules, program seeks positive SelectRegion, then gets bored beyond limit.
     #[test]
     fn select1() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select regions
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r1000], 1]")?);
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[r1000], 1]
+        ]",
+        )?;
 
         // Develop rules, position to desired end state.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0000]")?) {
@@ -1557,32 +1447,16 @@ mod tests {
     /// an additional, smaller, negative influence.
     #[test]
     fn select2() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select regions
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]")?);
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rX111], -1]")?);
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[r01X1], 3],
+            SR[RC[rX111], -1]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
@@ -1652,7 +1526,7 @@ mod tests {
         let mut dmxs = DomainStore::new();
 
         // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
+        dmxs.add_domain(SomeState::new_random(4));
 
         // Load select regions
         dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]").unwrap());
@@ -1663,29 +1537,14 @@ mod tests {
     /// Test no select regions.
     #[test]
     fn select_none() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
@@ -1705,32 +1564,15 @@ mod tests {
     /// Test one large positive select region.
     #[test]
     fn select_one_large_positive() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select region
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rXXXX], 3]")?);
-
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[rXXXX], 3]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
@@ -1750,32 +1592,15 @@ mod tests {
     /// Test one small positive select region.
     #[test]
     fn select_one_small_positive() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select region
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r1010], 3]")?);
-
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[r1010], 3]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
@@ -1795,32 +1620,15 @@ mod tests {
     /// Test one large negative select region.
     #[test]
     fn select_one_large_negative() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select region
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rXXXX], -3]")?);
-
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[rXXXX], -3]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
@@ -1840,32 +1648,15 @@ mod tests {
     /// Test one small negative select region.
     #[test]
     fn select_one_small_negative() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new(SomeBits::new_random(4)));
-
-        // Load select region
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r1010], -3]")?);
-
-        dmxs.calc_select();
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dmxs[0].add_action(ruls0, 5);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dmxs[0].add_action(ruls1, 5);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dmxs[0].add_action(ruls2, 5);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dmxs[0].add_action(ruls3, 5);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]]],
+            SR[RC[r1010], -3]
+        ]",
+        )?;
 
         // Develop rules.
         if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {

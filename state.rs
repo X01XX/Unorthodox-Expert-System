@@ -141,6 +141,15 @@ impl SomeState {
 
         SomeMask::new(self.bts.b_and_not(other.bitsref()))
     }
+
+    /// Return a new, random, SomeState instance, given the nubmer of bits the state should contain.
+    pub fn new_random(num_bits: usize) -> Self {
+        assert!(num_bits > 0);
+
+        Self {
+            bts: SomeBits::new_random(num_bits),
+        }
+    }
 } // end impl SomeState
 
 /// Trait to allow SomeState to return a reference to its bits.

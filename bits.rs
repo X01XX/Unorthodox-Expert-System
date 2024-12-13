@@ -95,10 +95,10 @@ impl SomeBits {
     }
 
     /// Return a new bits instance, from another, to conserve the number bits, with a random value.
-    pub fn new_random(num_bits: Bitint) -> Self {
+    pub fn new_random(num_bits: usize) -> Self {
         assert!(num_bits > 0);
 
-        let num_ints = Self::number_bits_to_ints(num_bits);
+        let num_ints = Self::number_bits_to_ints(num_bits as Bitint);
 
         let mut ints = vec![0; num_ints as usize];
 
@@ -107,13 +107,16 @@ impl SomeBits {
         }
 
         // Shift out highest bits, if needed.
-        let adjust = num_bits % Bitint::BITS as Bitint;
+        let adjust = num_bits as Bitint % Bitint::BITS as Bitint;
 
         if adjust > 0 {
             ints[0] >>= Bitint::BITS as Bitint - adjust;
         }
 
-        Self { num_bits, ints }
+        Self {
+            num_bits: num_bits as Bitint,
+            ints,
+        }
     }
 
     /// Return a vector of bits where each has only

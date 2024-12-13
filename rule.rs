@@ -584,6 +584,7 @@ impl FromStr for SomeRule {
     /// All bit positions must be specified.
     /// like SomeRule::from_str("00/01/11/10/XX/xx/Xx/xX/X0/X1")
     fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("SomeRule::from_str: {str_in}");
         let rep = str_in.trim();
 
         if rep.is_empty() {
