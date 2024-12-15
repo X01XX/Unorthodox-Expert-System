@@ -8,7 +8,6 @@ use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
-use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
@@ -53,12 +52,6 @@ impl ActionStore {
     /// Return the length of an ActionStore.
     pub fn len(&self) -> usize {
         self.items.len()
-    }
-
-    /// Add a new action to the ActionStore.
-    pub fn add_action(&mut self, dom_id: usize, cur_state: &SomeState, rules: Vec<RuleStore>) {
-        self.items
-            .push(SomeAction::new(self.items.len(), dom_id, cur_state, rules));
     }
 
     /// Add a new action to the ActionStore.

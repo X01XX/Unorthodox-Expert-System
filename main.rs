@@ -1521,17 +1521,16 @@ mod tests {
 
     /// Test duplicate select regions.
     #[test]
-    fn select_duplicate() {
+    fn select_duplicate() -> Result<(), String> {
         // Create DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Create a domain that uses 4 bits.
-        dmxs.add_domain(SomeState::new_random(4));
-
-        // Load select regions
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], 3]").unwrap());
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01x1], -1]").unwrap());
+        let dmxs = DomainStore::from_str(
+            "DS[DOMAIN[ACT[[XX/XX/XX/Xx]]],
+                SR[RC[r01X1], 3],
+                SR[RC[r01x1], -1]
+        ]",
+        )?;
         assert!(dmxs.select.len() == 1);
+        Ok(())
     }
 
     /// Test no select regions.

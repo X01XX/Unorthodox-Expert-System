@@ -220,16 +220,6 @@ impl DomainStore {
         }
     }
 
-    /// Add a Domain struct to the store.
-    /// Enforce domain id = index into domainstore items vector.
-    /// Add select regions after the last domain has been added.
-    pub fn add_domain(&mut self, cur_state: SomeState) {
-        debug_assert!(self.select.is_empty());
-
-        self.items
-            .push(SomeDomain::new(self.items.len(), cur_state));
-    }
-
     pub fn push(&mut self, mut domx: SomeDomain) {
         domx.set_id(self.items.len());
 
@@ -1718,14 +1708,18 @@ impl FromStr for DomainStore {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("DomainStore::from_str: Invalid string, {ds_str}"));
+                    return Err(format!(
+                        "DomainStore::from_str: Brackets not balanced, {ds_str}"
+                    ));
                 }
             }
 
             ds_str2.push_str(chr);
         }
         if left != right {
-            return Err(format!("DomainStore::from_str: Invalid string, {ds_str}"));
+            return Err(format!(
+                "DomainStore::from_str: Brackets not balanced, {ds_str}"
+            ));
         }
         ds_str2 = ds_str2.trim().to_string();
         //println!("ds_str2 {ds_str2}");
@@ -1800,7 +1794,6 @@ impl FromStr for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rulestore::RuleStore;
     use crate::sample::SomeSample;
     use std::str::FromStr;
 
@@ -1842,39 +1835,31 @@ mod tests {
     /// Test case where positive regions the start and goal are in, intersect.
     fn avoidance1x() -> Result<(), String> {
         // Init DomainStore. Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("0000")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SR[RC[r01X1], -1],
+            SR[RC[rX101], -2],
+            s0000
+        ]",
+        )?;
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
 
         // Set up action to change the second bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
 
         // Set up action to change the third bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
 
         // Set up action to change the fourth bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-
-        // Set select regions.
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01X1], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rX101], -2]")?);
-        dmxs.calc_select();
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -1911,39 +1896,31 @@ mod tests {
     /// but another region intersects both.
     fn avoidance2() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("0000")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SR[RC[r0101], -1],
+            SR[RC[r1001], -1],
+            s0000
+        ]",
+        )?;
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.add_action(vec![]);
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
 
         // Set up action to change the second bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
 
         // Set up action to change the third bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
 
         // Set up action to change the fourth bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-
-        // Set select regions.
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r0101], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r1001], -1]")?);
-
-        dmxs.calc_select();
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -1971,44 +1948,34 @@ mod tests {
     /// and another region does not intersect both.
     fn avoidance3() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("0000")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SR[RC[r0x00], -1],
+            SR[RC[rx100], -1],
+            SR[RC[r01x1], -1],
+            SR[RC[r10x1], -1],
+            SR[RC[r101x], -1],
+            s0000
+        ]",
+        )?;
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
 
         // Set up action to change the second bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
 
         // Set up action to change the third bit.
-        domx.add_action(vec![]);
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
 
         // Set up action to change the fourth bit.
-        domx.add_action(vec![]);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-
-        // Set select regions.
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r0x00], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rx100], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01x1], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r10x1], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r101x], -1]")?);
-
-        dmxs.calc_select();
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001")?;
@@ -2036,36 +2003,30 @@ mod tests {
     /// Test case where start and goal regions are not in a non-negative region.
     fn avoidance5() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SR[RC[rxx0x], -1],
+            s0000
+        ]",
+        )?;
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
         domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
 
         // Set up action to change the second bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
         domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
 
         // Set up action to change the third bit.
-        domx.add_action(vec![]);
-
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
         domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
 
         // Set up action to change the fourth bit.
-        domx.add_action(vec![]);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
         domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-
-        // Set select regions.
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rxx0x], -1]")?);
-        dmxs.calc_select();
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -2090,27 +2051,21 @@ mod tests {
 
     #[test]
     fn all_current_states() -> Result<(), String> {
-        // Init DomainStore, Domains.
-        // Domain 0 uses 1 integer for bits.
-        // Domain 1 uses 2 integers for bits.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000_0000")?);
-        dmxs.add_domain(SomeState::from_str("s0000_0000_0000_0000")?);
-
-        // Set state for domain 0, using 1 integer for bits.
-        let init_first_state = SomeState::from_str("s0001_0010")?;
-        dmxs[0].set_cur_state(init_first_state.clone());
-
-        // Set state for domain 1, using 2 integers for bits.
-        let init_state2 = SomeState::from_str("s1010_1011_1100_1101")?;
-        dmxs[1].set_cur_state(init_state2.clone());
+        // Init DomainStore.
+        let dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX_XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX]]],
+            SC[s0001_0010, s1010_1011_1100_1101]
+        ]",
+        )?;
 
         let all_states = dmxs.all_current_states();
         println!("all states {}", all_states);
 
         assert!(all_states.len() == 2);
-        assert!(all_states[0] == init_first_state);
-        assert!(all_states[1] == init_state2);
+        assert!(all_states[0] == dmxs[0].cur_state);
+        assert!(all_states[1] == dmxs[1].cur_state);
 
         Ok(())
     }
@@ -2118,15 +2073,13 @@ mod tests {
     #[test]
     /// Test case using adjacent non-negative regions.
     fn avoidance6() -> Result<(), String> {
-        // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        // Add actions.
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
+        // Init DomainStore.
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SC[s0000]
+        ]",
+        )?;
 
         // Set up action to change the first bit.
         dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -2177,19 +2130,13 @@ mod tests {
     /// Test case using two domains.
     fn avoidance7() -> Result<(), String> {
         // Init DomainStore, Domains.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SC[s0000, s0000]
+        ]",
+        )?;
 
         // Set up action to change the first bit.
         dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -2256,19 +2203,13 @@ mod tests {
     /// due to the boolean AND relationship, with two non-maximum regions, in a negative SelectRegions instance.
     fn avoidance8() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SC[s0000, s0000]
+        ]",
+        )?;
 
         // Set up action to change the first bit.
         dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -2339,19 +2280,13 @@ mod tests {
     /// Test case using two domains, like avoidance8, but a way around traps.
     fn avoidance9() -> Result<(), String> {
         // Init DomainStore, Domains.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
-        dmxs[1].add_action(vec![]);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SC[s0000, s0000]
+        ]",
+        )?;
 
         // Set up action to change the first bit.
         dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -2415,30 +2350,16 @@ mod tests {
     #[test]
     fn check_select() -> Result<(), String> {
         // Init DomainStore, Domains.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000_0000")?);
-        dmxs.add_domain(SomeState::from_str("s0000_0000_0000_0000")?);
-
-        // Add action to domain 0.
-        dmxs[0].add_action(vec![]);
-
-        // Add action to domain 1.
-        dmxs[1].add_action(vec![]);
-
-        // Load select regions.
-        dmxs.add_select(SelectRegions::from_str(
-            "SR[RC[r00000x0x, rXXXXXX10_1XXX_XXXX], 1]",
-        )?);
-        dmxs.add_select(SelectRegions::from_str(
-            "SR[RC[r00000xx1, rXXXXXX10_1XXX_XXXX], 1]",
-        )?);
-        dmxs.add_select(SelectRegions::from_str(
-            "SR[RC[r0000x1x1, rXXXXXX10_1XXX_XXXX], 1]",
-        )?);
-        dmxs.add_select(SelectRegions::from_str(
-            "SR[RC[r00001110, rXXXXXX10_1XXX_XXXX], 1]",
-        )?);
-        dmxs.calc_select();
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX_XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX]]],
+            SR[RC[r00000x0x, rXXXXXX10_1XXX_XXXX], 1],
+            SR[RC[r00000xx1, rXXXXXX10_1XXX_XXXX], 1],
+            SR[RC[r0000x1x1, rXXXXXX10_1XXX_XXXX], 1],
+            SR[RC[r00001110, rXXXXXX10_1XXX_XXXX], 1]
+        ]",
+        )?;
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001_0010")?;
@@ -2499,25 +2420,18 @@ mod tests {
     #[test]
     fn exit_select_needs() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
         let regstr1 = RegionsCorr::from_str("RC[rX1XX]")?;
-
-        // Add selectregions.
-        dmxs.add_select(SelectRegions::new(regstr1.clone(), -1));
-
         let regstr2 = RegionsCorr::from_str("RC[r1XX1]")?;
 
-        // Add select regionstores.
-        dmxs.add_select(SelectRegions::new(regstr2.clone(), -1));
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]]],
+            SR[RC[rX1XX], -1],
+            SR[RC[r1XX1], -1],
+            SC[s1101]
+        ]",
+        )?;
 
-        // Set state for domain 0, using 1 integer for bits.
-        let first_state = SomeState::from_str("s1101")?;
-        dmxs[0].set_cur_state(first_state.clone());
-
-        // Finish select regions setup.
-        dmxs.calc_select();
         println!("select regs: {}", dmxs.select.to_string());
 
         // Get exit needs.
@@ -2543,23 +2457,21 @@ mod tests {
     #[test]
     fn calc_select() -> Result<(), String> {
         // Init DomainStore, Domain.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        // Add action to domain 0.
-        dmxs[0].add_action(vec![]);
-
-        // Load select regions
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rxx0x], 4]")?);
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r00x1], -2]")?);
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r11x1], -4]")?);
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r10x0], -5]")?);
-        dmxs.add_select(SelectRegions::from_str("SR[RC[rX111], -1]")?);
-        dmxs.calc_select();
+        let dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]]],
+            SR[RC[rxx0x], 4],
+            SR[RC[r00x1], -2],
+            SR[RC[r11x1], -4],
+            SR[RC[r10x0], -5],
+            SR[RC[rX111], -1]
+            SC[s0000]
+        ]",
+        )?;
 
         println!("select positive: {}", dmxs.select_net_positive);
+        assert!(dmxs.select_net_positive.len() == 6);
 
-        assert!(dmxs.select_net_positive.len() == 5);
         assert!(dmxs
             .select_net_positive
             .contains(&SelectRegions::from_str("SR[RC[rx100], 4]")?));
@@ -2575,8 +2487,13 @@ mod tests {
         assert!(dmxs
             .select_net_positive
             .contains(&SelectRegions::from_str("SR[RC[r0001], 2]")?));
+        assert!(dmxs
+            .select_net_positive
+            .contains(&SelectRegions::from_str("SR[RC[r1101], 0]")?));
 
+        println!("non negative: {}", dmxs.rc_non_negative);
         assert!(dmxs.rc_non_negative.len() == 4);
+
         assert!(dmxs
             .rc_non_negative
             .contains(&RegionsCorr::from_str("RC[rx1x0]")?));
@@ -2590,16 +2507,18 @@ mod tests {
             .rc_non_negative
             .contains(&RegionsCorr::from_str("RC[r10x1]")?));
 
+        println!("select negative: {}", dmxs.select_negative);
         assert!(dmxs.select_negative.len() == 5);
+
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r00X1], -2]")?));
+            .contains(&SelectRegions::from_str("SR[RC[r0011], -2]")?));
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r1101], -4]")?));
+            .contains(&SelectRegions::from_str("SR[RC[r1000], -1]")?));
         assert!(dmxs
             .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r10X0], -5]")?));
+            .contains(&SelectRegions::from_str("SR[RC[r1010], -5]")?));
         assert!(dmxs
             .select_negative
             .contains(&SelectRegions::from_str("SR[RC[r0111], -1]")?));
@@ -2615,13 +2534,14 @@ mod tests {
     /// Test case using two domains, like avoidance8, but a way around traps.
     fn avoidance10() -> Result<(), String> {
         // Init DomainStore, Domains.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
-        dmxs[0].add_action(vec![]);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            SR[RC[01XX], -1],
+            SR[RC[10XX], -2],
+            SC[s0000]
+        ]",
+        )?;
 
         // Set up action to change the first bit.
         dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -2638,14 +2558,6 @@ mod tests {
         // Set up action to change the fourth bit.
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
         dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-
-        // Set up negative select regions.
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r01xx], -1]")?);
-
-        dmxs.add_select(SelectRegions::from_str("SR[RC[r10xx], -2]")?);
-
-        // Calc non-negative RegionSores.
-        dmxs.calc_select();
 
         let s3 = SomeState::from_str("s0011")?;
         dmxs[0].set_cur_state(s3.clone());
@@ -2696,22 +2608,14 @@ mod tests {
     /// intersection of another SelectRegions fragment.
     fn run_planscorr() -> Result<(), String> {
         // Init DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Add domains.
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-        dmxs.add_domain(SomeState::from_str("s000")?);
-        dmxs.add_domain(SomeState::from_str("s00")?);
-
-        // Add an action for each domain.
-        dmxs[0].add_action(vec![RuleStore::from_str("[XX/XX/XX/Xx]")?]);
-        dmxs[1].add_action(vec![RuleStore::from_str("[XX/XX/Xx]")?]);
-        dmxs[2].add_action(vec![RuleStore::from_str("[XX/Xx]")?]);
-
-        // Set domain starting states.
-        dmxs[0].set_cur_state(SomeState::from_str("s0000")?);
-        dmxs[1].set_cur_state(SomeState::from_str("s001")?);
-        dmxs[2].set_cur_state(SomeState::from_str("s10")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/Xx]]],
+            DOMAIN[ACT[[XX/XX/Xx]]],
+            DOMAIN[ACT[[XX/Xx]]],
+            SC[s0000, s001, s10]
+        ]",
+        )?;
 
         // Set up PlansCorr.
         let plnsc1 =
@@ -2741,31 +2645,13 @@ mod tests {
     /// Test running a PlansCorrStore.
     fn run_planscorrstore() -> Result<(), String> {
         // Init DomainStore.
-        let mut dmxs = DomainStore::new();
-
-        // Add domain 0.
-        dmxs.add_domain(SomeState::from_str("0000")?);
-
-        // Add domain 0 actions.
-        dmxs[0].add_action(vec![RuleStore::from_str("[XX/XX/XX/Xx]")?]);
-        dmxs[0].add_action(vec![RuleStore::from_str("[XX/XX/Xx/XX]")?]);
-        dmxs[0].add_action(vec![RuleStore::from_str("[XX/Xx/XX/XX]")?]);
-        dmxs[0].add_action(vec![RuleStore::from_str("[Xx/XX/XX/XX]")?]);
-
-        // Set domain 0 starting state.
-        dmxs[0].set_cur_state(SomeState::from_str("s0000")?);
-
-        // Add domain 1.
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        // Add domain 1 actions.
-        dmxs[1].add_action(vec![RuleStore::from_str("[XX/XX/XX/Xx]")?]);
-        dmxs[1].add_action(vec![RuleStore::from_str("[XX/XX/Xx/XX]")?]);
-        dmxs[1].add_action(vec![RuleStore::from_str("[XX/Xx/XX/XX]")?]);
-        dmxs[1].add_action(vec![RuleStore::from_str("[Xx/XX/XX/XX]")?]);
-
-        // Set domain 1 starting state.
-        dmxs[1].set_cur_state(SomeState::from_str("s1111")?);
+        let mut dmxs = DomainStore::from_str(
+            "DS[
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
+            SC[s0000, s1111]
+        ]",
+        )?;
 
         // Set up PlansCorrStore.
         let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[r0000-2->r0100], P[r1111-0->r1110]], 0], PC[[P[r0100-0->r0101], P[r1110-1->r1100]], 0]]")?;

@@ -23,7 +23,6 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
-use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::{AltRuleHint, SomeStep};
@@ -140,15 +139,6 @@ impl SomeDomain {
     /// Return a reference to the current, internal, state.
     pub fn current_state(&self) -> &SomeState {
         &self.cur_state
-    }
-
-    /// Add a SomeAction instance to the store.
-    /// The rules will be used to generate responses to running the action
-    /// against various states.
-    pub fn add_action(&mut self, rules: Vec<RuleStore>) {
-        debug_assert!(rules.is_empty() || rules[0].num_bits().unwrap() == self.num_bits());
-
-        self.actions.add_action(self.id, &self.cur_state, rules);
     }
 
     /// Add a new action.
@@ -1070,9 +1060,9 @@ impl FromStr for SomeDomain {
     type Err = String;
     /// Return a SomeDomain instance, given a string representation.
     ///
-    /// "DOMAIN[ ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]] ]"
+    /// "DOMAIN[ ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]], s1010]"
     ///
-    /// All the rules must use the same number of bits.
+    /// All the rules must use the same number of bits, initial state is optional.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeDomain::from_str: {str_in}");
         let src_str = str_in.trim();
@@ -1201,10 +1191,19 @@ impl FromStr for SomeDomain {
         //println!("token_list {:?}", token_list);
 
         let mut act_vec = Vec::<SomeAction>::new();
+        let mut initial_state: Result<SomeState, String> = Err("".to_string());
 
         // Push each action.
         for tokenx in token_list.iter() {
-            act_vec.push(SomeAction::from_str(tokenx)?);
+            if tokenx[0..1] == *"A" {
+                act_vec.push(SomeAction::from_str(tokenx)?);
+            } else if tokenx[0..1] == *"s" {
+                initial_state = SomeState::from_str(tokenx);
+            } else {
+                return Err(format!(
+                    "SomeDomain::from_str: Unrecognized token, {tokenx}"
+                ));
+            }
         }
 
         let num_bits = act_vec[0].num_bits();
@@ -1212,9 +1211,11 @@ impl FromStr for SomeDomain {
         let mut domx = SomeDomain::new(0, SomeState::new_random(num_bits));
 
         for actx in act_vec {
-            //println!("adding actx: {actx}");
             assert!(actx.num_bits() == num_bits);
             domx.push(actx);
+        }
+        if let Ok(sta) = initial_state {
+            domx.set_cur_state(sta);
         }
 
         Ok(domx)
@@ -1224,7 +1225,7 @@ impl FromStr for SomeDomain {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domainstore::DomainStore;
+    //use crate::domainstore::DomainStore;
     use crate::target::ATarget;
     //use crate::statescorr::StatesCorr;
     use std::str::FromStr;
@@ -1233,10 +1234,12 @@ mod tests {
     #[test]
     fn alt_rule1() -> Result<(), String> {
         // Create a domain that uses four bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[00/11/01/11, 00/11/00/10]")?];
-        dm0.add_action(ruls0);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[00/11/01/11, 00/11/00/10]],
+            s0000
+        ]",
+        )?;
 
         let sta_5 = SomeState::from_str("s0101")?;
 
@@ -1303,10 +1306,12 @@ mod tests {
     #[test]
     fn within1() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[00/XX/01/XX]")?];
-        dm0.add_action(ruls0);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[00/XX/01/XX]],
+            s0000
+        ]",
+        )?;
 
         // Form first group.
         dm0.cur_state = SomeState::from_str("s0101")?; // -> 0111
@@ -1347,18 +1352,15 @@ mod tests {
     #[test]
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-
-        let dm0 = &mut dmxs[0];
-
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-
-        // dmxs.set_cur_states(&StatesCorr::from_str("SC[s0001]")?);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0001
+        ]",
+        )?;
 
         // Create group for region XXXX, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1395,14 +1397,15 @@ mod tests {
     #[test]
     fn make_plans_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dmxs = DomainStore::new();
-        dmxs.add_domain(SomeState::from_str("s0000")?);
-        let dm0 = &mut dmxs[0];
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0001
+        ]",
+        )?;
 
         // Create group for region XXXX->XXXx, Act 0.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1445,9 +1448,12 @@ mod tests {
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            s0001
+        ]",
+        )?;
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1500,9 +1506,12 @@ mod tests {
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            s0001
+        ]",
+        )?;
 
         // Check need for the current state not in a group.
         let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
@@ -1587,9 +1596,12 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/XX]],
+            s0001
+        ]",
+        )?;
 
         // Create group for region XX0X.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
@@ -1619,9 +1631,12 @@ mod tests {
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[00/XX/01/XX]],
+            s0001
+        ]",
+        )?;
 
         let max_reg = SomeRegion::from_str("rXXXX")?;
 
@@ -1693,9 +1708,12 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/XX]],
+            s0001
+        ]",
+        )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
@@ -1746,9 +1764,12 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/XX]],
+            s0001
+        ]",
+        )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
@@ -1787,9 +1808,12 @@ mod tests {
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000_0000_0000_0000")?);
-        dm0.cur_state = SomeState::from_str("s0000_0000_0000_0001")?;
-        dm0.add_action(vec![]);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_]],
+            s0000_0000_0000_0001
+        ]",
+        )?;
 
         // Create group for region XXX1010X101010XX.
         dm0.eval_sample_arbitrary(
@@ -1823,9 +1847,12 @@ mod tests {
         let act0: usize = 0;
 
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0011")?;
-        dm0.add_action(vec![]); // Act 0
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/XX]],
+            s0011
+        ]",
+        )?;
 
         // Start groups.
         dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
@@ -1902,24 +1929,15 @@ mod tests {
     #[test]
     fn shortcuts3() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0011")?;
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0011
+        ]",
+        )?;
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -1970,24 +1988,15 @@ mod tests {
     #[test]
     fn shortcuts5() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0011")?;
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0011
+        ]",
+        )?;
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -2043,24 +2052,15 @@ mod tests {
     #[test]
     fn shortcuts6() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0011")?;
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0011
+        ]",
+        )?;
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -2115,24 +2115,15 @@ mod tests {
     #[test]
     fn shortcuts7() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::new(0, SomeState::from_str("s0000")?);
-        dm0.cur_state = SomeState::from_str("s0011")?;
-
-        // Set up action 0, changing bit 0.
-        let ruls0: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/XX/Xx]")?];
-        dm0.add_action(ruls0);
-
-        // Set up action 1, changing bit 1.
-        let ruls1: Vec<RuleStore> = vec![RuleStore::from_str("[XX/XX/Xx/XX]")?];
-        dm0.add_action(ruls1);
-
-        // Set up action 2, changing bit 2.
-        let ruls2: Vec<RuleStore> = vec![RuleStore::from_str("[XX/Xx/XX/XX]")?];
-        dm0.add_action(ruls2);
-
-        // Set up action 3, changing bit 3.
-        let ruls3: Vec<RuleStore> = vec![RuleStore::from_str("[Xx/XX/XX/XX]")?];
-        dm0.add_action(ruls3);
+        let mut dm0 = SomeDomain::from_str(
+            "DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            s0011
+        ]",
+        )?;
 
         // Create states for setting up groups.
         let sta_0 = SomeState::from_str("s0000")?;
@@ -2203,9 +2194,9 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        //                                         Act 0, rules for two regions.                Act 1            Act 2.
         let domx = match SomeDomain::from_str(
-            "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]] ]",
+            "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]],
+            s1010 ]",
         ) {
             Ok(domx) => domx,
             Err(errstr) => return Err(format!("{errstr}")),
