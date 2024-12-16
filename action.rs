@@ -2515,6 +2515,7 @@ impl FromStr for SomeAction {
     /// ACT[ [[00/XX/XX/XX], [01/XX/XX/XX]], [[11/01/XX/XX]], [[10/11/Xx/XX]] ]
     ///
     /// All the rules must use the same number of bits.
+    /// There must be at least one, non-empty, rulestore.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeAction::from_str: {str_in}");
         let src_str = str_in.trim();
@@ -2623,11 +2624,15 @@ impl FromStr for SomeAction {
         // Generate vectors of RuleStores for each action.
         for tokenx in token_list.iter() {
             //println!("rulestores for an action: {tokenx}");
-            rs_vec.push(RuleStore::from_str(tokenx)?);
+            let rulstrx = RuleStore::from_str(tokenx)?;
+            if rulstrx.is_empty() {
+                return Err(format!("SomeAction::from_str: Empty RuleStore, {src_str}"));
+            }
+            rs_vec.push(rulstrx);
         }
 
         if rs_vec.is_empty() {
-            return Err(format!("SomeAction::from_str: Empty RuleStore, {src_str}"));
+            return Err(format!("SomeAction::from_str: No RuleStore, {src_str}"));
         }
         let actx = SomeAction::new(rs_vec);
 
@@ -2718,22 +2723,22 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
-
-        let max_reg = SomeRegion::from_str("rXXXX")?;
+        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX, XX/XX/XX/Xx]]")?;
 
         // Set up 2-result square sf.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s1111->s1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s1111->s1110")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s1111->s1111")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s1111->s1110")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
 
         // Set up 2-result square s1.
+        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+
         let s1 = SomeState::from_str("s0001")?;
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0001->s0001")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0001->s0000")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0001->s0001")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0001->s0000")?);
+        let max_reg = SomeRegion::from_str("rXXXX")?;
 
         let nds = act0.get_needs(&s1, &max_reg);
         println!("Act: {}", act0);
@@ -2752,13 +2757,13 @@ mod tests {
         let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
 
         // Set up square 0.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0000->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
 
         // Set up square 3.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0011->s0011")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s0101")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
         println!("Act: {}", act0);
 
@@ -2772,19 +2777,19 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
+        let mut act0 = SomeAction::from_str("ACT[[XX/00/XX/XX], [XX/XX/XX/11], [XX/10/XX/00]]")?;
 
         // Set up square 0.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0000->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
 
         // Set up square 3.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0011->s0011")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
 
         // Set up square 4, dissimilar to s5 by third bit being 1->0.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0100->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s0101")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
         println!("Act: {}", act0);
 
@@ -2801,16 +2806,16 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
+        let mut act0 = SomeAction::from_str("ACT[[00/XX/X0/XX], [XX/XX/XX/11]]")?;
 
         // Set up square 2.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
 
         // Set up square b.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s1011->s1011")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
 
         // Set up square 5.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s0101")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
         println!("Act: {}", act0);
 
@@ -2824,17 +2829,17 @@ mod tests {
     #[test]
     fn aggregate_changes() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
+        let mut act0 = SomeAction::from_str("ACT[[00/00/10/00], [01/11/00/X0]]")?;
 
         // Set up square 2.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
 
         assert!(act0.groups.len() == 1);
         // Group is not yet pnc, so no aggregate changes.
         assert!(act0.aggregate_changes.is_none());
 
         // Confirm group 2.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
 
         if let Some(cngs) = act0.aggregate_changes() {
             println!("agg cncs (1) {cngs}");
@@ -2843,7 +2848,7 @@ mod tests {
         }
         assert!(act0.aggregate_changes() == Some(&SomeChange::from_str("../../10/..")?));
 
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0010->s0000")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
 
         if let Some(change2) = act0.aggregate_changes() {
             println!("change2 {change2}");
@@ -2853,12 +2858,13 @@ mod tests {
         }
 
         // Make group 45, pnc.
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0100->s1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0100->s1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0100->s1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s1100")?);
-        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s1100")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
+
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
         assert!(act0.groups.len() == 2);
 

@@ -1794,7 +1794,6 @@ impl FromStr for DomainStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sample::SomeSample;
     use std::str::FromStr;
 
     /// Return the number of supersets of a StateStore
@@ -1837,7 +1836,7 @@ mod tests {
         // Init DomainStore. Domain.
         let mut dmxs = DomainStore::from_str(
             "DS[DOMAIN[
-            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SR[RC[r01X1], -1],
             SR[RC[rX101], -2],
             s0000
@@ -1846,20 +1845,20 @@ mod tests {
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -1898,7 +1897,7 @@ mod tests {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::from_str(
             "DS[DOMAIN[
-            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SR[RC[r0101], -1],
             SR[RC[r1001], -1],
             s0000
@@ -1907,20 +1906,20 @@ mod tests {
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -1950,7 +1949,7 @@ mod tests {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::from_str(
             "DS[DOMAIN[
-            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SR[RC[r0x00], -1],
             SR[RC[rx100], -1],
             SR[RC[r01x1], -1],
@@ -1962,20 +1961,20 @@ mod tests {
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001")?;
@@ -2005,7 +2004,7 @@ mod tests {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::from_str(
             "DS[DOMAIN[
-            ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SR[RC[rxx0x], -1],
             s0000
         ]",
@@ -2013,20 +2012,20 @@ mod tests {
         let domx = &mut dmxs[0];
 
         // Set up action to change the first bit.
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        domx.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        domx.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        domx.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        domx.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         dmxs[0].set_cur_state(SomeState::from_str("s0001")?);
@@ -2076,26 +2075,26 @@ mod tests {
         // Init DomainStore.
         let mut dmxs = DomainStore::from_str(
             "DS[
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SC[s0000]
         ]",
         )?;
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set select regions.
 
@@ -2132,35 +2131,35 @@ mod tests {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::from_str(
             "DS[
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SC[s0000, s0000]
         ]",
         )?;
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set up dom 0 negative regions.
         dmxs.add_select(SelectRegions::from_str("SR[RC[r01x1, rxxxx], -1]")?);
@@ -2205,35 +2204,35 @@ mod tests {
         // Init DomainStore, Domain.
         let mut dmxs = DomainStore::from_str(
             "DS[
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SC[s0000, s0000]
         ]",
         )?;
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         dmxs.add_select(SelectRegions::from_str("SR[RC[r00xx, rxx11], -1]")?);
@@ -2282,35 +2281,35 @@ mod tests {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::from_str(
             "DS[
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SC[s0000, s0000]
         ]",
         )?;
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[1].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[1].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[1].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[1].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         dmxs.add_select(SelectRegions::from_str("SR[RC[r000x, rxx11], -1]")?);
@@ -2536,7 +2535,7 @@ mod tests {
         // Init DomainStore, Domains.
         let mut dmxs = DomainStore::from_str(
             "DS[
-            DOMAIN[ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]], ACT[[XX/XX/XX/XX]]],
+            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
             SR[RC[01XX], -1],
             SR[RC[10XX], -2],
             SC[s0000]
@@ -2544,20 +2543,20 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dmxs[0].eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dmxs[0].eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dmxs[0].eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dmxs[0].eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        dmxs[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
 
         let s3 = SomeState::from_str("s0011")?;
         dmxs[0].set_cur_state(s3.clone());

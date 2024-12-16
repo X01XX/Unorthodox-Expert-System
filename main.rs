@@ -829,7 +829,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
         let dmx = &mut dmxs[dom_id];
 
         println!("Act {act_id} sample curent state.");
-        dmx.take_action_arbitrary(act_id);
+        dmx.take_action(act_id);
         return Ok(());
     }
 
@@ -852,7 +852,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 
         println!("Act {act_id} sample State {a_state}");
         dmx.set_cur_state(a_state);
-        dmx.take_action_arbitrary(act_id);
+        dmx.take_action(act_id);
         return Ok(());
     }
 

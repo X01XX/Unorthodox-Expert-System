@@ -177,10 +177,18 @@ impl SomeDomain {
     }
 
     /// Take an action with the current state, store the sample.
-    pub fn take_action_arbitrary(&mut self, act_id: usize) {
+    pub fn take_action(&mut self, act_id: usize) {
         debug_assert!(act_id < self.actions.len());
 
         let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
+        self.set_cur_state(asample.result.clone());
+    }
+
+    /// Take an action with a given state, store the sample.
+    pub fn take_action_arbitrary(&mut self, act_id: usize, astate: &SomeState) {
+        debug_assert!(act_id < self.actions.len());
+
+        let asample = self.actions.take_action_arbitrary(act_id, astate);
         self.set_cur_state(asample.result.clone());
     }
 
@@ -1245,16 +1253,16 @@ mod tests {
 
         // Load samples for action 0, state 5.  The first change is chosen randomly from the rule options.
         dm0.cur_state = sta_5.clone();
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         dm0.cur_state = sta_5.clone();
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         dm0.cur_state = sta_5.clone();
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         dm0.cur_state = sta_5.clone();
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         let rslt = if let Some(sqrx) = dm0.actions[0].squares.find(&sta_5) {
             sqrx.most_recent_result().clone()
@@ -1266,7 +1274,7 @@ mod tests {
         // Force current result to 0111, so next result will be 0100.
         if rslt == SomeState::from_str("s0100")? {
             dm0.cur_state = sta_5.clone();
-            dm0.take_action_arbitrary(0);
+            dm0.take_action(0);
         }
 
         let rslt = if let Some(sqrx) = dm0.actions[0].squares.find(&sta_5) {
@@ -1315,10 +1323,10 @@ mod tests {
 
         // Form first group.
         dm0.cur_state = SomeState::from_str("s0101")?; // -> 0111
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         dm0.cur_state = SomeState::from_str("s0000")?; // -> 0010
-        dm0.take_action_arbitrary(0);
+        dm0.take_action(0);
 
         println!("\n(1) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1352,7 +1360,7 @@ mod tests {
     #[test]
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -1363,31 +1371,32 @@ mod tests {
         )?;
 
         // Create group for region XXXX, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Create group for region XXXX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dm0.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Create group for region XXXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dm0.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Create group for region XXXX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dm0.eval_sample_arbitrary(3, &SomeSample::from_str("s1111->s0111")?); // Last sample changes current state to s0111
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?); // Last sample changes current state to s0111
 
         // Get plan for 7 to 8
-        //        let cur_state = SomeState::from_str("s0111")?;
-        //        dm0.set_cur_state(cur_state);
-        //        let toreg = SomeRegion::from_str("r1000")?;
-        //
-        //        if dmxs[0].make_plans(&toreg).is_some() {
-        //        } else {
-        //            return Err(String::from("No plan found to r1000?"));
-        //        }
+        let from_reg = SomeRegion::from_str("r0111")?;
+        let to_reg = SomeRegion::from_str("r1000")?;
+        let within = SomeRegion::from_str("rXXXX")?;
 
+        if let Ok(plans) = domx.make_plans(&from_reg, &to_reg, &within) {
+            println!("plans {plans}");
+        } else {
+            return Err(String::from("No plan found to r1000?"));
+        }
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1397,7 +1406,7 @@ mod tests {
     #[test]
     fn make_plans_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -1408,37 +1417,36 @@ mod tests {
         )?;
 
         // Create group for region XXXX->XXXx, Act 0.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         // Create group for region XXXX->XXxX, Act 1.
-        dm0.eval_sample_arbitrary(1, &SomeSample::from_str("s0000->s0010")?);
-        dm0.eval_sample_arbitrary(1, &SomeSample::from_str("s1111->s1101")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
 
         // Create group for region XXXX-XxXX, Act 2.
-        dm0.eval_sample_arbitrary(2, &SomeSample::from_str("s0000->s0100")?);
-        dm0.eval_sample_arbitrary(2, &SomeSample::from_str("s1111->s1011")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
 
         // Create group for region X0XX->x0XX, Act 3.
-        dm0.eval_sample_arbitrary(3, &SomeSample::from_str("s0000->s1000")?);
-        dm0.eval_sample_arbitrary(3, &SomeSample::from_str("s1011->s0011")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
+        domx.take_action_arbitrary(3, &SomeState::from_str("s1011")?);
 
-        println!("\nActs: {}", dm0.actions);
+        println!("\nActs: {}", domx.actions);
 
         // Glide Path is 7 + C = X1XX
 
         // Get plan for 7 to C
         // One bit that has to change, bit 3, 0...->1..., needs to use Act 3, 00XX->10XX,
         // which is outside of the Glide Path.
-        //        let s7 = SomeState::from_str("s0111")?;
-        //        dm0.set_cur_state(s7);
-        //        let toreg = SomeRegion::from_str("r1100")?;
-        //
-        //        if let Some(plans) = &mut dmxs[0].make_plans(&toreg) {
-        //            println!("plan: {}", plans);
-        //        } else {
-        //            return Err(String::from("No plan found s111 to r1100?"));
-        //        }
+        let from_reg = SomeRegion::from_str("r0111")?;
+        let to_reg = SomeRegion::from_str("r1100")?;
+        let within = SomeRegion::from_str("rXXXX")?;
+        if let Ok(plans) = &mut domx.make_plans(&from_reg, &to_reg, &within) {
+            println!("plans: {}", plans);
+        } else {
+            return Err(String::from("No plan found s0111 to r1100?"));
+        }
 
         //assert!(1 == 2);
         Ok(())
@@ -1447,16 +1455,16 @@ mod tests {
     // Test action:get_needs StateNotInGroup, two flavors.
     #[test]
     fn need_for_state_not_in_group() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        // Create a domain that uses 4 bits.
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/XX/Xx, XX/XX/XX/XX]],
             s0001
         ]",
         )?;
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
+        let nds1 = domx.actions[0].state_not_in_group_needs(&domx.cur_state);
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
@@ -1468,27 +1476,27 @@ mod tests {
         ));
 
         // Create group for one sampledomain::tests::make_plans_asymmetric
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0001->s0001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001")?);
 
-        println!("\nActs: {}", &dm0.actions[0]);
-        assert!(dm0.actions[0]
+        println!("\nActs: {}", &domx.actions[0]);
+        assert!(domx.actions[0]
             .groups
             .find(&SomeRegion::from_str("r0001")?)
             .is_some());
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
-        // Current state changes to zero.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0001->s0000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001")?);
 
-        println!("\nActs: {}", dm0.actions[0]);
+        println!("\nActs: {}", domx.actions[0]);
 
-        assert!(dm0.actions[0]
+        assert!(domx.actions[0]
             .groups
             .find(&SomeRegion::from_str("r0001")?)
             .is_none());
 
         // Check needs for pn > 1 and not in group, and current state not in a group.
-        let nds1 = dm0.get_needs();
+        domx.set_cur_state(SomeState::from_str("s0000")?); // Current state could be s0001 or s0000, so set it to be sure.
+        let nds1 = domx.get_needs();
         println!("needs: {}", nds1);
 
         assert_eq!(nds1.len(), 1);
@@ -1498,7 +1506,7 @@ mod tests {
                 state: SomeState::from_str("s0000")?
             }
         ));
-
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1506,15 +1514,15 @@ mod tests {
     #[test]
     fn need_additional_group_state_samples() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/XX/XX]],
             s0001
         ]",
         )?;
 
         // Check need for the current state not in a group.
-        let nds1 = dm0.actions[0].state_not_in_group_needs(&dm0.cur_state);
+        let nds1 = domx.actions[0].state_not_in_group_needs(&domx.cur_state);
 
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
@@ -1526,24 +1534,24 @@ mod tests {
         ));
 
         // Create group for one sample
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0001->s0001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001")?);
 
-        println!("\nActs: {}", dm0.actions[0]);
-        assert!(dm0.actions[0]
+        println!("\nActs: {}", domx.actions[0]);
+        assert!(domx.actions[0]
             .groups
             .find(&SomeRegion::from_str("r0001")?)
             .is_some());
 
         // Expand group
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0010->s0010")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0010")?);
 
-        println!("\nActs: {}", dm0.actions[0]);
-        assert!(dm0.actions[0]
+        println!("\nActs: {}", domx.actions[0]);
+        assert!(domx.actions[0]
             .groups
             .find(&SomeRegion::from_str("r00XX")?)
             .is_some());
 
-        let nds2 = dm0.actions[0].confirm_group_needs();
+        let nds2 = domx.actions[0].confirm_group_needs();
         println!("needs {}", nds2);
 
         assert_eq!(nds2.len(), 2);
@@ -1561,10 +1569,10 @@ mod tests {
         ));
 
         // Satisfy one need.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0010->s0010")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0010->s0010")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0010")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0010")?);
 
-        let nds3 = dm0.actions[0].confirm_group_needs();
+        let nds3 = domx.actions[0].confirm_group_needs();
         println!("needs {}", nds3);
         assert_eq!(nds3.len(), 1);
         assert!(nds3.contains_similar_need(
@@ -1575,15 +1583,15 @@ mod tests {
         ));
 
         // Satisfy second need.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0001->s0001")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0001->s0001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001")?);
 
-        let nds4 = dm0.actions[0].confirm_group_needs();
+        let nds4 = domx.actions[0].confirm_group_needs();
         println!("needs {}", nds4);
 
         // Check for no more needs.
         assert!(nds4.is_empty());
-
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1596,26 +1604,23 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/XX]],
+            ACT[[XX/00/XX/Xx], [XX/11/XX/XX]],
             s0001
         ]",
         )?;
 
         // Create group for region XX0X.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0000->s0001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1101")?);
 
         // Create group X1XX
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0110->s0110")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0110->s0110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0110")?);
 
         // Get and check needs.
-        let nds1 = dm0.actions[0].group_pair_needs();
+        let nds1 = domx.actions[0].group_pair_needs();
         println!("Needs: {nds1}");
         assert_eq!(nds1.len(), 1);
         assert!(nds1.contains_similar_need(
@@ -1624,16 +1629,16 @@ mod tests {
                 region: SomeRegion::from_str("rX100")?
             }
         ));
-
+        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn limit_group_needs() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/XX/01/XX]],
+            ACT[[XX/XX/11/XX], [X0/X0/01/x0]],
             s0001
         ]",
         )?;
@@ -1641,22 +1646,22 @@ mod tests {
         let max_reg = SomeRegion::from_str("rXXXX")?;
 
         // Set up group XXXX_XX0X->XXXX_XX0X
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0100->s0010")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0100->s0010")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0100->s0010")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1001->s0010")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1001->s0010")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1001->s0010")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
 
-        let Some(nds1) = dm0.actions[0].limit_groups_needs(&max_reg) else {
+        let Some(nds1) = domx.actions[0].limit_groups_needs(&max_reg) else {
             return Err("No needs?".to_string());
         };
-        println!("dm0 {}", dm0.actions[0]);
+        println!("domx {}", domx.actions[0]);
         println!("Needs: {}", nds1);
 
         let grp_reg = SomeRegion::from_str("rXX0X")?;
-        let Some(anchor_sta) = &dm0.actions[0]
+        let Some(anchor_sta) = &domx.actions[0]
             .groups
             .find(&grp_reg)
             .as_ref()
@@ -1670,27 +1675,27 @@ mod tests {
 
         if *anchor_sta == SomeState::from_str("s1001")? {
             // limiting square for anchor 9 is B.
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1011->s1011")?);
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1011->s1011")?);
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1011->s1011")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s1011")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s1011")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s1011")?);
         } else {
             // Limiting square for anchor 4 is 6.
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0110->s0110")?);
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0110->s0110")?);
-            dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0110->s0110")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s0110")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s0110")?);
+            domx.take_action_arbitrary(0, &SomeState::from_str("s0110")?);
         }
 
-        println!("dm0 {}", dm0.actions[0]);
+        println!("domx {}", domx.actions[0]);
 
-        let Some(nds2) = dm0.actions[0].limit_groups_needs(&max_reg) else {
+        let Some(nds2) = domx.actions[0].limit_groups_needs(&max_reg) else {
             return Err("limit_groups_needs returns None?".to_string());
         };
 
-        println!("dm0 {}", dm0.actions[0]);
+        println!("domx {}", domx.actions[0]);
 
         println!("needs are {}", nds2);
 
-        let grpx = dm0.actions[0].groups.find(&grp_reg).expect("SNH");
+        let grpx = domx.actions[0].groups.find(&grp_reg).expect("SNH");
         assert!(grpx.limited);
 
         Ok(())
@@ -1708,47 +1713,47 @@ mod tests {
     #[test]
     fn group_pn_2_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/XX]],
+            ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX]],
             s0001
         ]",
         )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0100")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0100")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
-        println!("\nActs: {}", dm0.actions[0]);
+        println!("\nActs: {}", domx.actions[0]);
 
-        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
-            println!("\nActs: {}", dm0.actions[0]);
+        if let Some(_regx) = domx.actions[0].groups.find(&rx1x1) {
+            println!("\nActs: {}", domx.actions[0]);
         } else {
             return Err(String::from("Group rx1x1 was not formed by two squares?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?);
-        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?);
+        if let Some(_regx) = domx.actions[0].groups.find(&rx1x1) {
         } else {
             return Err(String::from("Group rx1x1 deleted too soon?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?);
-        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?);
+        if let Some(_regx) = domx.actions[0].groups.find(&rx1x1) {
         } else {
             return Err(String::from("Group rx1x1 deleted too soon?"));
         }
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?);
-        if let Some(_regx) = dm0.actions[0].groups.find(&rx1x1) {
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?);
+        if let Some(_regx) = domx.actions[0].groups.find(&rx1x1) {
             return Err(String::from("Group rx1x1 not deleted?"));
         }
 
@@ -1764,40 +1769,42 @@ mod tests {
     #[test]
     fn group_pn_u_union_then_invalidation() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/XX]],
+            ACT[[00/XX/11/XX],
+                [XX/XX/00/11, XX/XX/01/10, XX/XX/01/11],
+                [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX]],
             s0001
         ]",
         )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s0100")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0101->s1110")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1110")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s0100")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
-        println!("\n1 Acts: {}", dm0.actions[0]);
-        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
+        println!("\n1 Acts: {}", domx.actions[0]);
+        assert!(domx.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?);
-        println!("\n2 Acts: {}", dm0.actions[0]);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?);
+        println!("\n2 Acts: {}", domx.actions[0]);
 
-        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
+        assert!(domx.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?);
-        println!("\n2 Acts: {}", dm0.actions[0]);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?);
+        println!("\n2 Acts: {}", domx.actions[0]);
 
-        assert!(dm0.actions[0].groups.find(&rx1x1).is_some());
+        assert!(domx.actions[0].groups.find(&rx1x1).is_some());
 
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s0111->s0111")?); // cause pn-not-Two invalidation
-        println!("\n3 Acts: {}", dm0.actions[0]);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0111")?); // cause pn-not-Two invalidation
+        println!("\n3 Acts: {}", domx.actions[0]);
 
-        assert!(dm0.actions[0].groups.find(&rx1x1).is_none());
+        assert!(domx.actions[0].groups.find(&rx1x1).is_none());
 
         Ok(())
     } // end group_pn_u_union_then_invalidation
@@ -1808,25 +1815,19 @@ mod tests {
     #[test]
     fn create_group_rule_with_ten_edges() -> Result<(), String> {
         // Create a domain that uses two integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_]],
+            ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
             s0000_0000_0000_0001
         ]",
         )?;
 
         // Create group for region XXX1010X101010XX.
-        dm0.eval_sample_arbitrary(
-            0,
-            &SomeSample::from_str("s0001_0100_1010_1000->s0001_0100_1011_1000")?,
-        );
-        dm0.eval_sample_arbitrary(
-            0,
-            &SomeSample::from_str("s1111_0101_1010_1011->s1111_0101_1011_1011")?,
-        );
+        domx.take_action_arbitrary(0, &SomeState::from_str("s0001_0100_1010_1000")?);
+        domx.take_action_arbitrary(0, &SomeState::from_str("s1111_0101_1010_1011")?);
 
-        println!("\nActs: {}", dm0.actions[0]);
-        assert!(dm0.actions[0]
+        println!("\nActs: {}", domx.actions[0]);
+        assert!(domx.actions[0]
             .groups
             .find(&SomeRegion::from_str("rXXX1_010X_1010_10XX")?)
             .is_some());
@@ -1847,7 +1848,7 @@ mod tests {
         let act0: usize = 0;
 
         // Create a domain that uses one integer for bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/XX]],
             s0011
@@ -1855,21 +1856,24 @@ mod tests {
         )?;
 
         // Start groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
+        let sta_d = SomeState::from_str("s1101")?;
+        let sta_f = SomeState::from_str("s1111")?;
+
+        domx.take_action_arbitrary(0, &sta_d);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // Confirm groups.
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1101->s1101")?);
-        dm0.eval_sample_arbitrary(0, &SomeSample::from_str("s1111->s1111")?);
+        domx.take_action_arbitrary(0, &sta_d);
+        domx.take_action_arbitrary(0, &sta_f);
+        domx.take_action_arbitrary(0, &sta_d);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // get_needs checks the limited flag for each group.
-        let nds = dm0.get_needs();
-        println!("\n(1){}", dm0.actions[act0]);
+        let nds = domx.get_needs();
+        println!("\n(1){}", domx.actions[act0]);
         println!("needs {}", nds);
 
-        let grpx = dm0.actions[act0]
+        let grpx = domx.actions[act0]
             .groups
             .find(&SomeRegion::from_str("r11x1")?)
             .expect("SNH");
@@ -1877,8 +1881,8 @@ mod tests {
 
         // Get needs for a given max_reg.
         let max_reg = SomeRegion::from_str("rX11X")?;
-        let nds = dm0.actions[act0].limit_groups_needs(&max_reg);
-        println!("\n(1){}", dm0.actions[act0]);
+        let nds = domx.actions[act0].limit_groups_needs(&max_reg);
+        println!("\n(1){}", domx.actions[act0]);
         if let Some(needs) = nds {
             println!("needs {}", needs);
             assert!(needs.len() == 2);
@@ -1901,8 +1905,8 @@ mod tests {
 
         // Get needs for a another max_reg.
         let max_reg = SomeRegion::from_str("rX10X")?;
-        let nds = dm0.actions[act0].limit_groups_needs(&max_reg);
-        println!("\n(2){}", dm0.actions[act0]);
+        let nds = domx.actions[act0].limit_groups_needs(&max_reg);
+        println!("\n(2){}", domx.actions[act0]);
         if let Some(needs) = nds {
             println!("needs {}", needs);
             assert!(needs.len() == 2);
@@ -1929,7 +1933,7 @@ mod tests {
     #[test]
     fn shortcuts3() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -1944,35 +1948,27 @@ mod tests {
         let sta_f = SomeState::from_str("s1111")?;
 
         // Set up groups for action 0.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(0);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(0);
+        domx.take_action_arbitrary(0, &sta_0);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // Set up groups for action 1.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(1);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(1);
+        domx.take_action_arbitrary(1, &sta_0);
+        domx.take_action_arbitrary(1, &sta_f);
 
         // Set up groups for action 2.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(2);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(2);
+        domx.take_action_arbitrary(2, &sta_0);
+        domx.take_action_arbitrary(2, &sta_f);
 
         // Set up groups for action 3.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(3);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(3);
+        domx.take_action_arbitrary(3, &sta_0);
+        domx.take_action_arbitrary(3, &sta_f);
 
-        println!("Acts: {}\n", dm0.actions);
+        println!("Acts: {}\n", domx.actions);
 
         let pln1 = SomePlan::from_str("P[r0000-2->r0100-3->r1100-2->r1000]")?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             assert!(shortcuts.len() == 1);
             let shrt = &shortcuts[0];
             println!("shrt {shrt}");
@@ -1988,7 +1984,7 @@ mod tests {
     #[test]
     fn shortcuts5() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -2003,36 +1999,28 @@ mod tests {
         let sta_f = SomeState::from_str("s1111")?;
 
         // Set up groups for action 0.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(0);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(0);
+        domx.take_action_arbitrary(0, &sta_0);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // Set up groups for action 1.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(1);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(1);
+        domx.take_action_arbitrary(1, &sta_0);
+        domx.take_action_arbitrary(1, &sta_f);
 
         // Set up groups for action 2.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(2);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(2);
+        domx.take_action_arbitrary(2, &sta_0);
+        domx.take_action_arbitrary(2, &sta_f);
 
         // Set up groups for action 3.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(3);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(3);
+        domx.take_action_arbitrary(3, &sta_0);
+        domx.take_action_arbitrary(3, &sta_f);
 
-        println!("Acts: {}\n", dm0.actions);
+        println!("Acts: {}\n", domx.actions);
 
         let pln1 =
             SomePlan::from_str("P[r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]")?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2052,7 +2040,7 @@ mod tests {
     #[test]
     fn shortcuts6() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -2067,35 +2055,27 @@ mod tests {
         let sta_f = SomeState::from_str("s1111")?;
 
         // Set up groups for action 0.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(0);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(0);
+        domx.take_action_arbitrary(0, &sta_0);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // Set up groups for action 1.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(1);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(1);
+        domx.take_action_arbitrary(1, &sta_0);
+        domx.take_action_arbitrary(1, &sta_f);
 
         // Set up groups for action 2.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(2);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(2);
+        domx.take_action_arbitrary(2, &sta_0);
+        domx.take_action_arbitrary(2, &sta_f);
 
         // Set up groups for action 3.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(3);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(3);
+        domx.take_action_arbitrary(3, &sta_0);
+        domx.take_action_arbitrary(3, &sta_f);
 
-        println!("Acts: {}\n", dm0.actions);
+        println!("Acts: {}\n", domx.actions);
 
         let pln1 = SomePlan::from_str("P[r1011-0->r1111-1->r1110-0->r0110-2->r0111]")?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
@@ -2115,7 +2095,7 @@ mod tests {
     #[test]
     fn shortcuts7() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut dm0 = SomeDomain::from_str(
+        let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
@@ -2130,30 +2110,22 @@ mod tests {
         let sta_f = SomeState::from_str("s1111")?;
 
         // Set up groups for action 0.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(0);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(0);
+        domx.take_action_arbitrary(0, &sta_0);
+        domx.take_action_arbitrary(0, &sta_f);
 
         // Set up groups for action 1.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(1);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(1);
+        domx.take_action_arbitrary(1, &sta_0);
+        domx.take_action_arbitrary(1, &sta_f);
 
         // Set up groups for action 2.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(2);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(2);
+        domx.take_action_arbitrary(2, &sta_0);
+        domx.take_action_arbitrary(2, &sta_f);
 
         // Set up groups for action 3.
-        dm0.set_cur_state(sta_0.clone());
-        dm0.take_action_arbitrary(3);
-        dm0.set_cur_state(sta_f.clone());
-        dm0.take_action_arbitrary(3);
+        domx.take_action_arbitrary(3, &sta_0);
+        domx.take_action_arbitrary(3, &sta_f);
 
-        println!("Acts: {}\n", dm0.actions);
+        println!("Acts: {}\n", domx.actions);
 
         let reg_0 = SomeRegion::from_str("r0000")?;
         let reg_f = SomeRegion::from_str("r1111")?;
@@ -2163,7 +2135,7 @@ mod tests {
         )?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = dm0.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             // Check shortcuts.
             println!("Shortcuts: {shortcuts}");
             assert!(shortcuts.len() == 1);
