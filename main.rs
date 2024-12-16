@@ -93,37 +93,38 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
 
+    // Run default DomainStore configuration.
     if args.len() == 1 {
-        run_step_by_step();
-        process::exit(0);
+        let rc = run_with_file("./default.kmp", 0);
+        process::exit(rc);
     }
 
     if args.len() == 2 {
         if args[1] == "h" || args[1] == "help" {
             usage();
-            process::exit(0);
         }
-        if let Ok(runs) = args[1].parse::<usize>() {
-            match runs {
-                0 => {
-                    usage();
-                    eprintln!("Did not understand {:?}", args);
-                    process::exit(1);
-                }
-                1 => {
-                    let mut dmxs = domainstore_init();
-                    do_session_until_no_needs(&mut dmxs);
-                }
-                _ => {
-                    run_number_times(runs);
-                    process::exit(1);
-                }
-            }
+
+        let rc = if let Ok(runs) = args[1].parse::<usize>() {
+            // Run default DomainStore configuration a number of times.
+            run_with_file("./default.kmp", runs)
         } else {
-            // Run with arg[1] as file path.
-            run_with_file(&args[1]);
-        }
-        process::exit(0);
+            // Run with file with user input step-by-step.
+            run_with_file(&args[1], 0)
+        };
+        process::exit(rc);
+    }
+
+    if args.len() == 3 {
+        let rc = if let Ok(runs) = args[1].parse::<usize>() {
+            // Run arg[2] DomainStore configuration, arg[1] number of times.
+            run_with_file(&args[2], runs)
+        } else if let Ok(runs) = args[2].parse::<usize>() {
+            // Run arg[1] DomainStore configuration, arg[2] number of times.
+            run_with_file(&args[1], runs)
+        } else {
+            1
+        };
+        process::exit(rc);
     }
 
     usage();
@@ -131,36 +132,38 @@ fn main() {
     process::exit(1);
 } // end main
 
-/// Run with user input step by step.
-fn run_step_by_step() {
-    usage();
-    // Generate needs, get can_do and cant_do need vectors.
-    let mut dmxs = domainstore_init();
-
-    let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
-
-    do_interactive_session(&mut dmxs, needs, can_do, cant_do);
-}
-
 /// Load data from a file, then run with user input, step by step.
-fn run_with_file(file_path: &str) {
+fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // Init DomainStore or read in from file.
     let mut dmxs = match load_data(file_path) {
         Ok(new_dmxs) => new_dmxs,
         Err(errstr) => {
             eprintln!("main::run_with_file: {errstr}");
-            return;
+            return 1;
         }
     };
 
     // Display UI info.
     usage();
 
+    dmxs.print_select_stores_info();
+
     // Display current state.
     let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
 
-    // Run with it.
-    do_interactive_session(&mut dmxs, needs, can_do, cant_do);
+    // run it
+    match runs {
+        0 => {
+            do_interactive_session(&mut dmxs, needs, can_do, cant_do);
+        }
+        1 => {
+            do_session_until_no_needs(&mut dmxs);
+        }
+        _ => {
+            run_number_times(&mut dmxs, runs);
+        }
+    }
+    0
 }
 
 /// Run until no more needs can be done, then take user input.
@@ -182,7 +185,7 @@ fn do_session_until_no_needs(dmxs: &mut DomainStore) {
 
 /// Run a number of times without user input, generate aggregate data.
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
-fn run_number_times(num_runs: usize) -> usize {
+fn run_number_times(dmxs: &mut DomainStore, num_runs: usize) -> usize {
     let mut runs_left = num_runs;
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
@@ -193,7 +196,7 @@ fn run_number_times(num_runs: usize) -> usize {
         runs_left -= 1;
 
         let start = Instant::now();
-        let (steps, groups, expected, num_cant) = do_one_session();
+        let (steps, groups, expected, num_cant) = do_one_session(dmxs);
 
         let duration = start.elapsed();
         println!(
@@ -380,62 +383,12 @@ pub fn print_can_do(dmxs: &DomainStore, can_do: &[InxPlan], needs: &NeedStore) {
     }
 }
 
-/// Initialize a Domain Store, with two domains and 11 actions.
-fn domainstore_init() -> DomainStore {
-    // Start a DomainStore
-
-    let dmxs2 = match DomainStore::from_str(
-        "DS[
-    DOMAIN[
-        ACT[[XX_11/XX/00/Xx],
-            [XX_00/XX/11/Xx],
-            [XX_XX/11/XX/10],
-            [XX_11/00/10/XX, XX_11/01/11/XX],
-            [XX_11/XX/10/00, XX_11/Xx/11/00],
-            [XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX],
-            [XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]], 
-        ACT[[XX_XX/Xx/11/XX], [XX_XX/XX/01/XX]],
-        ACT[[XX_XX/XX/10/XX], [XX_XX/Xx/00/XX]],
-        ACT[[Xx_11/XX/XX/XX], [XX_01/XX/XX/XX]],
-        ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]],
-        ACT[[XX_XX/XX/XX/XX]]],
-
-    DOMAIN[
-        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/XX/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
-        ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX],
-            [XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX],
-            [XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]]],
-
-    SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3],
-    SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2],
-    SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3],
-    SR[RC[rx1110, rXXXX_XXX0_0XXX_XXXX], 1],
-    SR[RC[rxXX00, rXXXX_XXx1_0xXX_XXXX], -1],
-    SR[RC[rxX10X, rXXXX_XX1x_x0XX_XXXX], -2]
-    ]",
-    ) {
-        Ok(dmxs2) => dmxs2,
-        Err(errstr) => panic!("{errstr}"),
-    };
-
-    dmxs2.print_select_stores_info();
-
-    dmxs2
-}
-
 /// Do one session to end.
 /// Return the number steps taken get to the point where
 /// there are no more needs.
 /// Return domainstore end-state info.
-fn do_one_session() -> (usize, usize, usize, usize) {
-    let mut dmxs = domainstore_init();
-
-    let num_cant = do_session(&mut dmxs);
+fn do_one_session(dmxs: &mut DomainStore) -> (usize, usize, usize, usize) {
+    let num_cant = do_session(dmxs);
 
     (
         dmxs.step_num,
@@ -1245,20 +1198,28 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
 
     // Open a file, returns `io::Result<File>`
     match File::open(path) {
-        Err(why) => Err(format!("Couldn't open {display}: {why}")),
         Ok(mut afile) => {
-            let mut serialized = String::new();
-            match afile.read_to_string(&mut serialized) {
-                Err(why) => Err(format!("Couldn't read {display}: {why}")),
+            let mut file_content = String::new();
+            match afile.read_to_string(&mut file_content) {
                 Ok(_) => {
-                    let deserialized_r = serde_yaml::from_str(&serialized);
-                    match deserialized_r {
-                        Err(why) => Err(format!("Couldn't deserialize {display}: {why}")),
-                        Ok(new_dmxs) => Ok(new_dmxs),
+                    match serde_yaml::from_str(&file_content) {
+                        Ok(new_dmxs) => {
+                            Ok(new_dmxs)
+                        }
+                        Err(_) => {
+                            match DomainStore::from_str(&tools::remove_comments(&file_content)) {
+                                Ok(new_dmxs) => {
+                                    Ok(new_dmxs)
+                                }
+                                Err(_) => Err("Couldn't parse file".to_string())
+                            }
+                        }
                     } // end match deserialized_r
                 }
+                Err(why) => Err(format!("Couldn't read {display}: {why}")),
             }
         }
+        Err(why) => Err(format!("Couldn't open {display}: {why}")),
     } // end match open file
 }
 

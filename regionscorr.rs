@@ -15,7 +15,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
-
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorr {
