@@ -325,12 +325,12 @@ mod tests {
 
 // Remove comments from a string.
 pub fn remove_comments(str_in: &str) -> String {
-    let mut str_out = String::new();    // String to return.
-    let mut line = String::new();       // Current line being processed.
-    let mut last_chr = false;           // True if the last character was a slash.
+    let mut str_out = String::new(); // String to return.
+    let mut line = String::new(); // Current line being processed.
+    let mut last_chr = false; // True if the last character was a slash.
 
-    let mut skip_to_end = false;        // Set when a comment is detected, to stop adding characters to the line.
-                                        // Until end-of-line or end-of-file.
+    let mut skip_to_end = false; // Set when a comment is detected, to stop adding characters to the line.
+                                 // Until end-of-line or end-of-file.
 
     for chr in str_in.graphemes(true) {
         if skip_to_end {
@@ -363,7 +363,7 @@ pub fn remove_comments(str_in: &str) -> String {
             last_chr = false;
             continue;
         }
-        
+
         // Save char flag for check in next loop cycle.
         last_chr = chr == "/";
     } // next chr.
@@ -375,4 +375,3 @@ pub fn remove_comments(str_in: &str) -> String {
     // Return the string with comments removed.
     str_out
 }
-

@@ -1089,15 +1089,24 @@ fn do_print_group_defining_squares_command(
 /// Display usage options.
 fn usage() {
     println!("\nStartup Commands: <invoke> may be the command \"ues\" or \"cargo run\"");
-    println!("\n    <invoke>                 - Run interactively, press Enter for each step.");
+    println!("\n    <invoke>                  - Run default.kmp interactively, press Enter for each step.");
     println!(
-        "\n    <invoke> 1               - Run non-interactively, stop when no needs can be done."
+        "\n    <invoke> 1                - Run default.kmp non-interactively, stop when no needs can be done."
     );
-    println!("\n    <invoke> <number times>  - Run a number, greater than 1, times. Exit with step and duration statistics.");
+    println!("\n    <invoke> <number times>   - Run default.kmp a number (> 1) times. Exit with step and duration statistics.");
     println!(
-        "\n    <invoke> <file path>     - Open a file previously stored with the fsd command."
+        "\n    <invoke> <file path>      - Open a file previously stored with the fsd command."
     );
-    println!("\n    <invoke> [h | help]      - Show this list.\n");
+    println!(
+        "\n    <invoke> <file path>      - Run a file containing a DomainStore configuration interactively, press Enter for each step."
+    );
+    println!(
+        "\n    <invoke> <file path> 1    - Run a file containing a DomainStore configuration non-interactively, stop when no needs can be done."
+    );
+    println!(
+        "\n    <invoke> <file path> <nt> - Run a file containing a DomainStore configuration a number (> 1) times. Exit with step and duration statistics."
+    );
+    println!("\n    <invoke> [h | help]       - Show this list.\n");
     println!("\nSession Commands:");
     println!("\n    h | help                 - Help list display (this list).");
     println!(
@@ -1203,15 +1212,11 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
             match afile.read_to_string(&mut file_content) {
                 Ok(_) => {
                     match serde_yaml::from_str(&file_content) {
-                        Ok(new_dmxs) => {
-                            Ok(new_dmxs)
-                        }
+                        Ok(new_dmxs) => Ok(new_dmxs),
                         Err(_) => {
                             match DomainStore::from_str(&tools::remove_comments(&file_content)) {
-                                Ok(new_dmxs) => {
-                                    Ok(new_dmxs)
-                                }
-                                Err(_) => Err("Couldn't parse file".to_string())
+                                Ok(new_dmxs) => Ok(new_dmxs),
+                                Err(_) => Err("Couldn't parse file".to_string()),
                             }
                         }
                     } // end match deserialized_r
