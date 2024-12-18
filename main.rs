@@ -1216,15 +1216,15 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
                         Err(_) => {
                             match DomainStore::from_str(&tools::remove_comments(&file_content)) {
                                 Ok(new_dmxs) => Ok(new_dmxs),
-                                Err(_) => Err("Couldn't parse file".to_string()),
+                                Err(why) => Err(format!("Main::load_data: {display} {why}")),
                             }
                         }
                     } // end match deserialized_r
                 }
-                Err(why) => Err(format!("Couldn't read {display}: {why}")),
+                Err(why) => Err(format!("Main::load_data: {display} {why}")),
             }
         }
-        Err(why) => Err(format!("Couldn't open {display}: {why}")),
+        Err(why) => Err(format!("Main::load_data: {display} {why}")),
     } // end match open file
 }
 

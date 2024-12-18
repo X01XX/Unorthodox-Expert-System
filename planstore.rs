@@ -96,17 +96,18 @@ impl PlanStore {
 
     /// Return a String representation of a PlanStore.
     fn formatted_str(&self) -> String {
-        let mut flg = 0;
-
         let mut rc_str = String::with_capacity(self.strlen());
 
         rc_str.push('[');
+
+        let mut first = true;
         for planx in &self.items {
-            if flg == 1 {
+            if first {
+                first = false;
+            } else {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&planx.to_string());
-            flg = 1;
         }
         rc_str.push(']');
 

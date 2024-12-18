@@ -184,8 +184,12 @@ impl SelectRegionsStore {
     /// Return a string represeting an SelectRegionsStore.
     fn formatted_str(&self) -> String {
         let mut ret_str = String::from("[");
-        for (inx, orx) in self.items.iter().enumerate() {
-            if inx > 0 {
+
+        let mut first = true;
+        for orx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
                 ret_str.push_str(", ");
             }
             ret_str.push_str(&orx.to_string());

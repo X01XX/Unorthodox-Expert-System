@@ -44,7 +44,7 @@ const CLEANUP_TRIGGER: usize = 5;
 
 impl fmt::Display for SomeAction {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_str())
+        write!(f, "{}", self.formatted_state())
     }
 }
 
@@ -2299,8 +2299,8 @@ impl SomeAction {
         self.do_something.len()
     }
 
-    /// Return a String representation of SomeAction.
-    fn formatted_str(&self) -> String {
+    /// Return a String representation of a SomeAction state.
+    fn formatted_state(&self) -> String {
         let mut rc_str = String::from("ACT(ID: ");
 
         rc_str += &self.id.to_string();
@@ -2336,6 +2336,24 @@ impl SomeAction {
         }
 
         rc_str.push(')');
+        rc_str
+    }
+
+    /// Return a String representation of a SomeAction definition.
+    #[allow(dead_code)]
+    pub fn formatted_def(&self) -> String {
+        let mut rc_str = String::from("ACT[");
+        let mut first = true;
+        for rulstrx in self.do_something.rules.iter() {
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&format!("{rulstrx}"));
+        }
+        rc_str.push(']');
+
         rc_str
     }
 
@@ -2535,33 +2553,33 @@ impl FromStr for SomeAction {
             }
             if inx == 0 {
                 if chr != "A" {
-                    return Err(format!(
-                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
-                    ));
+                    return Err(
+                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 1 {
                 if chr != "C" {
-                    return Err(format!(
-                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
-                    ));
+                    return Err(
+                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 2 {
                 if chr != "T" {
-                    return Err(format!(
-                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
-                    ));
+                    return Err(
+                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 3 {
                 if chr != "[" {
-                    return Err(format!(
-                        "SomeAction::from_str: Invalid string, {src_str} should start with ACT["
-                    ));
+                    return Err(
+                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
+                    );
                 }
                 left += 1;
                 continue;
@@ -2572,14 +2590,14 @@ impl FromStr for SomeAction {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+                    return Err("SomeAction::from_str: Brackets not balanced.".to_string());
                 }
             }
 
             src_str2.push_str(chr);
         }
         if left != right {
-            return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+            return Err("SomeAction::from_str: Brackets not balanced.".to_string());
         }
 
         // Remove last right-bracket, balancing first left bracket.
@@ -2604,7 +2622,7 @@ impl FromStr for SomeAction {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("SomeAction::from_str: Invalid string, {src_str}"));
+                    return Err("SomeAction::from_str: Brackets not balanced.".to_string());
                 }
             }
             if left == right && left > 0 {
@@ -2626,13 +2644,13 @@ impl FromStr for SomeAction {
             //println!("rulestores for an action: {tokenx}");
             let rulstrx = RuleStore::from_str(tokenx)?;
             if rulstrx.is_empty() {
-                return Err(format!("SomeAction::from_str: Empty RuleStore, {src_str}"));
+                return Err("SomeAction::from_str: Empty RuleStore.".to_string());
             }
             rs_vec.push(rulstrx);
         }
 
         if rs_vec.is_empty() {
-            return Err(format!("SomeAction::from_str: No RuleStore, {src_str}"));
+            return Err("SomeAction::from_str: No RuleStore.".to_string());
         }
         let actx = SomeAction::new(rs_vec);
 
@@ -2892,11 +2910,12 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let actx = SomeAction::from_str("ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]")?;
-        println!("act {actx}");
-        println!("rules {}", tools::vec_string(&actx.do_something.rules));
+        let act_str = "ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]";
+        let actx = SomeAction::from_str(&act_str)?;
+        println!("str def {act_str}");
+        println!("act def {}", actx.formatted_def());
+        assert!(format!("{act_str}") == actx.formatted_def());
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

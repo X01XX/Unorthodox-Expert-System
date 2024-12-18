@@ -92,8 +92,11 @@ impl StepStore {
         rc_str.push_str(prefix);
         rc_str.push('[');
 
-        for (inx, stpx) in self.items.iter().enumerate() {
-            if inx > 0 {
+        let mut first = true;
+        for stpx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&stpx.to_string());
@@ -346,8 +349,11 @@ impl StrLen for StepStore {
     fn strlen(&self) -> usize {
         let mut rc_len = 2;
 
-        for (inx, itemx) in self.items.iter().enumerate() {
-            if inx > 0 {
+        let mut first = true;
+        for itemx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
                 rc_len += 2; // for ", "
             }
             rc_len += itemx.strlen();

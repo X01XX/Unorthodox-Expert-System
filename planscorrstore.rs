@@ -173,14 +173,12 @@ impl PlansCorrStore {
                 rc_str.push_str("PC[");
             }
 
-            let mut cnt = 0;
             for (iny, planx) in planscx.iter().enumerate() {
                 if planx.causes_change() {
-                    if cnt > 0 {
+                    if iny > 0 {
                         rc_str.push_str(", ");
                     }
                     rc_str.push_str(&format!("P[{iny}:{}]", &planx.str_terse()));
-                    cnt += 1;
                 }
             }
             rc_str.push(']');

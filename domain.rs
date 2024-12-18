@@ -77,8 +77,11 @@ impl fmt::Display for Path {
         let mut rc_str = String::new();
         rc_str.push('[');
 
-        for (inx, stepx) in self.steps.iter().enumerate() {
-            if inx > 0 {
+        let mut first = true;
+        for stepx in self.steps.iter() {
+            if first {
+                first = false;
+            } else {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&format!("{}", stepx));
@@ -102,7 +105,7 @@ impl StrLen for Path {
 
 impl fmt::Display for SomeDomain {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_str())
+        write!(f, "{}", self.formatted_state())
     }
 }
 
@@ -873,8 +876,8 @@ impl SomeDomain {
         tot
     }
 
-    /// Return a String representation of SomeDomain.
-    fn formatted_str(&self) -> String {
+    /// Return a String representation of a SomeDomain state.
+    fn formatted_state(&self) -> String {
         let mut rc_str = String::from("D(ID: ");
 
         rc_str.push_str(&self.id.to_string());
@@ -886,6 +889,19 @@ impl SomeDomain {
         for actx in self.actions.iter() {
             rc_str.push_str(&format!("\n    Action {actx}"));
         }
+
+        rc_str
+    }
+
+    /// Return a String representation of a SomeDomain definition.
+    #[allow(dead_code)]
+    pub fn formatted_def(&self) -> String {
+        let mut rc_str = String::from("DOMAIN[");
+
+        for actx in self.actions.iter() {
+            rc_str.push_str(&actx.formatted_def());
+        }
+        rc_str.push(']');
 
         rc_str
     }
@@ -1090,57 +1106,64 @@ impl FromStr for SomeDomain {
             }
             if inx == 0 {
                 if chr != "D" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 1 {
                 if chr != "O" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 2 {
                 if chr != "M" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 3 {
                 if chr != "A" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 4 {
                 if chr != "I" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 5 {
                 if chr != "N" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 6 {
                 if chr != "[" {
-                    return Err(format!(
-                        "SomeDomain::from_str: Invalid string, {src_str} should start with DOMAIN["
-                    ));
+                    return Err(
+                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
+                            .to_string(),
+                    );
                 }
                 left += 1;
                 continue;
@@ -1151,14 +1174,14 @@ impl FromStr for SomeDomain {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+                    return Err("SomeDomain::from_str: Brackets not balanced".to_string());
                 }
             }
 
             src_str2.push_str(chr);
         }
         if left != right {
-            return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+            return Err("SomeDomain::from_str: Brackets not balanced".to_string());
         }
 
         // Remove last right-bracket, balancing first left bracket.
@@ -1183,7 +1206,7 @@ impl FromStr for SomeDomain {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("SomeDomain::from_str: Invalid string, {src_str}"));
+                    return Err("SomeDomain::from_str: Brackets not balanced".to_string());
                 }
             }
             if left == right && left > 0 {

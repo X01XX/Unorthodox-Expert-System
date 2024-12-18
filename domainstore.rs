@@ -1256,7 +1256,7 @@ impl DomainStore {
         goal_ints.push(goal_regs.clone());
 
         // Init work vector.
-        let mut select_regions2: Vec<_> = select_regions.to_vec(); // clippy requires the argument to be a slice.
+        let mut select_regions2: Vec<_> = select_regions.to_vec();
 
         // Build out start intersection and goal intersection RCSs, until there is an intersection/adjacency between them, or
         // no more options.
@@ -1343,8 +1343,11 @@ impl DomainStore {
     fn formatted_str(&self) -> String {
         let mut rc_str = String::from("[");
 
-        for (inx, domx) in self.items.iter().enumerate() {
-            if inx > 0 {
+        let mut first = true;
+        for domx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&domx.to_string());
@@ -1679,25 +1682,25 @@ impl FromStr for DomainStore {
             }
             if inx == 0 {
                 if chr != "D" {
-                    return Err(format!(
-                        "DomainStore::from_str: Invalid string, {ds_str} should start with DS["
-                    ));
+                    return Err(
+                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 1 {
                 if chr != "S" {
-                    return Err(format!(
-                        "DomainStore::from_str: Invalid string, {ds_str} should start with DS["
-                    ));
+                    return Err(
+                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
+                    );
                 }
                 continue;
             }
             if inx == 2 {
                 if chr != "[" {
-                    return Err(format!(
-                        "DomainStore::from_str: Invalid string, {ds_str} should start with DS["
-                    ));
+                    return Err(
+                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
+                    );
                 }
                 left += 1;
                 continue;
@@ -1708,21 +1711,16 @@ impl FromStr for DomainStore {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!(
-                        "DomainStore::from_str: Brackets not balanced, {ds_str}"
-                    ));
+                    return Err("DomainStore::from_str: Brackets not balanced.".to_string());
                 }
             }
 
             ds_str2.push_str(chr);
         }
         if left != right {
-            return Err(format!(
-                "DomainStore::from_str: Brackets not balanced, {ds_str}"
-            ));
+            return Err("DomainStore::from_str: Brackets not balanced.".to_string());
         }
         ds_str2 = ds_str2.trim().to_string();
-        //println!("ds_str2 {ds_str2}");
 
         // Find tokens
         let mut token_vec = vec![];
@@ -1807,23 +1805,24 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let dmxs = match DomainStore::from_str(
-            "
+        let dmxs_str = "
         DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]]],
-
             SR[RC[r0X0X], 3],
-            SR[RC[rX1X1], -1],
-            SC[s1011]]",
-        ) {
+            SR[RC[r0XX1], -1],
+            SR[RC[rX111], -2],
+            SC[s1011]]";
+
+        let dmxs = match DomainStore::from_str(&dmxs_str) {
             Ok(dmxs) => dmxs,
             Err(errstr) => panic!("{errstr}"),
         };
 
         dmxs.print_select_stores_info();
+        println!("dmxs {dmxs_str}");
         println!("dmxs {dmxs}");
 
         //assert!(1 == 2);

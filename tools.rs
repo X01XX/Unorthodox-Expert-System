@@ -95,8 +95,11 @@ pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
     let mut rc_str = String::with_capacity(len);
     rc_str.push('[');
 
-    for (inx, itmx) in avec.iter().enumerate() {
-        if inx > 0 {
+    let mut first = true;
+    for itmx in avec.iter() {
+        if first {
+            first = false;
+        } else {
             rc_str.push_str(", ");
         }
         rc_str.push_str(&itmx.to_string());
@@ -121,8 +124,11 @@ pub fn vec_ref_string<T: fmt::Display + StrLen>(avec: &[&T]) -> String {
     let mut rc_str = String::with_capacity(len);
     rc_str.push('[');
 
-    for (inx, itmx) in avec.iter().enumerate() {
-        if inx > 0 {
+    let mut first = true;
+    for itmx in avec.iter() {
+        if first {
+            first = false;
+        } else {
             rc_str.push_str(", ");
         }
         rc_str.push_str(&itmx.to_string());

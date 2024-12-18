@@ -464,9 +464,9 @@ impl FromStr for RuleStore {
                     left += 1;
                     continue;
                 } else {
-                    return Err(format!(
-                        "RuleStore::from_str: Invalid string, {src_str} should start with ["
-                    ));
+                    return Err(
+                        "RuleStore::from_str: Invalid string, should start with [".to_string()
+                    );
                 }
             }
             if chr == "[" {
@@ -475,14 +475,14 @@ impl FromStr for RuleStore {
             if chr == "]" {
                 right += 1;
                 if right > left {
-                    return Err(format!("RuleStore::from_str: Invalid string, {src_str}"));
+                    return Err("RuleStore::from_str: Brackets not balanced".to_string());
                 }
             }
 
             src_str2.push_str(chr);
         }
         if left != right {
-            return Err(format!("RuleStore::from_str: Invalid string, {src_str}"));
+            return Err("RuleStore::from_str: Brackets not balanced".to_string());
         }
 
         // Remove last right-bracket, balancing first left bracket.
@@ -528,13 +528,11 @@ impl FromStr for RuleStore {
 /// Implement the trait StrLen for RuleStore.
 impl StrLen for RuleStore {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2;
+        let mut rc_len = 2; // for "[]"
 
-        for (inx, itemx) in self.items.iter().enumerate() {
-            if inx > 0 {
-                rc_len += 2; // for ", "
-            }
-            rc_len += itemx.strlen();
+        if !self.is_empty() {
+            rc_len += self[0].strlen() * self.len(); // Each rule length.
+            rc_len += 2 * (self.len() - 1); // Each ", " separator.
         }
 
         rc_len
@@ -544,6 +542,19 @@ impl StrLen for RuleStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn strlen() -> Result<(), String> {
+        let rulstx = RuleStore::from_str("[00/11/11, 00/11/10]")?;
+
+        let calced_len = rulstx.strlen();
+        let str_len = format!("{rulstx}").len();
+
+        println!("str_len {str_len} calced_len {calced_len}");
+
+        assert!(str_len == calced_len);
+        Ok(())
+    }
 
     // Test restrict_initial_region and initial_region
     #[test]

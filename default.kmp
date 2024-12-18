@@ -6,7 +6,7 @@ DS[
             [XX_XX/11/XX/10],
             [XX_11/00/10/XX, XX_11/01/11/XX],
             [XX_11/XX/10/00, XX_11/Xx/11/00],
-            [XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX],
+            [XX_00/00/00/Xx, XX_00/00/01/XX, XX_00/01/00/XX],  // Three rules will be percieved as unpredictable.
             [XX_00/XX/00/01, XX_00/XX/01/00, XX_00/Xx/00/00]], 
         ACT[[XX_XX/Xx/11/XX], [XX_XX/XX/01/XX]],
         ACT[[XX_XX/XX/10/XX], [XX_XX/Xx/00/XX]],
@@ -14,7 +14,7 @@ DS[
         ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]],
         ACT[[XX_XX/XX/XX/XX]]],
 
-    DOMAIN[ // domain 1.
+    DOMAIN[ // Domain 1.
         ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/Xx/XX_XX/XX/XX/XX]],
         ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/Xx/XX/XX_XX/XX/XX/XX]],
         ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_Xx/XX/XX/XX_XX/XX/XX/XX]],
@@ -25,7 +25,7 @@ DS[
             [XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX],
             [XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]]],
 
-    // SelectRegions
+    // SelectRegions.
     SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3],
     SR[RC[rx0xx1, rXXXX_XXX1_1XXX_XXXX], 2],
     SR[RC[rxx1x1, rXXXX_XX00_0XXX_XXXX], 3],
