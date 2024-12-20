@@ -1264,6 +1264,56 @@ mod tests {
     use crate::regionscorr::RegionsCorr;
     use crate::selectregions::SelectRegions;
 
+    /// Force a misapprehension of a rule for action 4.
+    /// Develop actions 0-3 in the normal way.
+    /// In action 4, testing squares adjacent to the anchor, using actions 0-3, should invalidate the first group.
+    #[test]
+    fn bad_start() -> Result<(), String> {
+        // Create DomainStore.
+        let mut dmxs = DomainStore::from_str(
+            "DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/01/X1], [XX/XX/10/X0]]],
+        ]",
+        )?;
+
+        // Set up group XX/XX/Xx/XX for action 4.
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+
+        dmxs.print();
+        assert!(dmxs[0].actions[4].number_groups() == 1);
+        let grpx = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("XXXX")?)
+            .unwrap();
+        println!("Group {} found", grpx.region);
+
+        do_session(&mut dmxs); // Figure other actions, and test group in action 4.
+        dmxs.print();
+
+        assert!(dmxs[0].actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
+        let grpx = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("XX1X")?)
+            .unwrap();
+        println!("Group {} found", grpx.region);
+        let grpx = dmxs[0].actions[4]
+            .groups
+            .find(&SomeRegion::from_str("XX0X")?)
+            .unwrap();
+        println!("Group {} found", grpx.region);
+
+        Ok(())
+    }
+
     /// Test the cleanup of unneeded groups.
     /// First use of running a full session from a test function.
     #[test]

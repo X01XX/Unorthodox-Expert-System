@@ -893,14 +893,24 @@ impl SomeDomain {
         rc_str
     }
 
-    /// Return a String representation of a SomeDomain definition.
+    /// Return a from_str compatible string for a SomeDomain instance.
     #[allow(dead_code)]
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("DOMAIN[");
 
+        // Ad Action defs.
+        let mut first = true;
         for actx in self.actions.iter() {
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
+            }
             rc_str.push_str(&actx.formatted_def());
         }
+        // Add current state.
+        rc_str.push_str(&format!(", {}", self.cur_state));
+
         rc_str.push(']');
 
         rc_str
@@ -2188,17 +2198,27 @@ mod tests {
     }
 
     #[test]
+    /// Test domain definition from string to instance, then instance to string(2), then string(2) to instance.
     fn from_str() -> Result<(), String> {
-        let domx = match SomeDomain::from_str(
-            "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]],
-            s1010 ]",
-        ) {
-            Ok(domx) => domx,
-            Err(errstr) => return Err(format!("{errstr}")),
-        };
-        println!("{domx}");
+        let domx_str = "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]],
+                                ACT[[XX/Xx/XX/XX]],
+                                ACT[[Xx/XX/XX/XX]],
+                                s1010 ]";
+        println!("domx_str {domx_str}");
 
-        //assert!(1 == 2);
-        Ok(())
+        let domx = SomeDomain::from_str(&domx_str)?; // String to instance.
+
+        let domx_str2 = domx.formatted_def(); // Instance to String(2).
+        println!("domx_str2 {domx_str2}");
+
+        match SomeDomain::from_str(&domx_str2) {
+            // String(2) to instance.
+            Ok(domy) => {
+                assert!(domy.actions.len() == 3);
+                assert!(domy.cur_state == SomeState::from_str("s1010")?);
+                Ok(())
+            }
+            Err(errstr) => Err(errstr),
+        }
     }
 } // end tests

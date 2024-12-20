@@ -2339,7 +2339,7 @@ impl SomeAction {
         rc_str
     }
 
-    /// Return a String representation of a SomeAction definition.
+    /// Return a from_str compatible string for a SomeAction instance.
     #[allow(dead_code)]
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("ACT[");
@@ -2909,13 +2909,24 @@ mod tests {
     }
 
     #[test]
+    /// Test action definition from string to instance, then instance to string(2), then string(2) to instance.
     fn from_str() -> Result<(), String> {
-        let act_str = "ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]";
-        let actx = SomeAction::from_str(&act_str)?;
-        println!("str def {act_str}");
-        println!("act def {}", actx.formatted_def());
-        assert!(format!("{act_str}") == actx.formatted_def());
+        let actx_str = "ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]";
+        println!("actx_str {actx_str}");
 
-        Ok(())
+        let actx = SomeAction::from_str(&actx_str)?; // String to instance.
+
+        let actx_str2 = actx.formatted_def(); // Instance to string(2).
+        println!("actxstr2 {actx_str2}",);
+
+        match SomeAction::from_str(&actx_str2) {
+            // String(2) to instance.
+            Ok(acty) => {
+                assert!(acty.num_bits() == 5);
+                assert!(acty.do_something.rules.len() == 2);
+                Ok(())
+            }
+            Err(errstr) => Err(errstr),
+        }
     }
 }

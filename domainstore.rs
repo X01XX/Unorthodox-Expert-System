@@ -62,7 +62,7 @@ pub struct InxPlan {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Default)]
-/// A vector of SomeDomain structs, and SomeDomain-specifc functions.
+/// A vector of SomeDomain structs, and session state.
 pub struct DomainStore {
     /// Vector of SomeDomain structs.
     pub items: Vec<SomeDomain>,
@@ -78,6 +78,8 @@ pub struct DomainStore {
     /// A limit for becomming bored, then moving to another select state.
     /// When no more rule-testing needs can be done.
     pub boredom_limit: usize,
+    /// Times visited, order corresponding to, positive select regions.
+    pub times_visited: Vec<usize>,
 
     /// Zero, or more, select regions that may have a positive, or negative, value.
     /// They may overlap.
@@ -87,8 +89,6 @@ pub struct DomainStore {
     pub select_net_positive: SelectRegionsStore,
     /// Negative select fragments.
     pub select_negative: SelectRegionsStore,
-    /// Times visited, order corresponding to, positive select regions.
-    pub times_visited: Vec<usize>,
     /// Non-negative, may be, or overlap, positive, regions.
     pub rc_non_negative: RegionsCorrStore,
     /// Save the maximum fragment value.
@@ -1357,6 +1357,27 @@ impl DomainStore {
         rc_str
     }
 
+    /// Return a from_str compatible string for a DomainStore instance.
+    pub fn formatted_def(&self) -> String {
+        let mut rc_str = String::from("DS[");
+        let mut first = true;
+        for domx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&domx.formatted_def());
+        }
+        for selx in self.select.iter() {
+            rc_str.push_str(&format!(", {selx}"));
+        }
+        rc_str.push_str(&format!(", {}", self.all_current_states()));
+        rc_str.push(']');
+
+        rc_str
+    }
+
     /// Return the total number of groups in all the domains.
     pub fn number_groups(&self) -> usize {
         let mut tot = 0;
@@ -1821,12 +1842,23 @@ mod tests {
             Err(errstr) => panic!("{errstr}"),
         };
 
-        dmxs.print_select_stores_info();
         println!("dmxs {dmxs_str}");
         println!("dmxs {dmxs}");
 
-        //assert!(1 == 2);
-        Ok(())
+        let dmxs_str2 = dmxs.formatted_def(); // Instance to String(2).
+        println!("dmxs_str2 {dmxs_str2}");
+
+        match DomainStore::from_str(&dmxs_str2) {
+            // String(2) to instance.
+            Ok(dmys) => {
+                assert!(dmys.items.len() == 1);
+                assert!(dmys.items[0].actions.len() == 4);
+                assert!(dmys.select.len() == 3);
+                assert!(dmys.items[0].cur_state == SomeState::from_str("s1011")?);
+                Ok(())
+            }
+            Err(errstr) => Err(errstr),
+        }
     }
 
     #[test]
