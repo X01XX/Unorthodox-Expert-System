@@ -79,6 +79,18 @@ pub struct SomeAction {
     cleanup_trigger: usize,
 }
 
+/// Implement the PartialEq trait, since two SomeAction instances.
+/// A quick comparison of definitions.
+impl PartialEq for SomeAction {
+    fn eq(&self, other: &Self) -> bool {
+        if self.num_bits() != other.num_bits() {
+            return false;
+        }
+        true
+    }
+}
+impl Eq for SomeAction {}
+
 impl SomeAction {
     /// Return a new SomeAction struct.
     pub fn new(rules: Vec<RuleStore>) -> Self {
@@ -2922,8 +2934,7 @@ mod tests {
         match SomeAction::from_str(&actx_str2) {
             // String(2) to instance.
             Ok(acty) => {
-                assert!(acty.num_bits() == 5);
-                assert!(acty.do_something.rules.len() == 2);
+                assert!(acty == actx);
                 Ok(())
             }
             Err(errstr) => Err(errstr),

@@ -121,6 +121,23 @@ pub struct SomeDomain {
     pub cur_state: SomeState,
 }
 
+/// Implement the PartialEq trait, since two SomeDomain instances.
+/// A quick comparison of definitions.
+impl PartialEq for SomeDomain {
+    fn eq(&self, other: &Self) -> bool {
+        if self.actions.len() != other.actions.len() {
+            return false;
+        }
+        for (actx, acty) in self.actions.iter().zip(other.actions.iter()) {
+            if actx != acty {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for SomeDomain {}
+
 impl SomeDomain {
     /// Return a new domain instance, given the ID number and initial state.
     pub fn new(dom_id: usize, cur_state: SomeState) -> Self {
@@ -908,9 +925,6 @@ impl SomeDomain {
             }
             rc_str.push_str(&actx.formatted_def());
         }
-        // Add current state.
-        rc_str.push_str(&format!(", {}", self.cur_state));
-
         rc_str.push(']');
 
         rc_str
@@ -1094,9 +1108,9 @@ impl FromStr for SomeDomain {
     type Err = String;
     /// Return a SomeDomain instance, given a string representation.
     ///
-    /// "DOMAIN[ ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]], s1010]"
+    /// "DOMAIN[ ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]"
     ///
-    /// All the rules must use the same number of bits, initial state is optional.
+    /// All the rules must use the same number of bits, initial state will be set to a random value.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeDomain::from_str: {str_in}");
         let src_str = str_in.trim();
@@ -1232,14 +1246,11 @@ impl FromStr for SomeDomain {
         //println!("token_list {:?}", token_list);
 
         let mut act_vec = Vec::<SomeAction>::new();
-        let mut initial_state: Result<SomeState, String> = Err("".to_string());
 
         // Push each action.
         for tokenx in token_list.iter() {
-            if tokenx[0..1] == *"A" {
+            if tokenx[0..4] == *"ACT[" {
                 act_vec.push(SomeAction::from_str(tokenx)?);
-            } else if tokenx[0..1] == *"s" {
-                initial_state = SomeState::from_str(tokenx);
             } else {
                 return Err(format!(
                     "SomeDomain::from_str: Unrecognized token, {tokenx}"
@@ -1254,9 +1265,6 @@ impl FromStr for SomeDomain {
         for actx in act_vec {
             assert!(actx.num_bits() == num_bits);
             domx.push(actx);
-        }
-        if let Ok(sta) = initial_state {
-            domx.set_cur_state(sta);
         }
 
         Ok(domx)
@@ -1277,8 +1285,7 @@ mod tests {
         // Create a domain that uses four bits.
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/11/01/11, 00/11/00/10]],
-            s0000
+            ACT[[00/11/01/11, 00/11/00/10]]
         ]",
         )?;
 
@@ -1350,7 +1357,6 @@ mod tests {
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
             ACT[[00/XX/01/XX]],
-            s0000
         ]",
         )?;
 
@@ -1398,8 +1404,7 @@ mod tests {
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
-            s0001
+            ACT[[Xx/XX/XX/XX]]
         ]",
         )?;
 
@@ -1445,7 +1450,6 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            s0001
         ]",
         )?;
 
@@ -1492,9 +1496,9 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/Xx, XX/XX/XX/XX]],
-            s0001
         ]",
         )?;
+        domx.set_cur_state(SomeState::from_str("s0001")?);
 
         // Check need for the current state not in a group.
         let nds1 = domx.actions[0].state_not_in_group_needs(&domx.cur_state);
@@ -1550,9 +1554,9 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/XX]],
-            s0001
         ]",
         )?;
+        domx.set_cur_state(SomeState::from_str("s0001")?);
 
         // Check need for the current state not in a group.
         let nds1 = domx.actions[0].state_not_in_group_needs(&domx.cur_state);
@@ -1640,7 +1644,6 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/00/XX/Xx], [XX/11/XX/XX]],
-            s0001
         ]",
         )?;
 
@@ -1672,7 +1675,6 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/11/XX], [X0/X0/01/x0]],
-            s0001
         ]",
         )?;
 
@@ -1749,7 +1751,6 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX]],
-            s0001
         ]",
         )?;
 
@@ -1807,7 +1808,6 @@ mod tests {
             ACT[[00/XX/11/XX],
                 [XX/XX/00/11, XX/XX/01/10, XX/XX/01/11],
                 [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX]],
-            s0001
         ]",
         )?;
 
@@ -1851,7 +1851,6 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
-            s0000_0000_0000_0001
         ]",
         )?;
 
@@ -1884,7 +1883,6 @@ mod tests {
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
             ACT[[XX/XX/XX/XX]],
-            s0011
         ]",
         )?;
 
@@ -1972,7 +1970,6 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            s0011
         ]",
         )?;
 
@@ -2023,7 +2020,6 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            s0011
         ]",
         )?;
 
@@ -2079,7 +2075,6 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            s0011
         ]",
         )?;
 
@@ -2134,7 +2129,6 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            s0011
         ]",
         )?;
 
@@ -2202,8 +2196,7 @@ mod tests {
     fn from_str() -> Result<(), String> {
         let domx_str = "DOMAIN[ ACT[[XX/XX/XX/00, XX/XX/Xx/01], [Xx/XX/XX/11]],
                                 ACT[[XX/Xx/XX/XX]],
-                                ACT[[Xx/XX/XX/XX]],
-                                s1010 ]";
+                                ACT[[Xx/XX/XX/XX]]]";
         println!("domx_str {domx_str}");
 
         let domx = SomeDomain::from_str(&domx_str)?; // String to instance.
@@ -2214,8 +2207,7 @@ mod tests {
         match SomeDomain::from_str(&domx_str2) {
             // String(2) to instance.
             Ok(domy) => {
-                assert!(domy.actions.len() == 3);
-                assert!(domy.cur_state == SomeState::from_str("s1010")?);
+                assert!(domy == domx);
                 Ok(())
             }
             Err(errstr) => Err(errstr),

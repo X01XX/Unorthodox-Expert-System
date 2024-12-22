@@ -13,6 +13,7 @@ use crate::statescorr::StatesCorr;
 use crate::target::ATarget;
 
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -20,7 +21,7 @@ impl fmt::Display for SomeNeed {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Seek a sample in a region that other groups do not cover.

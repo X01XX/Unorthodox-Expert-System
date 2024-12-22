@@ -60,10 +60,10 @@ mod pn;
 mod statescorr;
 mod statestore;
 use pn::Pn;
-mod domainstore;
+mod sessiondata;
 mod step;
 mod stepstore;
-use domainstore::{DomainStore, InxPlan, NeedPlan};
+use sessiondata::{SessionData, InxPlan, NeedPlan};
 mod actioninterface;
 mod planscorr;
 mod planscorrstore;
@@ -75,6 +75,7 @@ mod target;
 use crate::target::ATarget;
 mod maskscorr;
 mod maskstore;
+mod domainstore;
 
 extern crate unicode_segmentation;
 
@@ -167,7 +168,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
 }
 
 /// Run until no more needs can be done, then take user input.
-fn do_session_until_no_needs(dmxs: &mut DomainStore) {
+fn do_session_until_no_needs(dmxs: &mut SessionData) {
     let start = Instant::now();
     do_session(dmxs);
 
@@ -185,7 +186,7 @@ fn do_session_until_no_needs(dmxs: &mut DomainStore) {
 
 /// Run a number of times without user input, generate aggregate data.
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
-fn run_number_times(dmxs: &mut DomainStore, num_runs: usize) -> usize {
+fn run_number_times(dmxs: &mut SessionData, num_runs: usize) -> usize {
     let mut runs_left = num_runs;
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
@@ -250,7 +251,7 @@ fn run_number_times(dmxs: &mut DomainStore, num_runs: usize) -> usize {
 }
 
 /// Do a session until no needs can be done.
-pub fn do_session(dmxs: &mut DomainStore) -> usize {
+pub fn do_session(dmxs: &mut SessionData) -> usize {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
         let (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
@@ -272,7 +273,7 @@ pub fn do_session(dmxs: &mut DomainStore) -> usize {
 /// Do a session until no needs can be done,
 /// then position to a desired end state,
 /// return true if the desired end state is attained.
-pub fn do_session_then_end_state(dmxs: &mut DomainStore, end_state_within: &RegionsCorr) -> bool {
+pub fn do_session_then_end_state(dmxs: &mut SessionData, end_state_within: &RegionsCorr) -> bool {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
         let (needs, can_do, _cant_do) = generate_and_display_needs(dmxs);
@@ -295,7 +296,7 @@ pub fn do_session_then_end_state(dmxs: &mut DomainStore, end_state_within: &Regi
 }
 
 /// Seek an end state within a given RegionsCorr instance.
-fn to_end_state_within(dmxs: &mut DomainStore, end_state: &RegionsCorr) -> Result<(), String> {
+fn to_end_state_within(dmxs: &mut SessionData, end_state: &RegionsCorr) -> Result<(), String> {
     let cur_regions = dmxs.all_current_regions();
 
     debug_assert!(cur_regions.is_congruent(end_state));
@@ -317,7 +318,7 @@ fn to_end_state_within(dmxs: &mut DomainStore, end_state: &RegionsCorr) -> Resul
 }
 
 /// Generate and display domain and needs.
-pub fn generate_and_display_needs(dmxs: &mut DomainStore) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
+pub fn generate_and_display_needs(dmxs: &mut SessionData) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
     // Get the needs of all Domains / Actions
     dmxs.print();
     let (needs, can_do, cant_do) = dmxs.get_needs();
@@ -325,7 +326,7 @@ pub fn generate_and_display_needs(dmxs: &mut DomainStore) -> (NeedStore, Vec<Inx
     (needs, can_do, cant_do)
 }
 
-pub fn display_needs(dmxs: &DomainStore, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
+pub fn display_needs(dmxs: &SessionData, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
     // Print needs.
     if needs.is_empty() {
         println!("\nNumber needs: 0");
@@ -345,7 +346,7 @@ pub fn display_needs(dmxs: &DomainStore, needs: &NeedStore, can_do: &[InxPlan], 
 }
 
 /// Print needs that can be done.
-pub fn print_can_do(dmxs: &DomainStore, can_do: &[InxPlan], needs: &NeedStore) {
+pub fn print_can_do(dmxs: &SessionData, can_do: &[InxPlan], needs: &NeedStore) {
     if can_do.is_empty() {
         if needs.is_not_empty() {
             println!("\nNeeds that can be done: None");
@@ -387,7 +388,7 @@ pub fn print_can_do(dmxs: &DomainStore, can_do: &[InxPlan], needs: &NeedStore) {
 /// Return the number steps taken get to the point where
 /// there are no more needs.
 /// Return domainstore end-state info.
-fn do_one_session(dmxs: &mut DomainStore) -> (usize, usize, usize, usize) {
+fn do_one_session(dmxs: &mut SessionData) -> (usize, usize, usize, usize) {
     let num_cant = do_session(dmxs);
 
     (
@@ -400,7 +401,7 @@ fn do_one_session(dmxs: &mut DomainStore) -> (usize, usize, usize, usize) {
 
 /// Do a session, step by step, taking user commands.
 pub fn do_interactive_session(
-    dmxs: &mut DomainStore,
+    dmxs: &mut SessionData,
     mut needs: NeedStore,
     mut can_do: Vec<InxPlan>,
     mut cant_do: Vec<usize>,
@@ -416,7 +417,7 @@ pub fn do_interactive_session(
 /// Do command loop.
 /// Some commands work without the need to return and display the session
 /// state again, so the loop.  Otherwise the command returns.
-fn command_loop(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
+fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
     //println!("start command loop");
     loop {
         let mut cmd = Vec::<&str>::with_capacity(10);
@@ -551,7 +552,7 @@ fn command_loop(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan], c
 } // end command_loop
 
 /// Change the domain to a number given by user.
-fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_change_domain(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one number argument is needed for the cd command.".to_string());
@@ -568,7 +569,7 @@ fn do_change_domain(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> 
 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
-fn do_any_need(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan]) {
+fn do_any_need(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan]) {
     let np_inx = dmxs.choose_a_need(can_do, needs);
 
     match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
@@ -579,7 +580,7 @@ fn do_any_need(dmxs: &mut DomainStore, needs: &NeedStore, can_do: &[InxPlan]) {
 
 /// Print details of a given plan
 fn do_print_plan_details(
-    dmxs: &DomainStore,
+    dmxs: &SessionData,
     cmd: &[&str],
     needs: &NeedStore,
     can_do: &[InxPlan],
@@ -609,7 +610,7 @@ fn do_print_plan_details(
 
 /// Try to satisfy a need chosen by the user.
 fn do_chosen_need(
-    dmxs: &mut DomainStore,
+    dmxs: &mut SessionData,
     cmd: &[&str],
     needs: &NeedStore,
     can_do: &[InxPlan],
@@ -663,7 +664,7 @@ fn do_chosen_need(
 }
 
 /// Do a change-state command.
-fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_change_state_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one state argument is needed for the cs command.".to_string());
@@ -680,7 +681,7 @@ fn do_change_state_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), S
 }
 
 /// Do to-region command.
-fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one region argument is needed for the to command.".to_string());
@@ -765,7 +766,7 @@ fn do_to_region_command(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), Stri
 }
 
 /// Do sample-state command.
-fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     if cmd.len() == 1 {
         return Err("Action number is needed for the ss command.".to_string());
     }
@@ -855,7 +856,7 @@ fn do_sample_state_command(dmxs: &mut DomainStore, cmd: &Vec<&str>) -> Result<()
 /// Display anchors, rating, and adjacent squares, for an action.
 /// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
 /// should equal the sum of the first two number of the rating.
-fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn display_action_anchor_info(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
 
     if cmd.len() == 1 {
@@ -875,7 +876,7 @@ fn display_action_anchor_info(dmxs: &mut DomainStore, cmd: &[&str]) -> Result<()
 }
 
 /// Do print-squares command.
-fn do_print_select_regions(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), String> {
+fn do_print_select_regions(dmxs: &SessionData, cmd: &[&str]) -> Result<(), String> {
     if cmd.len() != 1 {
         return Err("No arguments needed for the psr command".to_string());
     }
@@ -887,7 +888,7 @@ fn do_print_select_regions(dmxs: &DomainStore, cmd: &[&str]) -> Result<(), Strin
 }
 
 /// Do print-squares command.
-fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_print_squares_command(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
     let dmx = &dmxs[dom_id];
 
@@ -1016,7 +1017,7 @@ fn do_print_squares_command(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), S
 }
 
 /// Do adjacent-anchor command.
-fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn display_group_anchor_info(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
     let dmx = &dmxs[dom_id];
 
@@ -1047,7 +1048,7 @@ fn display_group_anchor_info(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), 
 
 /// Do print-group-defining-squares command.
 fn do_print_group_defining_squares_command(
-    dmxs: &DomainStore,
+    dmxs: &SessionData,
     cmd: &Vec<&str>,
 ) -> Result<(), String> {
     let dom_id = dmxs.current_domain;
@@ -1098,13 +1099,13 @@ fn usage() {
         "\n    <invoke> <file path>      - Open a file previously stored with the fsd command."
     );
     println!(
-        "\n    <invoke> <file path>      - Run a file containing a DomainStore configuration interactively, press Enter for each step."
+        "\n    <invoke> <file path>      - Run a file containing a SessionData configuration interactively, press Enter for each step."
     );
     println!(
-        "\n    <invoke> <file path> 1    - Run a file containing a DomainStore configuration non-interactively, stop when no needs can be done."
+        "\n    <invoke> <file path> 1    - Run a file containing a SessionData configuration non-interactively, stop when no needs can be done."
     );
     println!(
-        "\n    <invoke> <file path> <nt> - Run a file containing a DomainStore configuration a number (> 1) times. Exit with step and duration statistics."
+        "\n    <invoke> <file path> <nt> - Run a file containing a SessionData configuration a number (> 1) times. Exit with step and duration statistics."
     );
     println!("\n    <invoke> [h | help]       - Show this list.\n");
     println!("\nSession Commands:");
@@ -1201,7 +1202,7 @@ pub fn pause_for_input(prompt: &str) -> String {
 }
 
 /// Load data from a given path string.
-fn load_data(path_str: &str) -> Result<DomainStore, String> {
+fn load_data(path_str: &str) -> Result<SessionData, String> {
     let path = Path::new(path_str);
     let display = path.display();
 
@@ -1212,10 +1213,10 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
             match afile.read_to_string(&mut file_content) {
                 Ok(_) => {
                     match serde_yaml::from_str(&file_content) {
-                        Ok(new_dmxs) => Ok(new_dmxs),
+                        Ok(new_sdx) => Ok(new_sdx),
                         Err(_) => {
-                            match DomainStore::from_str(&tools::remove_comments(&file_content)) {
-                                Ok(new_dmxs) => Ok(new_dmxs),
+                            match SessionData::from_str(&tools::remove_comments(&file_content)) {
+                                Ok(new_sdx) => Ok(new_sdx),
                                 Err(why) => Err(format!("Main::load_data: {display} {why}")),
                             }
                         }
@@ -1229,13 +1230,13 @@ fn load_data(path_str: &str) -> Result<DomainStore, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(dmxs: &DomainStore, cmd: &Vec<&str>) -> Result<(), String> {
+fn store_data(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     if cmd.len() != 2 {
         return Err(format!("Did not understand {cmd:?}"));
     }
 
     let path_str = &cmd[1];
-    let serialized_r = serde_yaml::to_string(&dmxs);
+    let serialized_r = serde_yaml::to_string(&sdx);
 
     match serialized_r {
         Ok(serialized) => {
@@ -1269,43 +1270,43 @@ mod tests {
     /// In action 4, testing squares adjacent to the anchor, using actions 0-3, should invalidate the first group.
     #[test]
     fn bad_start() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        // Create SessionData.
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/XX/01/X1], [XX/XX/10/X0]]],
+            ACT[[XX/XX/01/X1], [XX/XX/10/X0]]]],
         ]",
         )?;
 
         // Set up group XX/XX/Xx/XX for action 4.
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        dmxs[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
+        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
 
-        dmxs.print();
-        assert!(dmxs[0].actions[4].number_groups() == 1);
-        let grpx = dmxs[0].actions[4]
+        sdx.print();
+        assert!(sdx[0].actions[4].number_groups() == 1);
+        let grpx = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("XXXX")?)
             .unwrap();
         println!("Group {} found", grpx.region);
 
-        do_session(&mut dmxs); // Figure other actions, and test group in action 4.
-        dmxs.print();
+        do_session(&mut sdx); // Figure other actions, and test group in action 4.
+        sdx.print();
 
-        assert!(dmxs[0].actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
-        let grpx = dmxs[0].actions[4]
+        assert!(sdx[0].actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
+        let grpx = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("XX1X")?)
             .unwrap();
         println!("Group {} found", grpx.region);
-        let grpx = dmxs[0].actions[4]
+        let grpx = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("XX0X")?)
             .unwrap();
@@ -1318,30 +1319,30 @@ mod tests {
     /// First use of running a full session from a test function.
     #[test]
     fn cleanup() -> Result<(), String> {
-        // Create DomainStore.
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        // Create SessionData.
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX]]],
+            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX]]]],
         ]",
         )?;
 
-        dmxs[0].set_cleanup(4, 500); // Effectively, turn off clean_up for action 4.
+        sdx[0].set_cleanup(4, 500); // Effectively, turn off clean_up for action 4.
 
-        do_session(&mut dmxs);
+        do_session(&mut sdx);
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
-        assert!(dmxs[0].actions[4].groups.len() == 6);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx[0].actions[4].groups.len() == 6);
 
         // Check action 4 primary groups.
-        if let Some(grpx) = dmxs[0].actions[4]
+        if let Some(grpx) = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("rX10X")?)
         {
@@ -1349,7 +1350,7 @@ mod tests {
         } else {
             return Err("Group rX10X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4]
+        if let Some(grpx) = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("r1X1X")?)
         {
@@ -1357,7 +1358,7 @@ mod tests {
         } else {
             return Err("Group r1X1X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4]
+        if let Some(grpx) = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("rX00X")?)
         {
@@ -1365,7 +1366,7 @@ mod tests {
         } else {
             return Err("Group rX00X not found?".to_string());
         }
-        if let Some(grpx) = dmxs[0].actions[4]
+        if let Some(grpx) = sdx[0].actions[4]
             .groups
             .find(&SomeRegion::from_str("r0X1X")?)
         {
@@ -1375,33 +1376,33 @@ mod tests {
         }
 
         // Check unneeded groups.
-        let subs = dmxs[0].actions[4]
+        let subs = sdx[0].actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         println!("subsets of r00XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        let grpx = sdx[0].actions[4].groups.find(&subs[0]).expect("SNH");
         assert!(!grpx.limited);
 
-        let subs = dmxs[0].actions[4]
+        let subs = sdx[0].actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         println!("subsets of r11XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = dmxs[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        let grpx = sdx[0].actions[4].groups.find(&subs[0]).expect("SNH");
         assert!(!grpx.limited);
 
         // Do cleanup to delete unneeded groups.
-        dmxs.cleanup(0, 4, &NeedStore::new(vec![]));
+        sdx.cleanup(0, 4, &NeedStore::new(vec![]));
 
-        dmxs.print();
-        assert!(dmxs[0].actions[4].groups.len() == 4);
-        let subs = dmxs[0].actions[4]
+        sdx.print();
+        assert!(sdx[0].actions[4].groups.len() == 4);
+        let subs = sdx[0].actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         assert!(subs.is_empty());
 
-        let subs = dmxs[0].actions[4]
+        let subs = sdx[0].actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
@@ -1413,24 +1414,24 @@ mod tests {
     /// Program develops rules, program seeks positive SelectRegion, then gets bored beyond limit.
     #[test]
     fn select1() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[r1000], 1]
         ]",
         )?;
 
         // Develop rules, position to desired end state.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0000]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0000]")?) {
             return Err("Session to end state failed".to_string());
         }
 
         // Insure boredom is zero.
-        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
-        assert!(dmxs.boredom == 0);
+        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut sdx);
+        assert!(sdx.boredom == 0);
         assert!(needs.len() == 1);
         assert!(needs.contains_similar_need(
             "ToSelectRegions",
@@ -1439,21 +1440,21 @@ mod tests {
             }
         ));
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         // Move to positive region.
-        do_any_need(&mut dmxs, &needs, &can_do);
+        do_any_need(&mut sdx, &needs, &can_do);
 
-        assert!(dmxs[0].cur_state == (SomeState::from_str("s1000")?));
+        assert!(sdx[0].cur_state == (SomeState::from_str("s1000")?));
 
-        generate_and_display_needs(&mut dmxs);
-        generate_and_display_needs(&mut dmxs);
+        generate_and_display_needs(&mut sdx);
+        generate_and_display_needs(&mut sdx);
 
-        assert!(dmxs.boredom > dmxs.boredom_limit);
+        assert!(sdx.boredom > sdx.boredom_limit);
 
         //assert!(1 == 2);
         Ok(())
@@ -1463,36 +1464,36 @@ mod tests {
     /// an additional, smaller, negative influence.
     #[test]
     fn select2() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[r01X1], 3],
             SR[RC[rX111], -1]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         // Inc boredom by 1.
-        let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
+        let (needs, can_do, cant_do) = generate_and_display_needs(&mut sdx);
         println!("needs {needs}");
         println!("cant_do {}", cant_do.len());
         println!("can_do {}", can_do.len());
         //assert!(can_do.is_empty());
         // Inc boredom by 1.
-        let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
+        let (needs, can_do, cant_do) = generate_and_display_needs(&mut sdx);
         println!("needs {needs}");
         println!("cant_do {}", cant_do.len());
         println!("can_do {}", can_do.len());
@@ -1500,7 +1501,7 @@ mod tests {
         //assert!(can_do.is_empty());
 
         // Should want to try state 0111 now.
-        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut sdx);
         assert!(needs.len() == 1);
         assert!(needs.contains_similar_need(
             "ToSelectRegions",
@@ -1510,8 +1511,8 @@ mod tests {
         ));
 
         // Move to positive 0111..
-        do_any_need(&mut dmxs, &needs, &can_do);
-        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut dmxs);
+        do_any_need(&mut sdx, &needs, &can_do);
+        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut sdx);
         assert!(needs.len() == 1);
         assert!(
             needs.contains_similar_need(
@@ -1538,39 +1539,39 @@ mod tests {
     /// Test duplicate select regions.
     #[test]
     fn select_duplicate() -> Result<(), String> {
-        // Create DomainStore.
-        let dmxs = DomainStore::from_str(
-            "DS[DOMAIN[ACT[[XX/XX/XX/Xx]]],
+        // Create SessionData.
+        let sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[ACT[[XX/XX/XX/Xx]]]],
                 SR[RC[r01X1], 3],
                 SR[RC[r01x1], -1]
         ]",
         )?;
-        assert!(dmxs.select.len() == 1);
+        assert!(sdx.select.len() == 1);
         Ok(())
     }
 
     /// Test no select regions.
     #[test]
     fn select_none() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]]
+            ACT[[Xx/XX/XX/XX]]]]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1579,26 +1580,26 @@ mod tests {
     /// Test one large positive select region.
     #[test]
     fn select_one_large_positive() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[rXXXX], 3]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1607,26 +1608,26 @@ mod tests {
     /// Test one small positive select region.
     #[test]
     fn select_one_small_positive() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[r1010], 3]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1635,26 +1636,26 @@ mod tests {
     /// Test one large negative select region.
     #[test]
     fn select_one_large_negative() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[rXXXX], -3]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1663,26 +1664,26 @@ mod tests {
     /// Test one small negative select region.
     #[test]
     fn select_one_small_negative() -> Result<(), String> {
-        let mut dmxs = DomainStore::from_str(
-            "DS[DOMAIN[
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]],
+            ACT[[Xx/XX/XX/XX]]]],
             SR[RC[r1010], -3]
         ]",
         )?;
 
         // Develop rules.
-        if !do_session_then_end_state(&mut dmxs, &RegionsCorr::from_str("RC[r0101]")?) {
+        if !do_session_then_end_state(&mut sdx, &RegionsCorr::from_str("RC[r0101]")?) {
             return Err("Session to end state failed".to_string());
         }
 
-        dmxs.print();
-        assert!(dmxs[0].actions[0].groups.len() == 1);
-        assert!(dmxs[0].actions[1].groups.len() == 1);
-        assert!(dmxs[0].actions[2].groups.len() == 1);
-        assert!(dmxs[0].actions[3].groups.len() == 1);
+        sdx.print();
+        assert!(sdx[0].actions[0].groups.len() == 1);
+        assert!(sdx[0].actions[1].groups.len() == 1);
+        assert!(sdx[0].actions[2].groups.len() == 1);
+        assert!(sdx[0].actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())

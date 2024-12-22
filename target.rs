@@ -6,6 +6,7 @@ use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
 
 use std::fmt;
+use serde::{Deserialize, Serialize};
 
 impl fmt::Display for ATarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -13,7 +14,7 @@ impl fmt::Display for ATarget {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum ATarget {
     State { state: SomeState },
     Region { region: SomeRegion },

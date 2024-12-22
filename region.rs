@@ -34,8 +34,8 @@ impl fmt::Display for SomeRegion {
     }
 }
 
-/// Implement the PartialEq trait, since two SomeRegion structs may be the same while defined
-/// by different states.
+/// Implement the PartialEq trait, since two SomeRegion struct instances.
+/// They may be the same, even when defined by different states.
 impl PartialEq for SomeRegion {
     fn eq(&self, other: &Self) -> bool {
         if self.intersects(other) {

@@ -6,6 +6,7 @@ use crate::target::ATarget;
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
+use serde::{Deserialize, Serialize};
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -14,7 +15,7 @@ impl fmt::Display for NeedStore {
 }
 
 #[readonly::make]
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 /// A vector of SomeNeed structs, and SomeNeed-specific funtions.
 pub struct NeedStore {
     /// A vector of SomeNeed struct instances.

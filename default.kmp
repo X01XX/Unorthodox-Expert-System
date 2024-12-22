@@ -1,5 +1,5 @@
 // Default DomainStore configuration.
-DS[
+SD[DS[
     DOMAIN[ // Domain 0.
         ACT[[XX_11/XX/00/Xx],
             [XX_00/XX/11/Xx],
@@ -23,7 +23,7 @@ DS[
         ACT[[XX/XX/XX/XX_XX/XX/Xx/XX_XX/XX/XX/XX_XX/XX/XX/XX]],
         ACT[[XX/XX/XX/XX_XX/XX/XX/Xx_XX/XX/11/XX_XX/XX/XX/XX],
             [XX/XX/XX/XX_XX/XX/Xx/XX_XX/11/00/XX_XX/XX/XX/XX],
-            [XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]]],
+            [XX/XX/XX/XX_XX/Xx/XX/XX_XX/00/00/XX_XX/XX/XX/XX]]]],
 
     // SelectRegions.
     SR[RC[rx0x0x, rXXXX_XX1X_1XXX_XXXX], 3],
