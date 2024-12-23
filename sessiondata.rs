@@ -246,6 +246,7 @@ impl SessionData {
             println!(" ");
             println!("  If more than one different value, more and more negative value SRs may be considered to find a plan-path.");
         }
+        println!(" ");
     }
 
     /// Get needs for each Domain.
@@ -841,7 +842,7 @@ impl SessionData {
         };
 
         println!(
-            "Step: {} All domain states: {} Status: {status}{in_str}",
+            "\nStep: {} All domain states: {} Status: {status}{in_str}",
             self.step_num,
             self.all_current_states()
         );

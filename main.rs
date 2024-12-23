@@ -149,7 +149,12 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     sdx.print_select_stores_info();
 
     // Display current state.
-    generate_and_display_needs(&mut sdx);
+    if sdx.step_num == 0 {
+        generate_and_display_needs(&mut sdx);
+    } else {
+        sdx.print();
+        display_needs(&sdx);
+    }
 
     // run it
     match runs {
@@ -174,11 +179,10 @@ fn do_session_until_no_needs(sdx: &mut SessionData) {
     let duration = start.elapsed();
     println!(
         "Steps: {} Time elapsed: {:.2?} seconds",
-        sdx.step_num - 1,
-        duration
+        sdx.step_num, duration
     );
 
-    generate_and_display_needs(sdx);
+    //generate_and_display_needs(sdx);
 
     do_interactive_session(sdx);
 }
@@ -319,8 +323,8 @@ fn to_end_state_within(sdx: &mut SessionData, end_state: &RegionsCorr) -> Result
 /// Generate and display domain and needs.
 pub fn generate_and_display_needs(sdx: &mut SessionData) {
     // Get the needs of all Domains / Actions
+    sdx.get_needs(); // increments step_num.
     sdx.print();
-    sdx.get_needs();
     display_needs(sdx);
 }
 
@@ -411,7 +415,7 @@ pub fn do_interactive_session(sdx: &mut SessionData) {
 /// Some commands work without the need to return and display the session
 /// state again, so the loop.  Otherwise the command returns.
 fn command_loop(sdx: &mut SessionData) {
-    //println!("start command loop");
+    //println!("start command loop step {}", sdx.step_num);
     loop {
         let mut cmd = Vec::<&str>::with_capacity(10);
 
@@ -1218,6 +1222,7 @@ fn store_data(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
         return Err(format!("Did not understand {cmd:?}"));
     }
 
+    println!("store_data: step {}", sdx.step_num);
     let path_str = &cmd[1];
     let serialized_r = serde_yaml::to_string(&sdx);
 
