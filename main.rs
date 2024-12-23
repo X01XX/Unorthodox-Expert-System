@@ -491,12 +491,6 @@ fn command_loop(sdx: &mut SessionData) {
                     println!("{error}");
                 }
             },
-            "gnds" => {
-                let dom_id = sdx.current_domain;
-                sdx[dom_id].get_needs();
-                sdx.print();
-                continue;
-            }
             "gps" => match do_print_group_defining_squares_command(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
@@ -678,17 +672,17 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     let goal_region = SomeRegion::from_str(cmd[1])?;
 
     let dom_id = sdx.current_domain;
-    let dmx = &mut sdx[dom_id];
+    let domx = sdx.find(dom_id).expect("SNH");
 
-    if goal_region.num_bits() != dmx.num_bits() {
+    if goal_region.num_bits() != domx.num_bits() {
         return Err(format!(
             "Region does not have the same number of bits, {}, as the CCD, {}.",
             goal_region.num_bits(),
-            dmx.num_bits()
+            domx.num_bits()
         ));
     }
 
-    let cur_state = dmx.current_state();
+    let cur_state = domx.current_state();
 
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(
@@ -700,7 +694,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     if goal_region.is_superset_of(cur_state) {
         println!(
             "\nCurrent_state {} is already in region {}",
-            dmx.cur_state, goal_region
+            domx.cur_state, goal_region
         );
         return Ok(());
     }
@@ -738,10 +732,11 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
             Err(errvec) => println!("{:?}", errvec),
         }
     }
-    if cur_region.is_superset_of(&sdx[dom_id].cur_state) {
+    let domx = sdx.find(dom_id).expect("SNH");
+    if cur_region.is_superset_of(&domx.cur_state) {
         println!("\nNo plan to get from {cur_region} to {goal_region}");
     }
-    if goal_region.is_superset_of(&sdx[dom_id].cur_state) {
+    if goal_region.is_superset_of(&domx.cur_state) {
         println!("\nPlan succeeded");
     } else {
         println!("\nPlan failed");
@@ -767,10 +762,10 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
 
     if cmd.len() == 2 {
         let dom_id = sdx.current_domain;
-        let dmx = &mut sdx[dom_id];
+        //let domx = sdx.find(dom_id).expect("SNH");
 
         println!("Act {act_id} sample curent state.");
-        dmx.take_action(act_id);
+        sdx.take_action(dom_id, act_id);
         return Ok(());
     }
 
@@ -785,15 +780,15 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
 
         let dom_id = sdx.current_domain;
 
-        let dmx = &mut sdx[dom_id];
+        let domx = sdx.find(dom_id).expect("SNH");
 
-        if a_state.num_bits() != dmx.num_bits() {
+        if a_state.num_bits() != domx.num_bits() {
             return Err("State does not have the same number of bits as the CCD.".to_string());
         }
 
         println!("Act {act_id} sample State {a_state}");
-        dmx.set_cur_state(a_state);
-        dmx.take_action(act_id);
+        sdx.set_domain_state(dom_id, a_state);
+        sdx.take_action(dom_id, act_id);
         return Ok(());
     }
 
@@ -825,15 +820,15 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
         }
 
         let dom_id = sdx.current_domain;
-        let dmx = &mut sdx[dom_id];
+        let domx = sdx.find(dom_id).expect("SNH");
 
-        if i_state.num_bits() != dmx.num_bits() {
+        if i_state.num_bits() != domx.num_bits() {
             return Err("States do not have the same number of bits as the CCD.".to_string());
         }
 
         println!("Act {act_id} take sample {i_state} -> {r_state}");
         let smpl = SomeSample::new(i_state, r_state);
-        dmx.eval_sample_arbitrary(act_id, &smpl);
+        sdx.eval_sample_arbitrary(dom_id, act_id, &smpl);
         return Ok(());
     } // end command ss 4
 
@@ -859,7 +854,8 @@ fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[&str]) -> Result<(),
     };
 
     // Display the rates
-    sdx[dom_id].display_action_anchor_info(act_id)
+    let domx = sdx.find(dom_id).expect("SNH");
+    domx.display_action_anchor_info(act_id)
 }
 
 /// Do print-squares command.
@@ -877,7 +873,7 @@ fn do_print_select_regions(sdx: &SessionData, cmd: &[&str]) -> Result<(), String
 /// Do print-squares command.
 fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let dmx = &sdx[dom_id];
+    let domx = sdx.find(dom_id).expect("SNH");
 
     if cmd.len() == 1 {
         return Err("Need to supply at least an action number".to_string());
@@ -891,7 +887,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
         }
     };
 
-    if act_id < dmx.actions.len() {
+    if act_id < domx.actions.len() {
     } else {
         return Err(format!("Invalid action ID for domain {dom_id}"));
     }
@@ -899,7 +895,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
     if cmd.len() == 2 {
         println!(
             "Squares of Action {} are:\n{}\n",
-            act_id, dmx.actions[act_id].squares
+            act_id, domx.actions[act_id].squares
         );
         return Ok(());
     }
@@ -908,13 +904,13 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
         // Get region from command.
         let aregion = SomeRegion::from_str(cmd[2])?;
 
-        if aregion.num_bits() != dmx.cur_state.num_bits() {
+        if aregion.num_bits() != domx.cur_state.num_bits() {
             return Err("Invalid number of bits in region.".to_string());
         }
 
         println!("Squares of Action {act_id} in region {aregion} are:\n");
 
-        let sqrs = dmx.actions[act_id].squares.squares_in_reg(&aregion);
+        let sqrs = domx.actions[act_id].squares.squares_in_reg(&aregion);
         if sqrs.is_empty() {
             println!("No squares in region {aregion}");
             return Ok(());
@@ -972,7 +968,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
         let mut rules_str = String::from("None");
         if max_pn == Pn::Unpredictable {
             for stax in non_pn_stas.iter() {
-                let sqrx = dmx.actions[act_id].squares.find(stax).unwrap();
+                let sqrx = domx.actions[act_id].squares.find(stax).unwrap();
                 if sqrx.pnc {
                     form_group = false;
                 }
@@ -980,7 +976,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
         } else if let Some(ruls) = rules {
             rules_str = ruls.to_string();
             for stax in non_pn_stas.iter() {
-                let sqrx = dmx.actions[act_id].squares.find(stax).expect(
+                let sqrx = domx.actions[act_id].squares.find(stax).expect(
                     "States in the non_pn_stas StateStore should all reference existing squares",
                 );
                 if !sqrx.rules.as_ref().expect("SNH").is_subset_of(&ruls) {
@@ -1006,7 +1002,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
 /// Do adjacent-anchor command.
 fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let dmx = &sdx[dom_id];
+    let domx = sdx.find(dom_id).expect("SNH");
 
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
@@ -1026,11 +1022,11 @@ fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), S
 
     let aregion = SomeRegion::from_str(cmd[2])?;
 
-    if aregion.num_bits() != dmx.cur_state.num_bits() {
+    if aregion.num_bits() != domx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
     }
 
-    dmx.display_group_anchor_info(act_id, &aregion)
+    domx.display_group_anchor_info(act_id, &aregion)
 }
 
 /// Do print-group-defining-squares command.
@@ -1039,7 +1035,7 @@ fn do_print_group_defining_squares_command(
     cmd: &Vec<&str>,
 ) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let dmx = &sdx[dom_id];
+    let domx = sdx.find(dom_id).expect("SNH");
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
@@ -1058,13 +1054,13 @@ fn do_print_group_defining_squares_command(
 
     let aregion = SomeRegion::from_str(cmd[2])?;
 
-    if aregion.num_bits() != dmx.cur_state.num_bits() {
+    if aregion.num_bits() != domx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
     }
 
-    if let Some(grpx) = dmx.actions[act_id].groups.find(&aregion) {
+    if let Some(grpx) = domx.actions[act_id].groups.find(&aregion) {
         for stax in grpx.region.states.iter() {
-            if let Some(sqrx) = dmx.actions[act_id].squares.find(stax) {
+            if let Some(sqrx) = domx.actions[act_id].squares.find(stax) {
                 println!(" {}", sqrx);
             }
         }
@@ -1271,16 +1267,16 @@ mod tests {
         )?;
 
         // Set up group XX/XX/Xx/XX for action 4.
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s0001")?);
-        sdx[0].take_action_arbitrary(4, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
+        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
 
         sdx.print();
-        assert!(sdx[0].actions[4].number_groups() == 1);
-        let grpx = sdx[0].actions[4]
+        assert!(sdx.find(0).expect("SNH").actions[4].number_groups() == 1);
+        let grpx = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("XXXX")?)
             .unwrap();
@@ -1289,13 +1285,13 @@ mod tests {
         do_session(&mut sdx); // Figure other actions, and test group in action 4.
         sdx.print();
 
-        assert!(sdx[0].actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
-        let grpx = sdx[0].actions[4]
+        assert!(sdx.find(0).expect("SNH").actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
+        let grpx = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("XX1X")?)
             .unwrap();
         println!("Group {} found", grpx.region);
-        let grpx = sdx[0].actions[4]
+        let grpx = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("XX0X")?)
             .unwrap();
@@ -1319,19 +1315,19 @@ mod tests {
         ]",
         )?;
 
-        sdx[0].set_cleanup(4, 500); // Effectively, turn off clean_up for action 4.
+        sdx.set_domain_cleanup(0, 4, 500); // Effectively, turn off clean_up for domain 0, action 4.
 
         do_session(&mut sdx);
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
-        assert!(sdx[0].actions[4].groups.len() == 6);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[4].groups.len() == 6);
 
         // Check action 4 primary groups.
-        if let Some(grpx) = sdx[0].actions[4]
+        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("rX10X")?)
         {
@@ -1339,7 +1335,7 @@ mod tests {
         } else {
             return Err("Group rX10X not found?".to_string());
         }
-        if let Some(grpx) = sdx[0].actions[4]
+        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("r1X1X")?)
         {
@@ -1347,7 +1343,7 @@ mod tests {
         } else {
             return Err("Group r1X1X not found?".to_string());
         }
-        if let Some(grpx) = sdx[0].actions[4]
+        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("rX00X")?)
         {
@@ -1355,7 +1351,7 @@ mod tests {
         } else {
             return Err("Group rX00X not found?".to_string());
         }
-        if let Some(grpx) = sdx[0].actions[4]
+        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
             .groups
             .find(&SomeRegion::from_str("r0X1X")?)
         {
@@ -1365,33 +1361,39 @@ mod tests {
         }
 
         // Check unneeded groups.
-        let subs = sdx[0].actions[4]
+        let subs = sdx.find(0).expect("SNH").actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         println!("subsets of r00XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = sdx[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        let grpx = sdx.find(0).expect("SNH").actions[4]
+            .groups
+            .find(&subs[0])
+            .expect("SNH");
         assert!(!grpx.limited);
 
-        let subs = sdx[0].actions[4]
+        let subs = sdx.find(0).expect("SNH").actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         println!("subsets of r11XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = sdx[0].actions[4].groups.find(&subs[0]).expect("SNH");
+        let grpx = sdx.find(0).expect("SNH").actions[4]
+            .groups
+            .find(&subs[0])
+            .expect("SNH");
         assert!(!grpx.limited);
 
         // Do cleanup to delete unneeded groups.
         sdx.cleanup(0, 4, &NeedStore::new(vec![]));
 
         sdx.print();
-        assert!(sdx[0].actions[4].groups.len() == 4);
-        let subs = sdx[0].actions[4]
+        assert!(sdx.find(0).expect("SNH").actions[4].groups.len() == 4);
+        let subs = sdx.find(0).expect("SNH").actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         assert!(subs.is_empty());
 
-        let subs = sdx[0].actions[4]
+        let subs = sdx.find(0).expect("SNH").actions[4]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
@@ -1430,15 +1432,15 @@ mod tests {
         ));
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         // Move to positive region.
         do_any_need(&mut sdx);
 
-        assert!(sdx[0].cur_state == (SomeState::from_str("s1000")?));
+        assert!(sdx.find(0).expect("SNH").cur_state == (SomeState::from_str("s1000")?));
 
         generate_and_display_needs(&mut sdx);
         generate_and_display_needs(&mut sdx);
@@ -1470,10 +1472,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         // Inc boredom by 1.
         generate_and_display_needs(&mut sdx);
@@ -1557,10 +1559,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1585,10 +1587,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1613,10 +1615,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1641,10 +1643,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())
@@ -1669,10 +1671,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx[0].actions[0].groups.len() == 1);
-        assert!(sdx[0].actions[1].groups.len() == 1);
-        assert!(sdx[0].actions[2].groups.len() == 1);
-        assert!(sdx[0].actions[3].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
         //assert!(1 == 2);
         Ok(())

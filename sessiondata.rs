@@ -12,6 +12,7 @@ use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::regionscorrstore::RegionsCorrStore;
+use crate::sample::SomeSample;
 use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
@@ -23,8 +24,6 @@ use crate::tools::{self, CorrespondingItems};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{Index, IndexMut};
-use std::slice::{Iter, IterMut};
 use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -867,24 +866,31 @@ impl SessionData {
 
     /// Change the current display domain.
     pub fn change_domain(&mut self, dom_id: usize) {
-        assert!(dom_id < self.domains.len());
+        debug_assert!(dom_id < self.domains.len());
 
         self.current_domain = dom_id;
     }
 
     /// Set the current state field, of the current domain.
     pub fn set_cur_state(&mut self, new_state: SomeState) {
-        debug_assert!(new_state.num_bits() == self[self.current_domain].num_bits());
+        debug_assert!(new_state.num_bits() == self.domains[self.current_domain].num_bits());
 
-        let dmx = self.current_domain;
-        self[dmx].set_cur_state(new_state)
+        self.set_domain_state(self.current_domain, new_state);
+    }
+
+    /// Set the state of a domain.
+    pub fn set_domain_state(&mut self, dom_id: usize, new_state: SomeState) {
+        debug_assert!(dom_id < self.domains.len());
+        debug_assert!(new_state.num_bits() == self.domains[dom_id].num_bits());
+
+        self.domains[dom_id].set_cur_state(new_state);
     }
 
     /// Set the current state fields, of each domain.
     pub fn set_cur_states(&mut self, new_states: &StatesCorr) {
         debug_assert!(self.is_congruent(new_states));
 
-        for (domx, stax) in self.iter_mut().zip(new_states.iter()) {
+        for (domx, stax) in self.domains.iter_mut().zip(new_states.iter()) {
             domx.set_cur_state(stax.clone());
         }
     }
@@ -1638,33 +1644,44 @@ impl SessionData {
     /// Return a vector of corresponding num_bits.
     pub fn num_bits_vec(&self) -> Vec<usize> {
         let mut ret_vec = Vec::<usize>::with_capacity(self.len());
-        for domx in self.iter() {
+        for domx in self.domains.iter() {
             ret_vec.push(domx.num_bits());
         }
         ret_vec
     }
 
-    /// Return a vector iterator.
-    pub fn iter(&self) -> Iter<SomeDomain> {
-        self.domains.iter()
+    /// Find a domain that matches a givet ID, return a reference.
+    pub fn find(&self, dom_id: usize) -> Option<&SomeDomain> {
+        if dom_id >= self.domains.len() {
+            return None;
+        }
+        Some(&self.domains[dom_id])
     }
 
-    /// Return a vector mut iterator.
-    pub fn iter_mut(&mut self) -> IterMut<SomeDomain> {
-        self.domains.iter_mut()
-    }
-} // end impl SessionData
+    /// Take an action in a domain.
+    pub fn take_action(&mut self, dom_id: usize, act_id: usize) {
+        debug_assert!(dom_id < self.len());
 
-impl Index<usize> for SessionData {
-    type Output = SomeDomain;
-    fn index(&self, i: usize) -> &SomeDomain {
-        &self.domains[i]
+        self.domains[dom_id].take_action(act_id);
     }
-}
 
-impl IndexMut<usize> for SessionData {
-    fn index_mut(&mut self, i: usize) -> &mut Self::Output {
-        &mut self.domains[i]
+    /// Evaluate an arbitrary sample.
+    pub fn eval_sample_arbitrary(&mut self, dom_id: usize, act_id: usize, smpl: &SomeSample) {
+        debug_assert!(dom_id < self.len());
+
+        self.domains[dom_id].eval_sample_arbitrary(act_id, smpl);
+    }
+
+    /// Take an arbitrary action.
+    pub fn take_action_arbitrary(&mut self, dom_id: usize, act_id: usize, astate: &SomeState) {
+        debug_assert!(dom_id < self.len());
+
+        self.domains[dom_id].take_action_arbitrary(act_id, astate);
+    }
+
+    /// Set the cleanup limit for a domain-action.
+    pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
+        self.domains[dom_id].set_cleanup(act_id, trigger);
     }
 }
 
@@ -1871,31 +1888,30 @@ mod tests {
             s0000
         ]",
         )?;
-        let domx = &mut sdx[0];
 
         // Set up action to change the first bit.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
-        sdx[0].set_cur_state(SomeState::from_str("s0001")?);
+        sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
-        sdx[0].get_needs(); // set aggregate changes
+        sdx.get_needs(); // set aggregate changes
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1111]")?;
@@ -1932,34 +1948,33 @@ mod tests {
             s0000
         ]",
         )?;
-        let domx = &mut sdx[0];
 
         // Set up action to change the first bit.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
-        sdx[0].set_cur_state(SomeState::from_str("s0001")?);
+        sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
 
-        sdx[0].get_needs(); // set aggregate changes
+        sdx.get_needs(); // set aggregate changes
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
@@ -1987,35 +2002,34 @@ mod tests {
             s0000
         ]",
         )?;
-        let domx = &mut sdx[0];
 
         // Set up action to change the first bit.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001")?;
-        sdx[0].set_cur_state(first_state.clone());
+        sdx.set_domain_state(0, first_state.clone());
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
 
-        sdx[0].get_needs(); // set aggregate changes
+        sdx.get_needs(); // set aggregate changes
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
@@ -2038,34 +2052,33 @@ mod tests {
             s0000
         ]",
         )?;
-        let domx = &mut sdx[0];
 
         // Set up action to change the first bit.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
-        sdx[0].set_cur_state(SomeState::from_str("s0001")?);
+        sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
 
-        sdx[0].get_needs(); // set aggregate changes
+        sdx.get_needs(); // set aggregate changes
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
@@ -2092,8 +2105,8 @@ mod tests {
         println!("all states {}", all_states);
 
         assert!(all_states.len() == 2);
-        assert!(all_states[0] == sdx[0].cur_state);
-        assert!(all_states[1] == sdx[1].cur_state);
+        assert!(all_states[0] == sdx.find(0).expect("SNH").cur_state);
+        assert!(all_states[1] == sdx.find(1).expect("SNH").cur_state);
 
         Ok(())
     }
@@ -2110,20 +2123,20 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set select regions.
 
@@ -2138,7 +2151,7 @@ mod tests {
         sdx.get_needs();
 
         let s0 = SomeState::from_str("s0000")?;
-        sdx[0].set_cur_state(s0.clone());
+        sdx.set_domain_state(0, s0.clone());
 
         let start_region = RegionsCorr::from_str("RC[r0000]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
@@ -2167,28 +2180,28 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up dom 0 negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r01x1, rxxxx], -1]")?);
@@ -2204,16 +2217,16 @@ mod tests {
         sdx.calc_select();
 
         let s0 = SomeState::from_str("s0000")?;
-        sdx[0].set_cur_state(s0.clone());
+        sdx.set_domain_state(0, s0.clone());
 
         let s1 = SomeState::from_str("s0001")?;
-        sdx[1].set_cur_state(s1.clone());
+        sdx.set_domain_state(1, s1.clone());
 
         let start_region = RegionsCorr::from_str("RC[r0000, r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1111, r1110]")?;
 
-        println!("\nActions {}\n", sdx[0].actions);
-        println!("\nActions {}\n", sdx[1].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
@@ -2240,28 +2253,28 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r00xx, rxx11], -1]")?);
@@ -2272,17 +2285,17 @@ mod tests {
         sdx.calc_select();
 
         let s5 = SomeState::from_str("s0101")?;
-        sdx[0].set_cur_state(s5.clone());
+        sdx.set_domain_state(0, s5.clone());
 
         let s7 = SomeState::from_str("s0111")?;
-        sdx[1].set_cur_state(s7.clone());
+        sdx.set_domain_state(1, s7.clone());
 
         let start_regions = RegionsCorr::from_str("RC[r0101, r0111]")?;
 
         let goal_regions = RegionsCorr::from_str("RC[r1001, r0111]")?;
 
-        println!("\nActions {}\n", sdx[0].actions);
-        println!("\nActions {}\n", sdx[1].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
@@ -2317,28 +2330,28 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[1].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r000x, rxx11], -1]")?);
@@ -2349,17 +2362,17 @@ mod tests {
         sdx.calc_select();
 
         let s5 = SomeState::from_str("s0101")?;
-        sdx[0].set_cur_state(s5.clone());
+        sdx.set_domain_state(0, s5.clone());
 
         let s7 = SomeState::from_str("s0111")?;
-        sdx[1].set_cur_state(s7.clone());
+        sdx.set_domain_state(1, s7.clone());
 
         let start_regions = RegionsCorr::from_str("RC[r0101, r0111]")?;
 
         let goal_regions = RegionsCorr::from_str("RC[r1001, r0111]")?;
 
-        println!("\nActions {}\n", sdx[0].actions);
-        println!("\nActions {}\n", sdx[1].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
@@ -2391,11 +2404,11 @@ mod tests {
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001_0010")?;
-        sdx[0].set_cur_state(first_state.clone());
+        sdx.set_domain_state(0, first_state.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::from_str("s1010_1011_1100_1101")?;
-        sdx[1].set_cur_state(state2.clone());
+        sdx.set_domain_state(1, state2.clone());
 
         sdx.boredom = 0;
         sdx.boredom_limit = 0;
@@ -2416,11 +2429,11 @@ mod tests {
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0000_0101")?;
-        sdx[0].set_cur_state(first_state.clone());
+        sdx.set_domain_state(0, first_state.clone());
 
         // Set state for domain 1.
         let state2 = SomeState::from_str("s1010_0010_1000_1101")?;
-        sdx[1].set_cur_state(state2.clone());
+        sdx.set_domain_state(1, state2.clone());
 
         sdx.boredom = 0;
         sdx.boredom_limit = 2;
@@ -2572,29 +2585,29 @@ mod tests {
         )?;
 
         // Set up action to change the first bit.
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(0, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
 
         // Set up action to change the second bit.
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(1, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
 
         // Set up action to change the third bit.
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(2, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
 
         // Set up action to change the fourth bit.
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        sdx[0].take_action_arbitrary(3, &SomeState::from_str("s1111")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         let s3 = SomeState::from_str("s0011")?;
-        sdx[0].set_cur_state(s3.clone());
+        sdx.set_domain_state(0, s3.clone());
 
         let start_regions = RegionsCorr::from_str("RC[r0011]")?;
 
         let goal_regions = RegionsCorr::from_str("RC[r1111]")?;
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
 
         // Try making plans.
         // Bridge overlap, using 01XX, between 3 and F, at 7, strangely
@@ -2614,7 +2627,7 @@ mod tests {
 
         let goal_regions = RegionsCorr::from_str("RC[r1101]")?;
 
-        println!("\nActions {}\n", sdx[0].actions);
+        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
 
         // Try making plans.
         // No bridge overlap here, using 01XX, between 3 and D, requiring a step from
