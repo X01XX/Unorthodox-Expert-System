@@ -54,7 +54,6 @@ use sample::SomeSample;
 use state::SomeState;
 mod domain;
 mod needstore;
-use crate::needstore::NeedStore;
 mod plan;
 mod pn;
 mod statescorr;
@@ -63,7 +62,7 @@ use pn::Pn;
 mod sessiondata;
 mod step;
 mod stepstore;
-use sessiondata::{SessionData, InxPlan, NeedPlan};
+use sessiondata::{NeedPlan, SessionData};
 mod actioninterface;
 mod planscorr;
 mod planscorrstore;
@@ -73,9 +72,9 @@ mod selectregions;
 mod selectregionsstore;
 mod target;
 use crate::target::ATarget;
+mod domainstore;
 mod maskscorr;
 mod maskstore;
-mod domainstore;
 
 extern crate unicode_segmentation;
 
@@ -136,8 +135,8 @@ fn main() {
 /// Load data from a file, then run with user input, step by step.
 fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // Init DomainStore or read in from file.
-    let mut dmxs = match load_data(file_path) {
-        Ok(new_dmxs) => new_dmxs,
+    let mut sdx = match load_data(file_path) {
+        Ok(new_sdx) => new_sdx,
         Err(errstr) => {
             eprintln!("main::run_with_file: {errstr}");
             return 1;
@@ -147,46 +146,46 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // Display UI info.
     usage();
 
-    dmxs.print_select_stores_info();
+    sdx.print_select_stores_info();
 
     // Display current state.
-    let (needs, can_do, cant_do) = generate_and_display_needs(&mut dmxs);
+    generate_and_display_needs(&mut sdx);
 
     // run it
     match runs {
         0 => {
-            do_interactive_session(&mut dmxs, needs, can_do, cant_do);
+            do_interactive_session(&mut sdx);
         }
         1 => {
-            do_session_until_no_needs(&mut dmxs);
+            do_session_until_no_needs(&mut sdx);
         }
         _ => {
-            run_number_times(&mut dmxs, runs);
+            run_number_times(&mut sdx, runs);
         }
     }
     0
 }
 
 /// Run until no more needs can be done, then take user input.
-fn do_session_until_no_needs(dmxs: &mut SessionData) {
+fn do_session_until_no_needs(sdx: &mut SessionData) {
     let start = Instant::now();
-    do_session(dmxs);
+    do_session(sdx);
 
     let duration = start.elapsed();
     println!(
         "Steps: {} Time elapsed: {:.2?} seconds",
-        dmxs.step_num - 1,
+        sdx.step_num - 1,
         duration
     );
 
-    let (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
+    generate_and_display_needs(sdx);
 
-    do_interactive_session(dmxs, needs, can_do, cant_do);
+    do_interactive_session(sdx);
 }
 
 /// Run a number of times without user input, generate aggregate data.
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
-fn run_number_times(dmxs: &mut SessionData, num_runs: usize) -> usize {
+fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
     let mut runs_left = num_runs;
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
@@ -197,7 +196,7 @@ fn run_number_times(dmxs: &mut SessionData, num_runs: usize) -> usize {
         runs_left -= 1;
 
         let start = Instant::now();
-        let (steps, groups, expected, num_cant) = do_one_session(dmxs);
+        let (steps, groups, expected, num_cant) = do_one_session(sdx);
 
         let duration = start.elapsed();
         println!(
@@ -251,19 +250,19 @@ fn run_number_times(dmxs: &mut SessionData, num_runs: usize) -> usize {
 }
 
 /// Do a session until no needs can be done.
-pub fn do_session(dmxs: &mut SessionData) -> usize {
+pub fn do_session(sdx: &mut SessionData) -> usize {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        let (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
+        generate_and_display_needs(sdx);
 
         // Check for end.
-        if can_do.is_empty() {
-            return cant_do.len();
+        if sdx.can_do.is_empty() {
+            return sdx.cant_do.len();
         }
 
-        let np_inx = dmxs.choose_a_need(&can_do, &needs);
+        let np_inx = sdx.choose_a_need();
 
-        match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+        match sdx.do_a_need(np_inx) {
             Ok(()) => println!("Need satisfied"),
             Err(errstr) => println!("{errstr}"),
         }
@@ -273,22 +272,22 @@ pub fn do_session(dmxs: &mut SessionData) -> usize {
 /// Do a session until no needs can be done,
 /// then position to a desired end state,
 /// return true if the desired end state is attained.
-pub fn do_session_then_end_state(dmxs: &mut SessionData, end_state_within: &RegionsCorr) -> bool {
+pub fn do_session_then_end_state(sdx: &mut SessionData, end_state_within: &RegionsCorr) -> bool {
     loop {
         // Generate needs, get can_do and cant_do need vectors.
-        let (needs, can_do, _cant_do) = generate_and_display_needs(dmxs);
+        generate_and_display_needs(sdx);
 
         // Check for end.
-        if can_do.is_empty() {
-            match to_end_state_within(dmxs, end_state_within) {
+        if sdx.can_do.is_empty() {
+            match to_end_state_within(sdx, end_state_within) {
                 Ok(()) => return true,
                 Err(_) => return false,
             }
         }
 
-        let np_inx = dmxs.choose_a_need(&can_do, &needs);
+        let np_inx = sdx.choose_a_need();
 
-        match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+        match sdx.do_a_need(np_inx) {
             Ok(()) => println!("Need satisfied"),
             Err(errstr) => println!("{errstr}"),
         }
@@ -296,8 +295,8 @@ pub fn do_session_then_end_state(dmxs: &mut SessionData, end_state_within: &Regi
 }
 
 /// Seek an end state within a given RegionsCorr instance.
-fn to_end_state_within(dmxs: &mut SessionData, end_state: &RegionsCorr) -> Result<(), String> {
-    let cur_regions = dmxs.all_current_regions();
+fn to_end_state_within(sdx: &mut SessionData, end_state: &RegionsCorr) -> Result<(), String> {
+    let cur_regions = sdx.all_current_regions();
 
     debug_assert!(cur_regions.is_congruent(end_state));
 
@@ -305,10 +304,10 @@ fn to_end_state_within(dmxs: &mut SessionData, end_state: &RegionsCorr) -> Resul
         return Ok(());
     }
 
-    match dmxs.plan_using_least_negative_select_regions(&cur_regions, end_state) {
+    match sdx.plan_using_least_negative_select_regions(&cur_regions, end_state) {
         Ok(planx) => match planx {
             NeedPlan::AtTarget {} => panic!("This condition should have been checked for earlier."),
-            NeedPlan::PlanFound { plan: plnx } => match dmxs.run_planscorrstore(&plnx) {
+            NeedPlan::PlanFound { plan: plnx } => match sdx.run_planscorrstore(&plnx) {
                 Ok(_) => Ok(()),
                 Err(errstr) => Err(errstr),
             },
@@ -318,49 +317,48 @@ fn to_end_state_within(dmxs: &mut SessionData, end_state: &RegionsCorr) -> Resul
 }
 
 /// Generate and display domain and needs.
-pub fn generate_and_display_needs(dmxs: &mut SessionData) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
+pub fn generate_and_display_needs(sdx: &mut SessionData) {
     // Get the needs of all Domains / Actions
-    dmxs.print();
-    let (needs, can_do, cant_do) = dmxs.get_needs();
-    display_needs(dmxs, &needs, &can_do, &cant_do);
-    (needs, can_do, cant_do)
+    sdx.print();
+    sdx.get_needs();
+    display_needs(sdx);
 }
 
-pub fn display_needs(dmxs: &SessionData, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
+pub fn display_needs(sdx: &SessionData) {
     // Print needs.
-    if needs.is_empty() {
+    if sdx.needs.is_empty() {
         println!("\nNumber needs: 0");
     } else {
         // Print needs that cannot be done.
-        if cant_do.is_empty() {
+        if sdx.cant_do.is_empty() {
             // println!("\nNeeds that cannot be done: None");
         } else {
             println!("\nNeeds that cannot be done:");
-            for ndplnx in cant_do.iter() {
-                println!("   {}", needs[*ndplnx]);
+            for ndplnx in sdx.cant_do.iter() {
+                println!("   {}", sdx.needs[*ndplnx]);
             }
         }
     }
     // Print needs that can be done.
-    print_can_do(dmxs, can_do, needs);
+    print_can_do(sdx);
 }
 
 /// Print needs that can be done.
-pub fn print_can_do(dmxs: &SessionData, can_do: &[InxPlan], needs: &NeedStore) {
-    if can_do.is_empty() {
-        if needs.is_not_empty() {
+pub fn print_can_do(sdx: &SessionData) {
+    if sdx.can_do.is_empty() {
+        if sdx.needs.is_not_empty() {
             println!("\nNeeds that can be done: None");
         }
-        dmxs.print_select();
+        sdx.print_select();
     } else {
         println!("\nNeeds that can be done:");
 
-        for (inx, ndplnx) in can_do.iter().enumerate() {
+        for (inx, ndplnx) in sdx.can_do.iter().enumerate() {
             if ndplnx.desired_num_bits_changed != 0 {
                 println!(
                     "{:2} {} {}/{}/{}/{:+}",
                     inx,
-                    needs[ndplnx.inx],
+                    sdx.needs[ndplnx.inx],
                     match &ndplnx.plans {
                         NeedPlan::AtTarget {} => "At Target".to_string(),
                         NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
@@ -373,7 +371,7 @@ pub fn print_can_do(dmxs: &SessionData, can_do: &[InxPlan], needs: &NeedStore) {
                 println!(
                     "{:2} {} {}",
                     inx,
-                    needs[ndplnx.inx],
+                    sdx.needs[ndplnx.inx],
                     match &ndplnx.plans {
                         NeedPlan::AtTarget {} => "At Target".to_string(),
                         NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
@@ -387,37 +385,32 @@ pub fn print_can_do(dmxs: &SessionData, can_do: &[InxPlan], needs: &NeedStore) {
 /// Do one session to end.
 /// Return the number steps taken get to the point where
 /// there are no more needs.
-/// Return domainstore end-state info.
-fn do_one_session(dmxs: &mut SessionData) -> (usize, usize, usize, usize) {
-    let num_cant = do_session(dmxs);
+/// Return session end-state info.
+fn do_one_session(sdx: &mut SessionData) -> (usize, usize, usize, usize) {
+    let num_cant = do_session(sdx);
 
     (
-        dmxs.step_num,
-        dmxs.number_groups(),
-        dmxs.number_groups_expected(),
+        sdx.step_num,
+        sdx.number_groups(),
+        sdx.number_groups_expected(),
         num_cant,
     )
 }
 
 /// Do a session, step by step, taking user commands.
-pub fn do_interactive_session(
-    dmxs: &mut SessionData,
-    mut needs: NeedStore,
-    mut can_do: Vec<InxPlan>,
-    mut cant_do: Vec<usize>,
-) {
+pub fn do_interactive_session(sdx: &mut SessionData) {
     loop {
-        command_loop(dmxs, &needs, &can_do, &cant_do);
+        command_loop(sdx);
 
         // Generate needs, get can_do and cant_do need vectors.
-        (needs, can_do, cant_do) = generate_and_display_needs(dmxs);
+        generate_and_display_needs(sdx);
     } // end loop
 }
 
 /// Do command loop.
 /// Some commands work without the need to return and display the session
 /// state again, so the loop.  Otherwise the command returns.
-fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], cant_do: &[usize]) {
+fn command_loop(sdx: &mut SessionData) {
     //println!("start command loop");
     loop {
         let mut cmd = Vec::<&str>::with_capacity(10);
@@ -431,9 +424,9 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
         // Default command, just press Enter
         if cmd.is_empty() {
             // Process needs
-            if can_do.is_empty() {
+            if sdx.can_do.is_empty() {
             } else {
-                do_any_need(dmxs, needs, can_do);
+                do_any_need(sdx);
             }
             return;
         }
@@ -442,14 +435,14 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
         match cmd[0] {
             "aj" => {
                 if cmd.len() == 2 {
-                    match display_action_anchor_info(dmxs, &cmd) {
+                    match display_action_anchor_info(sdx, &cmd) {
                         Ok(()) => continue,
                         Err(error) => {
                             println!("{error}");
                         }
                     }
                 } else if cmd.len() == 3 {
-                    match display_group_anchor_info(dmxs, &cmd) {
+                    match display_group_anchor_info(sdx, &cmd) {
                         Ok(()) => continue,
                         Err(error) => {
                             println!("{error}");
@@ -459,26 +452,26 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
                     println!("Too many args for the aj command.");
                 }
             }
-            "cd" => match do_change_domain(dmxs, &cmd) {
+            "cd" => match do_change_domain(sdx, &cmd) {
                 Ok(()) => {
-                    dmxs.print();
-                    display_needs(dmxs, needs, can_do, cant_do);
+                    sdx.print();
+                    display_needs(sdx);
                 }
                 Err(error) => {
                     println!("{error}");
                 }
             },
-            "cs" => match do_change_state_command(dmxs, &cmd) {
+            "cs" => match do_change_state_command(sdx, &cmd) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
             },
             "dcs" => {
-                dmxs.print();
-                print_can_do(dmxs, can_do, needs);
+                sdx.print();
+                print_can_do(sdx);
             }
-            "dn" => match do_chosen_need(dmxs, &cmd, needs, can_do) {
+            "dn" => match do_chosen_need(sdx, &cmd) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
@@ -488,19 +481,19 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
                 println!("Done");
                 process::exit(0);
             }
-            "fsd" => match store_data(dmxs, &cmd) {
+            "fsd" => match store_data(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
                 }
             },
             "gnds" => {
-                let dom_id = dmxs.current_domain;
-                dmxs[dom_id].get_needs();
-                dmxs.print();
+                let dom_id = sdx.current_domain;
+                sdx[dom_id].get_needs();
+                sdx.print();
                 continue;
             }
-            "gps" => match do_print_group_defining_squares_command(dmxs, &cmd) {
+            "gps" => match do_print_group_defining_squares_command(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
@@ -508,37 +501,37 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
             },
             "h" => usage(),
             "help" => usage(),
-            "ppd" => match do_print_plan_details(dmxs, &cmd, needs, can_do) {
+            "ppd" => match do_print_plan_details(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
                 }
             },
-            "ps" => match do_print_squares_command(dmxs, &cmd) {
+            "ps" => match do_print_squares_command(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
                 }
             },
-            "psr" => match do_print_select_regions(dmxs, &cmd) {
+            "psr" => match do_print_select_regions(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
                 }
             },
             "run" => {
-                if can_do.is_empty() {
+                if sdx.can_do.is_empty() {
                 } else {
-                    do_session(dmxs);
+                    do_session(sdx);
                 }
             }
-            "ss" => match do_sample_state_command(dmxs, &cmd) {
+            "ss" => match do_sample_state_command(sdx, &cmd) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
                 }
             },
-            "to" => match do_to_region_command(dmxs, &cmd) {
+            "to" => match do_to_region_command(sdx, &cmd) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
@@ -552,15 +545,15 @@ fn command_loop(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan], c
 } // end command_loop
 
 /// Change the domain to a number given by user.
-fn do_change_domain(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_change_domain(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one number argument is needed for the cd command.".to_string());
     }
     // Get domain number from string
-    match dmxs.domain_id_from_string(cmd[1]) {
+    match sdx.domain_id_from_string(cmd[1]) {
         Ok(d_id) => {
-            dmxs.change_domain(d_id);
+            sdx.change_domain(d_id);
             Ok(())
         }
         Err(error) => Err(error),
@@ -569,37 +562,32 @@ fn do_change_domain(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> 
 
 /// Choose a need from a number of possibilities.
 /// Attempt to satisfy the chosen need.
-fn do_any_need(dmxs: &mut SessionData, needs: &NeedStore, can_do: &[InxPlan]) {
-    let np_inx = dmxs.choose_a_need(can_do, needs);
+fn do_any_need(sdx: &mut SessionData) {
+    let np_inx = sdx.choose_a_need();
 
-    match dmxs.do_a_need(&needs[can_do[np_inx].inx], &can_do[np_inx]) {
+    match sdx.do_a_need(np_inx) {
         Ok(()) => println!("Need satisfied"),
         Err(errstr) => println!("{errstr}"),
     }
 }
 
 /// Print details of a given plan
-fn do_print_plan_details(
-    dmxs: &SessionData,
-    cmd: &[&str],
-    needs: &NeedStore,
-    can_do: &[InxPlan],
-) -> Result<(), String> {
+fn do_print_plan_details(sdx: &SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the ppd command.".to_string());
     }
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= can_do.len() {
+            if n_num >= sdx.can_do.len() {
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
-                let ndx = &needs[can_do[n_num].inx];
+                let ndx = &sdx.needs[sdx.can_do[n_num].inx];
 
                 println!("\n{} Need: {}", n_num, ndx);
-                match &can_do[n_num].plans {
+                match &sdx.can_do[n_num].plans {
                     NeedPlan::AtTarget {} => println!("AT?"),
-                    NeedPlan::PlanFound { plan: plnx } => dmxs.print_planscorrstore_detail(plnx),
+                    NeedPlan::PlanFound { plan: plnx } => sdx.print_planscorrstore_detail(plnx),
                 }
                 Ok(())
             }
@@ -609,48 +597,43 @@ fn do_print_plan_details(
 }
 
 /// Try to satisfy a need chosen by the user.
-fn do_chosen_need(
-    dmxs: &mut SessionData,
-    cmd: &[&str],
-    needs: &NeedStore,
-    can_do: &[InxPlan],
-) -> Result<(), String> {
+fn do_chosen_need(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the dn command.".to_string());
     }
 
-    let dom_id = dmxs.current_domain;
+    let dom_id = sdx.current_domain;
 
     match cmd[1].parse::<usize>() {
         Ok(n_num) => {
-            if n_num >= can_do.len() {
+            if n_num >= sdx.can_do.len() {
                 Err(format!("Invalid Need Number: {}", cmd[1]))
             } else {
-                let nd_inx = can_do[n_num].inx;
+                let nd_inx = sdx.can_do[n_num].inx;
 
                 println!(
                     "\nNeed chosen: {:2} {} {}",
                     n_num,
-                    needs[nd_inx],
-                    match &can_do[n_num].plans {
+                    sdx.needs[nd_inx],
+                    match &sdx.can_do[n_num].plans {
                         NeedPlan::AtTarget {} => "At Target".to_string(),
                         NeedPlan::PlanFound { plan: plnsx } => plnsx.str_terse(),
                     }
                 );
 
-                match needs[nd_inx] {
+                match sdx.needs[nd_inx] {
                     SomeNeed::ToSelectRegions { .. } => (),
                     SomeNeed::ExitSelectRegions { .. } => (),
                     _ => {
-                        if dom_id != needs[nd_inx].dom_id().unwrap() {
-                            dmxs.change_domain(needs[nd_inx].dom_id().unwrap());
-                            dmxs.print();
+                        if dom_id != sdx.needs[nd_inx].dom_id().unwrap() {
+                            sdx.change_domain(sdx.needs[nd_inx].dom_id().unwrap());
+                            sdx.print();
                         }
                     }
                 }
 
-                match dmxs.do_a_need(&needs[can_do[n_num].inx], &can_do[n_num]) {
+                match sdx.do_a_need(n_num) {
                     Ok(()) => {
                         println!("Need satisfied");
                         Ok(())
@@ -664,7 +647,7 @@ fn do_chosen_need(
 }
 
 /// Do a change-state command.
-fn do_change_state_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one state argument is needed for the cs command.".to_string());
@@ -673,7 +656,7 @@ fn do_change_state_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), S
     match SomeState::from_str(cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
-            dmxs.set_cur_state(a_state);
+            sdx.set_cur_state(a_state);
             Ok(())
         }
         Err(error) => Err(format!("\nDid not understand state, {error}")),
@@ -681,7 +664,7 @@ fn do_change_state_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), S
 }
 
 /// Do to-region command.
-fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one region argument is needed for the to command.".to_string());
@@ -690,8 +673,8 @@ fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), Stri
     // Get region from string
     let goal_region = SomeRegion::from_str(cmd[1])?;
 
-    let dom_id = dmxs.current_domain;
-    let dmx = &mut dmxs[dom_id];
+    let dom_id = sdx.current_domain;
+    let dmx = &mut sdx[dom_id];
 
     if goal_region.num_bits() != dmx.num_bits() {
         return Err(format!(
@@ -722,7 +705,7 @@ fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), Stri
 
     for _ in 0..6 {
         println!("\nCalculating plan.");
-        match dmxs.plan_using_least_negative_select_regions_for_target(
+        match sdx.plan_using_least_negative_select_regions_for_target(
             Some(dom_id),
             &ATarget::Region {
                 region: goal_region.clone(),
@@ -734,7 +717,7 @@ fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), Stri
                     NeedPlan::PlanFound { plan: plnx } => {
                         println!("{}", plnx.str_terse());
                         println!("\nrunning plan:");
-                        match dmxs.run_planscorrstore(&plnx) {
+                        match sdx.run_planscorrstore(&plnx) {
                             Ok(num) => {
                                 if num == 1 {
                                     println!("{num} step run.")
@@ -751,10 +734,10 @@ fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), Stri
             Err(errvec) => println!("{:?}", errvec),
         }
     }
-    if cur_region.is_superset_of(&dmxs[dom_id].cur_state) {
+    if cur_region.is_superset_of(&sdx[dom_id].cur_state) {
         println!("\nNo plan to get from {cur_region} to {goal_region}");
     }
-    if goal_region.is_superset_of(&dmxs[dom_id].cur_state) {
+    if goal_region.is_superset_of(&sdx[dom_id].cur_state) {
         println!("\nPlan succeeded");
     } else {
         println!("\nPlan failed");
@@ -766,7 +749,7 @@ fn do_to_region_command(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), Stri
 }
 
 /// Do sample-state command.
-fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(), String> {
     if cmd.len() == 1 {
         return Err("Action number is needed for the ss command.".to_string());
     }
@@ -779,8 +762,8 @@ fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<()
     };
 
     if cmd.len() == 2 {
-        let dom_id = dmxs.current_domain;
-        let dmx = &mut dmxs[dom_id];
+        let dom_id = sdx.current_domain;
+        let dmx = &mut sdx[dom_id];
 
         println!("Act {act_id} sample curent state.");
         dmx.take_action(act_id);
@@ -796,9 +779,9 @@ fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<()
             }
         };
 
-        let dom_id = dmxs.current_domain;
+        let dom_id = sdx.current_domain;
 
-        let dmx = &mut dmxs[dom_id];
+        let dmx = &mut sdx[dom_id];
 
         if a_state.num_bits() != dmx.num_bits() {
             return Err("State does not have the same number of bits as the CCD.".to_string());
@@ -837,8 +820,8 @@ fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<()
             return Err("States do not have the same number of bits.".to_string());
         }
 
-        let dom_id = dmxs.current_domain;
-        let dmx = &mut dmxs[dom_id];
+        let dom_id = sdx.current_domain;
+        let dmx = &mut sdx[dom_id];
 
         if i_state.num_bits() != dmx.num_bits() {
             return Err("States do not have the same number of bits as the CCD.".to_string());
@@ -856,8 +839,8 @@ fn do_sample_state_command(dmxs: &mut SessionData, cmd: &Vec<&str>) -> Result<()
 /// Display anchors, rating, and adjacent squares, for an action.
 /// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
 /// should equal the sum of the first two number of the rating.
-fn display_action_anchor_info(dmxs: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
-    let dom_id = dmxs.current_domain;
+fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+    let dom_id = sdx.current_domain;
 
     if cmd.len() == 1 {
         return Err("Need to supply an action number".to_string());
@@ -872,25 +855,25 @@ fn display_action_anchor_info(dmxs: &mut SessionData, cmd: &[&str]) -> Result<()
     };
 
     // Display the rates
-    dmxs[dom_id].display_action_anchor_info(act_id)
+    sdx[dom_id].display_action_anchor_info(act_id)
 }
 
 /// Do print-squares command.
-fn do_print_select_regions(dmxs: &SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_print_select_regions(sdx: &SessionData, cmd: &[&str]) -> Result<(), String> {
     if cmd.len() != 1 {
         return Err("No arguments needed for the psr command".to_string());
     }
 
-    for selx in dmxs.select.iter() {
+    for selx in sdx.select.iter() {
         println!("{}", selx);
     }
     Ok(())
 }
 
 /// Do print-squares command.
-fn do_print_squares_command(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_id = dmxs.current_domain;
-    let dmx = &dmxs[dom_id];
+fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+    let dom_id = sdx.current_domain;
+    let dmx = &sdx[dom_id];
 
     if cmd.len() == 1 {
         return Err("Need to supply at least an action number".to_string());
@@ -1017,9 +1000,9 @@ fn do_print_squares_command(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), S
 }
 
 /// Do adjacent-anchor command.
-fn display_group_anchor_info(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
-    let dom_id = dmxs.current_domain;
-    let dmx = &dmxs[dom_id];
+fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+    let dom_id = sdx.current_domain;
+    let dmx = &sdx[dom_id];
 
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
@@ -1048,11 +1031,11 @@ fn display_group_anchor_info(dmxs: &SessionData, cmd: &Vec<&str>) -> Result<(), 
 
 /// Do print-group-defining-squares command.
 fn do_print_group_defining_squares_command(
-    dmxs: &SessionData,
+    sdx: &SessionData,
     cmd: &Vec<&str>,
 ) -> Result<(), String> {
-    let dom_id = dmxs.current_domain;
-    let dmx = &dmxs[dom_id];
+    let dom_id = sdx.current_domain;
+    let dmx = &sdx[dom_id];
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
@@ -1262,6 +1245,7 @@ fn store_data(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::needstore::NeedStore;
     use crate::regionscorr::RegionsCorr;
     use crate::selectregions::SelectRegions;
 
@@ -1430,10 +1414,10 @@ mod tests {
         }
 
         // Insure boredom is zero.
-        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut sdx);
+        generate_and_display_needs(&mut sdx);
         assert!(sdx.boredom == 0);
-        assert!(needs.len() == 1);
-        assert!(needs.contains_similar_need(
+        assert!(sdx.needs.len() == 1);
+        assert!(sdx.needs.contains_similar_need(
             "ToSelectRegions",
             &ATarget::SelectRegions {
                 select: SelectRegions::from_str("SR[RC[r1000], 1]")?
@@ -1447,7 +1431,7 @@ mod tests {
         assert!(sdx[0].actions[3].groups.len() == 1);
 
         // Move to positive region.
-        do_any_need(&mut sdx, &needs, &can_do);
+        do_any_need(&mut sdx);
 
         assert!(sdx[0].cur_state == (SomeState::from_str("s1000")?));
 
@@ -1487,23 +1471,23 @@ mod tests {
         assert!(sdx[0].actions[3].groups.len() == 1);
 
         // Inc boredom by 1.
-        let (needs, can_do, cant_do) = generate_and_display_needs(&mut sdx);
-        println!("needs {needs}");
-        println!("cant_do {}", cant_do.len());
-        println!("can_do {}", can_do.len());
+        generate_and_display_needs(&mut sdx);
+        println!("needs {}", sdx.needs);
+        println!("cant_do {}", sdx.cant_do.len());
+        println!("can_do {}", sdx.can_do.len());
         //assert!(can_do.is_empty());
         // Inc boredom by 1.
-        let (needs, can_do, cant_do) = generate_and_display_needs(&mut sdx);
-        println!("needs {needs}");
-        println!("cant_do {}", cant_do.len());
-        println!("can_do {}", can_do.len());
+        generate_and_display_needs(&mut sdx);
+        println!("needs {}", sdx.needs);
+        println!("cant_do {}", sdx.cant_do.len());
+        println!("can_do {}", sdx.can_do.len());
 
         //assert!(can_do.is_empty());
 
         // Should want to try state 0111 now.
-        let (needs, can_do, _cant_do) = generate_and_display_needs(&mut sdx);
-        assert!(needs.len() == 1);
-        assert!(needs.contains_similar_need(
+        generate_and_display_needs(&mut sdx);
+        assert!(sdx.needs.len() == 1);
+        assert!(sdx.needs.contains_similar_need(
             "ToSelectRegions",
             &ATarget::SelectRegions {
                 select: SelectRegions::from_str("SR[RC[r0111], 2]")?
@@ -1511,21 +1495,21 @@ mod tests {
         ));
 
         // Move to positive 0111..
-        do_any_need(&mut sdx, &needs, &can_do);
-        let (needs, _can_do, _cant_do) = generate_and_display_needs(&mut sdx);
-        assert!(needs.len() == 1);
+        do_any_need(&mut sdx);
+        generate_and_display_needs(&mut sdx);
+        assert!(sdx.needs.len() == 1);
         assert!(
-            needs.contains_similar_need(
+            sdx.needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
                     regions: RegionsCorr::from_str("RC[rXXX0]")?
                 }
-            ) || needs.contains_similar_need(
+            ) || sdx.needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
                     regions: RegionsCorr::from_str("RC[rX0XX]")?
                 }
-            ) || needs.contains_similar_need(
+            ) || sdx.needs.contains_similar_need(
                 "ExitSelectRegions",
                 &ATarget::DomainRegions {
                     regions: RegionsCorr::from_str("RC[rXX0X]")?

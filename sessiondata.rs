@@ -2,6 +2,7 @@
 //! and values/methods that manage the domains.
 
 use crate::domain::SomeDomain;
+use crate::domainstore::DomainStore;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
@@ -18,7 +19,6 @@ use crate::statescorr::StatesCorr;
 use crate::step::{AltRuleHint::AltRule, SomeStep};
 use crate::target::ATarget;
 use crate::tools::{self, CorrespondingItems};
-use crate::domainstore::DomainStore;
 
 use rand::Rng;
 use serde::{Deserialize, Serialize};
@@ -62,7 +62,7 @@ pub struct InxPlan {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize)]
 /// A vector of SomeDomain structs, and session state.
 pub struct SessionData {
     /// Vector of SomeDomain structs.
@@ -95,6 +95,13 @@ pub struct SessionData {
     /// Save the maximum fragment value.
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
+
+    /// List of current needs.
+    pub needs: NeedStore,
+    /// List of need indicies and plans.
+    pub can_do: Vec<InxPlan>,
+    /// List of indices of needs that cannot be done.
+    pub cant_do: Vec<usize>,
 }
 
 /// Implement the PartialEq trait, since two SessionDatas
@@ -114,7 +121,6 @@ impl PartialEq for SessionData {
 }
 impl Eq for SessionData {}
 
-
 impl SessionData {
     /// Return a new, empty, SessionData struct.
     pub fn new(domains: DomainStore) -> Self {
@@ -130,6 +136,9 @@ impl SessionData {
             step_num: 0,
             max_pos_value: 0,
             times_visited: vec![],
+            needs: NeedStore::new(vec![]),
+            can_do: vec![],
+            cant_do: vec![],
         }
     }
 
@@ -244,7 +253,7 @@ impl SessionData {
     /// Each Domain uses parallel processing to get needs for each Action.
     ///  plans.
     /// Set SessionData fields with need info.
-    pub fn get_needs(&mut self) -> (NeedStore, Vec<InxPlan>, Vec<usize>) {
+    pub fn get_needs(&mut self) -> (&NeedStore, &Vec<InxPlan>, &Vec<usize>) {
         self.step_num += 1;
         let mut needs = self.domains.get_needs();
 
@@ -258,7 +267,11 @@ impl SessionData {
 
         let (can_do, cant_do) = self.evaluate_needs(&needs);
 
-        (needs, can_do, cant_do)
+        self.needs = needs;
+        self.can_do = can_do;
+        self.cant_do = cant_do;
+
+        (&self.needs, &self.can_do, &self.cant_do)
     }
 
     /// Run a PlansCorrStore.
@@ -300,8 +313,8 @@ impl SessionData {
     }
 
     /// Take an action to satisfy a need,
-    pub fn take_action_need(&mut self, needx: &SomeNeed) {
-        self.domains[needx.dom_id().unwrap()].take_action_need(needx);
+    pub fn take_action_need(&mut self, inx: usize) {
+        self.domains[self.needs[inx].dom_id().unwrap()].take_action_need(&self.needs[inx]);
     }
 
     /// Return a reference to the current state of a given Domain index
@@ -578,15 +591,17 @@ impl SessionData {
     /// Scan needs, by priority, to see what need can be satisfied by a plan.
     ///
     /// Return an index to the can_do vector.
-    pub fn choose_a_need(&self, can_do: &[InxPlan], needs: &NeedStore) -> usize {
+    pub fn choose_a_need(&self) -> usize {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
-        assert!(!can_do.is_empty());
+        assert!(!self.can_do.is_empty());
 
         // Gather plan rates.
         let mut rts = vec![];
-        for inxpln in can_do.iter() {
+        for inxpln in self.can_do.iter() {
             match &inxpln.plans {
-                NeedPlan::AtTarget {} => rts.push(2000 - needs[inxpln.inx].priority() as isize), // change lower priority to higher rate.
+                NeedPlan::AtTarget {} => {
+                    rts.push(2000 - self.needs[inxpln.inx].priority() as isize)
+                } // change lower priority to higher rate.
                 NeedPlan::PlanFound { plan: plnx } => rts.push(plnx.rate()),
             };
         }
@@ -606,8 +621,8 @@ impl SessionData {
         println!(
             "\nNeed chosen: {:2} {} {}",
             inx,
-            needs[can_do[inx].inx],
-            match &can_do[inx].plans {
+            self.needs[self.can_do[inx].inx],
+            match &self.can_do[inx].plans {
                 NeedPlan::AtTarget {} => "At Target".to_string(),
                 NeedPlan::PlanFound { plan: plnx } => plnx.str_terse(),
             }
@@ -850,7 +865,7 @@ impl SessionData {
     }
 
     /// Change the current display domain.
-    pub fn change_domain(&mut self, dom_id: usize) {                                                                                         
+    pub fn change_domain(&mut self, dom_id: usize) {
         assert!(dom_id < self.domains.len());
 
         self.current_domain = dom_id;
@@ -1338,7 +1353,7 @@ impl SessionData {
     /// Return a from_str compatible string for a SessionData instance.
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("SD[");
-        
+
         rc_str.push_str(&self.domains.formatted_def());
         rc_str.push_str(", ");
 
@@ -1514,11 +1529,16 @@ impl SessionData {
     }
 
     /// Try to satisfy a need.
-    pub fn do_a_need(&mut self, needx: &SomeNeed, inx_pln: &InxPlan) -> Result<(), String> {
+    pub fn do_a_need(&mut self, np_inx: usize) -> Result<(), String> {
         let dom_id = self.current_domain;
 
+        let inx_pln = self.can_do[np_inx].clone();
+        let inx = self.can_do[np_inx].inx;
+
+        //let needx = &self.needs[inx];
+
         // Display Domain info, if needed.
-        match needx {
+        match self.needs[inx] {
             SomeNeed::ToSelectRegions { .. } => {
                 //println!("\nNeed chosen: {} {}", ndx, plans.str_terse())
             }
@@ -1526,7 +1546,7 @@ impl SessionData {
                 //println!("\nNeed chosen: {} {}", nd_inx, inx_pln.plans.str_terse())
             }
             _ => {
-                let nd_dom = needx.dom_id().unwrap();
+                let nd_dom = self.needs[inx].dom_id().unwrap();
                 if dom_id != nd_dom {
                     // Show "before" state before running need.
                     println!("\nAll domain states: {}", self.all_current_states());
@@ -1550,8 +1570,8 @@ impl SessionData {
                 Err(errstr) => {
                     println!("Run plan failed, {errstr}.");
                     if let Ok(ndpln2) = self.plan_using_least_negative_select_regions_for_target(
-                        needx.dom_id(),
-                        needx.target(),
+                        self.needs[inx].dom_id(),
+                        self.needs[inx].target(),
                     ) {
                         match ndpln2 {
                             NeedPlan::PlanFound { plan: plans2 } => {
@@ -1575,7 +1595,7 @@ impl SessionData {
                         return Err(format!(
                             "New path from {} to goal {} not found.",
                             self.all_current_states(),
-                            needx.target()
+                            self.needs[inx].target()
                         ));
                     }
                 }
@@ -1585,8 +1605,8 @@ impl SessionData {
 
         // Take action after the desired state is reached.
 
-        if needx.satisfied_by(&self.all_current_states()) {
-            match needx {
+        if self.needs[inx].satisfied_by(&self.all_current_states()) {
+            match self.needs[inx] {
                 SomeNeed::ToSelectRegions { .. } => {
                     if self.set_boredom_limit() {
                         self.update_times_visited();
@@ -1594,7 +1614,7 @@ impl SessionData {
                 }
                 SomeNeed::ExitSelectRegions { .. } => (),
                 _ => {
-                    self.take_action_need(needx);
+                    self.take_action_need(inx);
                 }
             }
             Ok(())
@@ -1761,7 +1781,7 @@ impl FromStr for SessionData {
                     Err(errstr) => return Err(format!("SessionData::from_str: {errstr}")),
                 }
             }
-        };
+        }
 
         let mut sdx = sdx_opt.expect("no DomainStore token found");
 
@@ -2696,11 +2716,8 @@ mod tests {
         let within1 = RegionsCorr::from_str("RC[r0XXX]")?;
         let within2 = RegionsCorr::from_str("RC[rX1XX]")?;
 
-        let path = sdx.get_path_through_select_regions(
-            &start_regs,
-            &goal_regs,
-            &vec![&within1, &within2],
-        );
+        let path =
+            sdx.get_path_through_select_regions(&start_regs, &goal_regs, &vec![&within1, &within2]);
         if let Some(pathx) = path {
             print!("path: ");
             for rcx in pathx.iter() {

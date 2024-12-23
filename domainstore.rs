@@ -1,21 +1,21 @@
 use crate::domain::SomeDomain;
-use crate::planscorr::PlansCorr;
-use crate::tools::CorrespondingItems;
 use crate::needstore::NeedStore;
+use crate::planscorr::PlansCorr;
 use crate::statescorr::StatesCorr;
+use crate::tools::CorrespondingItems;
 
-use serde::{Deserialize, Serialize};
-use std::slice::{Iter, IterMut};
-use std::ops::{Index, IndexMut};
 use rayon::prelude::*;
-use std::str::FromStr;
+use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::ops::{Index, IndexMut};
+use std::slice::{Iter, IterMut};
+use std::str::FromStr;
 use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for DomainStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_str())
-    }    
+    }
 }
 
 #[readonly::make]
@@ -27,12 +27,9 @@ pub struct DomainStore {
 }
 
 impl DomainStore {
-
     /// Return a new, empty, DomainStore struct.
     pub fn new() -> Self {
-        Self {
-            items: vec![]
-        }
+        Self { items: vec![] }
     }
 
     /// Return the length, the number of domains.
@@ -95,7 +92,7 @@ impl DomainStore {
         ret_vec
     }
 
-        /// Get needs for each Domain.
+    /// Get needs for each Domain.
     /// Run in parallel per Domain.
     /// Each Domain uses parallel processing to get needs for each Action.
     ///  plans.
@@ -119,14 +116,14 @@ impl DomainStore {
     }
 
     /// Return a String representation of a DomainStore.
-    fn formatted_str(&self) -> String {                                                                                                          
+    fn formatted_str(&self) -> String {
         let mut rc_str = String::from("[");
 
         let mut first = true;
         for domx in self.items.iter() {
             if first {
                 first = false;
-            } else { 
+            } else {
                 rc_str.push_str(", ");
             }
             rc_str.push_str(&domx.to_string());
@@ -154,7 +151,7 @@ impl DomainStore {
     }
 
     /// Return a vector of domain current state references, in domain number order.
-    pub fn all_current_states(&self) -> StatesCorr {                                                                                             
+    pub fn all_current_states(&self) -> StatesCorr {
         let mut all_states = StatesCorr::with_capacity(self.len());
 
         for domx in self.items.iter() {
@@ -163,7 +160,6 @@ impl DomainStore {
 
         all_states
     }
-
 }
 
 impl Index<usize> for DomainStore {

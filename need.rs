@@ -12,8 +12,8 @@ use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
 use crate::target::ATarget;
 
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 impl fmt::Display for SomeNeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

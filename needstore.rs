@@ -3,10 +3,10 @@
 use crate::need::SomeNeed;
 use crate::target::ATarget;
 
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
-use serde::{Deserialize, Serialize};
 
 impl fmt::Display for NeedStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

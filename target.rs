@@ -5,8 +5,8 @@ use crate::regionscorr::RegionsCorr;
 use crate::selectregions::SelectRegions;
 use crate::state::SomeState;
 
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 impl fmt::Display for ATarget {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
