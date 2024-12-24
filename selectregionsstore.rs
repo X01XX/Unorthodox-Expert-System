@@ -19,6 +19,18 @@ impl fmt::Display for SelectRegionsStore {
     }
 }
 
+/// Implement the PartialEq trait, for a
+/// A quick comparison of definitions.
+impl PartialEq for SelectRegionsStore {
+    fn eq(&self, other: &Self) -> bool {
+        if self.items.len() != other.items.len() {
+            return false;
+        }
+        self.is_not_empty() && self[0].is_congruent(&other[0])
+    }
+}
+impl Eq for SelectRegionsStore {}
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 /// A struct of SelectRegions.
@@ -41,7 +53,7 @@ impl SelectRegionsStore {
     }
 
     /// Add a SelectRegionsStore.
-    /// Duplicate RegionsCorr not allowed.
+    /// Duplicate RegionsCorr are skipped.
     pub fn push(&mut self, select: SelectRegions) {
         //print!("{} push {}", self, select);
         debug_assert!(self.is_empty() || self.items[0].regions.is_congruent(&select));
@@ -250,7 +262,21 @@ impl SelectRegionsStore {
                 ret = ret.subtract_selectregions(selx);
             }
         }
+        for selx in ret.iter_mut() {
+            selx.set_value(self.rate_select_regions(selx));
+        }
         ret
+    }
+
+    /// Return the sum of SelectRegion values that a given SelectRegion is a subset of.
+    pub fn rate_select_regions(&self, selx: &SelectRegions) -> isize {
+        let mut val = 0;
+        for sely in self.items.iter() {
+            if sely.is_superset_of(selx) {
+                val += sely.value;
+            }
+        }
+        val
     }
 
     /// Return self fragmented by intersections.
@@ -279,11 +305,13 @@ impl SelectRegionsStore {
                 }
             }
 
-            // Create a SelectRegions for the RegionsCorr.
-            let selx = SelectRegions::new(regsx, value);
+            if value != 0 {
+                // Create a SelectRegions for the RegionsCorr.
+                let selx = SelectRegions::new(regsx, value);
 
-            // Save SelectRegions to vector.
-            sel_fragments.push(selx);
+                // Save SelectRegions to vector.
+                sel_fragments.push(selx);
+            }
         }
         Self::new(sel_fragments)
     }
@@ -317,7 +345,7 @@ impl FromStr for SelectRegionsStore {
             return Err("SelectRegionsStore::from_str: Empty string?".to_string());
         }
 
-        // Strip off "SRS[ ... ]". Check that the brackets are balanced.
+        // Unwrap "SRS[ ... ]", check that the brackets are balanced.
         let mut src_str2 = String::new();
         let mut left = 0;
         let mut right = 0;
@@ -427,18 +455,16 @@ mod tests {
         let dif = srs1.subtract(&frags);
         println!("dif {}", dif);
         if dif.is_not_empty() {
-            return Err(format!("diff is {dif} ?"));
+            for difx in dif.iter() {
+                if difx.value != 0 {
+                    return Err(format!("diff is {dif} ?"));
+                }
+            }
         }
 
         // Check fragment values.
         for selx in frags.iter() {
-            let mut val = 0;
-            // Gather values from start SelectRegionsStore.
-            for sely in srs1.iter() {
-                if selx.is_subset_of(sely) {
-                    val += sely.value;
-                }
-            }
+            let val = srs1.rate_select_regions(selx);
             if val != selx.value {
                 return Err(format!(
                     "selx {selx} val {val} NE selx.value {} ?",
@@ -576,7 +602,7 @@ mod tests {
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
-        assert!(frags.len() == 20);
+        assert!(frags.len() == 17);
 
         check_fragments(&srs1, &frags)
     }
@@ -731,7 +757,7 @@ mod tests {
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
-        assert!(frags.len() == 6);
+        assert!(frags.len() == 5);
 
         check_fragments(&srs1, &frags)
     }
@@ -745,7 +771,7 @@ mod tests {
 
         let frags = srs1.split_by_intersections();
         println!("fragments of {srs1} are {frags} len {}", frags.len());
-        assert!(frags.len() == 8);
+        assert!(frags.len() == 7);
 
         check_fragments(&srs1, &frags)
     }

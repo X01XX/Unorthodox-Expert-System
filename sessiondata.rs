@@ -64,22 +64,17 @@ pub struct InxPlan {
 #[derive(Serialize, Deserialize)]
 /// A vector of SomeDomain structs, and session state.
 pub struct SessionData {
-    /// Vector of SomeDomain structs.
+    /// Domain structures.
     pub domains: DomainStore,
+
+    /// UI data.
 
     /// Domain displayed to user.
     pub current_domain: usize,
     /// The current step number of a user session.
     pub step_num: usize,
 
-    /// A counter to indicate the number of steps the current state is in the same select region.
-    /// When no more rule-testing needs can be done.
-    pub boredom: usize,
-    /// A limit for becomming bored, then moving to another select state.
-    /// When no more rule-testing needs can be done.
-    pub boredom_limit: usize,
-    /// Times visited, order corresponding to, positive select regions.
-    pub times_visited: Vec<usize>,
+    /// Select Region data.
 
     /// Zero, or more, select regions that may have a positive, or negative, value.
     /// They may overlap.
@@ -95,6 +90,19 @@ pub struct SessionData {
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
 
+    /// Cyclical goal, positve Select Region, data.
+
+    /// A counter to indicate the number of steps the current state is in the same select region.
+    /// When no more rule-testing needs can be done.
+    pub boredom: usize,
+    /// A limit for becomming bored, then moving to another select state.
+    /// When no more rule-testing needs can be done.
+    pub boredom_limit: usize,
+    /// Times visited, order corresponding to, positive select regions.
+    pub times_visited: Vec<usize>,
+
+    /// Need data.
+
     /// List of current needs.
     pub needs: NeedStore,
     /// List of need indicies and plans.
@@ -103,19 +111,17 @@ pub struct SessionData {
     pub cant_do: Vec<usize>,
 }
 
-/// Implement the PartialEq trait, since two SessionDatas
+/// Implement the PartialEq trait, for a
 /// A quick comparison of definitions.
 impl PartialEq for SessionData {
     fn eq(&self, other: &Self) -> bool {
-        if self.domains.len() != other.domains.len() {
+        if self.domains != other.domains {
             return false;
         }
-        for (domx, domy) in self.domains.iter().zip(other.domains.iter()) {
-            if domx != domy {
-                return false;
-            }
+        if self.select != other.select {
+            return false;
         }
-        true
+        self.max_pos_value == other.max_pos_value
     }
 }
 impl Eq for SessionData {}
@@ -126,14 +132,14 @@ impl SessionData {
         Self {
             domains,
             current_domain: 0,
-            boredom: 0,
-            boredom_limit: 0,
+            step_num: 0,
             select: SelectRegionsStore::new(vec![]),
             select_net_positive: SelectRegionsStore::new(vec![]),
             rc_non_negative: RegionsCorrStore::new(vec![]),
             select_negative: SelectRegionsStore::new(vec![]),
-            step_num: 0,
             max_pos_value: 0,
+            boredom: 0,
+            boredom_limit: 0,
             times_visited: vec![],
             needs: NeedStore::new(vec![]),
             can_do: vec![],
@@ -141,22 +147,18 @@ impl SessionData {
         }
     }
 
-    /// Add SelectRegions, one region for each domain.
-    /// [1x0x, x101] = Domain 0, 1x0x, AND domain 1, x101.
-    /// [1x0x, xxxx],
-    /// [xxxx, x101] (two additions) = Domain 0, 1x0x, OR domain 1, x101.
-    /// The SR value cannot be zero.
-    /// Duplicates are not allowed.
+    /// Add SelectRegions, with non-zero values.
+    ///
+    /// The SelectRegionsStore SelectRegions RegionsCorr can be interpreted as:
+    ///   [1x0x, x101], // Domain 0, 1x0x, AND domain 1, x101, OR
+    ///   [1x0x, xxxx], // Domain 0, 1x0x, OR
+    ///   [xxxx, x101]  // Domain 1, x101.
+    /// For SelectRegions, any value, with duplicate RegionsCorrs, the first is accepted, then following skipped.
     pub fn add_select(&mut self, selx: SelectRegions) {
-        // Require some aggregate value.
-        if selx.value == 0 {
-            println!("add_select: {} SR value zero, skipped.", selx);
-            return;
+        if selx.value != 0 {
+            assert!(self.is_congruent(&selx));
+            self.select.push(selx);
         }
-
-        assert!(self.is_congruent(&selx));
-
-        self.select.push(selx);
     }
 
     /// Calculate parts of select regions, in case of any overlaps.
@@ -1689,22 +1691,22 @@ impl FromStr for SessionData {
     type Err = String;
     /// Return a SessionData instance, given a string representation.
     /// The string contains:
-    ///   One, or more, actions,.
+    ///   One, or more, domains,.
     ///   Zero, or more, SelectRegions, after the actions.
-    ///   Zero, or one, StatesCorr, after the actions, for the initial state. The default initial state is random.
+    ///   Zero, or one, StatesCorr, for each domain initial state. The default domain initial state is random.
     ///
-    /// "DS[ DOMAIN[ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]]],
-    ///      DOMAIN[ACT[[XX/XX/XX/Xx/XX], ACT[XX/XX/Xx/XX/XX]]],
-    ///      SR[RC[rx0x0x], 3],
-    ///      SR[RC[rx0x1x], -1] ],
-    ///      SC[s1010]"
+    /// "SD[DS[ DOMAIN[ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]]],
+    ///         DOMAIN[ACT[[XX/XX/XX/Xx/XX], ACT[XX/XX/Xx/XX/XX]]]],
+    ///       SR[RC[rx0x0x], 3],
+    ///       SR[RC[rx0x1x], -1],
+    ///       SC[s1010]]"
     ///
     /// All the rules must use the same number of bits.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SessionData::from_str: {str_in}");
         let ds_str = str_in.trim();
 
-        // Strip off "SD[ ... ]". Check that the brackets are balanced.
+        // Unwrap "SD[ ... ]", check that the brackets are balanced.
         let mut ds_str2 = String::new();
         let mut left = 0;
         let mut right = 0;
@@ -2511,7 +2513,7 @@ mod tests {
         )?;
 
         println!("select positive: {}", sdx.select_net_positive);
-        assert!(sdx.select_net_positive.len() == 6);
+        assert!(sdx.select_net_positive.len() == 5);
 
         assert!(sdx
             .select_net_positive
@@ -2528,9 +2530,6 @@ mod tests {
         assert!(sdx
             .select_net_positive
             .contains(&SelectRegions::from_str("SR[RC[r0001], 2]")?));
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[r1101], 0]")?));
 
         println!("non negative: {}", sdx.rc_non_negative);
         assert!(sdx.rc_non_negative.len() == 4);

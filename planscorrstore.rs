@@ -264,7 +264,7 @@ impl FromStr for PlansCorrStore {
             return Err("PlansCorrStore::from_str: Empty string?".to_string());
         }
 
-        // Unwrap PCS[], check that brackets are balanced overall.
+        // Unwrap "PCS[...]", check that brackets are balanced.
         let mut pcs_str2 = String::new();
         let mut num_left = 0;
         let mut num_right = 0;

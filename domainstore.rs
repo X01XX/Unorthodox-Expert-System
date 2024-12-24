@@ -18,6 +18,23 @@ impl fmt::Display for DomainStore {
     }
 }
 
+/// Implement the PartialEq trait, for a
+/// A quick comparison of definitions.
+impl PartialEq for DomainStore {
+    fn eq(&self, other: &Self) -> bool {
+        if self.items.len() != other.items.len() {
+            return false;
+        }
+        for (domx, domy) in self.items.iter().zip(other.items.iter()) {
+            if domx != domy {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for DomainStore {}
+
 #[readonly::make]
 #[derive(Serialize, Deserialize, Default)]
 /// A vector of SomeDomain structs, and session state.
@@ -189,7 +206,7 @@ impl FromStr for DomainStore {
         //println!("DomainStore::from_str: {str_in}");
         let ds_str = str_in.trim();
 
-        // Strip off "DS[ ... ]". Check that the brackets are balanced.
+        // Unwrap "DS[ ... ]". Check that the brackets are balanced.
         let mut ds_str2 = String::new();
         let mut left = 0;
         let mut right = 0;

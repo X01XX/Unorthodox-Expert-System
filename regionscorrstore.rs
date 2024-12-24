@@ -362,7 +362,7 @@ impl FromStr for RegionsCorrStore {
             return Err("RegionsCorrStore::from_str: Empty string?".to_string());
         }
 
-        // Unwrap RCS[], check that brackets are balanced overall.
+        // Unwrap "RCS[...]", check that brackets are balanced.
         let mut rcs_str2 = String::new();
         let mut num_left = 0;
         let mut num_right = 0;

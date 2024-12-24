@@ -2554,7 +2554,7 @@ impl FromStr for SomeAction {
             return Err("SomeAction::from_str: Empty string?".to_string());
         }
 
-        // Strip off "ACT[ ... ]". Check that the brackets are balanced.
+        // Unwrap "ACT[...]". Check that the brackets are balanced.
         let mut src_str2 = String::new();
         let mut left = 0;
         let mut right = 0;

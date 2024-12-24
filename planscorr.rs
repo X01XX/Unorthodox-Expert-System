@@ -256,7 +256,7 @@ impl FromStr for PlansCorr {
         let mut num_left = 0;
         let mut num_right = 0;
 
-        // Strip PCS[ ] from string.
+        // Unwrap "PCS[...]", check that brackets are balanced.
         for (inx, chr) in pc_str.graphemes(true).enumerate() {
             if inx == 0 {
                 if chr == "P" {

@@ -1119,7 +1119,7 @@ impl FromStr for SomeDomain {
             return Err("SomeDomain::from_str: Empty string?".to_string());
         }
 
-        // Strip off "DOMAIN[ ... ]". Check that the brackets are balanced.
+        // Unwrap "DOMAIN[ ... ]". Check that the brackets are balanced.
         let mut src_str2 = String::new();
         let mut left = 0;
         let mut right = 0;

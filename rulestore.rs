@@ -453,7 +453,7 @@ impl FromStr for RuleStore {
             return Err("RuleStore::from_str: Empty string?".to_string());
         }
 
-        // Strip off "[ ... ]". Check that the brackets are balanced.
+        // Unwrap "[ ... ]", check that the brackets are balanced.
         let mut src_str2 = String::new();
         let mut left = 0;
         let mut right = 0;

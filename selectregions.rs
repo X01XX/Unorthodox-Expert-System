@@ -69,6 +69,11 @@ impl SelectRegions {
         Self { regions, value }
     }
 
+    /// Set the value of a SR.
+    pub fn set_value(&mut self, val: isize) {
+        self.value = val;
+    }
+
     /// Return the intersection of two SelectRegions.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert!(self.is_congruent(other));
