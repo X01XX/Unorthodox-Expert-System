@@ -166,16 +166,22 @@ impl PlansCorrStore {
         let mut rc_str = String::new();
 
         rc_str.push_str("PCS[");
-        for (inx, planscx) in self.items.iter().enumerate() {
-            if inx > 0 {
-                rc_str.push_str(", PC[");
-            } else {
-                rc_str.push_str("PC[");
-            }
 
+        let mut first_pc = true;
+        for planscx in self.items.iter() {
+            if first_pc {
+                first_pc = false;
+            } else {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str("PC[");
+
+            let mut first_pln = true;
             for (iny, planx) in planscx.iter().enumerate() {
                 if planx.causes_change() {
-                    if iny > 0 {
+                    if first_pln {
+                        first_pln = false;
+                    } else {
                         rc_str.push_str(", ");
                     }
                     rc_str.push_str(&format!("P[{iny}:{}]", &planx.str_terse()));

@@ -107,7 +107,7 @@ impl PlanStore {
             } else {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&planx.to_string());
+            rc_str.push_str(&format!("{}", planx));
         }
         rc_str.push(']');
 

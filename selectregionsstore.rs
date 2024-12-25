@@ -263,16 +263,16 @@ impl SelectRegionsStore {
             }
         }
         for selx in ret.iter_mut() {
-            selx.set_value(self.rate_select_regions(selx));
+            selx.set_value(self.rate_regionscorr(&selx.regions));
         }
         ret
     }
 
     /// Return the sum of SelectRegion values that a given SelectRegion is a subset of.
-    pub fn rate_select_regions(&self, selx: &SelectRegions) -> isize {
+    pub fn rate_regionscorr(&self, rcx: &RegionsCorr) -> isize {
         let mut val = 0;
         for sely in self.items.iter() {
-            if sely.is_superset_of(selx) {
+            if sely.regions.is_superset_of(rcx) {
                 val += sely.value;
             }
         }
@@ -298,12 +298,7 @@ impl SelectRegionsStore {
         let mut sel_fragments = Vec::<SelectRegions>::with_capacity(fragments.len());
         for regsx in fragments {
             // Calc value for RegionsCorr.
-            let mut value = 0;
-            for sely in self.iter() {
-                if sely.regions.is_superset_of(&regsx) {
-                    value += sely.value;
-                }
-            }
+            let value = self.rate_regionscorr(&regsx);
 
             if value != 0 {
                 // Create a SelectRegions for the RegionsCorr.
@@ -464,7 +459,7 @@ mod tests {
 
         // Check fragment values.
         for selx in frags.iter() {
-            let val = srs1.rate_select_regions(selx);
+            let val = srs1.rate_regionscorr(&selx.regions);
             if val != selx.value {
                 return Err(format!(
                     "selx {selx} val {val} NE selx.value {} ?",
