@@ -885,10 +885,10 @@ impl SomeDomain {
     }
 
     /// Return the total number of groups expected in all the actions.
-    pub fn number_groups_expected(&self) -> usize {
+    pub fn number_groups_defined(&self) -> usize {
         let mut tot = 0;
         for actx in self.actions.iter() {
-            tot += actx.number_groups_expected();
+            tot += actx.number_groups_defined();
         }
         tot
     }

@@ -93,7 +93,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     //println!("{:?}", args);
 
-    // Run default DomainStore configuration.
+    // Run default SessionData configuration.
     if args.len() == 1 {
         let rc = run_with_file("./default.kmp", 0);
         process::exit(rc);
@@ -105,7 +105,7 @@ fn main() {
         }
 
         let rc = if let Ok(runs) = args[1].parse::<usize>() {
-            // Run default DomainStore configuration a number of times.
+            // Run default SessionData configuration a number of times.
             run_with_file("./default.kmp", runs)
         } else {
             // Run with file with user input step-by-step.
@@ -116,10 +116,10 @@ fn main() {
 
     if args.len() == 3 {
         let rc = if let Ok(runs) = args[1].parse::<usize>() {
-            // Run arg[2] DomainStore configuration, arg[1] number of times.
+            // Run arg[2] SessionData configuration, arg[1] number of times.
             run_with_file(&args[2], runs)
         } else if let Ok(runs) = args[2].parse::<usize>() {
-            // Run arg[1] DomainStore configuration, arg[2] number of times.
+            // Run arg[1] SessionData configuration, arg[2] number of times.
             run_with_file(&args[1], runs)
         } else {
             1
@@ -134,7 +134,7 @@ fn main() {
 
 /// Load data from a file, then run with user input, step by step.
 fn run_with_file(file_path: &str, runs: usize) -> i32 {
-    // Init DomainStore or read in from file.
+    // Init SessionData or read in from file.
     let mut sdx = match load_data(file_path) {
         Ok(new_sdx) => new_sdx,
         Err(errstr) => {
@@ -328,6 +328,20 @@ pub fn generate_and_display_needs(sdx: &mut SessionData) {
     display_needs(sdx);
 }
 
+/// Get a domain number from a string.
+pub fn domain_id_from_string(sdx: &SessionData, num_str: &str) -> Result<usize, String> {
+    match num_str.parse() {
+        Ok(d_num) => {
+            if d_num >= sdx.len() {
+                Err(format!("\nDomain number too large, {d_num}"))
+            } else {
+                Ok(d_num)
+            }
+        }
+        Err(error) => Err(format!("Did not understand domain number, {error}")),
+    } // end match
+}
+
 pub fn display_needs(sdx: &SessionData) {
     // Print needs.
     if sdx.needs.is_empty() {
@@ -396,7 +410,7 @@ fn do_one_session(sdx: &mut SessionData) -> (usize, usize, usize, usize) {
     (
         sdx.step_num,
         sdx.number_groups(),
-        sdx.number_groups_expected(),
+        sdx.number_groups_defined(),
         num_cant,
     )
 }
@@ -549,7 +563,7 @@ fn do_change_domain(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
         return Err("Exactly one number argument is needed for the cd command.".to_string());
     }
     // Get domain number from string
-    match sdx.domain_id_from_string(cmd[1]) {
+    match domain_id_from_string(sdx, cmd[1]) {
         Ok(d_id) => {
             sdx.change_domain(d_id);
             Ok(())
@@ -1144,13 +1158,13 @@ fn usage() {
     println!("\n        Plans, to satisfy a need, are made to avoid negative select regions, if possible.");
     println!("\n        Finding the current state within a negative select region, the program will attempt to exit the region.");
     println!("\n    A plan to satisfy a need may be shown in one of two ways.");
-    println!("\n        At Target - The current state is within the need target, a sample can be taken immediately.");
+    println!("\n        At Target - The current state is within the need target.");
     println!("\n        PCS[PC[P[0:1], P[1:3]], PC[P[0:3,2]]]/3/6/-1 - Changes need to be made to the current state to be within the need target.");
     println!("\n            PCS[ ... ]/3/6/-1 - A Plan Corresponding (per domain) Store, to change 3 bits, using plans that change 6 bits, passing through -1 valued regions.");
     println!("\n            PC[ .. ] - A Plan Corresponding (per domain). No more than one plan per domain. If more than one plan, the plans will be run in parallel.");
     println!("\n            P[ .. ] - A Plan. One, or more, actions for a single domain.");
     println!("\n            0:3,2 - For domain 0, run action 3, then action 2.");
-    println!("\n    Once the current state is within the need target, most (but not all) needs require an additional action to get a sample.");
+    println!("\n        Once the current state is within the need target, most (but not all) needs require an additional action to get a sample.");
     println!("\n    Needs that cannot be done.  Lets say the current state is s0000, there is a need for s1000, and no action that changes");
     println!(
         "    the left-most bit.  Using the command \"cs s1000\" will get things moving again."

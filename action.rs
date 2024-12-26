@@ -2306,8 +2306,8 @@ impl SomeAction {
         self.groups.len()
     }
 
-    /// Return the number of groups expected in the action.
-    pub fn number_groups_expected(&self) -> usize {
+    /// Return the number of groups defined in the action.
+    pub fn number_groups_defined(&self) -> usize {
         self.do_something.len()
     }
 

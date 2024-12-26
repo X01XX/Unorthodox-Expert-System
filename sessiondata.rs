@@ -189,6 +189,7 @@ impl SessionData {
         }
         self.rc_non_negative = non_neg_select;
 
+        // Init times visitied vector.
         self.times_visited = vec![0; self.select_net_positive.len()];
     }
 
@@ -255,7 +256,7 @@ impl SessionData {
     /// Each Domain uses parallel processing to get needs for each Action.
     ///  plans.
     /// Set SessionData fields with need info.
-    pub fn get_needs(&mut self) -> (&NeedStore, &Vec<InxPlan>, &Vec<usize>) {
+    pub fn get_needs(&mut self) {
         self.step_num += 1;
         let mut needs = self.domains.get_needs();
 
@@ -267,13 +268,9 @@ impl SessionData {
         // Sort needs by ascending priority, and store.
         needs.sort_by_priority();
 
-        let (can_do, cant_do) = self.evaluate_needs(&needs);
-
         self.needs = needs;
-        self.can_do = can_do;
-        self.cant_do = cant_do;
 
-        (&self.needs, &self.can_do, &self.cant_do)
+        self.evaluate_needs();
     }
 
     /// Run a PlansCorrStore.
@@ -316,21 +313,24 @@ impl SessionData {
 
     /// Take an action to satisfy a need,
     pub fn take_action_need(&mut self, inx: usize) {
-        self.domains[self.needs[inx].dom_id().unwrap()].take_action_need(&self.needs[inx]);
+        self.domains
+            .take_action_need(self.needs[inx].dom_id().unwrap(), &self.needs[inx]);
     }
 
     /// Return a reference to the current state of a given Domain index
-    pub fn cur_state(&self, dmxi: usize) -> &SomeState {
-        self.domains[dmxi].current_state()
+    pub fn cur_state(&self, dom_id: usize) -> &SomeState {
+        self.domains.cur_state(dom_id)
     }
 
     /// Set can_do, and cant_do, struct fields for the SessionData needs, which are sorted in ascending priority number order.
     /// Scan successive slices of needs, of the same priority, until one, or more, needs can be planned.
-    pub fn evaluate_needs(&mut self, needs: &NeedStore) -> (Vec<InxPlan>, Vec<usize>) {
+    pub fn evaluate_needs(&mut self) {
         //println!("evaluate_needs: {} needs", needs.len());
+        self.can_do = vec![];
+        self.cant_do = vec![];
 
-        if needs.is_empty() {
-            return (vec![], vec![]);
+        if self.needs.is_empty() {
+            return;
         }
 
         let mut can_do = Vec::<InxPlan>::new();
@@ -338,7 +338,7 @@ impl SessionData {
         let cur_states = self.all_current_states();
 
         // Check for needs that can be satisfied with the current state.
-        for (inx, ndx) in needs.iter().enumerate() {
+        for (inx, ndx) in self.needs.iter().enumerate() {
             if ndx.satisfied_by(&cur_states) {
                 //println!("need {ndx} At Target");
                 can_do.push(InxPlan {
@@ -352,13 +352,14 @@ impl SessionData {
         }
 
         if !can_do.is_empty() {
-            return (can_do, vec![]);
+            self.can_do = can_do;
+            return;
         }
 
-        let mut cur_pri = needs[0].priority();
+        let mut cur_pri = self.needs[0].priority();
         let mut count = 0;
-        print!("\nNumber needs: {}, priority(count): ", needs.len());
-        for needx in needs.iter() {
+        print!("\nNumber needs: {}, priority(count): ", self.needs.len());
+        for needx in self.needs.iter() {
             if needx.priority() > cur_pri {
                 print!("{}({}) ", cur_pri, count);
                 cur_pri = needx.priority();
@@ -369,20 +370,20 @@ impl SessionData {
         println!("{}({}) ", cur_pri, count);
 
         // Init current priority value and start index.
-        let mut cur_pri = needs[0].priority();
+        let mut cur_pri = self.needs[0].priority();
 
         let mut cur_pri_start = 0;
 
         // Find current priority end index.
         let mut cur_pri_end = 0;
-        let needs_len = needs.len();
+        let needs_len = self.needs.len();
 
         let states = self.all_current_states();
 
         // Scan successive slices of items with the same priority.
         loop {
             // Find end of current slice.
-            while cur_pri_end < needs_len && needs[cur_pri_end].priority() == cur_pri {
+            while cur_pri_end < needs_len && self.needs[cur_pri_end].priority() == cur_pri {
                 cur_pri_end += 1;
             }
             // Process a priority slice.
@@ -390,10 +391,10 @@ impl SessionData {
 
             // Test distance check.
             // Find needs distance to the current state.
-            let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(needs.len()); // (need index, distance)
+            let mut need_inx_vec = Vec::<(usize, usize)>::with_capacity(self.needs.len()); // (need index, distance)
 
             for inx in cur_pri_start..cur_pri_end {
-                let dist = needs[inx].distance(&states);
+                let dist = self.needs[inx].distance(&states);
                 need_inx_vec.push((inx, dist));
             }
 
@@ -423,8 +424,8 @@ impl SessionData {
                         (
                             need_inx_vec[dist_inx].0,
                             self.plan_using_least_negative_select_regions_for_target(
-                                needs[need_inx_vec[dist_inx].0].dom_id(),
-                                needs[need_inx_vec[dist_inx].0].target(),
+                                self.needs[need_inx_vec[dist_inx].0].dom_id(),
+                                self.needs[need_inx_vec[dist_inx].0].target(),
                             ),
                         )
                     })
@@ -468,18 +469,20 @@ impl SessionData {
                 if can_do.is_empty() {
                     cur_dist_start = cur_dist_end;
                 } else {
-                    return (can_do, vec![]);
+                    self.can_do = can_do;
+                    return;
                 }
             }
 
             if can_do.is_empty() {
                 println!(", none.");
                 if cur_pri_end == needs_len {
-                    return (vec![], (0..needs.len()).collect());
+                    self.cant_do = (0..self.needs.len()).collect();
+                    return;
                 }
 
                 cur_pri_start = cur_pri_end;
-                cur_pri = needs[cur_pri_start].priority();
+                cur_pri = self.needs[cur_pri_start].priority();
                 continue;
             }
 
@@ -489,7 +492,8 @@ impl SessionData {
                 println!(", found {} needs that can be done.", can_do.len());
             }
 
-            return (can_do, vec![]);
+            self.can_do = can_do;
+            return;
         } // End loop
     } // end evaluate_needs
 
@@ -505,20 +509,17 @@ impl SessionData {
     /// Get plans to move to a goal region, choose a plan.
     /// Accept an optional region that must encompass the intermediate steps of a returned plan.
     /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
-    pub fn get_plans(
+    pub fn make_plans_domain(
         &self,
         dom_id: usize,
         from_region: &SomeRegion,
         goal_region: &SomeRegion,
         within: &SomeRegion,
     ) -> Result<PlanStore, Vec<String>> {
-        debug_assert!(from_region.num_bits() == goal_region.num_bits());
-        debug_assert!(within.num_bits() == from_region.num_bits());
-        debug_assert!(within.is_superset_of(from_region));
-        debug_assert!(within.is_superset_of(goal_region));
         //println!("sessiondata: get_plans: dom {dom_id} from {from_region} goal {goal_region}");
 
-        self.domains[dom_id].make_plans(from_region, goal_region, within)
+        self.domains
+            .make_plans_domain(dom_id, from_region, goal_region, within)
     }
 
     /// Choose a plan from a vector of PlanStores, for vector of PlanStore references.
@@ -633,45 +634,19 @@ impl SessionData {
         inx
     } // end choose_need
 
-    /// Get a domain number from a string.
-    pub fn domain_id_from_string(&self, num_str: &str) -> Result<usize, String> {
-        match num_str.parse() {
-            Ok(d_num) => {
-                if d_num >= self.len() {
-                    Err(format!("\nDomain number too large, {d_num}"))
-                } else {
-                    Ok(d_num)
-                }
-            }
-            Err(error) => Err(format!("Did not understand domain number, {error}")),
-        } // end match
-    }
-
     /// Return the length, the number of domains.
     pub fn len(&self) -> usize {
         self.domains.len()
     }
 
-    /// Return a vector of domain current state references, in domain number order.
+    /// Return a vector of domain current states, in domain number order.
     pub fn all_current_states(&self) -> StatesCorr {
-        let mut all_states = StatesCorr::with_capacity(self.len());
-
-        for domx in self.domains.iter() {
-            all_states.push(domx.current_state().clone());
-        }
-
-        all_states
+        self.domains.all_current_states()
     }
 
-    /// Return a vector of domain current state references, as regions, in domain number order.
+    /// Return a vector of domain current states, as regions, in domain number order.
     pub fn all_current_regions(&self) -> RegionsCorr {
-        let mut all_regions = RegionsCorr::with_capacity(self.len());
-
-        for domx in self.domains.iter() {
-            all_regions.push(SomeRegion::new(vec![domx.current_state().clone()]));
-        }
-
-        all_regions
+        self.domains.all_current_regions()
     }
 
     /// Update counters for times_visited.
@@ -890,11 +865,7 @@ impl SessionData {
 
     /// Set the current state fields, of each domain.
     pub fn set_cur_states(&mut self, new_states: &StatesCorr) {
-        debug_assert!(self.is_congruent(new_states));
-
-        for (domx, stax) in self.domains.iter_mut().zip(new_states.iter()) {
-            domx.set_cur_state(stax.clone());
-        }
+        self.domains.set_cur_states(new_states);
     }
 
     /// Return a plan for a given start RegionsCorr, goal RegionsCorr, within a RegionsCorrStore.
@@ -1345,15 +1316,8 @@ impl SessionData {
     fn formatted_str(&self) -> String {
         let mut rc_str = String::from("[");
 
-        let mut first = true;
-        for domx in self.domains.iter() {
-            if first {
-                first = false;
-            } else {
-                rc_str.push_str(", ");
-            }
-            rc_str.push_str(&domx.to_string());
-        }
+        rc_str.push_str(&self.domains.to_string());
+
         rc_str.push(']');
 
         rc_str
@@ -1378,20 +1342,12 @@ impl SessionData {
 
     /// Return the total number of groups in all the domains.
     pub fn number_groups(&self) -> usize {
-        let mut tot = 0;
-        for domx in self.domains.iter() {
-            tot += domx.number_groups();
-        }
-        tot
+        self.domains.number_groups()
     }
 
-    /// Return the total number of groups expected in all the domains.
-    pub fn number_groups_expected(&self) -> usize {
-        let mut tot = 0;
-        for domx in self.domains.iter() {
-            tot += domx.number_groups_expected();
-        }
-        tot
+    /// Return the total number of groups defined in all the domains.
+    pub fn number_groups_defined(&self) -> usize {
+        self.domains.number_groups_defined()
     }
 
     /// Print a plan step-by-step, indicating changes.
@@ -1445,11 +1401,7 @@ impl SessionData {
 
     /// Return the maximum possible regions.
     pub fn maximum_regions(&self) -> RegionsCorr {
-        let mut ret_regs = RegionsCorr::with_capacity(self.len());
-        for domx in self.domains.iter() {
-            ret_regs.push(domx.maximum_region());
-        }
-        ret_regs
+        self.domains.maximum_regions()
     }
 
     /// Get plans for moving from one set of domain states to another, within a given set of domain regions.
@@ -1522,7 +1474,7 @@ impl SessionData {
                 plans_per_target.push(SomePlan::new(vec![SomeStep::new_no_op(regx)]));
             } else {
                 // Try making plans.
-                match self.get_plans(dom_id, regx, regy, &within[dom_id]) {
+                match self.make_plans_domain(dom_id, regx, regy, &within[dom_id]) {
                     Ok(mut plans) => {
                         //println!(" {} plans from get_plans", plans.len());
                         plans_per_target
@@ -1634,8 +1586,7 @@ impl SessionData {
 
     /// Run cleanup for a domain and action.
     pub fn cleanup(&mut self, dom_id: usize, act_id: usize, needs: &NeedStore) {
-        assert!(dom_id < self.len());
-        self.domains[dom_id].cleanup(act_id, needs);
+        self.domains.cleanup(dom_id, act_id, needs);
     }
 
     /// Return true if corresponding items have the same number of bits.
@@ -1645,45 +1596,32 @@ impl SessionData {
 
     /// Return a vector of corresponding num_bits.
     pub fn num_bits_vec(&self) -> Vec<usize> {
-        let mut ret_vec = Vec::<usize>::with_capacity(self.len());
-        for domx in self.domains.iter() {
-            ret_vec.push(domx.num_bits());
-        }
-        ret_vec
+        self.domains.num_bits_vec()
     }
 
-    /// Find a domain that matches a givet ID, return a reference.
+    /// Find a domain that matches a given ID, return a reference.
     pub fn find(&self, dom_id: usize) -> Option<&SomeDomain> {
-        if dom_id >= self.domains.len() {
-            return None;
-        }
-        Some(&self.domains[dom_id])
+        self.domains.find(dom_id)
     }
 
     /// Take an action in a domain.
     pub fn take_action(&mut self, dom_id: usize, act_id: usize) {
-        debug_assert!(dom_id < self.len());
-
-        self.domains[dom_id].take_action(act_id);
+        self.domains.take_action(dom_id, act_id);
     }
 
     /// Evaluate an arbitrary sample.
     pub fn eval_sample_arbitrary(&mut self, dom_id: usize, act_id: usize, smpl: &SomeSample) {
-        debug_assert!(dom_id < self.len());
-
-        self.domains[dom_id].eval_sample_arbitrary(act_id, smpl);
+        self.domains.eval_sample_arbitrary(dom_id, act_id, smpl);
     }
 
     /// Take an arbitrary action.
     pub fn take_action_arbitrary(&mut self, dom_id: usize, act_id: usize, astate: &SomeState) {
-        debug_assert!(dom_id < self.len());
-
-        self.domains[dom_id].take_action_arbitrary(act_id, astate);
+        self.domains.take_action_arbitrary(dom_id, act_id, astate);
     }
 
     /// Set the cleanup limit for a domain-action.
     pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
-        self.domains[dom_id].set_cleanup(act_id, trigger);
+        self.domains.set_domain_cleanup(dom_id, act_id, trigger);
     }
 }
 

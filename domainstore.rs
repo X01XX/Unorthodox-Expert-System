@@ -1,6 +1,12 @@
 use crate::domain::SomeDomain;
+use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::planscorr::PlansCorr;
+use crate::planstore::PlanStore;
+use crate::region::SomeRegion;
+use crate::regionscorr::RegionsCorr;
+use crate::sample::SomeSample;
+use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
 use crate::tools::CorrespondingItems;
 
@@ -176,6 +182,124 @@ impl DomainStore {
         }
 
         all_states
+    }
+
+    /// Return a vector of domain current states, as regions, in domain number order.
+    pub fn all_current_regions(&self) -> RegionsCorr {
+        let mut all_regions = RegionsCorr::with_capacity(self.len());
+
+        for domx in self.items.iter() {
+            all_regions.push(SomeRegion::new(vec![domx.current_state().clone()]));
+        }
+
+        all_regions
+    }
+
+    /// Set the current state fields, of each domain.
+    pub fn set_cur_states(&mut self, new_states: &StatesCorr) {
+        debug_assert!(self.is_congruent(new_states));
+
+        for (domx, stax) in self.items.iter_mut().zip(new_states.iter()) {
+            domx.set_cur_state(stax.clone());
+        }
+    }
+
+    /// Return the total number of groups in all the domains.
+    pub fn number_groups(&self) -> usize {
+        let mut tot = 0;
+        for domx in self.items.iter() {
+            tot += domx.number_groups();
+        }
+        tot
+    }
+
+    /// Return the total number of groups defined in all the domains.
+    pub fn number_groups_defined(&self) -> usize {
+        let mut tot = 0;
+        for domx in self.items.iter() {
+            tot += domx.number_groups_defined();
+        }
+        tot
+    }
+
+    /// Return the maximum possible regions.
+    pub fn maximum_regions(&self) -> RegionsCorr {
+        let mut ret_regs = RegionsCorr::with_capacity(self.len());
+        for domx in self.items.iter() {
+            ret_regs.push(domx.maximum_region());
+        }
+        ret_regs
+    }
+
+    /// Take an action to satisfy a need,
+    pub fn take_action_need(&mut self, dom_id: usize, needx: &SomeNeed) {
+        self.items[dom_id].take_action_need(needx);
+    }
+
+    /// Return a reference to the current state of a given Domain.
+    pub fn cur_state(&self, dom_id: usize) -> &SomeState {
+        self.items[dom_id].current_state()
+    }
+
+    /// Get plans to move to a goal region, choose a plan.
+    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
+    pub fn make_plans_domain(
+        &self,
+        dom_id: usize,
+        from_region: &SomeRegion,
+        goal_region: &SomeRegion,
+        within: &SomeRegion,
+    ) -> Result<PlanStore, Vec<String>> {
+        debug_assert!(from_region.num_bits() == goal_region.num_bits());
+        debug_assert!(within.num_bits() == from_region.num_bits());
+        debug_assert!(within.is_superset_of(from_region));
+        debug_assert!(within.is_superset_of(goal_region));
+        //println!("domainstore: get_plans: dom {dom_id} from {from_region} goal {goal_region}");
+
+        self.items[dom_id].make_plans(from_region, goal_region, within)
+    }
+
+    /// Find a domain that matches a given ID, return a reference.
+    pub fn find(&self, dom_id: usize) -> Option<&SomeDomain> {
+        if dom_id >= self.items.len() {
+            return None;
+        }
+        Some(&self.items[dom_id])
+    }
+
+    /// Run cleanup for a domain and action.
+    pub fn cleanup(&mut self, dom_id: usize, act_id: usize, needs: &NeedStore) {
+        assert!(dom_id < self.len());
+        self.items[dom_id].cleanup(act_id, needs);
+    }
+
+    /// Take an action in a domain.
+    pub fn take_action(&mut self, dom_id: usize, act_id: usize) {
+        debug_assert!(dom_id < self.len());
+
+        self.items[dom_id].take_action(act_id);
+    }
+
+    /// Evaluate an arbitrary sample.
+    pub fn eval_sample_arbitrary(&mut self, dom_id: usize, act_id: usize, smpl: &SomeSample) {
+        debug_assert!(dom_id < self.len());
+
+        self.items[dom_id].eval_sample_arbitrary(act_id, smpl);
+    }
+
+    /// Take an arbitrary action.
+    pub fn take_action_arbitrary(&mut self, dom_id: usize, act_id: usize, astate: &SomeState) {
+        debug_assert!(dom_id < self.len());
+
+        self.items[dom_id].take_action_arbitrary(act_id, astate);
+    }
+
+    /// Set the cleanup limit for a domain-action.
+    pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
+        debug_assert!(dom_id < self.len());
+
+        self.items[dom_id].set_cleanup(act_id, trigger);
     }
 }
 
