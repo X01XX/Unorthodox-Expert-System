@@ -590,13 +590,20 @@ impl SomeAction {
                 self.check_remainder = false;
             }
             if self.remainder_check_regions.len() > 1 {
-                let rem_ints = self.remainder_check_regions.largest_intersections();
-                for regx in rem_ints {
+                let rem_frags = self.remainder_check_regions.split_by_intersections();
+
+                // Find number of intersections for priority setting.
+                let mut frags_num_ints = Vec::<usize>::with_capacity(rem_frags.len());
+                for regx in rem_frags.iter() {
+                    frags_num_ints.push(self.remainder_check_regions.number_supersets_of(regx));
+                }
+
+                for (inx, regx) in rem_frags.into_iter().enumerate() {
                     let mut needx = SomeNeed::StateInRemainder {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         target: ATarget::Region { region: regx },
-                        priority: 0,
+                        priority: self.remainder_check_regions.len() - frags_num_ints[inx],
                     };
                     needx.add_priority_base();
                     nds.push(needx);
@@ -609,7 +616,7 @@ impl SomeAction {
                     target: ATarget::Region {
                         region: regx.clone(),
                     },
-                    priority: 5,
+                    priority: self.remainder_check_regions.len(),
                 };
                 needx.add_priority_base();
                 nds.push(needx);
@@ -626,7 +633,7 @@ impl SomeAction {
         let mut remainder_regs = RegionStore::new(vec![max_reg.clone()]);
 
         for grpx in self.groups.iter() {
-            remainder_regs = remainder_regs.subtract_item(&grpx.region);
+            remainder_regs = remainder_regs.subtract_region(&grpx.region);
         }
 
         remainder_regs
@@ -1814,7 +1821,7 @@ impl SomeAction {
 
         for sqrx in sqrs_in.iter() {
             // Subtract result-predictable square from rule initial region.
-            regs = regs.subtract_item(&sqrx.state);
+            regs = regs.subtract_region(&sqrx.state);
 
             // Add single square step.
 

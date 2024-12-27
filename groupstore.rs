@@ -81,7 +81,7 @@ impl GroupStore {
                 continue;
             }
             if ret.any_intersection_of(&grpx.region) {
-                ret = ret.subtract_item(&grpx.region);
+                ret = ret.subtract_region(&grpx.region);
             }
         }
         ret

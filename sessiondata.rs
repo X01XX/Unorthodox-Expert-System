@@ -1731,7 +1731,7 @@ impl FromStr for SessionData {
         let mut sdx_opt: Option<SessionData> = None;
 
         for tokenx in token_vec.iter() {
-            println!("token {tokenx}");
+            //println!("token {tokenx}");
             if tokenx[0..3] == *"DS[" {
                 //println!("found SomeDomain {tokenx}");
                 match DomainStore::from_str(tokenx) {

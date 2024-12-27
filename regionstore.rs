@@ -125,6 +125,16 @@ impl RegionStore {
         Self::new(regs)
     }
 
+    /// Return the number of regions that are a superset of a given item.
+    pub fn number_supersets_of(&self, itmx: &impl tools::AccessStates) -> usize {
+        debug_assert!(self.is_empty() || itmx.num_bits() == self.num_bits().unwrap());
+
+        self.items
+            .iter()
+            .map(|regx| if regx.is_superset_of(itmx) { 1 } else { 0 })
+            .sum()
+    }
+
     /// Return true if a RegionStore contains a region.
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.
@@ -193,7 +203,7 @@ impl RegionStore {
     }
 
     /// Subtract a region/state from a RegionStore.
-    pub fn subtract_item(&self, itmx: &impl tools::AccessStates) -> Self {
+    pub fn subtract_region(&self, itmx: &impl tools::AccessStates) -> Self {
         debug_assert!(self.is_empty() || itmx.num_bits() == self.items[0].num_bits());
 
         let mut ret_str = Self::new(vec![]);
@@ -221,7 +231,7 @@ impl RegionStore {
 
         for regx in subtrahend.iter() {
             if ret_str.any_intersection_of(regx) {
-                ret_str = ret_str.subtract_item(regx);
+                ret_str = ret_str.subtract_region(regx);
             }
         }
         ret_str
@@ -349,27 +359,13 @@ impl RegionStore {
         self.items.append(&mut other.items);
     }
 
-    /// Return the largest intersections of items.
-    pub fn largest_intersections(&self) -> Self {
-        let mut intersections = Self::new(vec![]);
-
-        // Check each possible pair.
-        for inx in 0..(self.len() - 1) {
-            for iny in (inx + 1)..self.len() {
-                if let Some(reg_int) = self[inx].intersection(&self[iny]) {
-                    intersections.push_nosubs(reg_int);
-                }
-            }
-        }
-        intersections
-    }
-
     /// Return self fragmented by intersections.
     /// Each fragment returned will be a subset of any item
     /// it intersects in the original.
     /// All fragments returned will account for all parts of all items
     /// in the original.
     pub fn split_by_intersections(&self) -> Self {
+        //println!("regionstore::split_by_intersections: split {self}");
         // Remove duplicates, if any.
         let mut remaining = Self::new(vec![]);
         for rscx in self.iter() {
@@ -383,34 +379,34 @@ impl RegionStore {
             return remaining;
         }
 
-        let mut fragments = Self::new(vec![]); // Store to collect successive fragments.
+        let mut ret = Self::new(vec![]);
+        loop {
+            // Find intersections and not-intersections.
+            let mut ints = Self::new(vec![]);
 
-        while !remaining.is_empty() {
-            // Get largest intersections.
-            let intersections = remaining.largest_intersections();
+            // Subtract intersections from each region.
+            for inx in 0..remaining.len() {
+                let mut left_over = Self::new(vec![remaining[inx].clone()]);
 
-            // Subtract intersections from regions remaining.
-            remaining = remaining.subtract(&intersections);
-
-            // Extract remaining regions, like a cookie cutter.
-            let mut next_regions = Self::new(vec![]);
-            for regx in self.iter() {
-                for intx in intersections.iter() {
-                    if let Some(regy) = regx.intersection(intx) {
-                        if !next_regions.contains(&regy) {
-                            next_regions.push(regy);
+                for iny in 0..remaining.len() {
+                    if iny == inx {
+                        // don't subtract remaining[inx] from itself.
+                        continue;
+                    }
+                    if let Some(reg_int) = remaining[inx].intersection(&remaining[iny]) {
+                        left_over = left_over.subtract_region(&reg_int);
+                        if !ints.contains(&reg_int) {
+                            ints.push(reg_int);
                         }
                     }
                 }
+                ret.append(left_over);
             }
-
-            // Save non-intersecting fragments.
-            fragments.append(remaining);
-
-            // Set up next cycle.
-            remaining = next_regions;
+            if ints.is_empty() {
+                return ret;
+            }
+            remaining = ints;
         }
-        fragments
     }
 
     /// Return the number of squares used by regions in a RegionStore, without double-counting squares in overlaps.
@@ -440,7 +436,7 @@ impl RegionStore {
         let mut count = 0;
         while tmp_regions.is_not_empty() {
             count += tmp_regions[0].number_squares();
-            tmp_regions = tmp_regions.subtract_item(&tmp_regions[0]);
+            tmp_regions = tmp_regions.subtract_region(&tmp_regions[0]);
         }
         count
     }
@@ -554,9 +550,6 @@ impl FromStr for RegionStore {
         } else {
             token_list.push(token);
         }
-        //println!("token_list {:?}", token_list);
-
-        // println!("token_list2 {:?}", token_list2);
 
         // Tally up tokens.
         let mut regions = Vec::<SomeRegion>::new();
@@ -577,6 +570,35 @@ impl FromStr for RegionStore {
 mod tests {
     use super::*;
     use std::str::FromStr;
+
+    /// Check fragments of a RS for various error conditions.
+    fn check_fragments(srs1: &RegionStore, frags: &RegionStore) -> Result<(), String> {
+        // Check for non-subset intersections.
+        for regx in frags.iter() {
+            for regy in srs1.iter() {
+                if regx.intersects(regy) && !regx.is_subset_of(regy) {
+                    return Err(format!("{regx} intersects {regy} ?"));
+                }
+            }
+        }
+
+        // Check fragments cover whole area.
+        let dif = srs1.subtract(&frags);
+        println!("dif {}", dif);
+        if dif.is_not_empty() {
+            return Err(format!("diff is {dif} ?"));
+        }
+
+        // Check no fragments are supersets (or equal) any other.
+        for inx in 0..(frags.len() - 1) {
+            for iny in (inx + 1)..frags.len() {
+                if frags[inx].is_superset_of(&frags[iny]) {
+                    return Err(format!("{} is a superset of {}", frags[inx], frags[iny]));
+                }
+            }
+        }
+        Ok(())
+    }
 
     #[test]
     fn possible_regions_by_negative_inference() -> Result<(), String> {
@@ -626,7 +648,7 @@ mod tests {
 
         let regx = SomeRegion::from_str("r0101")?;
 
-        let reg_rslt = regstr.subtract_item(&regx);
+        let reg_rslt = regstr.subtract_region(&regx);
         println!("results {}", reg_rslt);
 
         assert!(reg_rslt.len() == 7);
@@ -920,56 +942,38 @@ mod tests {
         let fragments4 = regst4.split_by_intersections();
         println!("fragments4 {fragments4}");
         assert!(fragments4.len() == 3);
-        assert!(fragments4.contains(&SomeRegion::from_str("r0101")?));
-        assert!(fragments4.contains(&SomeRegion::from_str("r0110")?));
-        assert!(fragments4.contains(&SomeRegion::from_str("r0111")?));
+        assert!(check_fragments(&regst4, &fragments4) == Ok(()));
 
         let regst5 = RegionStore::from_str("[r01x1, r011x, r0x11]")?;
         let fragments5 = regst5.split_by_intersections();
         println!("fragments5 {fragments5}");
         assert!(fragments5.len() == 4);
-        assert!(fragments5.contains(&SomeRegion::from_str("r0101")?));
-        assert!(fragments5.contains(&SomeRegion::from_str("r0110")?));
-        assert!(fragments5.contains(&SomeRegion::from_str("r0011")?));
-        assert!(fragments5.contains(&SomeRegion::from_str("r0111")?));
+        assert!(check_fragments(&regst5, &fragments5) == Ok(()));
 
         let regst6 = RegionStore::from_str("[r01x1, r011x, rxx11]")?;
         let fragments6 = regst6.split_by_intersections();
         println!("fragments6 {fragments6}");
         assert!(fragments6.len() == 5);
-        assert!(fragments6.contains(&SomeRegion::from_str("r0101")?));
-        assert!(fragments6.contains(&SomeRegion::from_str("r0110")?));
-        assert!(fragments6.contains(&SomeRegion::from_str("rx011")?));
-        assert!(fragments6.contains(&SomeRegion::from_str("r1x11")?));
-        assert!(fragments6.contains(&SomeRegion::from_str("r0111")?));
+        assert!(check_fragments(&regst6, &fragments6) == Ok(()));
 
         let regst7 = RegionStore::from_str("[rx10x, rx1x1]")?;
         let fragments7 = regst7.split_by_intersections();
         println!("fragments7 {fragments7}");
         assert!(fragments7.len() == 3);
-        assert!(fragments7.contains(&SomeRegion::from_str("rX100")?));
-        assert!(fragments7.contains(&SomeRegion::from_str("rX111")?));
-        assert!(fragments7.contains(&SomeRegion::from_str("rX101")?));
+        assert!(check_fragments(&regst7, &fragments7) == Ok(()));
 
         let regst8 = RegionStore::from_str("[rxXXX, rx1x1, r01x1, rx111]")?;
         let fragments8 = regst8.split_by_intersections();
         println!("fragments8 {fragments8}");
         assert!(fragments8.len() == 6);
-        assert!(fragments8.contains(&SomeRegion::from_str("rXXX0")?));
-        assert!(fragments8.contains(&SomeRegion::from_str("rX0XX")?));
-        assert!(fragments8.contains(&SomeRegion::from_str("r1101")?));
-        assert!(fragments8.contains(&SomeRegion::from_str("r0101")?));
-        assert!(fragments8.contains(&SomeRegion::from_str("r1111")?));
-        assert!(fragments8.contains(&SomeRegion::from_str("r0111")?));
+        assert!(check_fragments(&regst8, &fragments8) == Ok(()));
 
         let regst9 = RegionStore::from_str("[rxXXX, rx1x1, r01x1]")?;
         let fragments9 = regst9.split_by_intersections();
         println!("fragments9 {fragments9}");
         assert!(fragments9.len() == 4);
-        assert!(fragments9.contains(&SomeRegion::from_str("rXXX0")?));
-        assert!(fragments9.contains(&SomeRegion::from_str("rX0XX")?));
-        assert!(fragments9.contains(&SomeRegion::from_str("r11X1")?));
         assert!(fragments9.contains(&SomeRegion::from_str("r01X1")?));
+        assert!(check_fragments(&regst9, &fragments9) == Ok(()));
 
         //assert!(1 == 2);
         Ok(())

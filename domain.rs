@@ -835,7 +835,7 @@ impl SomeDomain {
         ncov.push(reachable);
 
         for grpx in self.actions[act_id].groups.iter() {
-            ncov = ncov.subtract_item(&grpx.region);
+            ncov = ncov.subtract_region(&grpx.region);
         }
         ncov
     }

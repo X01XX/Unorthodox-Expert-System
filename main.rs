@@ -143,19 +143,6 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
         }
     };
 
-    // Display UI info.
-    usage();
-
-    sdx.print_select_stores_info();
-
-    // Display current state.
-    if sdx.step_num == 0 {
-        generate_and_display_needs(&mut sdx);
-    } else {
-        sdx.print();
-        display_needs(&sdx);
-    }
-
     // run it
     match runs {
         0 => {
@@ -196,23 +183,30 @@ fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
     let mut steps_vec = Vec::<usize>::with_capacity(num_runs);
     let mut num_groups_off = 0;
 
+    let sdx_str = sdx.formatted_def();
+
     while runs_left > 0 {
-        runs_left -= 1;
+        match SessionData::from_str(&sdx_str) {
+            Ok(mut sdx) => {
+                runs_left -= 1;
 
-        let start = Instant::now();
-        let (steps, groups, expected, num_cant) = do_one_session(sdx);
+                let start = Instant::now();
+                let (steps, groups, expected, num_cant) = do_one_session(&mut sdx);
 
-        let duration = start.elapsed();
-        println!(
-            "Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}"
-        );
-        duration_vec.push(duration);
-        steps_vec.push(steps);
-        if groups != expected {
-            num_groups_off += 1
-        }
-        if num_cant > 0 {
-            cant_do += 1;
+                let duration = start.elapsed();
+                println!(
+                    "Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}"
+                );
+                duration_vec.push(duration);
+                steps_vec.push(steps);
+                if groups != expected {
+                    num_groups_off += 1
+                }
+                if num_cant > 0 {
+                    cant_do += 1;
+                }
+            }
+            Err(errstr) => panic!("{errstr}"),
         }
     }
 
@@ -245,8 +239,7 @@ fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
     }
     let average_time = duration_total / duration_vec.len() as u32;
     let average_steps = steps_total / steps_vec.len();
-    // let duration_minutes = duration_total.as_secs() as i32 / 60 as i32;
-    let duration_minutes = duration_total / 60;
+    let duration_minutes = duration_total.as_secs() as f32 / 60.0;
 
     println!("\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
          num_runs, average_steps, steps_high, steps_low, duration_minutes, average_time, duration_high, duration_low, cant_do, num_groups_off);
@@ -417,6 +410,19 @@ fn do_one_session(sdx: &mut SessionData) -> (usize, usize, usize, usize) {
 
 /// Do a session, step by step, taking user commands.
 pub fn do_interactive_session(sdx: &mut SessionData) {
+    // Display UI info.
+    usage();
+
+    sdx.print_select_stores_info();
+
+    // Display current state.
+    if sdx.step_num == 0 {
+        generate_and_display_needs(sdx);
+    } else {
+        sdx.print();
+        display_needs(sdx);
+    }
+
     loop {
         command_loop(sdx);
 
