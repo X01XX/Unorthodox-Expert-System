@@ -2333,7 +2333,7 @@ impl SomeAction {
             rc_str.push_str(&format!(", remainder: {}", self.remainder_check_regions));
         }
 
-        let mut fil = ",\n       Grps: ";
+        let mut fil = "\n       Grps: ";
         for grpx in self.groups.iter() {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 

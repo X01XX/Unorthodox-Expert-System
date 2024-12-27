@@ -719,8 +719,6 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         return Ok(());
     }
 
-    let cur_region = SomeRegion::new(vec![cur_state.clone()]);
-
     for _ in 0..6 {
         println!("\nCalculating plan.");
         match sdx.plan_using_least_negative_select_regions_for_target(
@@ -742,25 +740,18 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
                                 } else {
                                     println!("{num} steps run.")
                                 }
+                                return Ok(());
                             }
                             Err(errstr) => println!("{errstr}"),
                         }
-                        break;
                     }
                 };
             }
             Err(errvec) => println!("{:?}", errvec),
         }
     }
-    let domx = sdx.find(dom_id).expect("SNH");
-    if cur_region.is_superset_of(&domx.cur_state) {
-        println!("\nNo plan to get from {cur_region} to {goal_region}");
-    }
-    if goal_region.is_superset_of(&domx.cur_state) {
-        println!("\nPlan succeeded");
-    } else {
-        println!("\nPlan failed");
-    }
+
+    // TODO No plan found, or worked, show forward and backward chaining attempts.
 
     pause_for_input("\nPress Enter to continue: ");
 
