@@ -704,19 +704,29 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     let cur_state = domx.current_state();
 
-    let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
-    println!(
-        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                 m01 {}\n                 b10 {}",
-        needed_change.number_changes(),
-        needed_change.m01, needed_change.m10
-    );
-
     if goal_region.is_superset_of(cur_state) {
         println!(
             "\nCurrent_state {} is already in region {}",
             domx.cur_state, goal_region
         );
         return Ok(());
+    }
+
+    let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
+    println!(
+        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                0->1 {}\n                1->0 {}",
+        needed_change.number_changes(),
+        needed_change.m01, needed_change.m10
+    );
+
+    if let Some(agg_cng) = domx.aggregate_changes() {
+        if needed_change.is_subset_of(agg_cng) {
+        } else {
+            return Err(format!("Not all needed changes are available in the domain.\nMissing changes in the domain are: {}",
+                needed_change.intersection(&agg_cng.bitwise_not())));
+        }
+    } else {
+        return Err("No changes available in domain".to_string());
     }
 
     for _ in 0..6 {
