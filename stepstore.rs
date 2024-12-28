@@ -136,22 +136,16 @@ impl StepStore {
 
         // Add step index numbers to the return vector.
         for stepx in &self.items {
-            let edge_mask = stepx.initial.edge_mask();
-
             // Check for matching m01 changes
             for (inx, m01x) in m01.iter().enumerate() {
-                if stepx.rule.m01.bitwise_and(m01x).is_not_low()
-                    && m01x.bitwise_and(&edge_mask).is_not_low()
-                {
+                if stepx.rule.m01.bitwise_and(m01x).is_not_low() {
                     ret_vec[inx].push(stepx);
                 }
             } // next m01x
 
             // Check for matching m10 changes
             for (inx, m10x) in m10.iter().enumerate() {
-                if stepx.rule.m10.bitwise_and(m10x).is_not_low()
-                    && m10x.bitwise_and(&edge_mask).is_not_low()
-                {
+                if stepx.rule.m10.bitwise_and(m10x).is_not_low() {
                     ret_vec[inx + m01_len].push(stepx);
                 }
             } // next m01x
@@ -259,7 +253,7 @@ fn any_mutually_exclusive_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeCha
 }
 
 /// Return true if all combinations of steps, in two step vectors, are mutually exclusive.
-fn all_mutually_exclusive_changes(
+pub fn all_mutually_exclusive_changes(
     vec_x: &[&SomeStep],
     vec_y: &[&SomeStep],
     wanted: &SomeChange,

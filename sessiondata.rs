@@ -1021,6 +1021,8 @@ impl SessionData {
             }
         }
 
+        let maximum_regions = self.domains.maximum_regions();
+
         loop {
             //println!("current_rate is {current_rate}");
             // fragments could be empty if there is a single, maximunm-region, negative select region.
@@ -1044,11 +1046,15 @@ impl SessionData {
             if neg_inx == neg_values.len() {
                 break;
             }
-            current_rate = neg_values[neg_inx];
-            for selx in self.select_negative.iter() {
-                if selx.value == current_rate {
-                    //println!("  found {selx}");
-                    fragments.push(&selx.regions);
+            if neg_inx == neg_values.len() - 1 {
+                fragments = vec![&maximum_regions];
+            } else {
+                current_rate = neg_values[neg_inx];
+                for selx in self.select_negative.iter() {
+                    if selx.value == current_rate {
+                        //println!("  found {selx}");
+                        fragments.push(&selx.regions);
+                    }
                 }
             }
 

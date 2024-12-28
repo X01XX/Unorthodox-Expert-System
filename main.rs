@@ -44,6 +44,7 @@ use crate::regionscorr::RegionsCorr;
 mod regionstore;
 mod resultstore;
 mod rule;
+use crate::rule::SomeRule;
 mod rulestore;
 use rulestore::RuleStore;
 mod sample;
@@ -62,6 +63,7 @@ use pn::Pn;
 mod sessiondata;
 mod step;
 mod stepstore;
+use crate::stepstore::all_mutually_exclusive_changes;
 use sessiondata::{NeedPlan, SessionData};
 mod actioninterface;
 mod planscorr;
@@ -150,6 +152,26 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
         }
         1 => {
             do_session_until_no_needs(&mut sdx);
+        }
+        99 => {
+            // Run until some needs cannot be done, then drop into interactive session.
+            let sdx_str = sdx.formatted_def();
+            let mut count = 0;
+            loop {
+                match SessionData::from_str(&sdx_str) {
+                    Ok(mut sdx) => {
+                        count += 1;
+                        do_session(&mut sdx);
+                        if sdx.cant_do.is_empty() {
+                        } else {
+                            println!("Run count = {count}");
+                            do_interactive_session(&mut sdx);
+                            process::exit(0);
+                        }
+                    }
+                    Err(errstr) => panic!("{}", errstr),
+                }
+            }
         }
         _ => {
             run_number_times(&mut sdx, runs);
@@ -691,9 +713,11 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     // Get region from string
     let goal_region = SomeRegion::from_str(cmd[1])?;
 
+    // Get ref to current domain.
     let dom_id = sdx.current_domain;
     let domx = sdx.find(dom_id).expect("SNH");
 
+    // Check region given has the correct number of bits.
     if goal_region.num_bits() != domx.num_bits() {
         return Err(format!(
             "Region does not have the same number of bits, {}, as the CCD, {}.",
@@ -702,6 +726,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         ));
     }
 
+    // Check if goal already satisfied.
     let cur_state = domx.current_state();
 
     if goal_region.is_superset_of(cur_state) {
@@ -712,6 +737,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         return Ok(());
     }
 
+    // Get needed change.
     let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
     println!(
         "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                0->1 {}\n                1->0 {}",
@@ -719,6 +745,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         needed_change.m01, needed_change.m10
     );
 
+    // Check if needed change bits are all changable with the current rules.
     if let Some(agg_cng) = domx.aggregate_changes() {
         if needed_change.is_subset_of(agg_cng) {
         } else {
@@ -727,6 +754,47 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         }
     } else {
         return Err("No changes available in domain".to_string());
+    }
+
+    // Check for mutually exclusive changes.
+    let mut mutually_exclusive = false;
+    let mut empty = false;
+    let rule_to_goal =
+        SomeRule::new_region_to_region(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
+
+    // Get possible steps.
+    let steps_st = domx.get_steps(&rule_to_goal, &domx.maximum_region());
+    //println!("steps_st {steps_st}");
+
+    // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)
+    let by_change = steps_st.split_steps_by_bit_change(&needed_change);
+    //for stp_vec in by_change.iter() {
+    //    println!("{}", tools::vec_ref_string(stp_vec));
+    //}
+
+    // Check each possible pair of single-bit changes.
+    for inx in 0..(by_change.len() - 1) {
+        if by_change[inx].is_empty() {
+            empty = true;
+            continue;
+        }
+        for iny in (inx + 1)..by_change.len() {
+            if by_change[iny].is_empty() {
+                empty = true;
+                continue;
+            }
+            if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], &needed_change) {
+                println!(
+                    "Mutually exclusive changes for {:?} and {:?}",
+                    by_change[inx], by_change[iny]
+                );
+                mutually_exclusive = true;
+            }
+        } // next iny
+    } // next inx
+
+    if mutually_exclusive || empty {
+        return Err("Done".to_string());
     }
 
     for _ in 0..6 {
