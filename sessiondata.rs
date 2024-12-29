@@ -869,7 +869,7 @@ impl SessionData {
     }
 
     /// Return a plan for a given start RegionsCorr, goal RegionsCorr, within a RegionsCorrStore.
-    fn plan_using_least_negative_select_regions_get_plan(
+    pub fn plan_using_least_negative_select_regions_get_plan(
         &self,
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,

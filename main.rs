@@ -66,6 +66,9 @@ mod stepstore;
 use crate::stepstore::all_mutually_exclusive_changes;
 use sessiondata::{NeedPlan, SessionData};
 mod actioninterface;
+mod domainstore;
+mod maskscorr;
+mod maskstore;
 mod planscorr;
 mod planscorrstore;
 mod planstore;
@@ -73,10 +76,6 @@ mod regionscorrstore;
 mod selectregions;
 mod selectregionsstore;
 mod target;
-use crate::target::ATarget;
-mod domainstore;
-mod maskscorr;
-mod maskstore;
 
 extern crate unicode_segmentation;
 
@@ -148,7 +147,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // run it
     match runs {
         0 => {
-            do_interactive_session(&mut sdx);
+            do_interactive_session(&mut sdx, String::new());
         }
         1 => {
             do_session_until_no_needs(&mut sdx);
@@ -164,8 +163,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
                         do_session(&mut sdx);
                         if sdx.cant_do.is_empty() {
                         } else {
-                            println!("Run count = {count}");
-                            do_interactive_session(&mut sdx);
+                            do_interactive_session(&mut sdx, format!("Run count = {count}"));
                             process::exit(0);
                         }
                     }
@@ -186,14 +184,12 @@ fn do_session_until_no_needs(sdx: &mut SessionData) {
     do_session(sdx);
 
     let duration = start.elapsed();
-    println!(
+    let msg = format!(
         "Steps: {} Time elapsed: {:.2?} seconds",
         sdx.step_num, duration
     );
 
-    //generate_and_display_needs(sdx);
-
-    do_interactive_session(sdx);
+    do_interactive_session(sdx, msg);
 }
 
 /// Run a number of times without user input, generate aggregate data.
@@ -431,7 +427,7 @@ fn do_one_session(sdx: &mut SessionData) -> (usize, usize, usize, usize) {
 }
 
 /// Do a session, step by step, taking user commands.
-pub fn do_interactive_session(sdx: &mut SessionData) {
+pub fn do_interactive_session(sdx: &mut SessionData, message: String) {
     // Display UI info.
     usage();
 
@@ -445,6 +441,9 @@ pub fn do_interactive_session(sdx: &mut SessionData) {
         display_needs(sdx);
     }
 
+    if !message.is_empty() {
+        println!("{message}");
+    }
     loop {
         command_loop(sdx);
 
@@ -727,9 +726,9 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     }
 
     // Check if goal already satisfied.
-    let cur_state = domx.current_state();
+    let cur_state = domx.current_state().clone();
 
-    if goal_region.is_superset_of(cur_state) {
+    if goal_region.is_superset_of(&cur_state) {
         println!(
             "\nCurrent_state {} is already in region {}",
             domx.cur_state, goal_region
@@ -738,7 +737,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     }
 
     // Get needed change.
-    let needed_change = SomeChange::new_state_to_region(cur_state, &goal_region);
+    let needed_change = SomeChange::new_state_to_region(&cur_state, &goal_region);
     println!(
         "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                0->1 {}\n                1->0 {}",
         needed_change.number_changes(),
@@ -799,31 +798,26 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     for _ in 0..6 {
         println!("\nCalculating plan.");
-        match sdx.plan_using_least_negative_select_regions_for_target(
-            Some(dom_id),
-            &ATarget::Region {
-                region: goal_region.clone(),
-            },
+        match sdx.plan_using_least_negative_select_regions_get_plan(
+            &sdx.maximum_regions_except(dom_id, &SomeRegion::new(vec![cur_state.clone()])),
+            &sdx.maximum_regions_except(dom_id, &goal_region),
+            &vec![&sdx.maximum_regions()][..],
+            0,
         ) {
-            Ok(planx) => {
-                match planx {
-                    NeedPlan::AtTarget {} => println!("At Target"),
-                    NeedPlan::PlanFound { plan: plnx } => {
-                        println!("{}", plnx.str_terse());
-                        println!("\nrunning plan:");
-                        match sdx.run_planscorrstore(&plnx) {
-                            Ok(num) => {
-                                if num == 1 {
-                                    println!("{num} step run.")
-                                } else {
-                                    println!("{num} steps run.")
-                                }
-                                return Ok(());
-                            }
-                            Err(errstr) => println!("{errstr}"),
+            Ok(plnx) => {
+                println!("{}", plnx.str_terse());
+                println!("\nrunning plan:");
+                match sdx.run_planscorrstore(&plnx) {
+                    Ok(num) => {
+                        if num == 1 {
+                            println!("{num} step run.")
+                        } else {
+                            println!("{num} steps run.")
                         }
+                        return Ok(());
                     }
-                };
+                    Err(errstr) => println!("{errstr}"),
+                }
             }
             Err(errvec) => println!("{:?}", errvec),
         }
@@ -1338,6 +1332,7 @@ mod tests {
     use crate::needstore::NeedStore;
     use crate::regionscorr::RegionsCorr;
     use crate::selectregions::SelectRegions;
+    use crate::target::ATarget;
 
     /// Force a misapprehension of a rule for action 4.
     /// Develop actions 0-3 in the normal way.
