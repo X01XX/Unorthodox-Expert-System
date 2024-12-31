@@ -102,7 +102,7 @@ impl SomeStep {
             act_id: None,
             initial: regx.clone(),
             result: regx.clone(),
-            rule: SomeRule::new_region_to_region(regx, regx),
+            rule: SomeRule::new_region_to_region_min(regx, regx),
             alt_rule: AltRuleHint::NoAlt {},
             group_inx: 0,
         }

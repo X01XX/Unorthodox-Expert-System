@@ -759,7 +759,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     let mut mutually_exclusive = false;
     let mut empty = false;
     let rule_to_goal =
-        SomeRule::new_region_to_region(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
+        SomeRule::new_region_to_region_min(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
 
     // Get possible steps.
     let steps_st = domx.get_steps(&rule_to_goal, &domx.maximum_region());

@@ -350,12 +350,14 @@ impl SomeDomain {
         }
 
         // Calc wanted, and unwanted, changes.
-        let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
+        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
         //println!("rule to goal {rule_to_goal}");
 
         let wanted_changes = rule_to_goal.wanted_changes();
 
-        let unwanted_changes = rule_to_goal.unwanted_changes();
+        let unwanted_changes = rule_to_goal
+            .unwanted_changes()
+            .bitwise_and(&goal_reg.edge_mask()); // Mask out 0X, 1X, don't cares.
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
@@ -387,7 +389,7 @@ impl SomeDomain {
 
             for inx in asym_only_changes {
                 for (iny, stepx) in steps_by_change_vov[inx].iter().enumerate() {
-                    let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+                    let rule_to = SomeRule::new_region_to_region_min(from_reg, &stepx.initial);
 
                     let rulx = rule_to.combine_sequence(&stepx.rule);
 
@@ -459,7 +461,7 @@ impl SomeDomain {
                                 .number_changes(),
                         )
                     } else {
-                        let rule_to = SomeRule::new_region_to_region(from_reg, &stepx.initial);
+                        let rule_to = SomeRule::new_region_to_region_min(from_reg, &stepx.initial);
                         let rulx = rule_to.combine_sequence(&stepx.rule);
                         (
                             wanted_changes.intersection(&rulx).number_changes(),
@@ -564,8 +566,8 @@ impl SomeDomain {
             return Err("domain::plan_steps_between: Depth limit exceeded".to_string());
         }
 
-        let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
-        let wanted_changes = rule_to_goal.wanted_changes();
+        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
+        let wanted_changes = rule_to_goal.as_change();
 
         let steps_str = self.get_steps(&rule_to_goal, within);
         if steps_str.is_empty() {
@@ -711,8 +713,8 @@ impl SomeDomain {
         debug_assert!(!goal_reg.is_superset_of(from_reg));
 
         // Figure the required change.
-        let rule_to_goal = SomeRule::new_region_to_region(from_reg, goal_reg);
-        let change_to_goal = rule_to_goal.wanted_changes();
+        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
+        let change_to_goal = rule_to_goal.as_change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 3 * change_to_goal.number_changes();

@@ -9,6 +9,7 @@ use crate::state::SomeState;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
@@ -175,7 +176,7 @@ impl NumBits for SomeChange {
 impl FromStr for SomeChange {
     type Err = String;
     /// Return SomeChange from a rule string.
-    /// Like "01/10/Xx/..", other rule bit position representations are disallowed.
+    /// Like "01/10/Xx/..", ".." means no change in that bit position.
     /// Each bit position must be specified.
     /// An underscore, "_", character can be used as a visual separator, and is ignored.
     /// Spaces are ignored.
@@ -186,16 +187,18 @@ impl FromStr for SomeChange {
             return Err("SomeChange::from_str: Empty string?".to_string());
         }
 
-        match SomeRule::from_str(str2) {
-            Ok(ruls) => {
-                if ruls.m00.is_not_low() {
-                    Err("SomeChange::from_str: invalid token, 00, X0 or XX?".to_string())
-                } else if ruls.m11.is_not_low() {
-                    Err("SomeChange::from_str: invalid token, 11, X1 or XX?".to_string())
-                } else {
-                    Ok(ruls.as_change())
-                }
+        // Convert ".." to "XX".
+        let mut str3 = String::new();
+        for chr in str2.graphemes(true) {
+            if chr == "." {
+                str3.push('X');
+            } else {
+                str3.push_str(chr);
             }
+        }
+
+        match SomeRule::from_str(&str3) {
+            Ok(ruls) => Ok(ruls.as_change()),
             Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),
         }
     }

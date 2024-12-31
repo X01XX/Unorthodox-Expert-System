@@ -405,21 +405,6 @@ impl SomeRule {
         SomeChange::new(self.m01.clone(), self.m10.clone())
     }
 
-    /// Return a rule for translating from a region to another region.
-    /// Xx / XX combinations change to XX.
-    /// 1X, or 0X, bit positions will cause a failure of the is_valid_union function.
-    pub fn new_region_to_region(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-        debug_assert_eq!(from.num_bits(), to.num_bits());
-
-        Self::new(&SomeSample::new(
-            from.high_state().clone(),
-            to.high_state().clone(),
-        ))
-        .union(&Self::new(&SomeSample::new(
-            from.low_state(),
-            to.low_state(),
-        )))
-    }
     /// Return minimum-change rule to change a region into a subset of a second region.
     pub fn new_region_to_region_min(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
@@ -446,15 +431,6 @@ impl SomeRule {
                 .bitwise_or(&fx.bitwise_and(&tx)),
             m10: f1.bitwise_and(&t0).bitwise_or(&fx.bitwise_and(&t0)),
         }
-    }
-    /// Return a rule for translating from a state to a region.
-    /// The result may not pass is_valid_union.
-    pub fn _new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeRule {
-        debug_assert_eq!(from.num_bits(), to.num_bits());
-
-        SomeRule::new(&SomeSample::new(from.clone(), to.first_state().clone())).union(
-            &SomeRule::new(&SomeSample::new(from.clone(), to.far_state())),
-        )
     }
 
     /// Return the number of bits changed in a rule.
@@ -677,21 +653,6 @@ impl FromStr for SomeRule {
                     m00.push('0');
                     m01.push('1');
                     m11.push('1');
-                    m10.push('0');
-                } else if token == "1X" || token == "1x" {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('1');
-                    m10.push('1');
-                } else if token == "0X" || token == "0x" {
-                    m00.push('1');
-                    m01.push('1');
-                    m11.push('0');
-                    m10.push('0');
-                } else if token == ".." {
-                    m00.push('0');
-                    m01.push('0');
-                    m11.push('0');
                     m10.push('0');
                 } else {
                     return Err(format!("SomeRule::from_str: Unrecognized token {token}"));
@@ -954,7 +915,7 @@ mod tests {
     fn restrict_for_changes() -> Result<(), String> {
         let rul1 = SomeRule::from_str("X0/X1_Xx/10/Xx/Xx_X0/X1/X0/X1/X0/X1")?;
 
-        let rule_to_goal = SomeRule::new_region_to_region(
+        let rule_to_goal = SomeRule::new_region_to_region_min(
             &SomeRegion::from_str("10_0001_100011")?,
             &SomeRegion::from_str("XX_X010_010011")?,
         );
@@ -1132,21 +1093,21 @@ mod tests {
 
     #[test]
     fn change_care_mask() -> Result<(), String> {
-        let rul1 = SomeRule::new_region_to_region(
+        let rul1 = SomeRule::new_region_to_region_min(
             &SomeRegion::from_str("0010_01XX")?,
             &SomeRegion::from_str("1001_XXXX")?,
         );
         let msk = rul1.change_care_mask();
         println!("care {msk}");
 
-        assert!(msk == SomeMask::from_str("1111_0000")?);
+        assert!(msk == SomeMask::from_str("1111_1100")?);
 
         Ok(())
     }
 
     #[test]
     fn wanted_changes() -> Result<(), String> {
-        let rul1 = SomeRule::new_region_to_region(
+        let rul1 = SomeRule::new_region_to_region_min(
             &SomeRegion::from_str("XX_0101_01XX")?,
             &SomeRegion::from_str("01_0110_XXXX")?,
         );
@@ -1161,15 +1122,15 @@ mod tests {
 
     #[test]
     fn unwanted_changes() -> Result<(), String> {
-        let rul1 = SomeRule::new_region_to_region(
+        let rul1 = SomeRule::new_region_to_region_min(
             &SomeRegion::from_str("XX_0101_01XX")?,
             &SomeRegion::from_str("01_0110_XXXX")?,
         );
         let cng = rul1.unwanted_changes();
         println!("unwanted {cng}");
 
-        assert!(cng.m01 == SomeMask::from_str("10_1000_0000")?);
-        assert!(cng.m10 == SomeMask::from_str("01_0100_0000")?);
+        assert!(cng.m01 == SomeMask::from_str("10_1000_1000")?);
+        assert!(cng.m10 == SomeMask::from_str("01_0100_0100")?);
 
         Ok(())
     }

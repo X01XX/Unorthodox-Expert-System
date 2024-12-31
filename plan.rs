@@ -563,7 +563,7 @@ impl FromStr for SomePlan {
                 let stepx = if let Some(act_id) = actions[0] {
                     SomeStep::new(
                         act_id,
-                        SomeRule::new_region_to_region(&regions[0], &regions[1]),
+                        SomeRule::new_region_to_region_min(&regions[0], &regions[1]),
                         AltRuleHint::NoAlt {},
                     )
                 } else {
