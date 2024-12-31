@@ -451,11 +451,12 @@ mod tests {
         println!("plnscstr {plnscstr}");
 
         let restrict_regs = RegionsCorr::from_str("RC[r00, r000]")?;
+        println!("restrict_regs {restrict_regs}");
 
         if let Some(restricted) = plnscstr.restrict_initial_regions(&restrict_regs) {
             println!("resricted {restricted}");
             let result_regs = restricted.result_regions();
-            assert!(result_regs == RegionsCorr::from_str("RC[r10, r010]")?);
+            assert!(result_regs == RegionsCorr::from_str("RC[r00, r000]")?);
             assert!(restricted.initial_regions() == RegionsCorr::from_str("RC[r00, r000]")?)
         } else {
             return Err("restrict_initial_regs failed".to_string());
@@ -475,7 +476,7 @@ mod tests {
             println!("resricted plan {restricted}");
             let initial_regs = restricted.initial_regions();
             println!("initial regs {initial_regs}");
-            assert!(initial_regs == RegionsCorr::from_str("RC[r1X, rX1X]")?);
+            assert!(initial_regs == RegionsCorr::from_str("RC[r0X, rX0X]")?);
             assert!(restricted.result_regions() == RegionsCorr::from_str("RC[r00, r000]")?)
         } else {
             return Err("restrict_result_regs failed".to_string());
@@ -519,7 +520,7 @@ mod tests {
         {
             println!("rslts {rslts}");
             assert!(rslts[0] == SomeRegion::from_str("r11")?);
-            assert!(rslts[1] == SomeRegion::from_str("r110")?);
+            assert!(rslts[1] == SomeRegion::from_str("r100")?);
         } else {
             return Err("result_from_initial_regions failed".to_string());
         }

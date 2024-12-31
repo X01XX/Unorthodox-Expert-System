@@ -515,8 +515,13 @@ impl SomeAction {
 
         // loop until no housekeeping need is returned.
         let mut try_again = true;
+        let mut count = 0;
         while try_again {
             try_again = false;
+            count += 1;
+            if count > 20 {
+                return nds;
+            }
 
             nds = NeedStore::new(vec![]);
 
@@ -2219,6 +2224,7 @@ impl SomeAction {
 
     /// Return a change with all changes that can be made for the action.
     pub fn aggregate_changes(&mut self) -> Option<&SomeChange> {
+        //println!("SomeAction::aggregate_changes");
         if self.agg_chgs_updated {
         } else {
             self.aggregate_changes = self.groups.calc_aggregate_changes();
@@ -2546,10 +2552,10 @@ impl FromStr for SomeAction {
     type Err = String;
     /// Return a SomeAction instance, given a string representation.
     ///
-    /// Like D[[rulestores, affecting different regions, for an action], ...]
+    /// Like ACT[[rulestores, affecting different regions], [RuleStores], state-to-sample, state-to-sample, ...]
     ///
-    ///    ------- Rules for 0XXX -------  -- For 10XX ---  -- For 11XX ---
-    /// ACT[ [[00/XX/XX/XX], [01/XX/XX/XX]], [[11/01/XX/XX]], [[10/11/Xx/XX]] ]
+    ///      ----- Rules for 0XXX -----  -- For 10XX -  -- For 11XX -  ----- Take samples of states ----
+    /// ACT[ [00/XX/XX/XX, 01/XX/XX/XX], [11/01/XX/XX], [10/11/Xx/XX], s1000, s0000, s0101, s0000, s1010 ]
     ///
     /// All the rules must use the same number of bits.
     /// There must be at least one, non-empty, rulestore.
@@ -2630,6 +2636,10 @@ impl FromStr for SomeAction {
 
         for chr in src_str2.graphemes(true) {
             if left == right && (chr == "," || chr == " ") {
+                if left == right && !token.is_empty() {
+                    token_list.push(token);
+                    token = String::new();
+                }
                 continue;
             }
 
@@ -2657,21 +2667,42 @@ impl FromStr for SomeAction {
         //println!("token_list {:?}", token_list);
 
         let mut rs_vec = Vec::<RuleStore>::new();
+        let mut sta_vec = Vec::<SomeState>::new();
 
         // Generate vectors of RuleStores for each action.
         for tokenx in token_list.iter() {
             //println!("rulestores for an action: {tokenx}");
-            let rulstrx = RuleStore::from_str(tokenx)?;
-            if rulstrx.is_empty() {
-                return Err("SomeAction::from_str: Empty RuleStore.".to_string());
+            if tokenx[0..1] == *"[" {
+                match RuleStore::from_str(tokenx) {
+                    Ok(rulstrx) => {
+                        if rulstrx.is_empty() {
+                            return Err("SomeAction::from_str: Empty RuleStore.".to_string());
+                        }
+                        rs_vec.push(rulstrx);
+                    }
+                    Err(errstr) => return Err(errstr),
+                }
+            } else if tokenx[0..1] == *"s" {
+                match SomeState::from_str(tokenx) {
+                    Ok(stax) => {
+                        sta_vec.push(stax);
+                    }
+                    Err(errstr) => return Err(errstr),
+                }
+            } else {
+                return Err(format!(
+                    "SomeAction::from_str: Unrecognized token, {tokenx}"
+                ));
             }
-            rs_vec.push(rulstrx);
         }
 
         if rs_vec.is_empty() {
             return Err("SomeAction::from_str: No RuleStore.".to_string());
         }
-        let actx = SomeAction::new(rs_vec);
+        let mut actx = SomeAction::new(rs_vec);
+        for stax in sta_vec.iter() {
+            actx.take_action_arbitrary(stax);
+        }
 
         Ok(actx)
     }

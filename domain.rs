@@ -724,13 +724,16 @@ impl SomeDomain {
                 "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
             )]);
         }
+        //println!("steps_str {steps_str}");
 
         // Get vector of steps for each bit change.
         let steps_by_change_vov = match steps_str.get_steps_by_bit_change(&change_to_goal) {
             Ok(stps) => stps,
-            Err(errstr) => return Err(vec![errstr]),
+            Err(errstr) => {
+                //println!("error {errstr}");
+                return Err(vec![errstr]);
+            }
         };
-
         // Calculated steps_str, and steps_by_change_vov, ahead so that thay don't have to be
         // recalculated for each run, below, of random_depth_first_search.
         let plans = (0..6)
@@ -1423,6 +1426,8 @@ mod tests {
         // Create group for region XXXX, Act 3.
         domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
         domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?); // Last sample changes current state to s0111
+
+        println!("{domx}");
 
         // Get plan for 7 to 8
         let from_reg = SomeRegion::from_str("r0111")?;

@@ -783,10 +783,15 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
                 continue;
             }
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], &needed_change) {
-                println!(
-                    "Mutually exclusive changes for {:?} and {:?}",
-                    by_change[inx], by_change[iny]
-                );
+                print!("Steps ");
+                for stpx in by_change[inx].iter() {
+                    print!("inx {stpx} ");
+                }
+                println!("\nmutually exclusive to steps ");
+                for stpy in by_change[iny].iter() {
+                    print!("iny {stpy} ");
+                }
+                println!("\nfor changes {needed_change}");
                 mutually_exclusive = true;
             }
         } // next iny
@@ -1339,26 +1344,19 @@ mod tests {
     /// In action 4, testing squares adjacent to the anchor, using actions 0-3, should invalidate the first group.
     #[test]
     fn bad_start() -> Result<(), String> {
-        // Create SessionData.
+        // Create SessionData, set up group XX/XX/Xx/XX for action 4.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/XX/01/X1], [XX/XX/10/X0]]]],
+            ACT[[XX/XX/01/X1], [XX/XX/10/X0], s0001, s1110, s0001, s1110, s0001, s1110]]]
         ]",
         )?;
 
-        // Set up group XX/XX/Xx/XX for action 4.
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s0001")?);
-        sdx.take_action_arbitrary(0, 4, &SomeState::from_str("s1110")?);
-
         sdx.print();
+
         assert!(sdx.find(0).expect("SNH").actions[4].number_groups() == 1);
         let grpx = sdx.find(0).expect("SNH").actions[4]
             .groups
@@ -1380,7 +1378,7 @@ mod tests {
             .find(&SomeRegion::from_str("XX0X")?)
             .unwrap();
         println!("Group {} found", grpx.region);
-
+        //assert!(1 == 2);
         Ok(())
     }
 

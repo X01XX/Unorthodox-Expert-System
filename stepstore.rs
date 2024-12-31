@@ -243,7 +243,15 @@ fn any_mutually_exclusive_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeCha
     for inx in 0..(by_change.len() - 1) {
         for iny in (inx + 1)..by_change.len() {
             //println!("any_mutually_exclusive_changes checking {:?} and {:?}", by_change[inx], by_change[iny]);
+            //println!("any_mutually_exclusive_changes checking {inx} and {iny}");
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
+                //println!("any_mutually_exclusive_changes checking {inx} and {iny}");
+                //for stpx in by_change[inx].iter() {
+                //    println!("inx: {stpx}");
+                //}
+                //for stpy in by_change[iny].iter() {
+                //    println!("iny: {stpy}");
+                //}
                 return true;
             }
         } // next iny
