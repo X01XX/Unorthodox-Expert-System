@@ -762,7 +762,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         SomeRule::new_region_to_region_min(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
 
     // Get possible steps.
-    let steps_st = domx.get_steps(&rule_to_goal, &domx.maximum_region());
+    let steps_st = domx.get_steps(&rule_to_goal.as_change(), &domx.maximum_region());
     //println!("steps_st {steps_st}");
 
     // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)

@@ -20,7 +20,6 @@ use crate::needstore::NeedStore;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::{Compatibility, SomeSquare};
@@ -1715,14 +1714,10 @@ impl SomeAction {
     /// produce the desired change.
     ///
     /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
-    pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
-        //println!("action::get_steps: Dom {} Act {} for rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
-        debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits);
+    pub fn get_steps(&self, change_to_goal: &SomeChange, within: &SomeRegion) -> StepStore {
+        //println!("action::get_steps: Dom {} Act {} for change_to_goal {change_to_goal} within {within}", self.dom_id, self.id);
+        debug_assert_eq!(change_to_goal.num_bits(), self.num_bits);
         debug_assert!(within.num_bits() == self.num_bits);
-        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
-        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
-
-        let change_to_goal = rule_to_goal.wanted_changes();
 
         debug_assert!(change_to_goal.m01.bitwise_and(&change_to_goal.m10).is_low()); // No X->x change wanted.
 
@@ -1749,7 +1744,7 @@ impl SomeAction {
                 }
 
                 // Process possible rule(s)
-                let mut stpsx = self.get_steps_from_rulestore(rules, rule_to_goal, within);
+                let mut stpsx = self.get_steps_from_rulestore(rules, change_to_goal, within);
                 if stpsx.is_empty() {
                     continue;
                 }
@@ -1769,11 +1764,12 @@ impl SomeAction {
     fn get_steps_from_rulestore(
         &self,
         rules: &RuleStore,
-        rule_to_goal: &SomeRule,
+        change_to_goal: &SomeChange,
         within: &SomeRegion,
     ) -> StepStore {
         //println!("action::get_steps_from_rulestore: Dom {} Act {} rules {rules} rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
         debug_assert!(rules.is_not_empty());
+        debug_assert!(change_to_goal.is_not_low());
 
         let mut stps = StepStore::new(vec![]);
 
@@ -1781,9 +1777,6 @@ impl SomeAction {
         } else {
             return stps;
         }
-
-        let change_to_goal = rule_to_goal.wanted_changes();
-        debug_assert!(change_to_goal.is_not_low());
 
         // Create a temporary rule vector.
         // Rule order is preserved.
@@ -1793,7 +1786,7 @@ impl SomeAction {
         if rules2.len() == 1 {
             if let Some(rulx) = &rules2[0] {
                 if change_to_goal.intersection(rulx).is_not_low() {
-                    if let Some(rulx) = rulx.restrict_for_changes(rule_to_goal) {
+                    if let Some(rulx) = rulx.restrict_for_changes(change_to_goal) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1862,7 +1855,7 @@ impl SomeAction {
             if let Some(rulx) = &rules2[0] {
                 let ruly = rulx.restrict_initial_region(regx);
                 if change_to_goal.intersection(&ruly).is_not_low() {
-                    if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
+                    if let Some(rulz) = ruly.restrict_for_changes(change_to_goal) {
                         stps.push(SomeStep::new(
                             self.id,
                             rulz,
@@ -1877,7 +1870,7 @@ impl SomeAction {
             if let Some(rulx) = &rules2[1] {
                 let ruly = rulx.restrict_initial_region(regx);
                 if change_to_goal.intersection(&ruly).is_not_low() {
-                    if let Some(rulz) = ruly.restrict_for_changes(rule_to_goal) {
+                    if let Some(rulz) = ruly.restrict_for_changes(change_to_goal) {
                         stps.push(SomeStep::new(
                             self.id,
                             rulz,

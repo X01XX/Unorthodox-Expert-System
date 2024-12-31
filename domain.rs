@@ -569,7 +569,7 @@ impl SomeDomain {
         let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
         let wanted_changes = rule_to_goal.as_change();
 
-        let steps_str = self.get_steps(&rule_to_goal, within);
+        let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
             //println!("\n    rules covering all needed bit changes {wanted_changes} not found");
             return Err(format!("domain::plan_steps_between: No steps found for rule {rule_to_goal} within {within}"));
@@ -720,7 +720,7 @@ impl SomeDomain {
         let num_depth = 3 * change_to_goal.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let steps_str = self.get_steps(&rule_to_goal, within);
+        let steps_str = self.get_steps(&change_to_goal, within);
         if steps_str.is_empty() {
             return Err(vec![format!(
                 "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
@@ -797,18 +797,15 @@ impl SomeDomain {
     ///
     /// If all steps found, in aggregate, cannot change all bits needed, return None.
     ///
-    pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
-        //println!("domain::get_steps: from {} to {} within {within}", rule_to_goal.initial_region(), rule_to_goal.result_region());
-        debug_assert_eq!(rule_to_goal.num_bits(), self.num_bits());
+    pub fn get_steps(&self, wanted_changes: &SomeChange, within: &SomeRegion) -> StepStore {
+        //println!("domain::get_steps: change {} within {within}", wanted_changes);
+        debug_assert_eq!(wanted_changes.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
-        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
-        //debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
 
         // Check if changes are possible.
-        let wanted_changes = rule_to_goal.wanted_changes();
 
         // Get a vector of steps (from rules) that make part of the needed changes.
-        let steps_str: StepStore = self.actions.get_steps(rule_to_goal, within);
+        let steps_str: StepStore = self.actions.get_steps(wanted_changes, within);
 
         // Check that the steps roughly encompass all needed changes, else return None.
         let Some(can_change) = steps_str.aggregate_changes() else {

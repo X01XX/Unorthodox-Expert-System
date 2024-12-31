@@ -7,7 +7,6 @@ use crate::change::SomeChange;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
 use crate::region::SomeRegion;
-use crate::rule::SomeRule;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::step::SomeStep;
@@ -99,16 +98,14 @@ impl ActionStore {
 
     /// Return steps that make at least one needed bit change.
     /// Optional region reference indicating the steps must remain within the given region.
-    pub fn get_steps(&self, rule_to_goal: &SomeRule, within: &SomeRegion) -> StepStore {
-        debug_assert!(rule_to_goal.num_bits() == within.num_bits());
-        debug_assert!(within.is_superset_of(&rule_to_goal.initial_region()));
-        debug_assert!(within.is_superset_of(&rule_to_goal.result_region()));
+    pub fn get_steps(&self, change_to_goal: &SomeChange, within: &SomeRegion) -> StepStore {
+        debug_assert!(change_to_goal.num_bits() == within.num_bits());
 
         // Run a thread for each action
         let stps: Vec<StepStore> = self
             .items
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_steps(rule_to_goal, within))
+            .map(|actx| actx.get_steps(change_to_goal, within))
             .collect::<Vec<StepStore>>();
 
         // Consolidate steps into one StepStore.

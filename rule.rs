@@ -314,10 +314,10 @@ impl SomeRule {
     /// For rule bit positions that are X->x, X->0 or X->1,
     /// the X value can be changed to focus on the desired change,
     /// or to mask out an unwanted change.
-    pub fn restrict_for_changes(&self, rule_to_goal: &SomeRule) -> Option<SomeRule> {
-        debug_assert_eq!(self.num_bits(), rule_to_goal.num_bits());
+    pub fn restrict_for_changes(&self, wanted_changes: &SomeChange) -> Option<SomeRule> {
+        debug_assert_eq!(self.num_bits(), wanted_changes.num_bits());
 
-        let wanted_changes = rule_to_goal.wanted_changes();
+        //let wanted_changes = rule_to_goal.wanted_changes();
 
         debug_assert!(wanted_changes
             .m01
@@ -925,7 +925,7 @@ mod tests {
 
         let rul3 = SomeRule::from_str("X0/X1/Xx/10_01/10/X0/X1_X0/X1/X0/X1")?;
 
-        if let Some(rul2) = rul1.restrict_for_changes(&rule_to_goal) {
+        if let Some(rul2) = rul1.restrict_for_changes(&rule_to_goal.as_change()) {
             println!("rul2         {rul2}");
             println!("rul3         {rul3}");
             assert!(rul2 == rul3);
