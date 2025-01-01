@@ -23,7 +23,7 @@ impl fmt::Display for SomeGroup {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 /// A group formed by two squares.
 /// Squares in between are compatible or not sampled.
 pub struct SomeGroup {

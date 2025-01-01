@@ -61,7 +61,7 @@ pub struct InxPlan {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 /// A vector of SomeDomain structs, and session state.
 pub struct SessionData {
     /// Domain structures.
@@ -1649,6 +1649,10 @@ impl FromStr for SessionData {
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SessionData::from_str: {str_in}");
         let ds_str = str_in.trim();
+
+        if str_in.len() < 3 {
+            return Err("sessiondata::from_str: Invalid data".to_string());
+        }
 
         // Unwrap "SD[ ... ]", check that the brackets are balanced.
         let mut ds_str2 = String::new();

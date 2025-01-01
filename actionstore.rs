@@ -27,7 +27,7 @@ impl fmt::Display for ActionStore {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 /// A vector of SomeAction structs, and SomeAction-specific functions.
 pub struct ActionStore {
     /// A vector of SomeAction structs

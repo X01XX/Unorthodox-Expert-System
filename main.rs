@@ -135,15 +135,26 @@ fn main() {
 
 /// Load data from a file, then run with user input, step by step.
 fn run_with_file(file_path: &str, runs: usize) -> i32 {
-    // Init SessionData or read in from file.
-    let mut sdx = match load_data(file_path) {
-        Ok(new_sdx) => new_sdx,
+    // Read in file.
+    let file_contents = match load_data(file_path) {
+        Ok(file_in) => file_in,
         Err(errstr) => {
             eprintln!("main::run_with_file: {errstr}");
             return 1;
         }
     };
 
+    // Get SesionData struct from Serialized data or a string definition.
+    let mut sdx = match serde_yaml::from_str(&file_contents) {
+        Ok(new_sdx) => new_sdx,
+        Err(_) => match SessionData::from_str(&tools::remove_comments(&file_contents)) {
+            Ok(sdx) => sdx,
+            Err(errstr) => {
+                println!("main::run_with_file: {errstr}");
+                return 1;
+            }
+        },
+    };
     // run it
     match runs {
         0 => {
@@ -153,8 +164,10 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
             do_session_until_no_needs(&mut sdx);
         }
         99 => {
+            // Use file_contents repeatedly, in case random initial states are needed.
+            let sdx_str = tools::remove_comments(&file_contents);
+
             // Run until some needs cannot be done, then drop into interactive session.
-            let sdx_str = sdx.formatted_def();
             let mut count = 0;
             loop {
                 match SessionData::from_str(&sdx_str) {
@@ -167,12 +180,16 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
                             process::exit(0);
                         }
                     }
-                    Err(errstr) => panic!("{}", errstr),
+                    Err(errstr) => {
+                        println!("{errstr}");
+                        return 1;
+                    }
                 }
             }
         }
         _ => {
-            run_number_times(&mut sdx, runs);
+            let sdx_str = tools::remove_comments(&file_contents);
+            run_number_times(sdx_str, runs);
         }
     }
     0
@@ -194,7 +211,7 @@ fn do_session_until_no_needs(sdx: &mut SessionData) {
 
 /// Run a number of times without user input, generate aggregate data.
 /// Return number failures, that is the number of seessions that ended with unsatisfied needs.
-fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
+fn run_number_times(sdx_str: String, num_runs: usize) -> usize {
     let mut runs_left = num_runs;
     let mut cant_do = 0;
     let mut duration_vec = Vec::<Duration>::with_capacity(num_runs);
@@ -202,12 +219,19 @@ fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
     let mut num_groups_off = 0;
 
     while runs_left > 0 {
-        let mut sdy = sdx.clone();
+        // Use file_contents repeatedly, in case random initial states are needed.
+        let mut sdx = match SessionData::from_str(&sdx_str) {
+            Ok(sdx) => sdx,
+            Err(errstr) => {
+                println!("{errstr}");
+                return 1;
+            }
+        };
 
         runs_left -= 1;
 
         let start = Instant::now();
-        let (steps, groups, expected, num_cant) = do_one_session(&mut sdy);
+        let (steps, groups, expected, num_cant) = do_one_session(&mut sdx);
 
         let duration = start.elapsed();
         println!(
@@ -1268,30 +1292,19 @@ pub fn pause_for_input(prompt: &str) -> String {
 }
 
 /// Load data from a given path string.
-fn load_data(path_str: &str) -> Result<SessionData, String> {
+fn load_data(path_str: &str) -> Result<String, String> {
     let path = Path::new(path_str);
-    let display = path.display();
 
     // Open a file, returns `io::Result<File>`
     match File::open(path) {
         Ok(mut afile) => {
             let mut file_content = String::new();
             match afile.read_to_string(&mut file_content) {
-                Ok(_) => {
-                    match serde_yaml::from_str(&file_content) {
-                        Ok(new_sdx) => Ok(new_sdx),
-                        Err(_) => {
-                            match SessionData::from_str(&tools::remove_comments(&file_content)) {
-                                Ok(new_sdx) => Ok(new_sdx),
-                                Err(why) => Err(format!("Main::load_data: {display} {why}")),
-                            }
-                        }
-                    } // end match deserialized_r
-                }
-                Err(why) => Err(format!("Main::load_data: {display} {why}")),
+                Ok(_) => Ok(file_content),
+                Err(why) => Err(format!("main::load_data: {} {why}", path.display())),
             }
         }
-        Err(why) => Err(format!("Main::load_data: {display} {why}")),
+        Err(why) => Err(format!("main::load_data: {} {why}", path.display())),
     } // end match open file
 }
 
