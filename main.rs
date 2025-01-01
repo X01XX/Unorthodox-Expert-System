@@ -201,30 +201,25 @@ fn run_number_times(sdx: &mut SessionData, num_runs: usize) -> usize {
     let mut steps_vec = Vec::<usize>::with_capacity(num_runs);
     let mut num_groups_off = 0;
 
-    let sdx_str = sdx.formatted_def();
-
     while runs_left > 0 {
-        match SessionData::from_str(&sdx_str) {
-            Ok(mut sdx) => {
-                runs_left -= 1;
+        let mut sdy = sdx.clone();
 
-                let start = Instant::now();
-                let (steps, groups, expected, num_cant) = do_one_session(&mut sdx);
+        runs_left -= 1;
 
-                let duration = start.elapsed();
-                println!(
-                    "Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}"
-                );
-                duration_vec.push(duration);
-                steps_vec.push(steps);
-                if groups != expected {
-                    num_groups_off += 1
-                }
-                if num_cant > 0 {
-                    cant_do += 1;
-                }
-            }
-            Err(errstr) => panic!("{errstr}"),
+        let start = Instant::now();
+        let (steps, groups, expected, num_cant) = do_one_session(&mut sdy);
+
+        let duration = start.elapsed();
+        println!(
+            "Steps {steps}, Time elapsed in do_session() is: {duration:.2?} groups: {groups:?}"
+        );
+        duration_vec.push(duration);
+        steps_vec.push(steps);
+        if groups != expected {
+            num_groups_off += 1
+        }
+        if num_cant > 0 {
+            cant_do += 1;
         }
     }
 

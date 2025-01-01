@@ -61,7 +61,7 @@ pub struct InxPlan {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 /// A vector of SomeDomain structs, and session state.
 pub struct SessionData {
     /// Domain structures.

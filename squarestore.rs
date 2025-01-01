@@ -29,7 +29,7 @@ pub enum PickError {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 pub struct SquareStore {
     pub ahash: HashMap<SomeState, SomeSquare>,
     num_bits: usize,

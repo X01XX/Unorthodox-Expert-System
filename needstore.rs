@@ -15,7 +15,7 @@ impl fmt::Display for NeedStore {
 }
 
 #[readonly::make]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 /// A vector of SomeNeed structs, and SomeNeed-specific funtions.
 pub struct NeedStore {
     /// A vector of SomeNeed struct instances.

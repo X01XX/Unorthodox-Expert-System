@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ActionInterface {
     /// Store states and most-recent change step.
     /// Only used for the demonstration action dom0_act0, to allow

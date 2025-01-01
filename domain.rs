@@ -110,7 +110,7 @@ impl fmt::Display for SomeDomain {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 /// The SomeDomain struct, a current state and actions that can be run.
 pub struct SomeDomain {
     /// Domain number.  Index into a higher-level DomainStore.

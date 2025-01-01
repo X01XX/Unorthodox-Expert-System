@@ -45,8 +45,7 @@ impl PartialEq for SomeSquare {
 impl Eq for SomeSquare {}
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug)]
-
+#[derive(Serialize, Deserialize, Debug, Clone)]
 /// A state, with the most recent results on a given action.
 pub struct SomeSquare {
     pub state: SomeState,         // State that an action was taken on.

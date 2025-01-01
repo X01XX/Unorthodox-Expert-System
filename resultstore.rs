@@ -98,7 +98,7 @@ impl fmt::Display for ResultStore {
 type Resultint = usize;
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ResultStore {
     /// A vector to store sample results for one domain/action/state, that is a square.
     states: StateStore,

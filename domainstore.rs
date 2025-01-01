@@ -42,7 +42,7 @@ impl PartialEq for DomainStore {
 impl Eq for DomainStore {}
 
 #[readonly::make]
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Clone)]
 /// A vector of SomeDomain structs, and session state.
 pub struct DomainStore {
     /// Vector of SomeDomain structs.

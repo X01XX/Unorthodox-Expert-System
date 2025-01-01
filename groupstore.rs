@@ -22,7 +22,7 @@ impl fmt::Display for GroupStore {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 /// A vector of SomeGroup structs, SomeGroup-specific functions,
 /// and aggregate changes allowed by the structs that are predictable.
 pub struct GroupStore {

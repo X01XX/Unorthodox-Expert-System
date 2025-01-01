@@ -21,7 +21,7 @@ impl fmt::Display for SomeNeed {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Seek a sample in a region that other groups do not cover.

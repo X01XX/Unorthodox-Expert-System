@@ -48,7 +48,7 @@ impl fmt::Display for SomeAction {
 }
 
 #[readonly::make]
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 /// The SomeAction struct, aggregate the best current guess at what an action
 /// will do for any parent domain state.
 pub struct SomeAction {

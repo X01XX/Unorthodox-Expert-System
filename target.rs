@@ -14,7 +14,7 @@ impl fmt::Display for ATarget {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum ATarget {
     State { state: SomeState },
     Region { region: SomeRegion },
