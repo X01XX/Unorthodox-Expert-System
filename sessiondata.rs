@@ -1828,28 +1828,15 @@ mod tests {
         // Init SessionData. Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[r01X1], -1],
             SR[RC[rX101], -2],
             s0000
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
@@ -1888,28 +1875,15 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[r0101], -1],
             SR[RC[r1001], -1],
             s0000
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
@@ -1939,7 +1913,10 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[r0x00], -1],
             SR[RC[rx100], -1],
             SR[RC[r01x1], -1],
@@ -1948,22 +1925,6 @@ mod tests {
             s0000
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         let first_state = SomeState::from_str("s0001")?;
@@ -1993,27 +1954,14 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[rxx0x], -1],
             s0000
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
@@ -2063,26 +2011,14 @@ mod tests {
         // Init SessionData.
         let mut sdx = SessionData::from_str(
             "SD[DS[
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            DOMAIN[
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SC[s0000]
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         // Set select regions.
 
@@ -2119,35 +2055,19 @@ mod tests {
         // Init SessionData, Domains.
         let mut sdx = SessionData::from_str(
             "SD[DS[
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SC[s0000, s0000]
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up dom 0 negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r01x1, rxxxx], -1]")?);
@@ -2192,35 +2112,19 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SC[s0000, s0000]
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r00xx, rxx11], -1]")?);
@@ -2269,35 +2173,19 @@ mod tests {
         // Init SessionData, Domains.
         let mut sdx = SessionData::from_str(
             "SD[DS[
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]],
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SC[s0000, s0000]
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(1, 3, &SomeState::from_str("s1111")?);
 
         // Set up negative regions.
         sdx.add_select(SelectRegions::from_str("SR[RC[r000x, rxx11], -1]")?);
@@ -2520,28 +2408,16 @@ mod tests {
         // Init SessionData, Domains.
         let mut sdx = SessionData::from_str(
             "SD[DS[
-            DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]],
+            DOMAIN[
+                ACT[[XX/XX/XX/Xx], s0000, s1111],
+                ACT[[XX/XX/Xx/XX], s0000, s1111],
+                ACT[[XX/Xx/XX/XX], s0000, s1111],
+                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[01XX], -1],
             SR[RC[10XX], -2],
             SC[s0000]
         ]",
         )?;
-
-        // Set up action to change the first bit.
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 0, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the second bit.
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the third bit.
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 2, &SomeState::from_str("s1111")?);
-
-        // Set up action to change the fourth bit.
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s0000")?);
-        sdx.take_action_arbitrary(0, 3, &SomeState::from_str("s1111")?);
 
         let s3 = SomeState::from_str("s0011")?;
         sdx.set_domain_state(0, s3.clone());

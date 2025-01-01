@@ -1351,7 +1351,7 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/XX/01/X1], [XX/XX/10/X0], s0001, s1110, s0001, s1110, s0001, s1110]]]
+            ACT[[XX/XX/01/X1], [XX/XX/10/X0], s0001/3, s1110/3]]]
         ]",
         )?;
 

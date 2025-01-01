@@ -353,7 +353,7 @@ impl SomeDomain {
         let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
         //println!("rule to goal {rule_to_goal}");
 
-        let wanted_changes = rule_to_goal.wanted_changes();
+        let wanted_changes = rule_to_goal.as_change();
 
         let unwanted_changes = rule_to_goal
             .unwanted_changes()
@@ -714,13 +714,13 @@ impl SomeDomain {
 
         // Figure the required change.
         let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
-        let change_to_goal = rule_to_goal.as_change();
+        let wanted_changes = rule_to_goal.as_change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
-        let num_depth = 3 * change_to_goal.number_changes();
+        let num_depth = 3 * wanted_changes.number_changes();
 
         // Get steps, check if steps include all changes needed.
-        let steps_str = self.get_steps(&change_to_goal, within);
+        let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
             return Err(vec![format!(
                 "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
@@ -729,7 +729,7 @@ impl SomeDomain {
         //println!("steps_str {steps_str}");
 
         // Get vector of steps for each bit change.
-        let steps_by_change_vov = match steps_str.get_steps_by_bit_change(&change_to_goal) {
+        let steps_by_change_vov = match steps_str.get_steps_by_bit_change(&wanted_changes) {
             Ok(stps) => stps,
             Err(errstr) => {
                 //println!("error {errstr}");
@@ -1287,24 +1287,11 @@ mod tests {
         // Create a domain that uses four bits.
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/11/01/11, 00/11/00/10]]
+            ACT[[00/11/01/11, 00/11/00/10], s0101/4]
         ]",
         )?;
 
         let sta_5 = SomeState::from_str("s0101")?;
-
-        // Load samples for action 0, state 5.  The first change is chosen randomly from the rule options.
-        dm0.cur_state = sta_5.clone();
-        dm0.take_action(0);
-
-        dm0.cur_state = sta_5.clone();
-        dm0.take_action(0);
-
-        dm0.cur_state = sta_5.clone();
-        dm0.take_action(0);
-
-        dm0.cur_state = sta_5.clone();
-        dm0.take_action(0);
 
         let rslt = if let Some(sqrx) = dm0.actions[0].squares.find(&sta_5) {
             sqrx.most_recent_result().clone()
@@ -1358,16 +1345,9 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/XX/01/XX]],
+            ACT[[00/XX/01/XX], s0101, s0000],
         ]",
         )?;
-
-        // Form first group.
-        dm0.cur_state = SomeState::from_str("s0101")?; // -> 0111
-        dm0.take_action(0);
-
-        dm0.cur_state = SomeState::from_str("s0000")?; // -> 0010
-        dm0.take_action(0);
 
         println!("\n(1) dm0: cur_state {}", dm0.cur_state);
         println!("Acts: {}\n", dm0.actions);
@@ -1401,30 +1381,14 @@ mod tests {
     #[test]
     fn make_plan_direct() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]]
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111]
         ]",
         )?;
-
-        // Create group for region XXXX, Act 0.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-
-        // Create group for region XXXX, Act 1.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
-
-        // Create group for region XXXX, Act 2.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
-
-        // Create group for region XXXX, Act 3.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1111")?); // Last sample changes current state to s0111
 
         println!("{domx}");
 
@@ -1448,30 +1412,14 @@ mod tests {
     #[test]
     fn make_plans_asymmetric() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111],
         ]",
         )?;
-
-        // Create group for region XXXX->XXXx, Act 0.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-
-        // Create group for region XXXX->XXxX, Act 1.
-        domx.take_action_arbitrary(1, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(1, &SomeState::from_str("s1111")?);
-
-        // Create group for region XXXX-XxXX, Act 2.
-        domx.take_action_arbitrary(2, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(2, &SomeState::from_str("s1111")?);
-
-        // Create group for region X0XX->x0XX, Act 3.
-        domx.take_action_arbitrary(3, &SomeState::from_str("s0000")?);
-        domx.take_action_arbitrary(3, &SomeState::from_str("s1011")?);
 
         println!("\nActs: {}", domx.actions);
 
@@ -1645,19 +1593,11 @@ mod tests {
     #[test]
     fn need_for_sample_in_contradictory_intersection() -> Result<(), String> {
         // Create a domain that uses one integer for bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/00/XX/Xx], [XX/11/XX/XX]],
+            ACT[[XX/00/XX/Xx], [XX/11/XX/XX], s0000, s1101, s0110],
         ]",
         )?;
-
-        // Create group for region XX0X.
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0000")?);
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1101")?);
-
-        // Create group X1XX
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0110")?);
 
         // Get and check needs.
         let nds1 = domx.actions[0].group_pair_needs();
@@ -1678,20 +1618,11 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/11/XX], [X0/X0/01/x0]],
+            ACT[[XX/XX/11/XX], [X0/X0/01/x0], s0100/3, s1001/3],
         ]",
         )?;
 
         let max_reg = SomeRegion::from_str("rXXXX")?;
-
-        // Set up group XXXX_XX0X->XXXX_XX0X
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0100")?);
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1001")?);
 
         let Some(nds1) = domx.actions[0].limit_groups_needs(&max_reg) else {
             return Err("No needs?".to_string());
@@ -1754,21 +1685,11 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX]],
+            ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX], s0101/4, s1111/4],
         ]",
         )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         println!("\nActs: {}", domx.actions[0]);
 
@@ -1811,19 +1732,11 @@ mod tests {
             "DOMAIN[
             ACT[[00/XX/11/XX],
                 [XX/XX/00/11, XX/XX/01/10, XX/XX/01/11],
-                [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX]],
+                [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX], s0101/4, s1111/4],
         ]",
         )?;
 
         let rx1x1 = SomeRegion::from_str("rx1x1")?;
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s0101")?);
-
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
-        domx.take_action_arbitrary(0, &SomeState::from_str("s1111")?);
 
         println!("\n1 Acts: {}", domx.actions[0]);
         assert!(domx.actions[0].groups.find(&rx1x1).is_some());
@@ -1968,34 +1881,14 @@ mod tests {
     #[test]
     fn shortcuts3() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111],
         ]",
         )?;
-
-        // Create states for setting up groups.
-        let sta_0 = SomeState::from_str("s0000")?;
-        let sta_f = SomeState::from_str("s1111")?;
-
-        // Set up groups for action 0.
-        domx.take_action_arbitrary(0, &sta_0);
-        domx.take_action_arbitrary(0, &sta_f);
-
-        // Set up groups for action 1.
-        domx.take_action_arbitrary(1, &sta_0);
-        domx.take_action_arbitrary(1, &sta_f);
-
-        // Set up groups for action 2.
-        domx.take_action_arbitrary(2, &sta_0);
-        domx.take_action_arbitrary(2, &sta_f);
-
-        // Set up groups for action 3.
-        domx.take_action_arbitrary(3, &sta_0);
-        domx.take_action_arbitrary(3, &sta_f);
 
         println!("Acts: {}\n", domx.actions);
 
@@ -2018,34 +1911,14 @@ mod tests {
     #[test]
     fn shortcuts5() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111],
         ]",
         )?;
-
-        // Create states for setting up groups.
-        let sta_0 = SomeState::from_str("s0000")?;
-        let sta_f = SomeState::from_str("s1111")?;
-
-        // Set up groups for action 0.
-        domx.take_action_arbitrary(0, &sta_0);
-        domx.take_action_arbitrary(0, &sta_f);
-
-        // Set up groups for action 1.
-        domx.take_action_arbitrary(1, &sta_0);
-        domx.take_action_arbitrary(1, &sta_f);
-
-        // Set up groups for action 2.
-        domx.take_action_arbitrary(2, &sta_0);
-        domx.take_action_arbitrary(2, &sta_f);
-
-        // Set up groups for action 3.
-        domx.take_action_arbitrary(3, &sta_0);
-        domx.take_action_arbitrary(3, &sta_f);
 
         println!("Acts: {}\n", domx.actions);
 
@@ -2073,34 +1946,14 @@ mod tests {
     #[test]
     fn shortcuts6() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111],
         ]",
         )?;
-
-        // Create states for setting up groups.
-        let sta_0 = SomeState::from_str("s0000")?;
-        let sta_f = SomeState::from_str("s1111")?;
-
-        // Set up groups for action 0.
-        domx.take_action_arbitrary(0, &sta_0);
-        domx.take_action_arbitrary(0, &sta_f);
-
-        // Set up groups for action 1.
-        domx.take_action_arbitrary(1, &sta_0);
-        domx.take_action_arbitrary(1, &sta_f);
-
-        // Set up groups for action 2.
-        domx.take_action_arbitrary(2, &sta_0);
-        domx.take_action_arbitrary(2, &sta_f);
-
-        // Set up groups for action 3.
-        domx.take_action_arbitrary(3, &sta_0);
-        domx.take_action_arbitrary(3, &sta_f);
 
         println!("Acts: {}\n", domx.actions);
 
@@ -2127,34 +1980,14 @@ mod tests {
     #[test]
     fn shortcuts7() -> Result<(), String> {
         // Create a domain that uses 4 bits.
-        let mut domx = SomeDomain::from_str(
+        let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx]],
-            ACT[[XX/XX/Xx/XX]],
-            ACT[[XX/Xx/XX/XX]],
-            ACT[[Xx/XX/XX/XX]],
+            ACT[[XX/XX/XX/Xx], s0000, s1111],
+            ACT[[XX/XX/Xx/XX], s0000, s1111],
+            ACT[[XX/Xx/XX/XX], s0000, s1111],
+            ACT[[Xx/XX/XX/XX], s0000, s1111],
         ]",
         )?;
-
-        // Create states for setting up groups.
-        let sta_0 = SomeState::from_str("s0000")?;
-        let sta_f = SomeState::from_str("s1111")?;
-
-        // Set up groups for action 0.
-        domx.take_action_arbitrary(0, &sta_0);
-        domx.take_action_arbitrary(0, &sta_f);
-
-        // Set up groups for action 1.
-        domx.take_action_arbitrary(1, &sta_0);
-        domx.take_action_arbitrary(1, &sta_f);
-
-        // Set up groups for action 2.
-        domx.take_action_arbitrary(2, &sta_0);
-        domx.take_action_arbitrary(2, &sta_f);
-
-        // Set up groups for action 3.
-        domx.take_action_arbitrary(3, &sta_0);
-        domx.take_action_arbitrary(3, &sta_f);
 
         println!("Acts: {}\n", domx.actions);
 

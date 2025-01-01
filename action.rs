@@ -1714,12 +1714,12 @@ impl SomeAction {
     /// produce the desired change.
     ///
     /// The within argument restricts where a rule should start, and restricts unwanted changes that may be included with wanted changes.
-    pub fn get_steps(&self, change_to_goal: &SomeChange, within: &SomeRegion) -> StepStore {
-        //println!("action::get_steps: Dom {} Act {} for change_to_goal {change_to_goal} within {within}", self.dom_id, self.id);
-        debug_assert_eq!(change_to_goal.num_bits(), self.num_bits);
+    pub fn get_steps(&self, wanted_changes: &SomeChange, within: &SomeRegion) -> StepStore {
+        //println!("action::get_steps: Dom {} Act {} for wanted_changes {wanted_changes} within {within}", self.dom_id, self.id);
+        debug_assert_eq!(wanted_changes.num_bits(), self.num_bits);
         debug_assert!(within.num_bits() == self.num_bits);
 
-        debug_assert!(change_to_goal.m01.bitwise_and(&change_to_goal.m10).is_low()); // No X->x change wanted.
+        debug_assert!(wanted_changes.m01.bitwise_and(&wanted_changes.m10).is_low()); // No X->x change wanted.
 
         let mut stps = StepStore::new(vec![]);
 
@@ -1733,7 +1733,7 @@ impl SomeAction {
                 // Check if group rules cause at least one change that is needed.
                 let mut skip = true;
                 for rulx in rules.iter() {
-                    if change_to_goal.intersection(rulx).is_not_low() {
+                    if wanted_changes.intersection(rulx).is_not_low() {
                         skip = false;
                         break;
                     }
@@ -1744,7 +1744,7 @@ impl SomeAction {
                 }
 
                 // Process possible rule(s)
-                let mut stpsx = self.get_steps_from_rulestore(rules, change_to_goal, within);
+                let mut stpsx = self.get_steps_from_rulestore(rules, wanted_changes, within);
                 if stpsx.is_empty() {
                     continue;
                 }
@@ -1764,12 +1764,12 @@ impl SomeAction {
     fn get_steps_from_rulestore(
         &self,
         rules: &RuleStore,
-        change_to_goal: &SomeChange,
+        wanted_changes: &SomeChange,
         within: &SomeRegion,
     ) -> StepStore {
         //println!("action::get_steps_from_rulestore: Dom {} Act {} rules {rules} rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
         debug_assert!(rules.is_not_empty());
-        debug_assert!(change_to_goal.is_not_low());
+        debug_assert!(wanted_changes.is_not_low());
 
         let mut stps = StepStore::new(vec![]);
 
@@ -1785,8 +1785,8 @@ impl SomeAction {
         // Process one-rule RuleStore.
         if rules2.len() == 1 {
             if let Some(rulx) = &rules2[0] {
-                if change_to_goal.intersection(rulx).is_not_low() {
-                    if let Some(rulx) = rulx.restrict_for_changes(change_to_goal) {
+                if wanted_changes.intersection(rulx).is_not_low() {
+                    if let Some(rulx) = rulx.restrict_for_changes(wanted_changes) {
                         stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1832,7 +1832,7 @@ impl SomeAction {
                 if rulx.result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
                 } else {
                     let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
-                    if change_to_goal.intersection(&rul_sqr).is_not_low() {
+                    if wanted_changes.intersection(&rul_sqr).is_not_low() {
                         stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1842,7 +1842,7 @@ impl SomeAction {
                 if rulx.result_region().is_superset_of(last_result) { // next result should follow the alternate rule.
                 } else {
                     let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
-                    if change_to_goal.intersection(&rul_sqr).is_not_low() {
+                    if wanted_changes.intersection(&rul_sqr).is_not_low() {
                         stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
                     }
                 }
@@ -1854,8 +1854,8 @@ impl SomeAction {
         for regx in regs.iter() {
             if let Some(rulx) = &rules2[0] {
                 let ruly = rulx.restrict_initial_region(regx);
-                if change_to_goal.intersection(&ruly).is_not_low() {
-                    if let Some(rulz) = ruly.restrict_for_changes(change_to_goal) {
+                if wanted_changes.intersection(&ruly).is_not_low() {
+                    if let Some(rulz) = ruly.restrict_for_changes(wanted_changes) {
                         stps.push(SomeStep::new(
                             self.id,
                             rulz,
@@ -1869,8 +1869,8 @@ impl SomeAction {
 
             if let Some(rulx) = &rules2[1] {
                 let ruly = rulx.restrict_initial_region(regx);
-                if change_to_goal.intersection(&ruly).is_not_low() {
-                    if let Some(rulz) = ruly.restrict_for_changes(change_to_goal) {
+                if wanted_changes.intersection(&ruly).is_not_low() {
+                    if let Some(rulz) = ruly.restrict_for_changes(wanted_changes) {
                         stps.push(SomeStep::new(
                             self.id,
                             rulz,
@@ -2545,10 +2545,10 @@ impl FromStr for SomeAction {
     type Err = String;
     /// Return a SomeAction instance, given a string representation.
     ///
-    /// Like ACT[[rulestores, affecting different regions], [RuleStores], state-to-sample, state-to-sample, ...]
+    /// Like ACT[[rulestores, affecting different regions], [RuleStores], state-to-sample[/number samples, default = 1], state-to-sample, ...]
     ///
     ///      ----- Rules for 0XXX -----  -- For 10XX -  -- For 11XX -  ----- Take samples of states ----
-    /// ACT[ [00/XX/XX/XX, 01/XX/XX/XX], [11/01/XX/XX], [10/11/Xx/XX], s1000, s0000, s0101, s0000, s1010 ]
+    /// ACT[ [00/XX/XX/XX, 01/XX/XX/XX], [11/01/XX/XX], [10/11/Xx/XX], s1000, s0000/3, s0101 ]
     ///
     /// All the rules must use the same number of bits.
     /// There must be at least one, non-empty, rulestore.
@@ -2660,9 +2660,8 @@ impl FromStr for SomeAction {
         //println!("token_list {:?}", token_list);
 
         let mut rs_vec = Vec::<RuleStore>::new();
-        let mut sta_vec = Vec::<SomeState>::new();
 
-        // Generate vectors of RuleStores for each action.
+        // Generate vector of RuleStores for action.
         for tokenx in token_list.iter() {
             //println!("rulestores for an action: {tokenx}");
             if tokenx[0..1] == *"[" {
@@ -2676,12 +2675,7 @@ impl FromStr for SomeAction {
                     Err(errstr) => return Err(errstr),
                 }
             } else if tokenx[0..1] == *"s" {
-                match SomeState::from_str(tokenx) {
-                    Ok(stax) => {
-                        sta_vec.push(stax);
-                    }
-                    Err(errstr) => return Err(errstr),
-                }
+                continue;
             } else {
                 return Err(format!(
                     "SomeAction::from_str: Unrecognized token, {tokenx}"
@@ -2692,9 +2686,45 @@ impl FromStr for SomeAction {
         if rs_vec.is_empty() {
             return Err("SomeAction::from_str: No RuleStore.".to_string());
         }
+        // Init the action.
         let mut actx = SomeAction::new(rs_vec);
-        for stax in sta_vec.iter() {
-            actx.take_action_arbitrary(stax);
+
+        // Generate samples for each.
+        for tokenx in token_list.iter() {
+            //println!("rulestores for an action: {tokenx}");
+            if tokenx[0..1] == *"[" {
+                continue;
+            } else if tokenx[0..1] == *"s" {
+                let mut num_str = "1".to_string();
+                let mut tokeny = tokenx.clone();
+                // Split state token by "/" separator, if any.
+                if let Some(inx) = tokenx.find('/') {
+                    num_str = tokenx[(inx + 1)..].to_string();
+                    tokeny = tokenx[0..inx].to_string();
+                }
+                //println!("tokeny {tokeny} num_str {num_str}");
+
+                match SomeState::from_str(&tokeny) {
+                    Ok(stax) => match num_str.parse::<usize>() {
+                        Ok(num) => {
+                            //println!("num times = {num}");
+                            if num > 0 {
+                                for _ in 0..num {
+                                    actx.take_action_arbitrary(&stax);
+                                }
+                            } else {
+                                return Err(format!("Did not understand count in token {tokenx}"));
+                            }
+                        }
+                        Err(errstr) => return Err(errstr.to_string()),
+                    },
+                    Err(errstr) => return Err(errstr),
+                }
+            } else {
+                return Err(format!(
+                    "SomeAction::from_str: Unrecognized token, {tokenx}"
+                ));
+            }
         }
 
         Ok(actx)
@@ -2721,24 +2751,10 @@ mod tests {
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::from_str("ACT[[00/XX/XX/XX, 01/XX/XX/XX], [11/XX/XX/xx]]")?;
-
-        // Put in two one-result squares, both subset of the later two-result squares.
-        // 0->1 and 0->1, in the fourth bit.
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
-
-        // Set up first two_result square.
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-
-        // Set up second two_result square.
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
+        // Put in two one-result squares, s0001 and s0101, both subset of the later two-result squares.
+        let act0 = SomeAction::from_str(
+            "ACT[[00/XX/XX/XX, 01/XX/XX/XX], [11/XX/XX/xx], s0001, s0101, s0000/4, s0111/4]",
+        )?;
 
         println!("{act0}");
 
@@ -2755,19 +2771,9 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let mut act0 = SomeAction::from_str("ACT[[XX/00/XX/X0], [11/11/XX/Xx], [00/11/XX/XX]]")?;
-
-        // Make sample, bit 0 being 1->1.
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-
-        // Make sample, bit 0 being 1->0.
-        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
-
-        // Make sample, bit 0 being 1->0.
-        act0.take_action_arbitrary(&SomeState::from_str("s1101")?);
-
-        // Make sample, bit 0 being 1->0.
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+        let act0 = SomeAction::from_str(
+            "ACT[[XX/00/XX/X0], [11/11/XX/Xx], [00/11/XX/XX], s0111, s1011, s1101, s0001]",
+        )?;
 
         println!("{act0}");
 
@@ -2784,19 +2790,7 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX, XX/XX/XX/Xx]]")?;
-
-        // Set up 2-result square sf.
-        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s1111")?);
-
-        // Set up 2-result square s1.
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
+        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX, XX/XX/XX/Xx], s1111/4, s0001/4]")?;
 
         let s1 = SomeState::from_str("s0001")?;
         let max_reg = SomeRegion::from_str("rXXXX")?;
@@ -2815,16 +2809,7 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX]]")?;
-
-        // Set up square 0.
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-
-        // Set up square 3.
-        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
-
-        // Set up square 5.
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        let act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX], s0000, s0011, s0101]")?;
 
         println!("Act: {}", act0);
 
@@ -2838,19 +2823,9 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/00/XX/XX], [XX/XX/XX/11], [XX/10/XX/00]]")?;
-
-        // Set up square 0.
-        act0.take_action_arbitrary(&SomeState::from_str("s0000")?);
-
-        // Set up square 3.
-        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
-
-        // Set up square 4, dissimilar to s5 by third bit being 1->0.
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-
-        // Set up square 5.
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        let act0 = SomeAction::from_str(
+            "ACT[[XX/00/XX/XX], [XX/XX/XX/11], [XX/10/XX/00], s0000, s0011, s0100, s0101]",
+        )?;
 
         println!("Act: {}", act0);
 
@@ -2867,16 +2842,7 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[00/XX/X0/XX], [XX/XX/XX/11]]")?;
-
-        // Set up square 2.
-        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
-
-        // Set up square b.
-        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
-
-        // Set up square 5.
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        let act0 = SomeAction::from_str("ACT[[00/XX/X0/XX], [XX/XX/XX/11], s0010, s1011, s0101]")?;
 
         println!("Act: {}", act0);
 

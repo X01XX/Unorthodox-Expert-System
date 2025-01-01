@@ -534,28 +534,16 @@ impl SomeRule {
         ret
     }
 
-    /// Return a mask of "change care" bit positions.
-    fn change_care_mask(&self) -> SomeMask {
-        self.result_region().edge_mask()
-    }
-
-    /// Return a change containing wanted changes to achieve the rule goal.
-    pub fn wanted_changes(&self) -> SomeChange {
-        self.as_change().bitwise_and(&self.change_care_mask())
-    }
-
     /// Return a change containing unwanted changes to achieve the rule goal.
     /// Unwanted changes are not fatal, but lead off the "glide path" straight from the current
     /// state to the goal (current_state.union(goal)).
     /// An unwanted change of 0->1 in a bit position becomes
     /// wanted 1->0 change in the next step, canceling the unwanted change.
     pub fn unwanted_changes(&self) -> SomeChange {
-        let care_mask = self.change_care_mask();
+        let m01 = self.m01.bitwise_not();
+        let m10 = self.m10.bitwise_not();
 
-        let m00 = self.m00.bitwise_and(&care_mask);
-        let m11 = self.m11.bitwise_and(&care_mask);
-
-        SomeChange::new(m00, m11)
+        SomeChange::new(m01, m10)
     }
 } // end impl SomeRule
 
@@ -1092,26 +1080,12 @@ mod tests {
     }
 
     #[test]
-    fn change_care_mask() -> Result<(), String> {
-        let rul1 = SomeRule::new_region_to_region_min(
-            &SomeRegion::from_str("0010_01XX")?,
-            &SomeRegion::from_str("1001_XXXX")?,
-        );
-        let msk = rul1.change_care_mask();
-        println!("care {msk}");
-
-        assert!(msk == SomeMask::from_str("1111_1100")?);
-
-        Ok(())
-    }
-
-    #[test]
     fn wanted_changes() -> Result<(), String> {
         let rul1 = SomeRule::new_region_to_region_min(
             &SomeRegion::from_str("XX_0101_01XX")?,
             &SomeRegion::from_str("01_0110_XXXX")?,
         );
-        let cng = rul1.wanted_changes();
+        let cng = rul1.as_change();
         println!("wanted {cng}");
 
         assert!(cng.m01 == SomeMask::from_str("01_0010_0000")?);
@@ -1126,11 +1100,19 @@ mod tests {
             &SomeRegion::from_str("XX_0101_01XX")?,
             &SomeRegion::from_str("01_0110_XXXX")?,
         );
-        let cng = rul1.unwanted_changes();
-        println!("unwanted {cng}");
+        println!("rul1 {rul1}");
+        println!("rul1 m01 {}", rul1.m01);
+        println!("rul1 m10 {}", rul1.m10);
 
-        assert!(cng.m01 == SomeMask::from_str("10_1000_1000")?);
-        assert!(cng.m10 == SomeMask::from_str("01_0100_0100")?);
+        let cng = rul1
+            .unwanted_changes()
+            .bitwise_and(&rul1.result_region().edge_mask());
+        println!("unwanted {cng}");
+        println!("unwanted 01 {}", cng.m01);
+        println!("unwanted 10 {}", cng.m10);
+
+        assert!(cng.m01 == SomeMask::from_str("10_1101_1100")?);
+        assert!(cng.m10 == SomeMask::from_str("01_1110_1100")?);
 
         Ok(())
     }

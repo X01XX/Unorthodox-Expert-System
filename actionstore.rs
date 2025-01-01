@@ -98,14 +98,14 @@ impl ActionStore {
 
     /// Return steps that make at least one needed bit change.
     /// Optional region reference indicating the steps must remain within the given region.
-    pub fn get_steps(&self, change_to_goal: &SomeChange, within: &SomeRegion) -> StepStore {
-        debug_assert!(change_to_goal.num_bits() == within.num_bits());
+    pub fn get_steps(&self, wanted_changes: &SomeChange, within: &SomeRegion) -> StepStore {
+        debug_assert!(wanted_changes.num_bits() == within.num_bits());
 
         // Run a thread for each action
         let stps: Vec<StepStore> = self
             .items
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
-            .map(|actx| actx.get_steps(change_to_goal, within))
+            .map(|actx| actx.get_steps(wanted_changes, within))
             .collect::<Vec<StepStore>>();
 
         // Consolidate steps into one StepStore.
