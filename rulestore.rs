@@ -838,7 +838,6 @@ mod tests {
         println!("rulst3 {rulst3}");
         assert!(format!("{rulst3}") == rulst3_str);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

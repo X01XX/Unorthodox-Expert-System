@@ -263,7 +263,6 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -281,7 +280,6 @@ mod tests {
         println!("stpx: {stpx}");
         assert!(stpx.initial == SomeRegion::from_str("r000X")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

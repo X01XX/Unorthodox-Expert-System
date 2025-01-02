@@ -516,7 +516,7 @@ impl SessionData {
         goal_region: &SomeRegion,
         within: &SomeRegion,
     ) -> Result<PlanStore, Vec<String>> {
-        //println!("sessiondata: get_plans: dom {dom_id} from {from_region} goal {goal_region}");
+        //println!("sessiondata: make_plans_domain: dom {dom_id} from {from_region} goal {goal_region}");
 
         self.domains
             .make_plans_domain(dom_id, from_region, goal_region, within)
@@ -880,6 +880,7 @@ impl SessionData {
         //    "plan_using_least_negative_select_regions_get_plan: starting: start {start_regs} goal: {goal_regs} within {}", tools::vec_ref_string(within)
         //);
         debug_assert!(!within.is_empty());
+
         let plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .map(|_| {
@@ -906,7 +907,6 @@ impl SessionData {
                 }
             };
         }
-
         if plans2.is_empty() {
             return Err(problems);
         }
@@ -1029,7 +1029,6 @@ impl SessionData {
             if !fragments.is_empty() {
                 // until plan found or all negative SRs added to fragments.
                 // Use fragments to find path.
-
                 if let Ok(planx) = self.plan_using_least_negative_select_regions_get_plan(
                     start_regs,
                     goal_regs,
@@ -1122,7 +1121,9 @@ impl SessionData {
                         //println!("1plan_using_least_negative_select_regions2: returning (1) {plncs}");
                         return Ok(plncs);
                     }
-                    Err(errvec) => return Err(errvec),
+                    Err(errvec) => {
+                        return Err(errvec);
+                    }
                 };
             }
         }
@@ -1448,7 +1449,6 @@ impl SessionData {
                 }
             };
         }
-
         if plans2.is_empty() {
             Err(errs)
         } else {
@@ -1476,17 +1476,20 @@ impl SessionData {
 
         // Find a plan for each target.
         for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
+            //println!("dom_id {dom_id}");
             if regy.is_superset_of(regx) {
                 plans_per_target.push(SomePlan::new(vec![SomeStep::new_no_op(regx)]));
             } else {
                 // Try making plans.
                 match self.make_plans_domain(dom_id, regx, regy, &within[dom_id]) {
                     Ok(mut plans) => {
-                        //println!(" {} plans from get_plans", plans.len());
+                        //println!(" {} plans from make_plans", plans.len());
                         plans_per_target
                             .push(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
                     }
-                    Err(errvec) => return Err(errvec),
+                    Err(errvec) => {
+                        return Err(errvec);
+                    }
                 };
             }
         } // next domain
@@ -1628,6 +1631,11 @@ impl SessionData {
     /// Set the cleanup limit for a domain-action.
     pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
         self.domains.set_domain_cleanup(dom_id, act_id, trigger);
+    }
+
+    /// Calculate aggregate changes, for SessionData initialization.
+    pub fn calc_aggregate_changes(&mut self) {
+        self.domains.calc_aggregate_changes();
     }
 }
 
@@ -1773,6 +1781,7 @@ impl FromStr for SessionData {
         }
         // Finish up.
         sdx.calc_select();
+        sdx.calc_aggregate_changes();
 
         Ok(sdx)
     }
@@ -1848,26 +1857,21 @@ mod tests {
         println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
-        sdx.get_needs(); // set aggregate changes
-
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1111]")?;
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
-            Ok(ndpln) => {
-                match ndpln {
-                    NeedPlan::PlanFound { plan: planx } => {
-                        println!(
-                            "Plan found: {} start {start_region} goal {goal_region}",
-                            planx
-                        );
-                        assert!(planx.rate() == 0);
-                        //assert!(1 == 2);
-                        Ok(())
-                    }
-                    NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
+            Ok(ndpln) => match ndpln {
+                NeedPlan::PlanFound { plan: planx } => {
+                    println!(
+                        "Plan found: {} start {start_region} goal {goal_region}",
+                        planx
+                    );
+                    assert!(planx.rate() == 0);
+                    Ok(())
                 }
-            }
+                NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
+            },
             Err(errvec) => Err(format!("{:?}", errvec)),
         }
     }
@@ -1897,8 +1901,6 @@ mod tests {
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
-
-        sdx.get_needs(); // set aggregate changes
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
@@ -1940,8 +1942,6 @@ mod tests {
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
 
-        sdx.get_needs(); // set aggregate changes
-
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
                 println!("Plan found: {}", planx);
@@ -1975,8 +1975,6 @@ mod tests {
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
-
-        sdx.get_needs(); // set aggregate changes
 
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
             Ok(NeedPlan::PlanFound { plan: planx }) => {
@@ -2013,31 +2011,18 @@ mod tests {
     /// Test case using adjacent non-negative regions.
     fn avoidance6() -> Result<(), String> {
         // Init SessionData.
-        let mut sdx = SessionData::from_str(
+        let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
             ACT[[XX/XX/XX/Xx], s0000, s1111],
             ACT[[XX/XX/Xx/XX], s0000, s1111],
             ACT[[XX/Xx/XX/XX], s0000, s1111],
             ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            SR[RC[r1100], -1],
+            SR[RC[r1011], -1],
             SC[s0000]
         ]",
         )?;
-
-        // Set select regions.
-
-        // Set up dom 0 00XX dependent on dom 1 01XX.
-        sdx.add_select(SelectRegions::from_str("SR[RC[r1100], -1]")?);
-
-        // Set up dom 0 00XX dependent on dom 1 10XX.
-        sdx.add_select(SelectRegions::from_str("SR[RC[r1011], -1]")?);
-        sdx.calc_select();
-
-        // Init aggregate needs.
-        sdx.get_needs();
-
-        let s0 = SomeState::from_str("s0000")?;
-        sdx.set_domain_state(0, s0.clone());
 
         let start_region = RegionsCorr::from_str("RC[r0000]")?;
         let goal_region = RegionsCorr::from_str("RC[r1101]")?;
@@ -2057,7 +2042,7 @@ mod tests {
     /// Test case using two domains.
     fn avoidance7() -> Result<(), String> {
         // Init SessionData, Domains.
-        let mut sdx = SessionData::from_str(
+        let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
                 ACT[[XX/XX/XX/Xx], s0000, s1111],
@@ -2069,28 +2054,13 @@ mod tests {
                 ACT[[XX/XX/Xx/XX], s0000, s1111],
                 ACT[[XX/Xx/XX/XX], s0000, s1111],
                 ACT[[Xx/XX/XX/XX], s0000, s1111]]],
-            SC[s0000, s0000]
+            SR[RC[r01x1, rxxxx], -1],
+            SR[RC[rx101, rxxxx], -1],
+            SR[RC[rxxxx, r011x], -1],
+            SR[RC[rxxxx, rx111], -1],
+            SC[s0000, s0001]
         ]",
         )?;
-
-        // Set up dom 0 negative regions.
-        sdx.add_select(SelectRegions::from_str("SR[RC[r01x1, rxxxx], -1]")?);
-
-        sdx.add_select(SelectRegions::from_str("SR[RC[rx101, rxxxx], -1]")?);
-
-        // Set up dom 1 negative regions.
-        sdx.add_select(SelectRegions::from_str("SR[RC[rxxxx, r011x], -1]")?);
-
-        sdx.add_select(SelectRegions::from_str("SR[RC[rxxxx, rx111], -1]")?);
-
-        // Calc non-negative RegionSores.
-        sdx.calc_select();
-
-        let s0 = SomeState::from_str("s0000")?;
-        sdx.set_domain_state(0, s0.clone());
-
-        let s1 = SomeState::from_str("s0001")?;
-        sdx.set_domain_state(1, s1.clone());
 
         let start_region = RegionsCorr::from_str("RC[r0000, r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1111, r1110]")?;
@@ -2114,7 +2084,7 @@ mod tests {
     /// due to the boolean AND relationship, with two non-maximum regions, in a negative SelectRegions instance.
     fn avoidance8() -> Result<(), String> {
         // Init SessionData, Domain.
-        let mut sdx = SessionData::from_str(
+        let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
                 ACT[[XX/XX/XX/Xx], s0000, s1111],
@@ -2126,23 +2096,11 @@ mod tests {
                 ACT[[XX/XX/Xx/XX], s0000, s1111],
                 ACT[[XX/Xx/XX/XX], s0000, s1111],
                 ACT[[Xx/XX/XX/XX], s0000, s1111]]],
-            SC[s0000, s0000]
+            SR[RC[r00xx, rxx11], -1],
+            SR[RC[r11xx, r01xx], -1],
+            SC[s0101, s0111]
         ]",
         )?;
-
-        // Set up negative regions.
-        sdx.add_select(SelectRegions::from_str("SR[RC[r00xx, rxx11], -1]")?);
-
-        sdx.add_select(SelectRegions::from_str("SR[RC[r11xx, r01xx], -1]")?);
-
-        // Calc non-negative RegionSores.
-        sdx.calc_select();
-
-        let s5 = SomeState::from_str("s0101")?;
-        sdx.set_domain_state(0, s5.clone());
-
-        let s7 = SomeState::from_str("s0111")?;
-        sdx.set_domain_state(1, s7.clone());
 
         let start_regions = RegionsCorr::from_str("RC[r0101, r0111]")?;
 
@@ -2175,7 +2133,7 @@ mod tests {
     /// Test case using two domains, like avoidance8, but a way around traps.
     fn avoidance9() -> Result<(), String> {
         // Init SessionData, Domains.
-        let mut sdx = SessionData::from_str(
+        let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
                 ACT[[XX/XX/XX/Xx], s0000, s1111],
@@ -2187,23 +2145,11 @@ mod tests {
                 ACT[[XX/XX/Xx/XX], s0000, s1111],
                 ACT[[XX/Xx/XX/XX], s0000, s1111],
                 ACT[[Xx/XX/XX/XX], s0000, s1111]]],
-            SC[s0000, s0000]
+            SR[RC[r000x, rxx11], -1],
+            SR[RC[r11x1, r01xx], -1],
+            SC[s0101, s0111]
         ]",
         )?;
-
-        // Set up negative regions.
-        sdx.add_select(SelectRegions::from_str("SR[RC[r000x, rxx11], -1]")?);
-
-        sdx.add_select(SelectRegions::from_str("SR[RC[r11x1, r01xx], -1]")?);
-
-        // Calc non-negative RegionSores.
-        sdx.calc_select();
-
-        let s5 = SomeState::from_str("s0101")?;
-        sdx.set_domain_state(0, s5.clone());
-
-        let s7 = SomeState::from_str("s0111")?;
-        sdx.set_domain_state(1, s7.clone());
 
         let start_regions = RegionsCorr::from_str("RC[r0101, r0111]")?;
 
@@ -2217,7 +2163,6 @@ mod tests {
             Ok(ndpln) => match ndpln {
                 NeedPlan::PlanFound { plan: plans } => {
                     println!("Plans {}", plans);
-                    //assert!(1 == 2);
                     return Ok(());
                 }
                 _ => return Err("No plan found".to_string()),
@@ -2402,7 +2347,6 @@ mod tests {
             .select_negative
             .contains(&SelectRegions::from_str("SR[RC[r1111], -5]")?));
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2440,8 +2384,6 @@ mod tests {
                 println!("Plans {}", plans);
                 assert!(plans.rate() == -1);
                 assert!(plans.len() == 2);
-                //assert!(1 == 2);
-                //Ok(())
             }
             _ => return Err(format!("No plan found?")),
         }
@@ -2460,7 +2402,6 @@ mod tests {
                 println!("Plans {}", plans);
                 assert!(plans.rate() == -1);
                 assert!(plans.len() == 2 || plans.len() == 3);
-                //assert!(1 == 2);
                 Ok(())
             }
             _ => Err(format!("No plan found?")),
@@ -2501,7 +2442,6 @@ mod tests {
         assert!(after[1] == SomeState::from_str("s001")?);
         assert!(after[2] == SomeState::from_str("s11")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2537,7 +2477,6 @@ mod tests {
         assert!(after[0] == SomeState::from_str("s0101")?);
         assert!(after[1] == SomeState::from_str("s1100")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2572,7 +2511,6 @@ mod tests {
         } else {
             return Err("No path found?".to_string());
         }
-        //assert!(1 == 2);
         Ok(())
     }
 }

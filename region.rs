@@ -1298,7 +1298,6 @@ mod tests {
         println!("5 {mins5}");
         assert!(mins5.len() == 3);
 
-        //assert!(1 == 2);
         Ok(())
     }
 } // end tests

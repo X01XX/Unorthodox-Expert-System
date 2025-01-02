@@ -2217,7 +2217,7 @@ impl SomeAction {
 
     /// Return a change with all changes that can be made for the action.
     pub fn aggregate_changes(&mut self) -> Option<&SomeChange> {
-        //println!("SomeAction::aggregate_changes");
+        //println!("SomeAction::aggregate_changes: Act {}", self.id);
         if self.agg_chgs_updated {
         } else {
             self.aggregate_changes = self.groups.calc_aggregate_changes();
@@ -2763,7 +2763,6 @@ mod tests {
         } else {
             return Err("Group 0XXX not found?".to_string());
         }
-        //assert!(1 == 2);
         Ok(())
     }
 

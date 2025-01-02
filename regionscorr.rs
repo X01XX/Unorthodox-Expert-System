@@ -572,7 +572,6 @@ mod tests {
         assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx_x_01x1]")?));
         assert!(regstrvec.contains(&RegionsCorr::from_str("RC[rx_01xx_0_01xx]")?));
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -601,7 +600,6 @@ mod tests {
         println!("{regst1} combined = {regst2}");
         assert!(regst2 == RegionsCorr::from_str("RC[r10_1101]")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 

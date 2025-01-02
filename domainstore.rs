@@ -87,7 +87,7 @@ impl DomainStore {
             .items
             .par_iter()
             .zip(self.items.par_iter_mut())
-            .map(|(plnx, domx)| domx.run_plan(plnx, 0))
+            .map(|(plnx, domx)| domx.run_plan(plnx))
             .collect::<Vec<Result<usize, String>>>();
 
         for rsltx in vecb {
@@ -255,7 +255,7 @@ impl DomainStore {
         debug_assert!(within.num_bits() == from_region.num_bits());
         debug_assert!(within.is_superset_of(from_region));
         debug_assert!(within.is_superset_of(goal_region));
-        //println!("domainstore: get_plans: dom {dom_id} from {from_region} goal {goal_region}");
+        //println!("domainstore: make_plans_domain: dom {dom_id} from {from_region} goal {goal_region}");
 
         self.items[dom_id].make_plans(from_region, goal_region, within)
     }
@@ -300,6 +300,13 @@ impl DomainStore {
         debug_assert!(dom_id < self.len());
 
         self.items[dom_id].set_cleanup(act_id, trigger);
+    }
+
+    /// Calc aggregate changes, for SessionData initialization.
+    pub fn calc_aggregate_changes(&mut self) {
+        for itemx in self.items.iter_mut() {
+            itemx.calc_aggregate_changes();
+        }
     }
 }
 

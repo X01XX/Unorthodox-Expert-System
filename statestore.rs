@@ -228,7 +228,6 @@ mod tests {
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == stast3_str);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

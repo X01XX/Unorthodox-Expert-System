@@ -377,7 +377,7 @@ mod tests {
         let cng1 = SomeChange::from_str(&cng1_str)?;
         println!("str {cng1_str} cng1 {cng1}");
         assert!(format!("{cng1}") == cng1_str);
-        //assert!(1 == 2);
+
         Ok(())
     }
 }

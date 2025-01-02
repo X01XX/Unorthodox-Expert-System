@@ -297,7 +297,6 @@ mod tests {
         assert!(msx.contains(&SomeMask::from_str("0010")?));
         assert!(msx.contains(&SomeMask::from_str("1000")?));
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

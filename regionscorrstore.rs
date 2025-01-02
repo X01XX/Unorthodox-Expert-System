@@ -549,7 +549,6 @@ mod tests {
         } else {
             println!("test 4 OK");
         }
-        //assert!(1 == 2);
         Ok(())
     }
 

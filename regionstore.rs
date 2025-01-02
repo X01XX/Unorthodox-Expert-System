@@ -876,7 +876,6 @@ mod tests {
         } else {
             println!("test 4 OK");
         }
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -955,7 +954,6 @@ mod tests {
         assert!(fragments9.contains(&SomeRegion::from_str("r01X1")?));
         assert!(check_fragments(&regst9, &fragments9) == Ok(()));
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1026,7 +1024,6 @@ mod tests {
         println!("num_sqrs11 {regst11} = {num_sqrs11}");
         assert!(num_sqrs11 == 16);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

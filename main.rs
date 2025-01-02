@@ -589,7 +589,7 @@ fn command_loop(sdx: &mut SessionData) {
                     println!("{error}");
                 }
             },
-            "to" => match do_to_region_command(sdx, &cmd) {
+            "to" => match do_to_region_command(sdx, &cmd, true) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
@@ -722,7 +722,11 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), St
 }
 
 /// Do to-region command.
-fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_to_region_command(
+    sdx: &mut SessionData,
+    cmd: &[&str],
+    interactive: bool,
+) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one region argument is needed for the to command.".to_string());
@@ -822,6 +826,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     for _ in 0..6 {
         println!("\nCalculating plan.");
+
         match sdx.plan_using_least_negative_select_regions_get_plan(
             &sdx.maximum_regions_except(dom_id, &SomeRegion::new(vec![cur_state.clone()])),
             &sdx.maximum_regions_except(dom_id, &goal_region),
@@ -849,7 +854,9 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     // TODO No plan found, or worked, show forward and backward chaining attempts.
 
-    pause_for_input("\nPress Enter to continue: ");
+    if interactive {
+        pause_for_input("\nPress Enter to continue: ");
+    }
 
     Ok(())
 }
@@ -1347,6 +1354,23 @@ mod tests {
     use crate::selectregions::SelectRegions;
     use crate::target::ATarget;
 
+    #[test]
+    fn do_to_region_command1() -> Result<(), String> {
+        // Create SessionData, with mutually exclusive rules.
+        let mut sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
+            ACT[[11/XX/10/XX], [10/XX/01/XX], s1100, s1001, s1010, s1111]]], SC[s0101]]",
+        )?;
+
+        sdx.print();
+
+        match do_to_region_command(&mut sdx, &vec!["to", "s0111"], false) {
+            Ok(()) => println!("?"),
+            Err(errstr) => println!("{errstr}"),
+        }
+        Ok(())
+    }
+
     /// Force a misapprehension of a rule for action 4.
     /// Develop actions 0-3 in the normal way.
     /// In action 4, testing squares adjacent to the anchor, using actions 0-3, should invalidate the first group.
@@ -1386,7 +1410,7 @@ mod tests {
             .find(&SomeRegion::from_str("XX0X")?)
             .unwrap();
         println!("Group {} found", grpx.region);
-        //assert!(1 == 2);
+
         Ok(())
     }
 
@@ -1537,7 +1561,6 @@ mod tests {
 
         assert!(sdx.boredom > sdx.boredom_limit);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1613,7 +1636,7 @@ mod tests {
                 }
             )
         );
-        //assert!(1 == 2);
+
         Ok(())
     }
 
@@ -1654,7 +1677,6 @@ mod tests {
         assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1682,7 +1704,6 @@ mod tests {
         assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1710,7 +1731,6 @@ mod tests {
         assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1738,7 +1758,6 @@ mod tests {
         assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1766,7 +1785,6 @@ mod tests {
         assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

@@ -606,7 +606,6 @@ mod tests {
         println!("bits6 {bits6}");
         assert!(bits6 == SomeBits::from_str("b0100_0000_0000")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -618,7 +617,6 @@ mod tests {
         println!("bits2 {bits2}");
         assert!(bits2 == SomeBits::from_str("b0_0000_0101")?);
 
-        //assert!(1 == 2);
         Ok(())
     }
 

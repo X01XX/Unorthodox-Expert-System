@@ -220,7 +220,7 @@ impl SomeDomain {
     }
 
     /// Run a plan, return number steps if it runs to completion.
-    pub fn run_plan(&mut self, pln: &SomePlan, depth: usize) -> Result<usize, String> {
+    pub fn run_plan(&mut self, pln: &SomePlan) -> Result<usize, String> {
         //debug_assert_eq!(pln.dom_id, self.id);
         debug_assert!(pln.is_empty() || pln.num_bits().unwrap() == self.num_bits());
 
@@ -260,11 +260,6 @@ impl SomeDomain {
                 "\nChange [{} -{:02}> {}] unexpected, expected {}",
                 prev_state, act_id, self.cur_state, stpx,
             );
-
-            // Avoid an infinite loop of retries.
-            if depth == 1 {
-                return Err("domain::run_plan: Try return/retry depth limit exceeded".to_string());
-            }
 
             // May be an expected possibility from a two result state.
             match &stpx.alt_rule {
@@ -327,6 +322,11 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(from_reg));
         debug_assert!(within.is_superset_of(goal_reg));
 
+        // Check depth
+        if depth == 0 {
+            return Err("domain::depth_first_search: Depth limit exceeded".to_string());
+        }
+
         // Check if one step makes the required change, the end point of any search.
         // In case there is more than one such step, choose it randomly.
         let mut rand_inx = tools::RandomPick::new(steps_str.len());
@@ -342,11 +342,6 @@ impl SomeDomain {
                     return Ok(SomePlan::new(vec![stepz]));
                 }
             }
-        }
-
-        // Check depth
-        if depth == 0 {
-            return Err("domain::depth_first_search: Depth limit exceeded".to_string());
         }
 
         // Calc wanted, and unwanted, changes.
@@ -699,7 +694,10 @@ impl SomeDomain {
         goal_reg: &SomeRegion,
         within: &SomeRegion,
     ) -> Result<PlanStore, Vec<String>> {
-        //println!("\ndom {} make_plans2: from {from_reg} goal {goal_reg}", self.id);
+        //println!(
+        //    "\ndom {} make_plans2: from {from_reg} goal {goal_reg}",
+        //    self.id
+        //);
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(within.num_bits() == self.num_bits());
@@ -740,7 +738,7 @@ impl SomeDomain {
                     goal_reg,
                     &steps_str,
                     &steps_by_change_vov,
-                    num_depth,
+                    num_depth - 1,
                     within,
                 )
             })
@@ -775,6 +773,7 @@ impl SomeDomain {
           //for plnx in plans2.iter() {
           //    println!("    {plnx}");
           //}
+
         if plans2.is_empty() {
             Err(problems)
         } else {
@@ -869,6 +868,11 @@ impl SomeDomain {
         } else {
             None
         }
+    }
+
+    /// Calc aggregate changes, for SessionData initialization.
+    pub fn calc_aggregate_changes(&mut self) {
+        self.actions.calc_aggregate_changes();
     }
 
     /// Return the total number of groups in all the actions.
@@ -1319,7 +1323,7 @@ mod tests {
             &SomeRegion::from_str("rXXXX")?,
         ) {
             println!("1plans {plans}");
-            match dm0.run_plan(&plans[0], 2) {
+            match dm0.run_plan(&plans[0]) {
                 Ok(num) => {
                     if num == 1 {
                         return Ok(());
@@ -1354,8 +1358,7 @@ mod tests {
             &SomeRegion::from_str("r0011")?,
             &SomeRegion::from_str("r00XX")?,
         ) {
-            // println!("2plans {plans}");
-            match dm0.run_plan(&plans[0], 2) {
+            match dm0.run_plan(&plans[0]) {
                 Ok(num) => {
                     if num == 1 {
                         return Ok(());
@@ -1396,7 +1399,6 @@ mod tests {
         } else {
             return Err(String::from("No plan found to r1000?"));
         }
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1430,8 +1432,6 @@ mod tests {
         } else {
             return Err(String::from("No plan found s0111 to r1100?"));
         }
-
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1489,7 +1489,6 @@ mod tests {
                 state: SomeState::from_str("s0000")?
             }
         ));
-        //assert!(1 == 2);
         Ok(())
     }
 
@@ -1574,7 +1573,7 @@ mod tests {
 
         // Check for no more needs.
         assert!(nds4.is_empty());
-        //assert!(1 == 2);
+
         Ok(())
     }
 
@@ -1603,7 +1602,7 @@ mod tests {
                 region: SomeRegion::from_str("rX100")?
             }
         ));
-        //assert!(1 == 2);
+
         Ok(())
     }
 
@@ -1896,7 +1895,7 @@ mod tests {
             assert!(shrt.len() == 1);
             assert!(shrt[0].initial == SomeRegion::from_str("r0000")?);
             assert!(shrt[0].result == SomeRegion::from_str("r1000")?);
-            //assert!(1 == 2);
+
             return Ok(());
         }
         Err(format!("Shortcuts not found?"))
@@ -1967,7 +1966,6 @@ mod tests {
             return Err("No shortcuts found".to_string());
         }
 
-        //assert!(1 == 2);
         Ok(())
     }
 
