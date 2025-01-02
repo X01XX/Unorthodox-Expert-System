@@ -150,7 +150,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
         Err(_) => match SessionData::from_str(&tools::remove_comments(&file_contents)) {
             Ok(sdx) => sdx,
             Err(errstr) => {
-                println!("main::run_with_file: {errstr}");
+                eprintln!("main::run_with_file: {errstr}");
                 return 1;
             }
         },
@@ -181,7 +181,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
                         }
                     }
                     Err(errstr) => {
-                        println!("{errstr}");
+                        eprintln!("{errstr}");
                         return 1;
                     }
                 }
@@ -223,7 +223,7 @@ fn run_number_times(sdx_str: String, num_runs: usize) -> usize {
         let mut sdx = match SessionData::from_str(&sdx_str) {
             Ok(sdx) => sdx,
             Err(errstr) => {
-                println!("{errstr}");
+                eprintln!("{errstr}");
                 return 1;
             }
         };

@@ -350,14 +350,9 @@ impl SomeDomain {
         }
 
         // Calc wanted, and unwanted, changes.
-        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
-        //println!("rule to goal {rule_to_goal}");
+        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
 
-        let wanted_changes = rule_to_goal.as_change();
-
-        let unwanted_changes = rule_to_goal
-            .unwanted_changes()
-            .bitwise_and(&goal_reg.edge_mask()); // Mask out 0X, 1X, don't cares.
+        let unwanted_changes = SomeChange::unwanted_changes(from_reg, goal_reg);
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
@@ -566,13 +561,13 @@ impl SomeDomain {
             return Err("domain::plan_steps_between: Depth limit exceeded".to_string());
         }
 
-        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
-        let wanted_changes = rule_to_goal.as_change();
+        // Figure the required changes.
+        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
 
         let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
             //println!("\n    rules covering all needed bit changes {wanted_changes} not found");
-            return Err(format!("domain::plan_steps_between: No steps found for rule {rule_to_goal} within {within}"));
+            return Err(format!("domain::plan_steps_between: No steps found from {from_reg} to {goal_reg} within {within}"));
         }
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&wanted_changes)?;
@@ -712,9 +707,8 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(goal_reg));
         debug_assert!(!goal_reg.is_superset_of(from_reg));
 
-        // Figure the required change.
-        let rule_to_goal = SomeRule::new_region_to_region_min(from_reg, goal_reg);
-        let wanted_changes = rule_to_goal.as_change();
+        // Figure the required changes.
+        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 3 * wanted_changes.number_changes();
@@ -723,7 +717,7 @@ impl SomeDomain {
         let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
             return Err(vec![format!(
-                "domain::make_plans2: No steps found for rule {rule_to_goal} within {within}"
+                "domain::make_plans2: No steps found from {from_reg} to  {goal_reg} within {within}"
             )]);
         }
         //println!("steps_str {steps_str}");

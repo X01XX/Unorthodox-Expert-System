@@ -317,17 +317,8 @@ impl SomeRule {
     pub fn restrict_for_changes(&self, wanted_changes: &SomeChange) -> Option<SomeRule> {
         debug_assert_eq!(self.num_bits(), wanted_changes.num_bits());
 
-        //let wanted_changes = rule_to_goal.wanted_changes();
-
-        debug_assert!(wanted_changes
-            .m01
-            .bitwise_or(&wanted_changes.m10)
-            .is_not_low()); // Some changes are needed.
-
         // Check if any rule changes are needed.
-        if self.m01.bitwise_and(&wanted_changes.m01).is_low()
-            && self.m10.bitwise_and(&wanted_changes.m10).is_low()
-        {
+        if self.as_change().intersection(wanted_changes).is_low() {
             return None;
         }
 
@@ -405,7 +396,10 @@ impl SomeRule {
         SomeChange::new(self.m01.clone(), self.m10.clone())
     }
 
-    /// Return minimum-change rule to change a region into a subset of a second region.
+    /// Return the minimum-change rule to change a region into a subset of a second region.
+    /// The result will never contain X->x positions.
+    /// 1->X positions will be translated to 1->1.
+    /// 0->X positions will be translated to 0->0.
     pub fn new_region_to_region_min(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
         debug_assert_eq!(from.num_bits(), to.num_bits());
 
@@ -419,17 +413,17 @@ impl SomeRule {
 
         Self {
             m00: f0
-                .bitwise_and(&t0)
-                .bitwise_or(&fx.bitwise_and(&t0))
-                .bitwise_or(&f0.bitwise_and(&tx))
-                .bitwise_or(&fx.bitwise_and(&tx)),
-            m01: f0.bitwise_and(&t1).bitwise_or(&fx.bitwise_and(&t1)),
+                .bitwise_and(&t0) // 0->0
+                .bitwise_or(&fx.bitwise_and(&t0)) // X->0
+                .bitwise_or(&f0.bitwise_and(&tx)) // 0->X
+                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
+            m01: f0.bitwise_and(&t1).bitwise_or(&fx.bitwise_and(&t1)), // 0->1, X->1
             m11: f1
-                .bitwise_and(&t1)
-                .bitwise_or(&fx.bitwise_and(&t1))
-                .bitwise_or(&f1.bitwise_and(&tx))
-                .bitwise_or(&fx.bitwise_and(&tx)),
-            m10: f1.bitwise_and(&t0).bitwise_or(&fx.bitwise_and(&t0)),
+                .bitwise_and(&t1) // 1->1
+                .bitwise_or(&fx.bitwise_and(&t1)) // X->1
+                .bitwise_or(&f1.bitwise_and(&tx)) // 1->X
+                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
+            m10: f1.bitwise_and(&t0).bitwise_or(&fx.bitwise_and(&t0)), // 1->0, X->0
         }
     }
 
@@ -532,18 +526,6 @@ impl SomeRule {
         };
         assert!(ret.is_valid_intersection()); // Check for at least one bit set in each position.
         ret
-    }
-
-    /// Return a change containing unwanted changes to achieve the rule goal.
-    /// Unwanted changes are not fatal, but lead off the "glide path" straight from the current
-    /// state to the goal (current_state.union(goal)).
-    /// An unwanted change of 0->1 in a bit position becomes
-    /// wanted 1->0 change in the next step, canceling the unwanted change.
-    pub fn unwanted_changes(&self) -> SomeChange {
-        let m01 = self.m01.bitwise_not();
-        let m10 = self.m10.bitwise_not();
-
-        SomeChange::new(m01, m10)
     }
 } // end impl SomeRule
 
@@ -1090,29 +1072,6 @@ mod tests {
 
         assert!(cng.m01 == SomeMask::from_str("01_0010_0000")?);
         assert!(cng.m10 == SomeMask::from_str("10_0001_0000")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn unwanted_changes() -> Result<(), String> {
-        let rul1 = SomeRule::new_region_to_region_min(
-            &SomeRegion::from_str("XX_0101_01XX")?,
-            &SomeRegion::from_str("01_0110_XXXX")?,
-        );
-        println!("rul1 {rul1}");
-        println!("rul1 m01 {}", rul1.m01);
-        println!("rul1 m10 {}", rul1.m10);
-
-        let cng = rul1
-            .unwanted_changes()
-            .bitwise_and(&rul1.result_region().edge_mask());
-        println!("unwanted {cng}");
-        println!("unwanted 01 {}", cng.m01);
-        println!("unwanted 10 {}", cng.m10);
-
-        assert!(cng.m01 == SomeMask::from_str("10_1101_1100")?);
-        assert!(cng.m10 == SomeMask::from_str("01_1110_1100")?);
 
         Ok(())
     }
