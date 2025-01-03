@@ -589,8 +589,11 @@ fn command_loop(sdx: &mut SessionData) {
                     println!("{error}");
                 }
             },
-            "to" => match do_to_region_command(sdx, &cmd, true) {
-                Ok(()) => return,
+            "to" => match do_to_region_command(sdx, &cmd) {
+                Ok(()) => {
+                    pause_for_input("\nPress Enter to continue: ");
+                    return;
+                }
                 Err(error) => {
                     println!("{error}");
                 }
@@ -722,11 +725,7 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), St
 }
 
 /// Do to-region command.
-fn do_to_region_command(
-    sdx: &mut SessionData,
-    cmd: &[&str],
-    interactive: bool,
-) -> Result<(), String> {
+fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one region argument is needed for the to command.".to_string());
@@ -853,10 +852,6 @@ fn do_to_region_command(
     }
 
     // TODO No plan found, or worked, show forward and backward chaining attempts.
-
-    if interactive {
-        pause_for_input("\nPress Enter to continue: ");
-    }
 
     Ok(())
 }
@@ -1364,7 +1359,7 @@ mod tests {
 
         sdx.print();
 
-        match do_to_region_command(&mut sdx, &vec!["to", "s0111"], false) {
+        match do_to_region_command(&mut sdx, &vec!["to", "s0111"]) {
             Ok(()) => println!("?"),
             Err(errstr) => println!("{errstr}"),
         }

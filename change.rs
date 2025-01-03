@@ -30,8 +30,6 @@ impl fmt::Display for SomeChange {
 impl SomeChange {
     /// Return a new change with the given masks
     pub fn new(m01: SomeMask, m10: SomeMask) -> Self {
-        debug_assert_eq!(m01.num_bits(), m10.num_bits());
-
         Self { m01, m10 }
     }
 
@@ -172,6 +170,14 @@ impl SomeChange {
             m10: tmp.m11,
         }
         .bitwise_and_mask(&to.x_mask())
+    }
+
+    /// Return true if there is anf X->x bit positions.
+    /// Instances used for aggregated changes may have Xx positions.
+    /// Instances used for wanted changes will not have Xx positions,
+    /// wanted changes are 01, or 10, but not both in the same position.
+    pub fn any_x_to_x_not(&self) -> bool {
+        self.m01.bitwise_and(&self.m10).is_not_low()
     }
 } // end impl SomeChange
 

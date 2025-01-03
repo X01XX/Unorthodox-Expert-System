@@ -346,16 +346,38 @@ impl SomeRule {
         Some(rule_tmp)
     }
 
-    /// Return true if two rules are mutually exclusive.
-    /// Both rules lose wanted changes, running them in any order.
+    /// This is used to compare rules in steps.
     ///
-    /// For a change to pass from one rule through a second rule:
-    ///    A wanted 0->1 change in first rule should correspond to a 1->1 in the second rule.
-    ///    A wanted 1->0 change in first rule should correspond to a 0->0 in the second rule.
+    /// A single bit position of a wanted change will be either 0->1, or 1->0, not both.
+    ///
+    /// A corresponding position in another rule can be six, of the 8, possibilities: 00, 01, 11, 10, (X0 or X1), XX, (not Xx).
+    ///
+    /// Xx would have been pruned, before being put into a step, to match the wanted change.
+    /// X0 would have been pruned, before being put into a step, to match the wanted change 10.
+    /// X1 would have been pruned, before being put into a step, to match the wanted change 01.
+    ///
+    /// Comparing a wanted change to something else:
+    ///
+    /// 01 - 01 Is redundant, but not bad. Each rule may have originally been 01, or may have been X1 or Xx, before being pruned to be used in a step.
+    ///         This implies a change 1->0 between the two, the result of the three is what is wanted.
+    /// 01 - 00 Is bad, it implies an additional change 1->0, between the two, the result of the three is not wanted.
+    /// 01 - 10 or X0 are bad, the wanted change is reversed.
+    /// 01 - XX or 11 are good, the wanted change carries through.
+    ///
+    /// 10 - 10 Is redundant, but not bad. Each rule may have originally been 10, or may have been X0 or Xx, before being pruned to be used in a step.
+    ///         This implies a change 0->1 between the two, the result of the three is what is wanted.
+    /// 10 - 11 Is bad, it implies an additional change 0->1, between the two, the result of the three is not wanted.
+    /// 10 - 01 or X1 are bad, the wanted change is reversed.
+    /// 10 - XX or 00 are good, the wanted change carries through.
+    ///
+    /// To be mutually exclusive, there needs to be at least two positions with needed changes.
+    /// Where each rule to be compared matches different needed changes,
+    /// and each rule blocks the other rules' changes.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-        //println!("SomeRule::mutually_exclusive, self {self} other {other} wanted {wanted}");
+       //println!("SomeRule::mutually_exclusive, self {self} other {other} wanted {wanted}");
         debug_assert!(self.num_bits() == other.num_bits());
         debug_assert!(self.num_bits() == wanted.num_bits());
+        debug_assert!(!wanted.any_x_to_x_not());
 
         self.sequence_blocks_changes(other, wanted) && other.sequence_blocks_changes(self, wanted)
     }
@@ -401,7 +423,7 @@ impl SomeRule {
     }
 
     /// Return the minimum-change rule to change a region into a subset of a second region.
-    /// The result will never contain X->x positions.
+    /// The result will never contain X->x.
     /// 1->X positions will be translated to 1->1.
     /// 0->X positions will be translated to 0->0.
     pub fn new_region_to_region_min(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
@@ -1038,51 +1060,95 @@ mod tests {
 
     #[test]
     fn mutually_exclusive() -> Result<(), String> {
-        let chg1 = SomeChange::from_str("01/01/01/01/01")?;
+        // Test 0->1 change.
+        let chg1 = SomeChange::from_str("01/01")?;
 
-        let rul1 = SomeRule::from_str("01/01/01/01/01")?;
-        let rul2 = SomeRule::from_str("11/01/00/X1/XX")?;
+        // Test 0->1 and 0->0.
+        let rul1 = SomeRule::from_str("00/01")?;
+        let rul2 = SomeRule::from_str("01/00")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(rslt);
+
+        // Test 0->1 and X->0.
+        let rul1 = SomeRule::from_str("X0/01")?;
+        let rul2 = SomeRule::from_str("01/X0")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(rslt);
+
+        // Test 0->1 and 1->0.
+        let rul1 = SomeRule::from_str("10/01")?;
+        let rul2 = SomeRule::from_str("01/10")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(rslt);
+
+        // Test 0->1 and 0->1.
+        let rul1 = SomeRule::from_str("01/01")?;
+        let rul2 = SomeRule::from_str("01/01")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
         println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(!rslt);
 
-        let chg1 = SomeChange::from_str("10/10/10/10/10")?;
-        let rul1 = SomeRule::from_str("10/10/10/10/10")?;
-        let rul2 = SomeRule::from_str("00/XX/X0/10/11")?;
+        // Test 0->1 and X->X.
+        let rul1 = SomeRule::from_str("XX/01")?;
+        let rul2 = SomeRule::from_str("01/XX")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
         println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(!rslt);
 
-        let chg1 = SomeChange::from_str("Xx")?;
-        let rul1 = SomeRule::from_str("01")?;
-        let rul2 = SomeRule::from_str("10")?;
+        // Test 0->1 and 1->1.
+        let rul1 = SomeRule::from_str("11/01")?;
+        let rul2 = SomeRule::from_str("01/11")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
-        println!("\n{rul1} mutually exclusive {rul2} is {rslt}");
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(!rslt);
+
+        // Test 1->0 change.
+        let chg1 = SomeChange::from_str("10/10")?;
+
+        // Test 1->0 and 1->1.
+        let rul1 = SomeRule::from_str("11/10")?;
+        let rul2 = SomeRule::from_str("10/11")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(rslt);
 
-        let rul1 = SomeRule::from_str("01")?;
-        let rul2 = SomeRule::from_str("X0")?;
+        // Test 1->0 and X->1.
+        let rul1 = SomeRule::from_str("X1/10")?;
+        let rul2 = SomeRule::from_str("10/X1")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
-        println!("\n{rul1} mutually exclusive {rul2} is {rslt}");
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(rslt);
 
-        let rul1 = SomeRule::from_str("01")?;
-        let rul2 = SomeRule::from_str("Xx")?;
+        // Test 1->0 and 0->1.
+        let rul1 = SomeRule::from_str("01/10")?;
+        let rul2 = SomeRule::from_str("10/01")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
-        println!("\n{rul1} mutually exclusive {rul2} is {rslt}");
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
         assert!(rslt);
 
-        let rul1 = SomeRule::from_str("10")?;
-        let rul2 = SomeRule::from_str("X1")?;
+        // Test 1->0 and 1->0.
+        let rul1 = SomeRule::from_str("10/10")?;
+        let rul2 = SomeRule::from_str("10/10")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
-        println!("\n{rul1} mutually exclusive {rul2} is {rslt}");
-        assert!(rslt);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(!rslt);
 
-        let rul1 = SomeRule::from_str("10")?;
-        let rul2 = SomeRule::from_str("Xx")?;
+        // Test 1->0 and X->X.
+        let rul1 = SomeRule::from_str("XX/10")?;
+        let rul2 = SomeRule::from_str("10/XX")?;
         let rslt = rul1.mutually_exclusive(&rul2, &chg1);
-        println!("\n{rul1} mutually exclusive {rul2} is {rslt}");
-        assert!(rslt);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(!rslt);
+
+        // Test 1->0 and 0->0.
+        let rul1 = SomeRule::from_str("00/10")?;
+        let rul2 = SomeRule::from_str("10/00")?;
+        let rslt = rul1.mutually_exclusive(&rul2, &chg1);
+        println!("{rul1} mutually exclusive {rul2} is {rslt}");
+        assert!(!rslt);
 
         Ok(())
     }
