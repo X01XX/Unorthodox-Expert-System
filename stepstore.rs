@@ -151,6 +151,12 @@ impl StepStore {
             } // next m01x
         } // next stepx
 
+        // Check for empty slots.
+        for sltx in ret_vec.iter() {
+            if sltx.is_empty() {
+                panic!("stepstore::split_steps_by_bit_change: single-bit change vector is empty?");
+            }
+        }
         ret_vec
     } // end steps_by_change_bit
 

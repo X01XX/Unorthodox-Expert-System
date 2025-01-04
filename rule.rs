@@ -374,7 +374,7 @@ impl SomeRule {
     /// Where each rule to be compared matches different needed changes,
     /// and each rule blocks the other rules' changes.
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
-       //println!("SomeRule::mutually_exclusive, self {self} other {other} wanted {wanted}");
+        //println!("SomeRule::mutually_exclusive, self {self} other {other} wanted {wanted}");
         debug_assert!(self.num_bits() == other.num_bits());
         debug_assert!(self.num_bits() == wanted.num_bits());
         debug_assert!(!wanted.any_x_to_x_not());

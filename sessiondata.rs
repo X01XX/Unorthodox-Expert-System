@@ -1637,6 +1637,11 @@ impl SessionData {
     pub fn calc_aggregate_changes(&mut self) {
         self.domains.calc_aggregate_changes();
     }
+
+    /// If exactly one domain uses a given number of bits, return its ID.
+    pub fn domain_find_num_bits(&self, num_bits: usize) -> Option<usize> {
+        self.domains.find_num_bits(num_bits)
+    }
 }
 
 impl FromStr for SessionData {

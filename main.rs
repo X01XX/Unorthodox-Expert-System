@@ -735,16 +735,19 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     let goal_region = SomeRegion::from_str(cmd[1])?;
 
     // Get ref to current domain.
-    let dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
-
-    // Check region given has the correct number of bits.
+    let mut dom_id = sdx.current_domain;
+    let mut domx = sdx.find(dom_id).expect("SNH");
     if goal_region.num_bits() != domx.num_bits() {
-        return Err(format!(
-            "Region does not have the same number of bits, {}, as the CCD, {}.",
-            goal_region.num_bits(),
-            domx.num_bits()
-        ));
+        if let Some(idx) = sdx.domain_find_num_bits(goal_region.num_bits()) {
+            dom_id = idx;
+            domx = sdx.find(dom_id).expect("SNH");
+        } else {
+            return Err(format!(
+                "Region does not have the same number of bits, {}, as the CCD, {}.",
+                goal_region.num_bits(),
+                domx.num_bits()
+            ));
+        }
     }
 
     // Check if goal already satisfied.
@@ -779,7 +782,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     // Check for mutually exclusive changes.
     let mut mutually_exclusive = false;
-    let mut empty = false;
+    //let mut empty = false;
     let rule_to_goal =
         SomeRule::new_region_to_region_min(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
 
@@ -794,33 +797,39 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     //}
 
     // Check each possible pair of single-bit changes.
+    let mut ret_err = String::new();
     for inx in 0..(by_change.len() - 1) {
-        if by_change[inx].is_empty() {
-            empty = true;
-            continue;
-        }
+        //if by_change[inx].is_empty() {
+        //    empty = true;
+        //    continue;
+        //}
         for iny in (inx + 1)..by_change.len() {
-            if by_change[iny].is_empty() {
-                empty = true;
-                continue;
-            }
+            //if by_change[iny].is_empty() {
+            //    empty = true;
+            //    continue;
+            //}
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], &needed_change) {
-                print!("Steps ");
+                let changes = needed_change
+                    .intersection(&by_change[inx][0].rule.as_change())
+                    .union(&needed_change.intersection(&by_change[iny][0].rule.as_change()));
+
+                ret_err.push_str(&format!("For changes {changes}, Steps "));
+
                 for stpx in by_change[inx].iter() {
-                    print!("inx {stpx} ");
+                    ret_err.push_str(&format!("{stpx} "));
                 }
-                println!("\nmutually exclusive to steps ");
+                ret_err.push_str("are mutually exclusive to Steps ");
+
                 for stpy in by_change[iny].iter() {
-                    print!("iny {stpy} ");
+                    ret_err.push_str(&format!("{stpy} "));
                 }
-                println!("\nfor changes {needed_change}");
                 mutually_exclusive = true;
             }
         } // next iny
     } // next inx
 
-    if mutually_exclusive || empty {
-        return Err("Done".to_string());
+    if mutually_exclusive {
+        return Err(ret_err);
     }
 
     for _ in 0..6 {
@@ -1354,15 +1363,24 @@ mod tests {
         // Create SessionData, with mutually exclusive rules.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[11/XX/10/XX], [10/XX/01/XX], s1100, s1001, s1010, s1111]]], SC[s0101]]",
+            ACT[[01/XX/00/XX],
+                [10/XX/01/XX], s0000, s0101, s1100, s1001]]], SC[s0100]]",
         )?;
 
         sdx.print();
 
-        match do_to_region_command(&mut sdx, &vec!["to", "s0111"]) {
-            Ok(()) => println!("?"),
-            Err(errstr) => println!("{errstr}"),
+        match do_to_region_command(&mut sdx, &vec!["to", "s1110"]) {
+            Ok(()) => {
+                return Err(format!("command changed region?"));
+            }
+            Err(errstr) => {
+                if errstr == "For changes 01/../01/.., Steps [r1X0X -00> r0X1X Alt: none] are mutually exclusive to Steps [r0X0X -00> r1X0X Alt: none] " {
+                } else {
+                    return Err(format!("{errstr}"));
+                }
+            }
         }
+        //assert!(1 == 2);
         Ok(())
     }
 
