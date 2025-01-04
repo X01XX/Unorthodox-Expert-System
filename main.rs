@@ -42,6 +42,7 @@ use change::SomeChange;
 mod regionscorr;
 use crate::regionscorr::RegionsCorr;
 mod regionstore;
+use crate::regionstore::RegionStore;
 mod resultstore;
 mod rule;
 use crate::rule::SomeRule;
@@ -62,6 +63,7 @@ mod statestore;
 use pn::Pn;
 mod sessiondata;
 mod step;
+use crate::step::SomeStep;
 mod stepstore;
 use crate::stepstore::all_mutually_exclusive_changes;
 use sessiondata::{NeedPlan, SessionData};
@@ -76,6 +78,7 @@ mod regionscorrstore;
 mod selectregions;
 mod selectregionsstore;
 mod target;
+use crate::tools::StrLen;
 
 extern crate unicode_segmentation;
 
@@ -598,6 +601,15 @@ fn command_loop(sdx: &mut SessionData) {
                     println!("{error}");
                 }
             },
+            "step" => match do_step_command(sdx, &cmd) {
+                Ok(()) => {
+                    pause_for_input("\nPress Enter to continue: ");
+                    return;
+                }
+                Err(error) => {
+                    println!("{error}");
+                }
+            },
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
             }
@@ -724,6 +736,46 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), St
     } // end match
 }
 
+fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 3 {
+        return Err("Exactly two region arguments are needed for the step command.".to_string());
+    }
+
+    // Get from region from string
+    let from = SomeRegion::from_str(cmd[1])?;
+
+    // Get to region from string
+    let to = SomeRegion::from_str(cmd[2])?;
+
+    if from.num_bits() != to.num_bits() {
+        return Err(format!(
+            "Regions do not have the same number of bits, {} vs {}.",
+            from.num_bits(),
+            to.num_bits()
+        ));
+    }
+
+    // Get ref to current domain.
+    let mut dom_id = sdx.current_domain;
+    let domx = sdx.find(dom_id).expect("SNH");
+    if from.num_bits() != domx.num_bits() {
+        if let Some(idx) = sdx.domain_find_num_bits(from.num_bits()) {
+            dom_id = idx;
+        } else {
+            return Err(format!(
+                "Regions do not have the same number of bits, {}, as the CCD, {}.",
+                from.num_bits(),
+                domx.num_bits()
+            ));
+        }
+    }
+
+    step_by_step(sdx, dom_id, &from, &to);
+
+    Ok(())
+}
+
 /// Do to-region command.
 fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
@@ -832,6 +884,8 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         return Err(ret_err);
     }
 
+    let cur_state = domx.current_state().clone();
+
     for _ in 0..6 {
         println!("\nCalculating plan.");
 
@@ -860,9 +914,159 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         }
     }
 
-    // TODO No plan found, or worked, show forward and backward chaining attempts.
+    // Plan to result not found, display step options.
+    step_by_step(sdx, dom_id, &SomeRegion::new(vec![cur_state]), &goal_region);
 
     Ok(())
+}
+
+fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRegion) {
+    let domx = sdx.find(dom_id).expect("SNH");
+
+    let mut cur_from = from.clone();
+    let mut cur_to = to.clone();
+
+    let mut forward_stack = RegionStore::new(vec![]);
+    let mut backward_stack = RegionStore::new(vec![]);
+
+    loop {
+        let change_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
+
+        // Get possible steps.
+        let steps_st = domx.get_steps(&change_to_goal, &domx.maximum_region());
+
+        let wanted_changes = SomeChange::wanted_changes(&cur_from, &cur_to);
+        let unwanted_changes = SomeChange::unwanted_changes(&cur_from, &cur_to);
+
+        // Display steps.
+        let mut steps_dis = Vec::<&SomeStep>::with_capacity(steps_st.len());
+        let mut steps_max = 0;
+
+        for stpx in steps_st.iter() {
+            if stpx.initial.intersects(&cur_from) {
+                steps_dis.push(stpx);
+                steps_max += 1;
+            }
+        }
+        for stpx in steps_st.iter() {
+            if !stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
+                steps_dis.push(stpx);
+                steps_max += 1;
+            }
+        }
+        for stpx in steps_st.iter() {
+            if stpx.initial.intersects(&cur_from) || stpx.result.intersects(&cur_to) {
+            } else {
+                steps_dis.push(stpx);
+            }
+        }
+
+        println!("-----------------------------------");
+        println!("Forward stack,  {}", forward_stack);
+        println!(" ");
+        println!("Backward stack, {}", backward_stack);
+        println!(" ");
+        println!("Current from: {cur_from} Current to: {cur_to}");
+        println!(" ");
+        let rlen = steps_dis[0].initial.strlen();
+        let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
+
+        for (inx, stpx) in steps_dis.iter().enumerate() {
+            if inx < steps_max {
+                print!("{inx:2} ");
+            } else {
+                print!("  ");
+            }
+            print!("Step {}", stpx.rule);
+            if stpx.initial.intersects(&cur_from) {
+                print!(
+                    "  FC: {}->{}",
+                    cur_from,
+                    stpx.rule.result_from_initial_region(&cur_from)
+                );
+            } else {
+                print!("{fill_spaces}");
+            }
+            if stpx.result.intersects(&cur_to) {
+                print!(
+                    "  BC: {}<-{}",
+                    stpx.rule.initial_from_result_region(&cur_to),
+                    cur_to
+                );
+            } else {
+                print!("{fill_spaces}");
+            }
+            print!(
+                "  W: {}",
+                stpx.rule.as_change().intersection(&wanted_changes)
+            );
+
+            let unc = stpx.rule.as_change().intersection(&unwanted_changes);
+            if unc.is_not_low() {
+                print!("  UW: {}", unc);
+            }
+            println!(" ");
+        }
+        let mut cmd = Vec::<&str>::with_capacity(10);
+
+        println!("Enter q to quit, <step number> [F, B] to use a step, fpop, bpop");
+
+        let guess = pause_for_input("\nPress Enter or type a command: ");
+
+        for word in guess.split_whitespace() {
+            cmd.push(word);
+        }
+
+        // Default command, just press Enter
+        if cmd.is_empty() {
+            // Process needs
+            continue;
+        }
+
+        // Do commands
+        match cmd[0] {
+            "exit" | "q" | "quit" => {
+                println!("Done");
+                process::exit(0);
+            }
+            "fpop" => {
+                if let Some(new_from) = forward_stack.pop() {
+                    cur_from = new_from;
+                } else {
+                    println!("forward_stack is empty");
+                }
+            }
+            "bpop" => {
+                if let Some(new_to) = backward_stack.pop() {
+                    cur_to = new_to;
+                } else {
+                    println!("backward_stack is empty");
+                }
+            }
+            _ => (),
+        };
+
+        if cmd.len() == 2 {
+            match cmd[0].parse::<usize>() {
+                Ok(num) => {
+                    if num >= steps_max {
+                        println!("Step number is too high");
+                    } else if cmd[1] == "F" || cmd[1] == "f" {
+                        forward_stack.push(cur_from.clone());
+                        cur_from = steps_dis[num].rule.result_from_initial_region(&cur_from);
+                    } else if cmd[1] == "B" || cmd[1] == "b" {
+                        backward_stack.push(cur_to.clone());
+                        cur_to = steps_dis[num].rule.initial_from_result_region(&cur_to);
+                    } else {
+                        println!("\nDid not understand command: {cmd:?}");
+                    }
+                }
+                Err(_) => {
+                    println!("\nDid not understand command: {cmd:?}");
+                }
+            }
+        }
+    } // end loop
 }
 
 /// Do sample-state command.
@@ -983,7 +1187,7 @@ fn do_print_select_regions(sdx: &SessionData, cmd: &[&str]) -> Result<(), String
     }
 
     for selx in sdx.select.iter() {
-        println!("{}", selx);
+        print!("{}", selx);
     }
     Ok(())
 }
@@ -1240,10 +1444,8 @@ fn usage() {
     );
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
     println!(
-        "                               To find out more about why a need cannot be satisfied:"
+        "                               To find out more about why a need cannot be satisfied."
     );
-    println!("                               If needed, use the \"cd\" command, to display the need domain.");
-    println!("                               Then use this command, with the need target.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done.");

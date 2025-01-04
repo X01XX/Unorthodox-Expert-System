@@ -73,6 +73,11 @@ impl RegionStore {
         self.items.push(val);
     }
 
+    /// Remove an item from a RegionStore.
+    pub fn pop(&mut self) -> Option<SomeRegion> {
+        self.items.pop()
+    }
+
     /// Return a vector iterator.
     pub fn iter(&self) -> Iter<SomeRegion> {
         self.items.iter()

@@ -153,13 +153,22 @@ impl SomeRule {
         ])
     }
 
-    /// Return result from an input region.
+    /// Return result region after applying an initial region.
     pub fn result_from_initial_region(&self, regx: &SomeRegion) -> SomeRegion {
         debug_assert_eq!(self.num_bits(), regx.num_bits());
 
         assert!(self.initial_region().intersects(regx));
 
         self.restrict_initial_region(regx).result_region()
+    }
+
+    /// Return initial region after applying a result region.
+    pub fn initial_from_result_region(&self, regx: &SomeRegion) -> SomeRegion {
+        debug_assert_eq!(self.num_bits(), regx.num_bits());
+
+        assert!(self.result_region().intersects(regx));
+
+        self.restrict_result_region(regx).initial_region()
     }
 
     /// Return the result region after applying an initial state to a rule.
