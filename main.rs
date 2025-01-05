@@ -24,64 +24,7 @@
 /*
  * For use outside of the license, contact the Wisconsin Alumni Research Foundation (WARF).
  */
-
 use std::env;
-mod action;
-mod actionstore;
-mod bits;
-mod group;
-mod groupstore;
-mod mask;
-mod need;
-mod tools;
-use need::SomeNeed;
-mod region;
-use region::SomeRegion;
-mod change;
-use change::SomeChange;
-mod regionscorr;
-use crate::regionscorr::RegionsCorr;
-mod regionstore;
-use crate::regionstore::RegionStore;
-mod resultstore;
-mod rule;
-use crate::rule::SomeRule;
-mod rulestore;
-use rulestore::RuleStore;
-mod sample;
-mod square;
-mod squarestore;
-mod state;
-use sample::SomeSample;
-use state::SomeState;
-mod domain;
-mod needstore;
-mod plan;
-mod pn;
-mod statescorr;
-mod statestore;
-use pn::Pn;
-mod sessiondata;
-mod step;
-use crate::step::SomeStep;
-mod stepstore;
-use crate::stepstore::all_mutually_exclusive_changes;
-use sessiondata::{NeedPlan, SessionData};
-mod actioninterface;
-mod domainstore;
-mod maskscorr;
-mod maskstore;
-mod planscorr;
-mod planscorrstore;
-mod planstore;
-mod regionscorrstore;
-mod selectregions;
-mod selectregionsstore;
-mod target;
-use crate::tools::StrLen;
-
-extern crate unicode_segmentation;
-
 use std::io;
 use std::io::{Read, Write};
 extern crate rand;
@@ -90,6 +33,63 @@ use std::path::Path;
 use std::process;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+
+mod action;
+mod actioninterface;
+mod actionstore;
+mod bits;
+mod change;
+mod domain;
+mod domainstore;
+mod group;
+mod groupstore;
+mod mask;
+mod maskscorr;
+mod maskstore;
+mod need;
+mod needstore;
+mod plan;
+mod planscorr;
+mod planscorrstore;
+mod planstore;
+mod pn;
+mod region;
+mod regionscorr;
+mod regionscorrstore;
+mod regionstore;
+mod resultstore;
+mod rule;
+mod rulestore;
+mod sample;
+mod selectregions;
+mod selectregionsstore;
+mod sessiondata;
+mod square;
+mod squarestore;
+mod state;
+mod statescorr;
+mod statestore;
+mod step;
+mod stepstore;
+mod target;
+mod tools;
+
+use crate::regionscorr::RegionsCorr;
+use change::SomeChange;
+use need::SomeNeed;
+use pn::Pn;
+use region::SomeRegion;
+use rulestore::RuleStore;
+use sample::SomeSample;
+use state::SomeState;
+//use crate::regionstore::RegionStore;
+use crate::rule::SomeRule;
+use crate::step::SomeStep;
+use crate::stepstore::{all_mutually_exclusive_changes, StepStore};
+use crate::tools::StrLen;
+use sessiondata::{NeedPlan, SessionData};
+
+extern crate unicode_segmentation;
 
 /// Get and react to arguments given.
 fn main() {
@@ -926,14 +926,19 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
     let mut cur_from = from.clone();
     let mut cur_to = to.clone();
 
-    let mut forward_stack = RegionStore::new(vec![]);
-    let mut backward_stack = RegionStore::new(vec![]);
+    let mut forward_stack = StepStore::new(vec![]);
+    let mut backward_stack = StepStore::new(vec![]);
 
     loop {
+        println!("-----------------------------------");
+
         let change_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
 
         // Get possible steps.
         let steps_st = domx.get_steps(&change_to_goal, &domx.maximum_region());
+        if steps_st.is_empty() {
+            println!("No steps found");
+        }
 
         let wanted_changes = SomeChange::wanted_changes(&cur_from, &cur_to);
         let unwanted_changes = SomeChange::unwanted_changes(&cur_from, &cur_to);
@@ -961,52 +966,77 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
             }
         }
 
-        println!("-----------------------------------");
-        println!("Forward stack,  {}", forward_stack);
         println!(" ");
-        println!("Backward stack, {}", backward_stack);
+        print!("Forward stack:  ");
+        let mut first = true;
+        for stpx in forward_stack.iter() {
+            if first {
+                first = false;
+            } else {
+                print!(", ");
+            }
+            print!("{}-{}->{}", stpx.initial, stpx.act_id.unwrap(), stpx.result);
+        }
+        println!(" ");
+        println!(" ");
+        print!("Backward stack: ");
+        let mut first = true;
+        for stpx in backward_stack.iter() {
+            if first {
+                first = false;
+            } else {
+                print!(", ");
+            }
+            print!("{}<-{}-{}", stpx.result, stpx.act_id.unwrap(), stpx.initial);
+        }
+        println!(" ");
         println!(" ");
         println!("Current from: {cur_from} Current to: {cur_to}");
         println!(" ");
-        let rlen = steps_dis[0].initial.strlen();
-        let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
+        if steps_dis.is_empty() {
+        } else {
+            let rlen = steps_dis[0].initial.strlen();
+            let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
 
-        for (inx, stpx) in steps_dis.iter().enumerate() {
-            if inx < steps_max {
-                print!("{inx:2} ");
-            } else {
-                print!("  ");
-            }
-            print!("Step {}", stpx.rule);
-            if stpx.initial.intersects(&cur_from) {
+            for (inx, stpx) in steps_dis.iter().enumerate() {
+                if inx < steps_max {
+                    print!("{inx:2} ");
+                } else {
+                    print!("   ");
+                }
+                print!("Act {} {}", stpx.act_id.unwrap(), stpx.rule);
+                if stpx.initial.intersects(&cur_from) {
+                    print!(
+                        "  FC: {}->{}",
+                        cur_from,
+                        stpx.rule.result_from_initial_region(&cur_from)
+                    );
+                } else {
+                    print!("{fill_spaces}");
+                }
+                if stpx.result.intersects(&cur_to) {
+                    print!(
+                        "  BC: {}<-{}",
+                        stpx.rule.initial_from_result_region(&cur_to),
+                        cur_to
+                    );
+                } else {
+                    print!("{fill_spaces}");
+                }
                 print!(
-                    "  FC: {}->{}",
-                    cur_from,
-                    stpx.rule.result_from_initial_region(&cur_from)
+                    "  W: {}",
+                    stpx.rule.as_change().intersection(&wanted_changes)
                 );
-            } else {
-                print!("{fill_spaces}");
-            }
-            if stpx.result.intersects(&cur_to) {
-                print!(
-                    "  BC: {}<-{}",
-                    stpx.rule.initial_from_result_region(&cur_to),
-                    cur_to
-                );
-            } else {
-                print!("{fill_spaces}");
-            }
-            print!(
-                "  W: {}",
-                stpx.rule.as_change().intersection(&wanted_changes)
-            );
 
-            let unc = stpx.rule.as_change().intersection(&unwanted_changes);
-            if unc.is_not_low() {
-                print!("  UW: {}", unc);
+                let unc = stpx.rule.as_change().intersection(&unwanted_changes);
+                if unc.is_not_low() {
+                    print!("  UW: {}", unc);
+                }
+                println!(" ");
             }
-            println!(" ");
         }
+
+        // Get user input.
         let mut cmd = Vec::<&str>::with_capacity(10);
 
         println!("Enter q to quit, <step number> [F, B] to use a step, fpop, bpop");
@@ -1030,15 +1060,15 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                 process::exit(0);
             }
             "fpop" => {
-                if let Some(new_from) = forward_stack.pop() {
-                    cur_from = new_from;
+                if let Some(top_from) = forward_stack.pop() {
+                    cur_from = top_from.initial.clone();
                 } else {
                     println!("forward_stack is empty");
                 }
             }
             "bpop" => {
-                if let Some(new_to) = backward_stack.pop() {
-                    cur_to = new_to;
+                if let Some(top_to) = backward_stack.pop() {
+                    cur_to = top_to.initial.clone();
                 } else {
                     println!("backward_stack is empty");
                 }
@@ -1052,11 +1082,35 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                     if num >= steps_max {
                         println!("Step number is too high");
                     } else if cmd[1] == "F" || cmd[1] == "f" {
-                        forward_stack.push(cur_from.clone());
-                        cur_from = steps_dis[num].rule.result_from_initial_region(&cur_from);
+                        let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
+                        cur_from = stp_tmp.result.clone();
+                        forward_stack.push(stp_tmp);
+
+                        if cur_from.intersects(&cur_to) {
+                            println!("path found");
+                        } else {
+                            for stpx in backward_stack.iter() {
+                                if cur_from.intersects(&stpx.initial) {
+                                    println!("path found");
+                                    break;
+                                }
+                            }
+                        }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
-                        backward_stack.push(cur_to.clone());
-                        cur_to = steps_dis[num].rule.initial_from_result_region(&cur_to);
+                        let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
+                        cur_to = stp_tmp.initial.clone();
+                        backward_stack.push(stp_tmp);
+
+                        if cur_from.intersects(&cur_to) {
+                            println!("path found");
+                        } else {
+                            for stpx in forward_stack.iter() {
+                                if cur_to.intersects(&stpx.result) {
+                                    println!("path found");
+                                    break;
+                                }
+                            }
+                        }
                     } else {
                         println!("\nDid not understand command: {cmd:?}");
                     }

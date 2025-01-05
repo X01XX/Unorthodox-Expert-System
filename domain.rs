@@ -720,6 +720,20 @@ impl SomeDomain {
         }
         //println!("steps_str {steps_str}");
 
+        // Check that at least on estep can change the from_reg.
+        let mut no_matching_step = true;
+        for stpx in steps_str.iter() {
+            if from_reg.intersects(&stpx.initial) {
+                no_matching_step = false;
+                break;
+            }
+        }
+        if no_matching_step {
+            return Err(vec![format!(
+                "domain::make_plans2: No steps found from {from_reg}"
+            )]);
+        }
+
         // Get vector of steps for each bit change.
         let steps_by_change_vov = match steps_str.get_steps_by_bit_change(&wanted_changes) {
             Ok(stps) => stps,

@@ -64,6 +64,11 @@ impl StepStore {
         self.items.push(val);
     }
 
+    /// Remove a step from a StepStore.
+    pub fn pop(&mut self) -> Option<SomeStep> {
+        self.items.pop()
+    }
+
     /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
         debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
