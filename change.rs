@@ -142,36 +142,11 @@ impl SomeChange {
     }
 
     /// Return the invert of a given change.
-    pub fn bitwise_not(&self) -> Self {
+    pub fn invert(&self) -> Self {
         SomeChange {
             m01: self.m01.bitwise_not(),
             m10: self.m10.bitwise_not(),
         }
-    }
-
-    /// Return wanted changes to translate from region to region.
-    pub fn wanted_changes(from: &SomeRegion, to: &SomeRegion) -> Self {
-        SomeRule::new_region_to_region_min(from, to).as_change()
-    }
-
-    /// Return unwanted changes to translate from region to region.
-    pub fn unwanted_changes(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let tmp = SomeRule::new_region_to_region_min(from, to);
-        Self {
-            m01: tmp.m00,
-            m10: tmp.m11,
-        }
-        .bitwise_and_mask(&to.edge_mask())
-    }
-
-    /// Return don't care changes in translating from region to region.
-    pub fn dont_care_changes(from: &SomeRegion, to: &SomeRegion) -> Self {
-        let tmp = SomeRule::new_region_to_region_min(from, to);
-        Self {
-            m01: tmp.m00,
-            m10: tmp.m11,
-        }
-        .bitwise_and_mask(&to.x_mask())
     }
 
     /// Return true if there is anf X->x bit positions.
@@ -240,28 +215,6 @@ impl FromStr for SomeChange {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn uwd_changes() -> Result<(), String> {
-        let reg1 = SomeRegion::from_str("000_111_XXX")?;
-        let reg2 = SomeRegion::from_str("01X_01X_01X")?;
-        println!("reg1 {reg1}");
-        println!("reg2 {reg2}");
-
-        let unwanted_changes = SomeChange::unwanted_changes(&reg1, &reg2);
-        println!("unwanted_changes {unwanted_changes}");
-        assert!(unwanted_changes == SomeChange::from_str("01/../.._../10/.._/01/10/..")?);
-
-        let wanted_changes = SomeChange::wanted_changes(&reg1, &reg2);
-        println!("wanted_changes {wanted_changes}");
-        assert!(wanted_changes == SomeChange::from_str(".._01/../10/.._../10/01/..")?);
-
-        let dont_care_changes = SomeChange::dont_care_changes(&reg1, &reg2);
-        println!("dont_care_changes {dont_care_changes}");
-        assert!(dont_care_changes == SomeChange::from_str("../../01_../../10_../../Xx")?);
-
-        Ok(())
-    }
 
     #[test]
     fn intersection() -> Result<(), String> {

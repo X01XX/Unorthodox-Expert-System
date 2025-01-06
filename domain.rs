@@ -345,9 +345,8 @@ impl SomeDomain {
         }
 
         // Calc wanted, and unwanted, changes.
-        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
-
-        let unwanted_changes = SomeChange::unwanted_changes(from_reg, goal_reg);
+        let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
+        let unwanted_changes = wanted_changes.invert();
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
@@ -379,16 +378,15 @@ impl SomeDomain {
 
             for inx in asym_only_changes {
                 for (iny, stepx) in steps_by_change_vov[inx].iter().enumerate() {
-                    let rule_to = SomeRule::new_region_to_region_min(from_reg, &stepx.initial);
+                    let rule_to = SomeRule::new_region_to_region_min(from_reg, &stepx.result);
 
-                    let rulx = rule_to.combine_sequence(&stepx.rule);
-
-                    let step_num_unwanted_changes = rulx
+                    let step_num_unwanted_changes = rule_to
                         .as_change()
                         .intersection(&unwanted_changes)
                         .number_changes();
 
-                    let step_num_wanted_changes = rulx
+                    let step_num_wanted_changes = stepx
+                        .rule
                         .as_change()
                         .intersection(&wanted_changes)
                         .number_changes();
@@ -557,7 +555,7 @@ impl SomeDomain {
         }
 
         // Figure the required changes.
-        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
+        let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
 
         let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
@@ -706,7 +704,8 @@ impl SomeDomain {
         debug_assert!(!goal_reg.is_superset_of(from_reg));
 
         // Figure the required changes.
-        let wanted_changes = SomeChange::wanted_changes(from_reg, goal_reg);
+
+        let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
 
         // Tune maximum depth to be a multiple of the number of bit changes required.
         let num_depth = 3 * wanted_changes.number_changes();

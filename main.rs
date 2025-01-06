@@ -826,7 +826,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         if needed_change.is_subset_of(agg_cng) {
         } else {
             return Err(format!("Not all needed changes are available in the domain.\nMissing changes in the domain are: {}",
-                needed_change.intersection(&agg_cng.bitwise_not())));
+                needed_change.intersection(&agg_cng.invert())));
         }
     } else {
         return Err("No changes available in domain".to_string());
@@ -942,15 +942,13 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
 
         let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
         let change_to_goal = rule_to_goal.as_change();
+        let invert_change_to_goal = change_to_goal.invert();
 
         // Get possible steps.
         let steps_st = domx.get_steps(&change_to_goal, &domx.maximum_region());
         if steps_st.is_empty() {
             println!("No steps found");
         }
-
-        let wanted_changes = SomeChange::wanted_changes(&cur_from, &cur_to);
-        let unwanted_changes = SomeChange::unwanted_changes(&cur_from, &cur_to);
 
         // Display steps.
         let mut steps_dis = Vec::<&SomeStep>::with_capacity(steps_st.len());
@@ -1030,30 +1028,21 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                     print!("{fill_spaces}");
                 }
 
-                // Print wanted and unwanted changes.
-                let wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
+                // Calc wanted and unwanted changes.
+                let wanted_changes = stpx.rule.as_change().intersection(&change_to_goal);
+
+                let unwanted_changes = SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
+                    .as_change()
+                    .intersection(&invert_change_to_goal);
+
+                // Print forward wanted and unwanted changes.
                 if wanted_changes.is_low() {
-                    print!("  W: {change_spaces}");
+                    print!("      {change_spaces}");
                 } else {
                     print!("  W: {wanted_changes}",);
                 }
-
-                let care_changes = cur_to.edge_mask();
-                let unwanted_excursions = SomeChange::new(
-                    rule_to_goal
-                        .m00
-                        .bitwise_and(&stpx.rule.m00.bitwise_not())
-                        .bitwise_and(&care_changes),
-                    rule_to_goal
-                        .m11
-                        .bitwise_and(&stpx.rule.m11.bitwise_not())
-                        .bitwise_and(&care_changes),
-                );
-                let unwanted_changes = change_to_goal
-                    .intersection(&unwanted_changes)
-                    .union(&unwanted_excursions);
-
                 if unwanted_changes.is_low() {
+                    print!("      {change_spaces}");
                 } else {
                     print!("  U: {unwanted_changes}",);
                 }
@@ -1067,15 +1056,16 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
         if first_cycle {
             first_cycle = false;
             println!(" ");
-            println!(
-                "q = quit, fpop = forward stack pop. bpop = backward stack pop, so = start over"
-            );
+            println!("exit, quit, q = quit session.");
+            println!("return, r = return to session.");
+            println!("so = Start Over.");
+            println!("fpop = forward stack pop. bpop = backward stack pop");
             println!("<step number> f to use a step as forward chaining (FC)");
             println!("<step number> b to use a step as backward chaining (BC)");
-            println!("W: wanted change.  U: unwanted change");
+            println!("W: = wanted change.  U: = unwanted change");
         }
         println!(" ");
-        println!("Enter q, <step number> [F, B], fpop, bpop, so");
+        println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
 
         let guess = pause_for_input("\nPress Enter or type a command: ");
 
@@ -1091,25 +1081,28 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
 
         // Do commands
         match cmd[0] {
-            "exit" | "q" | "quit" => {
+            "exit" | "EXIT" | "q" | "Q" | "quit" | "QUIT" => {
                 println!("Done");
                 process::exit(0);
             }
-            "fpop" => {
+            "return" | "RETURN" | "r" | "R" => {
+                return;
+            }
+            "fpop" | "FPOP" => {
                 if let Some(top_from) = forward_stack.pop() {
                     cur_from = top_from.initial.clone();
                 } else {
                     println!("forward_stack is empty");
                 }
             }
-            "bpop" => {
+            "bpop" | "BPOP" => {
                 if let Some(top_to) = backward_stack.pop() {
                     cur_to = top_to.initial.clone();
                 } else {
                     println!("backward_stack is empty");
                 }
             }
-            "so" => {
+            "so" | "SO" => {
                 forward_stack = StepStore::new(vec![]);
                 backward_stack = StepStore::new(vec![]);
                 cur_from = from.clone();
