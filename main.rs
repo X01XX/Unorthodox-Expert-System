@@ -942,7 +942,9 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
 
         let wanted_changes = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
 
-        let unwanted_changes = wanted_changes.invert();
+        let unwanted_changes = wanted_changes
+            .invert()
+            .bitwise_and_mask(&cur_to.edge_mask());
 
         // Get possible steps.
         let steps_st = domx.get_steps(&wanted_changes, &domx.maximum_region());

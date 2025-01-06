@@ -346,7 +346,9 @@ impl SomeDomain {
 
         // Calc wanted, and unwanted, changes.
         let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
-        let unwanted_changes = wanted_changes.invert();
+        let unwanted_changes = wanted_changes
+            .invert()
+            .bitwise_and_mask(&goal_reg.edge_mask());
 
         // Check for single-bit changes, where all steps are between the from-region and goal-region,
         // not intersecting either.
