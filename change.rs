@@ -30,6 +30,8 @@ impl fmt::Display for SomeChange {
 impl SomeChange {
     /// Return a new change with the given masks
     pub fn new(m01: SomeMask, m10: SomeMask) -> Self {
+        debug_assert_eq!(m01.num_bits(), m10.num_bits());
+
         Self { m01, m10 }
     }
 

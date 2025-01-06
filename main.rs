@@ -929,10 +929,19 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
     let mut forward_stack = StepStore::new(vec![]);
     let mut backward_stack = StepStore::new(vec![]);
 
+    let rlen = from.strlen();
+    let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
+
+    let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
+    println!("cng_len {cng_len}");
+    let change_spaces = vec![' '; cng_len].iter().collect::<String>();
+
+    let mut first_cycle = true;
     loop {
         println!("-----------------------------------");
 
-        let change_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
+        let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
+        let change_to_goal = rule_to_goal.as_change();
 
         // Get possible steps.
         let steps_st = domx.get_steps(&change_to_goal, &domx.maximum_region());
@@ -995,9 +1004,6 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
         println!(" ");
         if steps_dis.is_empty() {
         } else {
-            let rlen = steps_dis[0].initial.strlen();
-            let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
-
             for (inx, stpx) in steps_dis.iter().enumerate() {
                 if inx < steps_max {
                     print!("{inx:2} ");
@@ -1023,14 +1029,33 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                 } else {
                     print!("{fill_spaces}");
                 }
-                print!(
-                    "  W: {}",
-                    stpx.rule.as_change().intersection(&wanted_changes)
-                );
 
-                let unc = stpx.rule.as_change().intersection(&unwanted_changes);
-                if unc.is_not_low() {
-                    print!("  UW: {}", unc);
+                // Print wanted and unwanted changes.
+                let wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
+                if wanted_changes.is_low() {
+                    print!("  W: {change_spaces}");
+                } else {
+                    print!("  W: {wanted_changes}",);
+                }
+
+                let care_changes = cur_to.edge_mask();
+                let unwanted_excursions = SomeChange::new(
+                    rule_to_goal
+                        .m00
+                        .bitwise_and(&stpx.rule.m00.bitwise_not())
+                        .bitwise_and(&care_changes),
+                    rule_to_goal
+                        .m11
+                        .bitwise_and(&stpx.rule.m11.bitwise_not())
+                        .bitwise_and(&care_changes),
+                );
+                let unwanted_changes = change_to_goal
+                    .intersection(&unwanted_changes)
+                    .union(&unwanted_excursions);
+
+                if unwanted_changes.is_low() {
+                } else {
+                    print!("  U: {unwanted_changes}",);
                 }
                 println!(" ");
             }
@@ -1039,7 +1064,18 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
         // Get user input.
         let mut cmd = Vec::<&str>::with_capacity(10);
 
-        println!("Enter q to quit, <step number> [F, B] to use a step, fpop, bpop");
+        if first_cycle {
+            first_cycle = false;
+            println!(" ");
+            println!(
+                "q = quit, fpop = forward stack pop. bpop = backward stack pop, so = start over"
+            );
+            println!("<step number> f to use a step as forward chaining (FC)");
+            println!("<step number> b to use a step as backward chaining (BC)");
+            println!("W: wanted change.  U: unwanted change");
+        }
+        println!(" ");
+        println!("Enter q, <step number> [F, B], fpop, bpop, so");
 
         let guess = pause_for_input("\nPress Enter or type a command: ");
 
@@ -1073,6 +1109,12 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                     println!("backward_stack is empty");
                 }
             }
+            "so" => {
+                forward_stack = StepStore::new(vec![]);
+                backward_stack = StepStore::new(vec![]);
+                cur_from = from.clone();
+                cur_to = to.clone();
+            }
             _ => (),
         };
 
@@ -1082,12 +1124,23 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                     if num >= steps_max {
                         println!("Step number is too high");
                     } else if cmd[1] == "F" || cmd[1] == "f" {
+                        if !steps_dis[num].initial.intersects(&cur_from) {
+                            println!("No forward chaining option for this step");
+                            continue;
+                        }
                         let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
                         cur_from = stp_tmp.result.clone();
                         forward_stack.push(stp_tmp);
 
                         if cur_from.intersects(&cur_to) {
-                            println!("path found");
+                            print!("path found: ");
+                            for stpx in forward_stack.iter() {
+                                print!("{stpx} ");
+                            }
+                            for stpx in backward_stack.iter().rev() {
+                                print!("{stpx} ");
+                            }
+                            println!(" ");
                         } else {
                             for stpx in backward_stack.iter() {
                                 if cur_from.intersects(&stpx.initial) {
@@ -1097,12 +1150,23 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                             }
                         }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
+                        if !steps_dis[num].result.intersects(&cur_to) {
+                            println!("No backward chaining option for this step");
+                            continue;
+                        }
                         let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
                         cur_to = stp_tmp.initial.clone();
                         backward_stack.push(stp_tmp);
 
                         if cur_from.intersects(&cur_to) {
-                            println!("path found");
+                            print!("path found: ");
+                            for stpx in forward_stack.iter() {
+                                print!("{stpx} ");
+                            }
+                            for stpx in backward_stack.iter().rev() {
+                                print!("{stpx} ");
+                            }
+                            println!(" ");
                         } else {
                             for stpx in forward_stack.iter() {
                                 if cur_to.intersects(&stpx.result) {
