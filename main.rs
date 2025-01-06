@@ -940,12 +940,12 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
     loop {
         println!("-----------------------------------");
 
-        let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
-        let change_to_goal = rule_to_goal.as_change();
-        let invert_change_to_goal = change_to_goal.invert();
+        let wanted_changes = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
+
+        let unwanted_changes = wanted_changes.invert();
 
         // Get possible steps.
-        let steps_st = domx.get_steps(&change_to_goal, &domx.maximum_region());
+        let steps_st = domx.get_steps(&wanted_changes, &domx.maximum_region());
         if steps_st.is_empty() {
             println!("No steps found");
         }
@@ -1029,11 +1029,11 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                 }
 
                 // Calc wanted and unwanted changes.
-                let wanted_changes = stpx.rule.as_change().intersection(&change_to_goal);
+                let wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
 
                 let unwanted_changes = SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
                     .as_change()
-                    .intersection(&invert_change_to_goal);
+                    .intersection(&unwanted_changes);
 
                 // Print forward wanted and unwanted changes.
                 if wanted_changes.is_low() {

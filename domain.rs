@@ -431,33 +431,17 @@ impl SomeDomain {
 
         for (inx, step_vecx) in steps_by_change_vov.iter().enumerate() {
             for (iny, stepx) in step_vecx.iter().enumerate() {
-                let (step_num_wanted_changes, step_num_unwanted_changes) =
-                    if from_reg.intersects(&stepx.initial) {
-                        let rulx = stepx.rule.restrict_initial_region(from_reg);
-                        (
-                            wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.as_change()
-                                .intersection(&unwanted_changes)
-                                .number_changes(),
-                        )
-                    } else if goal_reg.intersects(&stepx.result) {
-                        let rulx = stepx.rule.restrict_result_region(goal_reg);
-                        (
-                            wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.as_change()
-                                .intersection(&unwanted_changes)
-                                .number_changes(),
-                        )
-                    } else {
-                        let rule_to = SomeRule::new_region_to_region_min(from_reg, &stepx.initial);
-                        let rulx = rule_to.combine_sequence(&stepx.rule);
-                        (
-                            wanted_changes.intersection(&rulx).number_changes(),
-                            rulx.as_change()
-                                .intersection(&unwanted_changes)
-                                .number_changes(),
-                        )
-                    };
+                let step_num_wanted_changes = stepx
+                    .rule
+                    .as_change()
+                    .intersection(&wanted_changes)
+                    .number_changes();
+
+                let step_num_unwanted_changes =
+                    SomeRule::new_region_to_region_min(from_reg, &stepx.result)
+                        .as_change()
+                        .intersection(&unwanted_changes)
+                        .number_changes();
 
                 // Save ratio info, step vector index, step within vecter index, num wanted changes - num unwanted changes.
                 ratios.push((
