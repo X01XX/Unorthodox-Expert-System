@@ -144,9 +144,9 @@ impl SomePlan {
     }
 
     /// Add a step to a SomePlan.
-    fn push(&mut self, stepx: SomeStep) -> Result<(), String> {
+    pub fn push(&mut self, stepx: SomeStep) -> Result<(), String> {
         if self.is_not_empty() {
-            if self.result_region() != &stepx.initial {
+            if !self.result_region().intersects(&stepx.initial) {
                 return Err(format!("plan {self} does not intersect step {stepx}"));
             }
             if self.any_initial_intersects(&stepx.result) {
@@ -156,6 +156,32 @@ impl SomePlan {
 
         self.steps.push(stepx);
         Ok(())
+    }
+
+    /// Remove an item from a plan.
+    pub fn pop(&mut self) -> Option<SomeStep> {
+        self.steps.pop()
+    }
+
+    /// Add a step to the beginning of a plan..
+    pub fn push_first(&mut self, stepx: SomeStep) -> Result<(), String> {
+        if self.is_not_empty() {
+            if !self.steps[0].initial.intersects(&stepx.result) {
+                return Err(format!("plan {self} does not intersect step {stepx}"));
+            }
+            if self.any_result_intersects(&stepx.initial) {
+                return Err(format!("plan {self} step {stepx} circles back"));
+            }
+        }
+
+        self.steps.push_first(stepx);
+
+        Ok(())
+    }
+
+    /// Remove an item from the beginning of a plan.
+    pub fn pop_first(&mut self) -> Option<SomeStep> {
+        self.steps.pop_first()
     }
 
     /// Return the result of linking two plans together, that are known to have a result/initial intersection.
@@ -305,6 +331,7 @@ impl SomePlan {
     }
 
     /// Return a String representation of SomePlan.
+    /// Initial region to goal region.
     fn formatted_str(&self) -> String {
         if self.is_empty() {
             return String::from("P[]");
@@ -324,6 +351,26 @@ impl SomePlan {
         str
     }
 
+    /// Return a String representation of SomePlan,
+    /// Goal region from initial region.
+    pub fn formatted_str_from(&self) -> String {
+        if self.is_empty() {
+            return String::from("P[]");
+        }
+        let mut str = format!("P[{}", self.initial_region());
+        for stpx in self.iter() {
+            if let Some(act_id) = stpx.act_id {
+                str.push_str(&format!("<-{}-{}", act_id, stpx.result));
+            } else {
+                str.push_str(&format!("<-no-{}", stpx.result));
+            }
+            if let AltRuleHint::AltRule { .. } = stpx.alt_rule {
+                str.push('*')
+            };
+        }
+        str.push(']');
+        str
+    }
     /// Return the number of bits changed through each step of a plan.
     pub fn num_bits_changed(&self) -> usize {
         let mut ret_num = 0;
@@ -333,10 +380,20 @@ impl SomePlan {
         ret_num
     }
 
-    /// Return true if a plan contains an initial region.
+    /// Return true if a plan contains an intersecting initial region.
     fn any_initial_intersects(&self, regx: &SomeRegion) -> bool {
         for stepx in self.iter() {
             if stepx.initial.intersects(regx) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return true if a plan contains an intersecting result region.
+    fn any_result_intersects(&self, regx: &SomeRegion) -> bool {
+        for stepx in self.iter() {
+            if stepx.result.intersects(regx) {
                 return true;
             }
         }

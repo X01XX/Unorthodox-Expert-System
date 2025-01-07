@@ -74,20 +74,20 @@ mod stepstore;
 mod target;
 mod tools;
 
+use crate::plan::SomePlan;
 use crate::regionscorr::RegionsCorr;
+use crate::rule::SomeRule;
+use crate::step::SomeStep;
+use crate::stepstore::all_mutually_exclusive_changes;
+use crate::tools::StrLen;
 use change::SomeChange;
 use need::SomeNeed;
 use pn::Pn;
 use region::SomeRegion;
 use rulestore::RuleStore;
 use sample::SomeSample;
-use state::SomeState;
-//use crate::regionstore::RegionStore;
-use crate::rule::SomeRule;
-use crate::step::SomeStep;
-use crate::stepstore::{all_mutually_exclusive_changes, StepStore};
-use crate::tools::StrLen;
 use sessiondata::{NeedPlan, SessionData};
+use state::SomeState;
 
 extern crate unicode_segmentation;
 
@@ -603,7 +603,6 @@ fn command_loop(sdx: &mut SessionData) {
             },
             "step" => match do_step_command(sdx, &cmd) {
                 Ok(()) => {
-                    pause_for_input("\nPress Enter to continue: ");
                     return;
                 }
                 Err(error) => {
@@ -771,7 +770,10 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
         }
     }
 
-    step_by_step(sdx, dom_id, &from, &to);
+    if let Some(planx) = step_by_step(sdx, dom_id, &from, &to) {
+        println!("found plan for {from} -> {to}: {planx}");
+        pause_for_input("Press Enter to coninue ");
+    }
 
     Ok(())
 }
@@ -920,20 +922,27 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     Ok(())
 }
 
-fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRegion) {
+/// Interactively step from an initial region to a goal region.
+fn step_by_step(
+    sdx: &SessionData,
+    dom_id: usize,
+    from: &SomeRegion,
+    to: &SomeRegion,
+) -> Option<SomePlan> {
     let domx = sdx.find(dom_id).expect("SNH");
+
+    let mut ret_plan: Option<SomePlan> = None;
 
     let mut cur_from = from.clone();
     let mut cur_to = to.clone();
 
-    let mut forward_stack = StepStore::new(vec![]);
-    let mut backward_stack = StepStore::new(vec![]);
+    let mut forward_plan = SomePlan::new(vec![]);
+    let mut backward_plan = SomePlan::new(vec![]);
 
     let rlen = from.strlen();
     let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
 
     let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
-    println!("cng_len {cng_len}");
     let change_spaces = vec![' '; cng_len].iter().collect::<String>();
 
     let mut first_cycle = true;
@@ -976,31 +985,13 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
         }
 
         println!(" ");
-        print!("Forward stack:  ");
-        let mut first = true;
-        for stpx in forward_stack.iter() {
-            if first {
-                first = false;
-            } else {
-                print!(", ");
-            }
-            print!("{}-{}->{}", stpx.initial, stpx.act_id.unwrap(), stpx.result);
-        }
+        println!("Forward plan:  {forward_plan}");
+
         println!(" ");
+        println!("Backward plan: {}", backward_plan.formatted_str_from());
+
         println!(" ");
-        print!("Backward stack: ");
-        let mut first = true;
-        for stpx in backward_stack.iter() {
-            if first {
-                first = false;
-            } else {
-                print!(", ");
-            }
-            print!("{}<-{}-{}", stpx.result, stpx.act_id.unwrap(), stpx.initial);
-        }
-        println!(" ");
-        println!(" ");
-        println!("Current from: {cur_from} Current to: {cur_to}");
+        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
         println!(" ");
         if steps_dis.is_empty() {
         } else {
@@ -1061,13 +1052,22 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
             println!("exit, quit, q = quit session.");
             println!("return, r = return to session.");
             println!("so = Start Over.");
-            println!("fpop = forward stack pop. bpop = backward stack pop");
+            println!("fpop = forward plan pop. bpop = backward plan pop");
             println!("<step number> f to use a step as forward chaining (FC)");
             println!("<step number> b to use a step as backward chaining (BC)");
-            println!("W: = wanted change.  U: = unwanted change");
+            println!("W: = wanted change.");
+            println!("U: = unwanted change. Either in the step itself, or from traversing to the step.  Must eventually be reversed.");
+        }
+        if let Some(ref planx) = ret_plan {
+            println!("Plan found: {planx}");
         }
         println!(" ");
-        println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
+
+        if steps_max > 0 {
+            println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
+        } else {
+            println!("Enter q, r, fpop, bpop, so");
+        }
 
         let guess = pause_for_input("\nPress Enter or type a command: ");
 
@@ -1088,27 +1088,28 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                 process::exit(0);
             }
             "return" | "RETURN" | "r" | "R" => {
-                return;
+                return ret_plan;
             }
             "fpop" | "FPOP" => {
-                if let Some(top_from) = forward_stack.pop() {
+                if let Some(top_from) = forward_plan.pop() {
                     cur_from = top_from.initial.clone();
                 } else {
-                    println!("forward_stack is empty");
+                    println!("forward_plan is empty");
                 }
             }
             "bpop" | "BPOP" => {
-                if let Some(top_to) = backward_stack.pop() {
-                    cur_to = top_to.initial.clone();
+                if let Some(stp_back) = backward_plan.pop_first() {
+                    cur_to = stp_back.result.clone();
                 } else {
-                    println!("backward_stack is empty");
+                    println!("backward_plan is empty");
                 }
             }
             "so" | "SO" => {
-                forward_stack = StepStore::new(vec![]);
-                backward_stack = StepStore::new(vec![]);
+                forward_plan = SomePlan::new(vec![]);
+                backward_plan = SomePlan::new(vec![]);
                 cur_from = from.clone();
                 cur_to = to.clone();
+                ret_plan = None;
             }
             _ => (),
         };
@@ -1125,22 +1126,23 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                         }
                         let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
                         cur_from = stp_tmp.result.clone();
-                        forward_stack.push(stp_tmp);
+                        match forward_plan.push(stp_tmp) {
+                            Ok(()) => (),
+                            Err(errstr) => println!("forward plan push failed {errstr}"),
+                        }
 
                         if cur_from.intersects(&cur_to) {
-                            print!("path found: ");
-                            for stpx in forward_stack.iter() {
-                                print!("{stpx} ");
+                            match forward_plan.link(&backward_plan) {
+                                Ok(planx) => ret_plan = Some(planx),
+                                Err(errstr) => println!(
+                                    "linking failed {forward_plan} to {backward_plan} {errstr}"
+                                ),
                             }
-                            for stpx in backward_stack.iter().rev() {
-                                print!("{stpx} ");
-                            }
-                            println!(" ");
                         } else {
-                            for stpx in backward_stack.iter() {
+                            // Check for intersection other than current from/to.
+                            for stpx in backward_plan.iter() {
                                 if cur_from.intersects(&stpx.initial) {
-                                    println!("path found");
-                                    break;
+                                    // TODO make plan.
                                 }
                             }
                         }
@@ -1151,22 +1153,23 @@ fn step_by_step(sdx: &SessionData, dom_id: usize, from: &SomeRegion, to: &SomeRe
                         }
                         let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
                         cur_to = stp_tmp.initial.clone();
-                        backward_stack.push(stp_tmp);
+                        match backward_plan.push_first(stp_tmp) {
+                            Ok(()) => (),
+                            Err(errstr) => println!("backward plan push failed {errstr}"),
+                        }
 
                         if cur_from.intersects(&cur_to) {
-                            print!("path found: ");
-                            for stpx in forward_stack.iter() {
-                                print!("{stpx} ");
+                            match forward_plan.link(&backward_plan) {
+                                Ok(planx) => ret_plan = Some(planx),
+                                Err(errstr) => println!(
+                                    "linking failed {forward_plan} to {backward_plan} {errstr}"
+                                ),
                             }
-                            for stpx in backward_stack.iter().rev() {
-                                print!("{stpx} ");
-                            }
-                            println!(" ");
                         } else {
-                            for stpx in forward_stack.iter() {
+                            // Check for intersection other than current from/to.
+                            for stpx in forward_plan.iter() {
                                 if cur_to.intersects(&stpx.result) {
-                                    println!("path found");
-                                    break;
+                                    // TODO make plan.
                                 }
                             }
                         }
@@ -1559,6 +1562,7 @@ fn usage() {
     println!(
         "                               To find out more about why a need cannot be satisfied."
     );
+    println!("\n    step <region> <region>    Interactively step from an initial region to a goal region.");
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done.");

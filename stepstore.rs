@@ -69,6 +69,28 @@ impl StepStore {
         self.items.pop()
     }
 
+    /// Add a step to the beginning of a StepStore.
+    pub fn push_first(&mut self, val: SomeStep) {
+        debug_assert!(if let Some(num_bits) = self.num_bits() {
+            num_bits == val.num_bits()
+        } else {
+            true
+        });
+
+        let mut new_items = vec![val];
+        new_items.append(&mut self.items);
+        self.items = new_items;
+    }
+
+    /// Remove a step from the beginning of a StepStore.
+    pub fn pop_first(&mut self) -> Option<SomeStep> {
+        if self.items.is_empty() {
+            None
+        } else {
+            Some(self.items.remove(0))
+        }
+    }
+
     /// Extend a StepStore by emptying another StepStore.
     pub fn append(&mut self, mut other: Self) {
         debug_assert!(self.is_empty() || other.is_empty() || self.num_bits() == other.num_bits());
