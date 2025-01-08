@@ -300,18 +300,18 @@ impl SomePlan {
         &self[self.len() - 1].result
     }
 
-    /// Return the result state of a plan that contains at least one step.
-    pub fn result_from_initial_state(&self, astate: &SomeState) -> SomeState {
+    /// Return the result state of a plan, given an initial state..
+    pub fn result_from_initial_state(&self, astate: &SomeState) -> Option<SomeState> {
         assert!(self.is_not_empty());
         let mut ret_state = astate.clone();
         for stepx in self.iter() {
             if stepx.initial.is_superset_of(&ret_state) {
                 ret_state = stepx.rule.result_from_initial_state(&ret_state);
             } else {
-                panic!("plan problem! plan {self} step {stepx} state {ret_state}");
+                return None;
             }
         }
-        ret_state
+        Some(ret_state)
     }
 
     /// Return the result state of a plan.
@@ -433,15 +433,12 @@ impl SomePlan {
         numr
     }
 
-    /// Return true if a plan causes change.
+    /// Return true if a plan causes a change.
     pub fn causes_change(&self) -> bool {
         if self.is_empty() {
             return false;
         }
-        if self.len() > 1 {
-            return true;
-        }
-        self[0].act_id.is_some()
+        self.initial_region() != self.result_region()
     }
 
     /// Return the number of steps with AltRuleHint::AltRule set.
@@ -457,7 +454,7 @@ impl SomePlan {
     }
 
     /// Return the range traversed by a plan.
-    pub fn range(&self) -> SomeRegion {
+    pub fn _range(&self) -> SomeRegion {
         let mut rng = self.initial_region().clone();
         for stepx in self.iter() {
             rng = rng.union(&stepx.result);
@@ -666,6 +663,77 @@ mod tests {
         println!("str {tmp_pln} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
+        Ok(())
+    }
+
+    #[test]
+    fn restrict_initial_region() -> Result<(), String> {
+        let pln1 = SomePlan::from_str(
+            "P[rX_1001-2->rX_1101-0->rX_1100-1->rX_1110-3->r1_1110-4->r1_0110]",
+        )?;
+        println!("pln1 {}", pln1);
+
+        if let Some(plan2) = pln1.restrict_initial_region(&SomeRegion::from_str("r1_1001")?) {
+            println!("plan found: {plan2}");
+            return Ok(());
+        };
+        return Err("restrict_initial_region failed".to_string());
+    }
+
+    #[test]
+    fn restrict_result_region() -> Result<(), String> {
+        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        println!("pln1 {}", pln1);
+
+        if let Some(plan2) = pln1.restrict_result_region(&SomeRegion::from_str("r1_1100")?) {
+            println!("plan found: {plan2}");
+            return Ok(());
+        };
+        return Err("restrict_initial_region failed".to_string());
+    }
+
+    #[test]
+    fn result_from_initial_region() -> Result<(), String> {
+        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        println!("pln1 {}", pln1);
+
+        if let Some(initial) = pln1.result_from_initial_region(&SomeRegion::from_str("r1_1001")?) {
+            println!("initial: {initial}");
+            assert!(initial == SomeRegion::from_str("r1_1100")?);
+            return Ok(());
+        };
+        return Err("restrict_initial_region failed".to_string());
+    }
+
+    #[test]
+    fn result_from_initial_state() -> Result<(), String> {
+        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        println!("pln1 {}", pln1);
+
+        if let Some(initial) = pln1.result_from_initial_state(&SomeState::from_str("s1_1001")?) {
+            println!("initial: {initial}");
+            assert!(initial == SomeState::from_str("s1_1100")?);
+            return Ok(());
+        };
+        return Err("restrict_initial_region failed".to_string());
+    }
+
+    #[test]
+    fn causes_change() -> Result<(), String> {
+        let pln1 = SomePlan::from_str("P[]")?;
+        println!("pln1 {}", pln1);
+
+        assert!(!pln1.causes_change());
+
+        let pln2 = SomePlan::from_str("P[rX_1001-no->rX_1001]")?;
+        println!("pln2 {}", pln2);
+
+        assert!(!pln2.causes_change());
+
+        let pln3 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1000]")?;
+        println!("pln3 {}", pln3);
+
+        assert!(pln3.causes_change());
         Ok(())
     }
 

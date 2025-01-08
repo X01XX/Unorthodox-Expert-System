@@ -144,7 +144,11 @@ impl PlansCorr {
         let mut ret_stas = StatesCorr::with_capacity(states.len());
         for (planx, stax) in self.iter().zip(states.iter()) {
             if planx.initial_region().is_superset_of(stax) {
-                ret_stas.push(planx.result_from_initial_state(stax));
+                if let Some(stay) = planx.result_from_initial_state(stax) {
+                    ret_stas.push(stay);
+                } else {
+                    return None;
+                }
             } else {
                 return None;
             }

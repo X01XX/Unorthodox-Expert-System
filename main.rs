@@ -1060,6 +1060,7 @@ fn step_by_step(
             println!("W: = Wanted change(s), going forward.");
             println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
             println!("     Unwanted change(s) must eventually be reversed.");
+            println!("If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
             println!("?  = Region calculated based on least change to intersect the rule region.");
             println!("     Forward, to rule initial region. Backward, from rule result region.");
         }
@@ -1181,15 +1182,46 @@ fn step_by_step(
                             }
                         }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
-                        if !steps_dis[num].result.intersects(&cur_to) {
-                            println!("No backward chaining option for this step");
-                            continue;
-                        }
-                        let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
-                        cur_to = stp_tmp.initial.clone();
-                        match backward_plan.push_first(stp_tmp) {
-                            Ok(()) => (),
-                            Err(errstr) => println!("backward plan push failed {errstr}"),
+                        if steps_dis[num].result.intersects(&cur_to) {
+                            let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
+                            cur_to = stp_tmp.initial.clone();
+                            match backward_plan.push_first(stp_tmp) {
+                                Ok(()) => (),
+                                Err(errstr) => println!("backward plan push_first failed {errstr}"),
+                            }
+                        } else if let Some(planx) =
+                            step_by_step(sdx, dom_id, &steps_dis[num].result, &cur_to, depth + 1)
+                        {
+                            match planx.link(&backward_plan) {
+                                Ok(mut plany) => {
+                                    if plany.initial_region().intersects(&steps_dis[num].result) {
+                                        match plany.push_first(
+                                            steps_dis[num]
+                                                .restrict_result_region(plany.initial_region()),
+                                        ) {
+                                            Ok(()) => {
+                                                backward_plan = plany;
+                                                cur_to = backward_plan.initial_region().clone();
+                                            }
+                                            Err(errstr) => println!(
+                                                "restrict {} to {} failed {errstr}",
+                                                steps_dis[num],
+                                                plany.initial_region()
+                                            ),
+                                        }
+                                    } else {
+                                        println!(
+                                            "step {} does not intersect plan {plany}",
+                                            steps_dis[num]
+                                        )
+                                    }
+                                }
+                                Err(errstr) => {
+                                    println!("link {planx} to {backward_plan} failed {errstr}.")
+                                }
+                            }
+                        } else {
+                            println!("Backward chaining return None.");
                         }
 
                         if cur_from.intersects(&cur_to) {
