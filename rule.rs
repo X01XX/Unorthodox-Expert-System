@@ -462,6 +462,33 @@ impl SomeRule {
         }
     }
 
+    pub fn new_region_from_region_min(to: &SomeRegion, from: &SomeRegion) -> SomeRule {
+        debug_assert_eq!(from.num_bits(), to.num_bits());
+
+        let f0 = from.edge_zeros_mask();
+        let f1 = from.edge_ones_mask();
+        let fx = from.x_mask();
+
+        let t0 = to.edge_zeros_mask();
+        let t1 = to.edge_ones_mask();
+        let tx = to.x_mask();
+
+        Self {
+            m00: f0
+                .bitwise_and(&t0) // 0->0
+                .bitwise_or(&fx.bitwise_and(&t0)) // X->0
+                .bitwise_or(&f0.bitwise_and(&tx)) // 0->X
+                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
+            m01: f0.bitwise_and(&t1).bitwise_or(&fx.bitwise_and(&t1)), // 0->1, X->1
+            m11: f1
+                .bitwise_and(&t1) // 1->1
+                .bitwise_or(&fx.bitwise_and(&t1)) // X->1
+                .bitwise_or(&f1.bitwise_and(&tx)) // 1->X
+                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
+            m10: f1.bitwise_and(&t0).bitwise_or(&fx.bitwise_and(&t0)), // 1->0, X->0
+        }
+    }
+
     /// Return the number of bits changed in a rule.
     pub fn num_bits_changed(&self) -> usize {
         self.m01.bitwise_or(&self.m10).num_one_bits()

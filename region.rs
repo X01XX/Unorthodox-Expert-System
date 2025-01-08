@@ -495,6 +495,21 @@ impl SomeRegion {
             .intersection(&other.set_to_x(&msk))
             .expect("SNH")
     }
+
+    /// Toggle bit positions in a region.
+    /// 1->0, 0->1, X->x, x->X.
+    fn bitwise_xor_mask(&self, msk: &SomeMask) -> Self {
+        let mut states = Vec::<SomeState>::with_capacity(self.len());
+        for stax in self.states.iter() {
+            states.push(stax.bitwise_xor(msk).as_state());
+        }
+        Self::new(states)
+    }
+
+    /// Make the minimum changes to a regions' edge positions to cause it to intersect a second region.
+    pub fn translate_to_intersect(&self, to_intersect: &Self) -> Self {
+        self.bitwise_xor_mask(&self.diff_edge_mask(to_intersect))
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.

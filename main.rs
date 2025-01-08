@@ -946,9 +946,6 @@ fn step_by_step(
     let mut forward_plan = SomePlan::new(vec![]);
     let mut backward_plan = SomePlan::new(vec![]);
 
-    let rlen = from.strlen();
-    let fill_spaces = vec![' '; (rlen * 2) - 8].iter().collect::<String>();
-
     let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
     let change_spaces = vec![' '; cng_len].iter().collect::<String>();
 
@@ -995,51 +992,53 @@ fn step_by_step(
         println!("Backward plan: {}", backward_plan.formatted_str_from());
 
         println!(" ");
-        println!("Depth: {depth} Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
+        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
         println!(" ");
         if steps_dis.is_empty() {
         } else {
             for (inx, stpx) in steps_dis.iter().enumerate() {
+                let mut rule_forward = stpx.rule.clone();
+                let mut rule_backward = stpx.rule.clone();
+
                 print!("{inx:2} Act {} {}", stpx.act_id.unwrap(), stpx.rule);
                 if stpx.initial.intersects(&cur_from) {
-                    print!(
-                        "  FC: {}->{}",
-                        cur_from,
-                        stpx.rule.result_from_initial_region(&cur_from)
-                    );
+                    rule_forward = rule_forward.restrict_initial_region(&cur_from);
+                    print!("  FC: {}->{} ", cur_from, rule_forward.result_region());
                 } else {
+                    let int_reg = cur_from.translate_to_intersect(&stpx.initial);
+                    rule_forward = rule_forward.restrict_initial_region(&int_reg);
+                    print!("  FA: {}->{}?", cur_from, rule_backward.result_region());
                     //print!("{fill_spaces}");
-                    print!("  FC: recursion {fill_spaces}");
-                }
-                if stpx.result.intersects(&cur_to) {
-                    print!(
-                        "  BC: {}<-{}",
-                        stpx.rule.initial_from_result_region(&cur_to),
-                        cur_to
-                    );
-                } else {
-                    //print!("{fill_spaces}");
-                    print!("  BC: recursion {fill_spaces}");
+                    //print!("  FC: recursion {fill_spaces}");
                 }
 
                 // Calc wanted and unwanted changes.
-                let step_wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
+                let step_wanted_changes = rule_forward.as_change().intersection(&wanted_changes);
 
                 let step_unwanted_changes =
-                    SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
+                    SomeRule::new_region_to_region_min(&cur_from, &rule_forward.result_region())
                         .as_change()
                         .intersection(&unwanted_changes);
 
                 // Print forward wanted and unwanted changes.
                 if step_wanted_changes.is_low() {
-                    print!("      {change_spaces}");
+                    print!("     {change_spaces}");
                 } else {
                     print!("  W: {step_wanted_changes}",);
                 }
                 if step_unwanted_changes.is_low() {
-                    print!("      {change_spaces}");
+                    print!("     {change_spaces}");
                 } else {
                     print!("  U: {step_unwanted_changes}",);
+                }
+
+                if stpx.result.intersects(&cur_to) {
+                    rule_backward = rule_backward.restrict_result_region(&cur_to);
+                    print!("  BC:  {}<-{}", rule_backward.initial_region(), cur_to);
+                } else {
+                    let int_reg = cur_to.translate_to_intersect(&stpx.result);
+                    rule_backward = rule_backward.restrict_result_region(&int_reg);
+                    print!("  BA: ?{}<-{}", rule_backward.initial_region(), cur_to);
                 }
                 println!(" ");
             }
@@ -1051,27 +1050,29 @@ fn step_by_step(
         if first_cycle && depth == 0 {
             first_cycle = false;
             println!(" ");
-            println!("exit, quit, q = quit session.");
-            println!("return, r = return to session.");
-            println!("so = Start Over.");
-            println!("fpop = forward plan pop. bpop = backward plan pop");
-            println!("<step number> f to use a step as forward chaining (FC)");
-            println!("<step number> b to use a step as backward chaining (BC)");
-            println!("W: = wanted change.");
-            println!("U: = unwanted change. Either in the step itself, or from traversing to the step.  Must eventually be reversed.");
+            println!("q = Quit session.");
+            println!("r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
+            println!("so = Start over, clear forward and backward plans at the current depth.");
+            println!("fpop = Forward plan pop step at end.");
+            println!("bpop = Backward plan pop step at beginning.");
+            println!("<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
+            println!("<step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
+            println!("W: = Wanted change(s), going forward.");
+            println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
+            println!("     Unwanted change(s) must eventually be reversed.");
+            println!("?  = Region calculated based on least change to intersect the rule region.");
+            println!("     Forward, to rule initial region. Backward, from rule result region.");
         }
         if let Some(ref planx) = ret_plan {
             println!("Plan found: {planx}");
-        }
-        println!(" ");
-
-        if steps_dis.is_empty() {
-            println!("Enter q, r, fpop, bpop, so");
+            println!(" ");
+            println!("Enter q, r (plan), fpop, bpop, so");
         } else {
-            println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
+            println!(" ");
+            println!("Enter q, r (None), <step number> [f, b], fpop, bpop, so");
         }
 
-        let guess = pause_for_input("\nPress Enter or type a command: ");
+        let guess = pause_for_input(&format!("\nDepth {depth}. Press Enter or type a command: "));
 
         for word in guess.split_whitespace() {
             cmd.push(word);
@@ -1085,11 +1086,11 @@ fn step_by_step(
 
         // Do commands
         match cmd[0] {
-            "exit" | "EXIT" | "q" | "Q" | "quit" | "QUIT" => {
+            "q" | "Q" => {
                 println!("Done");
                 process::exit(0);
             }
-            "return" | "RETURN" | "r" | "R" => {
+            "r" | "R" => {
                 return ret_plan;
             }
             "fpop" | "FPOP" => {
@@ -1161,7 +1162,7 @@ fn step_by_step(
                                 }
                             }
                         } else {
-                            println!("Forward chaining returneh None.");
+                            println!("Forward chaining return None.");
                         }
 
                         if cur_from.intersects(&cur_to) {
