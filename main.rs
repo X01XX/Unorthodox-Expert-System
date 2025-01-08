@@ -770,7 +770,7 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
         }
     }
 
-    if let Some(planx) = step_by_step(sdx, dom_id, &from, &to) {
+    if let Some(planx) = step_by_step(sdx, dom_id, &from, &to, 0) {
         println!("found plan for {from} -> {to}: {planx}");
         pause_for_input("Press Enter to coninue ");
     }
@@ -917,7 +917,13 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     }
 
     // Plan to result not found, display step options.
-    step_by_step(sdx, dom_id, &SomeRegion::new(vec![cur_state]), &goal_region);
+    step_by_step(
+        sdx,
+        dom_id,
+        &SomeRegion::new(vec![cur_state]),
+        &goal_region,
+        0,
+    );
 
     Ok(())
 }
@@ -928,6 +934,7 @@ fn step_by_step(
     dom_id: usize,
     from: &SomeRegion,
     to: &SomeRegion,
+    depth: usize,
 ) -> Option<SomePlan> {
     let domx = sdx.find(dom_id).expect("SNH");
 
@@ -940,7 +947,7 @@ fn step_by_step(
     let mut backward_plan = SomePlan::new(vec![]);
 
     let rlen = from.strlen();
-    let fill_spaces = vec![' '; (rlen * 2) + 8].iter().collect::<String>();
+    let fill_spaces = vec![' '; (rlen * 2) - 8].iter().collect::<String>();
 
     let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
     let change_spaces = vec![' '; cng_len].iter().collect::<String>();
@@ -963,18 +970,15 @@ fn step_by_step(
 
         // Display steps.
         let mut steps_dis = Vec::<&SomeStep>::with_capacity(steps_st.len());
-        let mut steps_max = 0;
 
         for stpx in steps_st.iter() {
             if stpx.initial.intersects(&cur_from) {
                 steps_dis.push(stpx);
-                steps_max += 1;
             }
         }
         for stpx in steps_st.iter() {
             if !stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
                 steps_dis.push(stpx);
-                steps_max += 1;
             }
         }
         for stpx in steps_st.iter() {
@@ -991,17 +995,12 @@ fn step_by_step(
         println!("Backward plan: {}", backward_plan.formatted_str_from());
 
         println!(" ");
-        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
+        println!("Depth: {depth} Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
         println!(" ");
         if steps_dis.is_empty() {
         } else {
             for (inx, stpx) in steps_dis.iter().enumerate() {
-                if inx < steps_max {
-                    print!("{inx:2} ");
-                } else {
-                    print!("   ");
-                }
-                print!("Act {} {}", stpx.act_id.unwrap(), stpx.rule);
+                print!("{inx:2} Act {} {}", stpx.act_id.unwrap(), stpx.rule);
                 if stpx.initial.intersects(&cur_from) {
                     print!(
                         "  FC: {}->{}",
@@ -1009,7 +1008,8 @@ fn step_by_step(
                         stpx.rule.result_from_initial_region(&cur_from)
                     );
                 } else {
-                    print!("{fill_spaces}");
+                    //print!("{fill_spaces}");
+                    print!("  FC: recursion {fill_spaces}");
                 }
                 if stpx.result.intersects(&cur_to) {
                     print!(
@@ -1018,26 +1018,28 @@ fn step_by_step(
                         cur_to
                     );
                 } else {
-                    print!("{fill_spaces}");
+                    //print!("{fill_spaces}");
+                    print!("  BC: recursion {fill_spaces}");
                 }
 
                 // Calc wanted and unwanted changes.
-                let wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
+                let step_wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
 
-                let unwanted_changes = SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
-                    .as_change()
-                    .intersection(&unwanted_changes);
+                let step_unwanted_changes =
+                    SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
+                        .as_change()
+                        .intersection(&unwanted_changes);
 
                 // Print forward wanted and unwanted changes.
-                if wanted_changes.is_low() {
+                if step_wanted_changes.is_low() {
                     print!("      {change_spaces}");
                 } else {
-                    print!("  W: {wanted_changes}",);
+                    print!("  W: {step_wanted_changes}",);
                 }
-                if unwanted_changes.is_low() {
+                if step_unwanted_changes.is_low() {
                     print!("      {change_spaces}");
                 } else {
-                    print!("  U: {unwanted_changes}",);
+                    print!("  U: {step_unwanted_changes}",);
                 }
                 println!(" ");
             }
@@ -1046,7 +1048,7 @@ fn step_by_step(
         // Get user input.
         let mut cmd = Vec::<&str>::with_capacity(10);
 
-        if first_cycle {
+        if first_cycle && depth == 0 {
             first_cycle = false;
             println!(" ");
             println!("exit, quit, q = quit session.");
@@ -1063,10 +1065,10 @@ fn step_by_step(
         }
         println!(" ");
 
-        if steps_max > 0 {
-            println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
-        } else {
+        if steps_dis.is_empty() {
             println!("Enter q, r, fpop, bpop, so");
+        } else {
+            println!("Enter q, r, <step number> [f, b], fpop, bpop, so");
         }
 
         let guess = pause_for_input("\nPress Enter or type a command: ");
@@ -1117,18 +1119,49 @@ fn step_by_step(
         if cmd.len() == 2 {
             match cmd[0].parse::<usize>() {
                 Ok(num) => {
-                    if num >= steps_max {
+                    if num >= steps_dis.len() {
                         println!("Step number is too high");
                     } else if cmd[1] == "F" || cmd[1] == "f" {
-                        if !steps_dis[num].initial.intersects(&cur_from) {
-                            println!("No forward chaining option for this step");
-                            continue;
-                        }
-                        let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
-                        cur_from = stp_tmp.result.clone();
-                        match forward_plan.push(stp_tmp) {
-                            Ok(()) => (),
-                            Err(errstr) => println!("forward plan push failed {errstr}"),
+                        // Check for forward chaining, else forward asymmetric chaining.
+                        if steps_dis[num].initial.intersects(&cur_from) {
+                            let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
+                            cur_from = stp_tmp.result.clone();
+                            match forward_plan.push(stp_tmp) {
+                                Ok(()) => (),
+                                Err(errstr) => println!("forward plan push failed {errstr}"),
+                            }
+                        } else if let Some(planx) =
+                            step_by_step(sdx, dom_id, &cur_from, &steps_dis[num].initial, depth + 1)
+                        {
+                            match forward_plan.link(&planx) {
+                                Ok(mut plany) => {
+                                    if plany.result_region().intersects(&steps_dis[num].initial) {
+                                        match plany.push(
+                                            steps_dis[num]
+                                                .restrict_initial_region(plany.result_region()),
+                                        ) {
+                                            Ok(()) => {
+                                                forward_plan = plany;
+                                                cur_from = forward_plan.result_region().clone();
+                                            }
+                                            Err(errstr) => println!(
+                                                "link of {plany} to {} failed {errstr}",
+                                                steps_dis[num]
+                                            ),
+                                        }
+                                    } else {
+                                        println!(
+                                            "plan {plany} does not intersect {}",
+                                            steps_dis[num]
+                                        )
+                                    }
+                                }
+                                Err(errstr) => {
+                                    println!("link {forward_plan} to {planx} failed {errstr}.")
+                                }
+                            }
+                        } else {
+                            println!("Forward chaining returneh None.");
                         }
 
                         if cur_from.intersects(&cur_to) {
