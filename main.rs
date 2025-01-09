@@ -1614,7 +1614,12 @@ fn usage() {
     println!(
         "                               To find out more about why a need cannot be satisfied."
     );
-    println!("\n    step <region> <region>    Interactively step from an initial region to a goal region.");
+    println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to a goal region.");
+    println!("                              This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
+    println!("                              The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
+    println!(
+        "                              giving immediate access to a fully develped set of rules."
+    );
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
     println!("\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done.");
