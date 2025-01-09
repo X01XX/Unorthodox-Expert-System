@@ -1165,22 +1165,6 @@ fn step_by_step(
                         } else {
                             println!("Forward chaining return None.");
                         }
-
-                        if cur_from.intersects(&cur_to) {
-                            match forward_plan.link(&backward_plan) {
-                                Ok(planx) => ret_plan = Some(planx),
-                                Err(errstr) => println!(
-                                    "linking failed {forward_plan} to {backward_plan} {errstr}"
-                                ),
-                            }
-                        } else {
-                            // Check for intersection other than current from/to.
-                            for stpx in backward_plan.iter() {
-                                if cur_from.intersects(&stpx.initial) {
-                                    // TODO make plan.
-                                }
-                            }
-                        }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
                         if steps_dis[num].result.intersects(&cur_to) {
                             let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
@@ -1223,22 +1207,6 @@ fn step_by_step(
                         } else {
                             println!("Backward chaining return None.");
                         }
-
-                        if cur_from.intersects(&cur_to) {
-                            match forward_plan.link(&backward_plan) {
-                                Ok(planx) => ret_plan = Some(planx),
-                                Err(errstr) => println!(
-                                    "linking failed {forward_plan} to {backward_plan} {errstr}"
-                                ),
-                            }
-                        } else {
-                            // Check for intersection other than current from/to.
-                            for stpx in forward_plan.iter() {
-                                if cur_to.intersects(&stpx.result) {
-                                    // TODO make plan.
-                                }
-                            }
-                        }
                     } else {
                         println!("\nDid not understand command: {cmd:?}");
                     }
@@ -1247,6 +1215,24 @@ fn step_by_step(
                     println!("\nDid not understand command: {cmd:?}");
                 }
             }
+        }
+        // Check for plan found.
+        if forward_plan.is_not_empty()
+            && backward_plan.is_not_empty()
+            && forward_plan
+                .result_region()
+                .intersects(backward_plan.initial_region())
+        {
+            match forward_plan.link(&backward_plan) {
+                Ok(planx) => ret_plan = Some(planx),
+                Err(errstr) => {
+                    println!("linking failed {forward_plan} to {backward_plan} {errstr}")
+                }
+            }
+        } else if forward_plan.is_not_empty() && forward_plan.result_region().intersects(to) {
+            ret_plan = forward_plan.restrict_result_region(to);
+        } else if backward_plan.is_not_empty() && backward_plan.initial_region().intersects(from) {
+            ret_plan = backward_plan.restrict_initial_region(from);
         }
     } // end loop
 }
