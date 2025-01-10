@@ -952,6 +952,7 @@ fn step_by_step(
     let mut first_cycle = true;
     loop {
         println!("-----------------------------------");
+        println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
 
         let wanted_changes = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
 
@@ -1053,14 +1054,14 @@ fn step_by_step(
             println!("q = Quit session.");
             println!("r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
             println!("so = Start over, clear forward and backward plans at the current depth.");
-            println!("fpop = Forward plan pop step at end.");
+            println!("\nfpop = Forward plan pop step at end.");
             println!("bpop = Backward plan pop step at beginning.");
-            println!("<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
+            println!("\n<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
             println!("<step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
-            println!("W: = Wanted change(s), going forward.");
+            println!("\nW: = Wanted change(s), going forward.");
             println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
             println!("     Unwanted change(s) must eventually be reversed.");
-            println!("If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
+            println!("\nIf there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
             println!("?  = Region calculated based on least change to intersect the rule region.");
             println!("     Forward, to rule initial region. Backward, from rule result region.");
         }
@@ -1129,112 +1130,154 @@ fn step_by_step(
                             let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
                             cur_from = stp_tmp.result.clone();
                             match forward_plan.push(stp_tmp) {
-                                Ok(()) => (),
+                                Ok(()) => {
+                                    ret_plan = check_for_plan_completion(
+                                        from,
+                                        to,
+                                        &forward_plan,
+                                        &backward_plan,
+                                    )
+                                }
                                 Err(errstr) => println!("forward plan push failed {errstr}"),
                             }
-                        } else if let Some(planx) =
+                        } else if let Some(mut planx) =
                             step_by_step(sdx, dom_id, &cur_from, &steps_dis[num].initial, depth + 1)
                         {
-                            match forward_plan.link(&planx) {
-                                Ok(mut plany) => {
-                                    if plany.result_region().intersects(&steps_dis[num].initial) {
-                                        match plany.push(
-                                            steps_dis[num]
-                                                .restrict_initial_region(plany.result_region()),
-                                        ) {
-                                            Ok(()) => {
-                                                forward_plan = plany;
-                                                cur_from = forward_plan.result_region().clone();
-                                            }
-                                            Err(errstr) => println!(
-                                                "link of {plany} to {} failed {errstr}",
-                                                steps_dis[num]
-                                            ),
+                            println!(
+                                "Forward asymmetric plan {planx} being linked to step {}",
+                                steps_dis[num]
+                            );
+                            pause_for_input("Press Enter to continue: ");
+                            match planx
+                                .push(steps_dis[num].restrict_initial_region(planx.result_region()))
+                            {
+                                Ok(()) => {
+                                    println!("Giving plan {planx}");
+                                    println!("Linking forward plan {forward_plan} and {planx}");
+                                    pause_for_input("Press Enter to continue: ");
+                                    match forward_plan.link(&planx) {
+                                        Ok(plany) => {
+                                            forward_plan = plany;
+                                            cur_from = forward_plan.result_region().clone();
+                                            ret_plan = check_for_plan_completion(
+                                                from,
+                                                to,
+                                                &forward_plan,
+                                                &backward_plan,
+                                            );
                                         }
-                                    } else {
-                                        println!(
-                                            "plan {plany} does not intersect {}",
-                                            steps_dis[num]
-                                        )
+                                        Err(errstr) => {
+                                            println!("Linking {forward_plan} to {planx} failed: {errstr}");
+                                            pause_for_input("Press Enter to continue: ");
+                                        }
                                     }
                                 }
                                 Err(errstr) => {
-                                    println!("link {forward_plan} to {planx} failed {errstr}.")
+                                    println!("Linking to {}:failed: {errstr}", steps_dis[num]);
+                                    pause_for_input("Press Enter to continue: ");
                                 }
                             }
                         } else {
-                            println!("Forward chaining return None.");
+                            println!("Forward chaining to {} returned None.", steps_dis[num]);
+                            pause_for_input("Press Enter to continue: ");
                         }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
+                        // Check for backward chaining, else backward asymmetric chaining.
                         if steps_dis[num].result.intersects(&cur_to) {
                             let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
                             cur_to = stp_tmp.initial.clone();
                             match backward_plan.push_first(stp_tmp) {
-                                Ok(()) => (),
+                                Ok(()) => {
+                                    ret_plan = check_for_plan_completion(
+                                        from,
+                                        to,
+                                        &forward_plan,
+                                        &backward_plan,
+                                    )
+                                }
                                 Err(errstr) => println!("backward plan push_first failed {errstr}"),
                             }
-                        } else if let Some(planx) =
+                        } else if let Some(mut planx) =
                             step_by_step(sdx, dom_id, &steps_dis[num].result, &cur_to, depth + 1)
                         {
-                            match planx.link(&backward_plan) {
-                                Ok(mut plany) => {
-                                    if plany.initial_region().intersects(&steps_dis[num].result) {
-                                        match plany.push_first(
-                                            steps_dis[num]
-                                                .restrict_result_region(plany.initial_region()),
-                                        ) {
-                                            Ok(()) => {
-                                                backward_plan = plany;
-                                                cur_to = backward_plan.initial_region().clone();
-                                            }
-                                            Err(errstr) => println!(
-                                                "restrict {} to {} failed {errstr}",
-                                                steps_dis[num],
-                                                plany.initial_region()
-                                            ),
+                            println!(
+                                "Backward asymmetric step {} being linked to plan {planx}",
+                                steps_dis[num]
+                            );
+                            pause_for_input("Press Enter to continue: ");
+
+                            match planx.push_first(
+                                steps_dis[num].restrict_result_region(planx.initial_region()),
+                            ) {
+                                Ok(()) => {
+                                    println!("Giving plan {planx}");
+                                    println!("Linking {planx} and backward plan {backward_plan}");
+                                    pause_for_input("Press Enter to continue: ");
+
+                                    match planx.link(&backward_plan) {
+                                        Ok(plany) => {
+                                            backward_plan = plany;
+                                            cur_to = backward_plan.initial_region().clone();
+                                            ret_plan = check_for_plan_completion(
+                                                from,
+                                                to,
+                                                &forward_plan,
+                                                &backward_plan,
+                                            );
                                         }
-                                    } else {
-                                        println!(
-                                            "step {} does not intersect plan {plany}",
-                                            steps_dis[num]
-                                        )
+                                        Err(errstr) => {
+                                            println!(
+                                                "link {planx} to {backward_plan} failed {errstr}."
+                                            );
+                                            pause_for_input("Press Enter to continue: ");
+                                        }
                                     }
                                 }
                                 Err(errstr) => {
-                                    println!("link {planx} to {backward_plan} failed {errstr}.")
+                                    println!("Linking {planx} and backward plan {backward_plan} failed: {errstr}.");
+                                    pause_for_input("Press Enter to continue: ");
                                 }
                             }
                         } else {
                             println!("Backward chaining return None.");
                         }
                     } else {
+                        // not F, f, B or b.
                         println!("\nDid not understand command: {cmd:?}");
                     }
-                }
+                } // end Ok(num)
                 Err(_) => {
                     println!("\nDid not understand command: {cmd:?}");
                 }
             }
-        }
-        // Check for plan found.
-        if forward_plan.is_not_empty()
-            && backward_plan.is_not_empty()
-            && forward_plan
-                .result_region()
-                .intersects(backward_plan.initial_region())
-        {
-            match forward_plan.link(&backward_plan) {
-                Ok(planx) => ret_plan = Some(planx),
-                Err(errstr) => {
-                    println!("linking failed {forward_plan} to {backward_plan} {errstr}")
-                }
-            }
-        } else if forward_plan.is_not_empty() && forward_plan.result_region().intersects(to) {
-            ret_plan = forward_plan.restrict_result_region(to);
-        } else if backward_plan.is_not_empty() && backward_plan.initial_region().intersects(from) {
-            ret_plan = backward_plan.restrict_initial_region(from);
-        }
+        } // end cmd.len() == 2
     } // end loop
+}
+
+fn check_for_plan_completion(
+    from: &SomeRegion,
+    to: &SomeRegion,
+    forward_plan: &SomePlan,
+    backward_plan: &SomePlan,
+) -> Option<SomePlan> {
+    if forward_plan.is_not_empty()
+        && backward_plan.is_not_empty()
+        && forward_plan
+            .result_region()
+            .intersects(backward_plan.initial_region())
+    {
+        match forward_plan.link(backward_plan) {
+            Ok(planx) => return Some(planx),
+            Err(errstr) => {
+                println!("linking failed {forward_plan} to {backward_plan} {errstr}")
+            }
+        }
+    } else if forward_plan.is_not_empty() && forward_plan.result_region().intersects(to) {
+        return forward_plan.restrict_result_region(to);
+    } else if backward_plan.is_not_empty() && backward_plan.initial_region().intersects(from) {
+        return backward_plan.restrict_initial_region(from);
+    }
+    None
 }
 
 /// Do sample-state command.
@@ -1614,7 +1657,7 @@ fn usage() {
     println!(
         "                               To find out more about why a need cannot be satisfied."
     );
-    println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to a goal region.");
+    println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to/from a goal region.");
     println!("                              This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
     println!("                              The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
     println!(
