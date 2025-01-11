@@ -1,6 +1,7 @@
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
+use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
@@ -258,6 +259,11 @@ impl DomainStore {
         //println!("domainstore: make_plans_domain: dom {dom_id} from {from_region} goal {goal_region}");
 
         self.items[dom_id].make_plans(from_region, goal_region, within)
+    }
+
+    /// Run a plan for a domain.
+    pub fn run_plan_domain(&mut self, dom_id: usize, planx: &SomePlan) -> Result<usize, String> {
+        self.items[dom_id].run_plan(planx)
     }
 
     /// Find a domain that matches a given ID, return a reference.

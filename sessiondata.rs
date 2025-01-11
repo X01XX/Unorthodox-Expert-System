@@ -522,6 +522,11 @@ impl SessionData {
             .make_plans_domain(dom_id, from_region, goal_region, within)
     }
 
+    /// Run a plan, in its given domain.
+    pub fn run_plan_domain(&mut self, dom_id: usize, planx: &SomePlan) -> Result<usize, String> {
+        self.domains[dom_id].run_plan(planx)
+    }
+
     /// Choose a plan from a vector of PlanStores, for vector of PlanStore references.
     /// Return index of plan chosen.
     pub fn choose_a_plan(&self, plans: &[PlansCorrStore]) -> usize {

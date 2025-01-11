@@ -508,6 +508,7 @@ fn command_loop(sdx: &mut SessionData) {
                         Ok(()) => continue,
                         Err(error) => {
                             println!("{error}");
+                            pause_for_input("\nPress Enter to continue: ");
                         }
                     }
                 } else if cmd.len() == 3 {
@@ -515,6 +516,7 @@ fn command_loop(sdx: &mut SessionData) {
                         Ok(()) => continue,
                         Err(error) => {
                             println!("{error}");
+                            pause_for_input("\nPress Enter to continue: ");
                         }
                     }
                 } else {
@@ -528,12 +530,14 @@ fn command_loop(sdx: &mut SessionData) {
                 }
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "cs" => match do_change_state_command(sdx, &cmd) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "dcs" => {
@@ -544,6 +548,7 @@ fn command_loop(sdx: &mut SessionData) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "exit" | "q" | "quit" => {
@@ -554,12 +559,14 @@ fn command_loop(sdx: &mut SessionData) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "gps" => match do_print_group_defining_squares_command(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "h" => usage(),
@@ -568,18 +575,21 @@ fn command_loop(sdx: &mut SessionData) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "ps" => match do_print_squares_command(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "psr" => match do_print_select_regions(sdx, &cmd) {
                 Ok(()) => continue,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "run" => {
@@ -592,15 +602,16 @@ fn command_loop(sdx: &mut SessionData) {
                 Ok(()) => return,
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "to" => match do_to_region_command(sdx, &cmd) {
                 Ok(()) => {
-                    pause_for_input("\nPress Enter to continue: ");
                     return;
                 }
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             "step" => match do_step_command(sdx, &cmd) {
@@ -609,6 +620,7 @@ fn command_loop(sdx: &mut SessionData) {
                 }
                 Err(error) => {
                     println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
                 }
             },
             _ => {
@@ -774,7 +786,18 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
 
     if let Some(planx) = step_by_step(sdx, dom_id, &from, &to, 0) {
         println!("found plan for {from} -> {to}: {planx}");
-        pause_for_input("Press Enter to coninue ");
+        if *planx.initial_region() == SomeRegion::new(vec![sdx.cur_state(dom_id).clone()]) {
+            let cmd = pause_for_input("Press Enter to continue, or r to run ");
+            if cmd == "r" || cmd == "R" {
+                match sdx.run_plan_domain(dom_id, &planx) {
+                    Ok(num) => println!("{num} steps run."),
+                    Err(errstr) => println!("{errstr}"),
+                }
+            } else {
+                return Ok(());
+            }
+        }
+        pause_for_input("Press Enter to continue ");
     }
 
     Ok(())
@@ -919,13 +942,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
     }
 
     // Plan to result not found, display step options.
-    step_by_step(
-        sdx,
-        dom_id,
-        &SomeRegion::new(vec![cur_state]),
-        &goal_region,
-        0,
-    );
+    let _ = do_step_command(sdx, &["step", &format!("{cur_state}"), cmd[1]]);
 
     Ok(())
 }
@@ -953,6 +970,25 @@ fn step_by_step(
 
     let mut first_cycle = true;
     loop {
+        if first_cycle && depth == 0 {
+            first_cycle = false;
+            println!("-----------------------------------");
+            println!("Available step commands:");
+            println!(" ");
+            println!("q = Quit session.");
+            println!("r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
+            println!("so = Start over, clear forward and backward plans at the current depth.");
+            println!("\nfpop = Forward plan pop step at end.");
+            println!("bpop = Backward plan pop step at beginning.");
+            println!("\n<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
+            println!("<step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
+            println!("\nW: = Wanted change(s), going forward.");
+            println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
+            println!("     Unwanted change(s) must eventually be reversed.");
+            println!("\nIf there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
+            println!("?  = Region calculated based on least change to intersect the rule region.");
+            println!("     Forward, to rule initial region. Backward, from rule result region.");
+        }
         println!("-----------------------------------");
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
 
@@ -1011,8 +1047,6 @@ fn step_by_step(
                     let int_reg = cur_from.translate_to_intersect(&stpx.initial);
                     rule_forward = rule_forward.restrict_initial_region(&int_reg);
                     print!("  FA: {}->{}?", cur_from, rule_backward.result_region());
-                    //print!("{fill_spaces}");
-                    //print!("  FC: recursion {fill_spaces}");
                 }
 
                 // Calc wanted and unwanted changes.
@@ -1050,35 +1084,20 @@ fn step_by_step(
         // Get user input.
         let mut cmd = Vec::<&str>::with_capacity(10);
 
-        if first_cycle && depth == 0 {
-            first_cycle = false;
-            println!(" ");
-            println!("q = Quit session.");
-            println!("r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
-            println!("so = Start over, clear forward and backward plans at the current depth.");
-            println!("\nfpop = Forward plan pop step at end.");
-            println!("bpop = Backward plan pop step at beginning.");
-            println!("\n<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
-            println!("<step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
-            println!("\nW: = Wanted change(s), going forward.");
-            println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
-            println!("     Unwanted change(s) must eventually be reversed.");
-            println!("\nIf there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
-            println!("?  = Region calculated based on least change to intersect the rule region.");
-            println!("     Forward, to rule initial region. Backward, from rule result region.");
-        }
-        if let Some(ref planx) = ret_plan {
+        let input_str = if let Some(ref planx) = ret_plan {
             println!("Plan found: {planx}");
             println!(" ");
-            println!("Enter q, r (plan), fpop, bpop, so");
+            pause_for_input(&format!(
+                "Depth: {depth} Enter q, r (plan), fpop, bpop, so: "
+            ))
         } else {
             println!(" ");
-            println!("Enter q, r (None), <step number> [f, b], fpop, bpop, so");
-        }
+            pause_for_input(&format!(
+                "Depth: {depth} Enter q, r (None), <step number> [f, b], fpop, bpop, so: "
+            ))
+        };
 
-        let guess = pause_for_input(&format!("\nDepth {depth}. Press Enter or type a command: "));
-
-        for word in guess.split_whitespace() {
+        for word in input_str.split_whitespace() {
             cmd.push(word);
         }
 
