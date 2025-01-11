@@ -501,6 +501,69 @@ impl SomeAction {
         if self.cleanup_number_new_squares >= self.cleanup_trigger {
             self.cleanup(&ret);
         }
+
+        if ret.is_empty() && self.groups.any_not_limited() {
+            let mut regs = RegionStore::new(vec![max_reg.clone()]);
+            for grpx in self.groups.iter() {
+                if grpx.limited {
+                    regs = regs.subtract_region(&grpx.region);
+                }
+            }
+            if regs.is_not_empty() {
+                //println!("not limited {regs}");
+
+                for regx in regs.iter() {
+                    let sqrs = self.squares.squares_in_reg(regx);
+                    if sqrs.is_empty() {
+                        // Make need target.
+                        let mut needx = SomeNeed::StateNotInLimitedGroup {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::Region {
+                                region: regx.clone(),
+                            },
+                            priority: regx.num_edges(),
+                        };
+                        needx.add_priority_base();
+                        ret.push(needx);
+                    } else {
+                        // Make need for each non-pnc square.
+                        // Check for any pnc square.
+                        let mut any_pnc = false;
+                        for sqrx in sqrs.iter() {
+                            if sqrx.pnc {
+                                any_pnc = true;
+                                break;
+                            }
+                        }
+                        if !any_pnc {
+                            // Find max number results.
+                            let mut max_results = 0;
+                            for sqrx in sqrs.iter() {
+                                if sqrx.num_results() > max_results {
+                                    max_results = sqrx.num_results();
+                                }
+                            }
+                            // Create needs for squares with max results.
+                            for sqrx in sqrs.iter() {
+                                if sqrx.num_results() == max_results {
+                                    let mut needx = SomeNeed::StateNotInLimitedGroup {
+                                        dom_id: self.dom_id,
+                                        act_id: self.id,
+                                        target: ATarget::State {
+                                            state: sqrx.state.clone(),
+                                        },
+                                        priority: regx.num_edges(),
+                                    };
+                                    needx.add_priority_base();
+                                    ret.push(needx);
+                                }
+                            } // next sqrx
+                        }
+                    }
+                } // next regx
+            }
+        }
         ret
     }
 
@@ -593,37 +656,57 @@ impl SomeAction {
                 self.remainder_check_regions = self.remainder_check_region(max_reg);
                 self.check_remainder = false;
             }
-            if self.remainder_check_regions.len() > 1 {
-                let rem_frags = self.remainder_check_regions.split_by_intersections();
-
-                // Find number of intersections for priority setting.
-                let mut frags_num_ints = Vec::<usize>::with_capacity(rem_frags.len());
-                for regx in rem_frags.iter() {
-                    frags_num_ints.push(self.remainder_check_regions.number_supersets_of(regx));
-                }
-
-                for (inx, regx) in rem_frags.into_iter().enumerate() {
-                    let mut needx = SomeNeed::StateInRemainder {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target: ATarget::Region { region: regx },
-                        priority: self.remainder_check_regions.len() - frags_num_ints[inx],
-                    };
-                    needx.add_priority_base();
-                    nds.push(needx);
-                }
-            }
-            for regx in self.remainder_check_regions.iter() {
-                let mut needx = SomeNeed::StateInRemainder {
-                    dom_id: self.dom_id,
-                    act_id: self.id,
-                    target: ATarget::Region {
-                        region: regx.clone(),
-                    },
-                    priority: self.remainder_check_regions.len(),
-                };
-                needx.add_priority_base();
-                nds.push(needx);
+            if self.remainder_check_regions.is_not_empty() {
+                for regx in self.remainder_check_regions.iter() {
+                    let sqrs = self.squares.squares_in_reg(regx);
+                    if sqrs.is_empty() {
+                        // Make need target.
+                        let mut needx = SomeNeed::StateInRemainder {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::Region {
+                                region: regx.clone(),
+                            },
+                            priority: regx.num_edges(),
+                        };
+                        needx.add_priority_base();
+                        nds.push(needx);
+                    } else {
+                        // Make need for each non-pnc square.
+                        // Check for any pnc square.
+                        let mut any_pnc = false;
+                        for sqrx in sqrs.iter() {
+                            if sqrx.pnc {
+                                any_pnc = true;
+                                break;
+                            }
+                        }
+                        if !any_pnc {
+                            // Find max number results.
+                            let mut max_results = 0;
+                            for sqrx in sqrs.iter() {
+                                if sqrx.num_results() > max_results {
+                                    max_results = sqrx.num_results();
+                                }
+                            }
+                            // Create needs for squares with max results.
+                            for sqrx in sqrs.iter() {
+                                if sqrx.num_results() == max_results {
+                                    let mut needx = SomeNeed::StateInRemainder {
+                                        dom_id: self.dom_id,
+                                        act_id: self.id,
+                                        target: ATarget::State {
+                                            state: sqrx.state.clone(),
+                                        },
+                                        priority: regx.num_edges(),
+                                    };
+                                    needx.add_priority_base();
+                                    nds.push(needx);
+                                }
+                            } // next sqrx
+                        }
+                    }
+                } // next regx
             }
         }
 

@@ -87,6 +87,13 @@ pub enum SomeNeed {
         for_group: SomeRegion,
         anchor: SomeState,
     },
+    /// Seek a sample in a region that limited groups do not cover.
+    StateNotInLimitedGroup {
+        dom_id: usize,
+        act_id: usize,
+        target: ATarget,
+        priority: usize,
+    },
     /// Move all current domain states out of a SelectRegion, to non-negative regions.
     ExitSelectRegions { target: ATarget, priority: usize },
     /// Move all current domain states to a SelectRegion.
@@ -115,6 +122,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { .. } => "ConfirmGroupAdj",
             Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
+            Self::StateNotInLimitedGroup { .. } => "StateNotInLimitedGroup",
             Self::ToSelectRegions { .. } => "ToSelectRegions",
             Self::ExitSelectRegions { .. } => "ExitSelectRegions",
         }
@@ -134,6 +142,7 @@ impl SomeNeed {
             Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::ToSelectRegions { priority, .. } => *priority += 900,
             Self::StateInRemainder { priority, .. } => *priority += 1000,
+            Self::StateNotInLimitedGroup { priority, .. } => *priority += 1100,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -155,6 +164,7 @@ impl SomeNeed {
             Self::ToSelectRegions { priority, .. } => *priority,
             // Some needs should have a higher priority number compared to ToSelectRegions.
             Self::StateInRemainder { priority, .. } => *priority,
+            Self::StateNotInLimitedGroup { priority, .. } => *priority,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -184,6 +194,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { act_id, .. } => *act_id,
             Self::StateNotInGroup { act_id, .. } => *act_id,
             Self::StateInRemainder { act_id, .. } => *act_id,
+            Self::StateNotInLimitedGroup { act_id, .. } => *act_id,
             _ => panic!(
                 "SomeNeed::act_id should not be called for the {} need.",
                 self.name()
@@ -202,6 +213,7 @@ impl SomeNeed {
             Self::ConfirmGroupAdj { dom_id, .. } => Some(*dom_id),
             Self::StateInRemainder { dom_id, .. } => Some(*dom_id),
             Self::StateNotInGroup { dom_id, .. } => Some(*dom_id),
+            Self::StateNotInLimitedGroup { dom_id, .. } => Some(*dom_id),
             _ => None,
         } //end match self
     } // end dom_id
@@ -304,8 +316,23 @@ impl SomeNeed {
                 target,
                 priority,
             } => {
-                format!(
-                "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target} in remainder)")
+                match target {
+                    ATarget::Region { region } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample a State in {region} a remainder)"),
+                    ATarget::State { state } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {state} in remainder)"),
+                    _ => format!("N(Unexpected target value {target})")
+                }
+            }
+            Self::StateNotInLimitedGroup {
+                dom_id,
+                act_id,
+                target,
+                priority,
+            } => {
+                match target {
+                    ATarget::Region { region } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample a State in {region} not in a limited group)"),
+                    ATarget::State { state } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {state} not in a limited group)"),
+                    _ => format!("N(Unexpected target value {target})")
+                }
             }
             Self::StateNotInGroup {
                 dom_id,
@@ -353,6 +380,7 @@ impl SomeNeed {
             Self::StateNotInGroup { target, .. } => target,
             Self::ExitSelectRegions { target, .. } => target,
             Self::ToSelectRegions { target, .. } => target,
+            Self::StateNotInLimitedGroup { target, .. } => target,
             _ => panic!("SomeNeed::distance: Unrecognized need {}", self),
         } //end match self
     } // end target

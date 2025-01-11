@@ -243,10 +243,12 @@ fn run_number_times(sdx_str: String, num_runs: usize) -> usize {
         duration_vec.push(duration);
         steps_vec.push(steps);
         if groups != expected {
-            num_groups_off += 1
+            num_groups_off += 1;
+            println!("Num groups off");
         }
         if num_cant > 0 {
             cant_do += 1;
+            println!("Some unsatisfied needs");
         }
     }
 

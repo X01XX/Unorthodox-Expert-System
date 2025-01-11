@@ -157,6 +157,16 @@ impl GroupStore {
         ret_str
     }
 
+    /// Return true if any group is not limited.
+    pub fn any_not_limited(&self) -> bool {
+        for grpx in self.items.iter() {
+            if !grpx.limited {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Return regions of any group is a subset, or equal, to a region.
     pub fn subsets_of(&self, itmx: &impl tools::AccessStates) -> RegionStore {
         let mut ret_str = RegionStore::new(vec![]);
