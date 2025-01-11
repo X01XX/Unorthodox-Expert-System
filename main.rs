@@ -1128,7 +1128,6 @@ fn step_by_step(
                         // Check for forward chaining, else forward asymmetric chaining.
                         if steps_dis[num].initial.intersects(&cur_from) {
                             let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
-                            cur_from = stp_tmp.result.clone();
                             match forward_plan.push(stp_tmp) {
                                 Ok(()) => {
                                     ret_plan = check_for_plan_completion(
@@ -1136,7 +1135,8 @@ fn step_by_step(
                                         to,
                                         &forward_plan,
                                         &backward_plan,
-                                    )
+                                    );
+                                    cur_from = forward_plan.result_region().clone();
                                 }
                                 Err(errstr) => println!("forward plan push failed {errstr}"),
                             }
@@ -1185,7 +1185,6 @@ fn step_by_step(
                         // Check for backward chaining, else backward asymmetric chaining.
                         if steps_dis[num].result.intersects(&cur_to) {
                             let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
-                            cur_to = stp_tmp.initial.clone();
                             match backward_plan.push_first(stp_tmp) {
                                 Ok(()) => {
                                     ret_plan = check_for_plan_completion(
@@ -1193,7 +1192,8 @@ fn step_by_step(
                                         to,
                                         &forward_plan,
                                         &backward_plan,
-                                    )
+                                    );
+                                    cur_to = backward_plan.initial_region().clone();
                                 }
                                 Err(errstr) => println!("backward plan push_first failed {errstr}"),
                             }
