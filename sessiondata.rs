@@ -889,7 +889,7 @@ impl SessionData {
         let plans = (0..6)
             .into_par_iter() // into_par_iter for parallel, .into_iter for easier reading of diagnostic messages
             .map(|_| {
-                self.plan_using_least_negative_select_regions2(
+                self.plan_using_least_negative_select_regions_get_plan2(
                     start_regs, goal_regs, within, cur_rate,
                 )
             })
@@ -1094,7 +1094,7 @@ impl SessionData {
     }
 
     /// Return plans for a change from start to goal.
-    fn plan_using_least_negative_select_regions2(
+    fn plan_using_least_negative_select_regions_get_plan2(
         &self,
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,
@@ -1123,7 +1123,7 @@ impl SessionData {
                         plans.set_rate(cur_rate);
                         //assert!(plans.is_valid());
                         let plncs = PlansCorrStore::new(vec![plans]);
-                        //println!("1plan_using_least_negative_select_regions2: returning (1) {plncs}");
+                        //println!("sessiondata::plan_using_least_negative_select_regions2: returning (1) {plncs}");
                         return Ok(plncs);
                     }
                     Err(errvec) => {
@@ -1145,7 +1145,7 @@ impl SessionData {
 
         if mid_paths.is_empty() {
             return
-            Err(vec![format!("sessiondata::plan_using_least_negative_select_regions2: mid_paths from {start_regs} to {goal_regs} within {} failed",
+            Err(vec![format!("plan_using_least_negative_select_regions2: mid_paths from {start_regs} to {goal_regs} within {} failed",
              tools::vec_ref_string(select_regions))]);
         }
 

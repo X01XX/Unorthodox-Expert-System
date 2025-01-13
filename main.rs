@@ -614,6 +614,15 @@ fn command_loop(sdx: &mut SessionData) {
                     pause_for_input("\nPress Enter to continue: ");
                 }
             },
+            "to-rc" => match do_to_rc_command(sdx, &cmd) {
+                Ok(()) => {
+                    return;
+                }
+                Err(error) => {
+                    println!("{error}");
+                    pause_for_input("\nPress Enter to continue: ");
+                }
+            },
             "step" => match do_step_command(sdx, &cmd) {
                 Ok(()) => {
                     return;
@@ -803,11 +812,60 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     Ok(())
 }
 
+/// Do to-rc command.
+fn do_to_rc_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() < 2 {
+        return Err("Exactly one RC, argument is needed for the to command.".to_string());
+    }
+
+    // Recover from splitting RC at spaces.
+    let mut rc_in = String::new();
+    let mut first = true;
+    for tokx in cmd.iter().skip(1) {
+        if first {
+            first = false;
+        } else {
+            rc_in.push(' ');
+        }
+        rc_in.push_str(tokx);
+    }
+
+    // Get region from string
+    let goal_regions = RegionsCorr::from_str(&rc_in)?;
+
+    // Check if goal already satisfied.
+    let cur_regs = sdx.all_current_regions();
+
+    if goal_regions.is_superset_of(&cur_regs) {
+        println!("\nCurrent_states {cur_regs} are already in region {goal_regions}");
+        return Ok(());
+    }
+
+    match sdx.plan_using_least_negative_select_regions(&cur_regs, &goal_regions) {
+        Ok(npln) => match npln {
+            NeedPlan::AtTarget {} => (),
+            NeedPlan::PlanFound { plan: planx } => {
+                println!("\nplan {planx}");
+                match sdx.run_planscorrstore(&planx) {
+                    Ok(num) => println!("{num} steps run."),
+                    Err(errstr) => println!("{errstr}"),
+                }
+            }
+        },
+        Err(errvec) => println!("{:?}", errvec),
+    }
+
+    pause_for_input("Press Enter to continue: ");
+
+    Ok(())
+}
+
 /// Do to-region command.
 fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
-        return Err("Exactly one region argument is needed for the to command.".to_string());
+        return Err("Exactly one region, argument is needed for the to command.".to_string());
     }
 
     // Get region from string
@@ -940,9 +998,7 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
             Err(errvec) => println!("{:?}", errvec),
         }
     }
-
-    // Plan to result not found, display step options.
-    let _ = do_step_command(sdx, &["step", &format!("{cur_state}"), cmd[1]]);
+    pause_for_input("Press Enter to continue: ");
 
     Ok(())
 }
@@ -1629,7 +1685,7 @@ fn usage() {
     println!("\nStartup Commands: <invoke> may be the command \"ues\" or \"cargo run\"");
     println!("\n    <invoke>                  - Run default.kmp interactively, press Enter for each step.");
     println!(
-        "\n    <invoke> 1                - Run default.kmp non-interactively, stop when no needs can be done."
+        "\n    <invoke> 1                - Run default.kmp non-interactively, stop, in interactive mode, when no needs can be done."
     );
     println!("\n    <invoke> <number times>   - Run default.kmp a number (> 1) times. Exit with step and duration statistics.");
     println!(
@@ -1675,9 +1731,7 @@ fn usage() {
         "    ss <act num> <state> <result-state> - Sample State, for a given action, state and arbitrary result, for the CDD."
     );
     println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
-    println!(
-        "                               To find out more about why a need cannot be satisfied."
-    );
+    println!("\n    to-rc <RegionsCorr>      - Change the current state TO within a RegionsCorr, like RC[<region domain 0>, <region domain 1>, ...].");
     println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to/from a goal region.");
     println!("                              This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
     println!("                              The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");

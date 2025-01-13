@@ -315,7 +315,7 @@ impl SomeDomain {
         depth: usize,
         within: &SomeRegion,
     ) -> Result<SomePlan, String> {
-        //println!("\ndomain::depth_first_search2: from {from_reg} to {goal_reg} depth {depth}");
+        //println!("\ndomain::depth_first_search: from {from_reg} to {goal_reg} depth {depth}");
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
         debug_assert!(steps_str.is_empty() || steps_str.num_bits().unwrap() == self.num_bits());
@@ -528,7 +528,7 @@ impl SomeDomain {
         within: &SomeRegion,
     ) -> Result<SomePlan, String> {
         //println!(
-        //    "\ndomain::plan_steps_between: from {from_reg} to {goal_reg} within {within} whence {whence} depth {depth}");
+        //    "\ndomain::plan_steps_between: from {from_reg} to {goal_reg} within {within} depth {depth}");
 
         debug_assert_eq!(from_reg.num_bits(), self.num_bits());
         debug_assert_eq!(goal_reg.num_bits(), self.num_bits());
@@ -601,27 +601,23 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(goal_reg));
 
         let (to_step_plan, stepy, from_step_plan) = if rand::random::<bool>() {
-            let to_step_plan =
-                self.plan_steps_between(from_reg, &stepx.initial, depth - 1, within)?;
+            let to_step_plan = self.plan_steps_between(from_reg, &stepx.initial, depth, within)?;
 
             // Restrict the step initial region, in case it is different from the to_step_plan result region,
             // possibly changing the step result region.
             let stepy = stepx.restrict_initial_region(to_step_plan.result_region());
 
-            let from_step_plan =
-                self.plan_steps_between(&stepy.result, goal_reg, depth - 1, within)?;
+            let from_step_plan = self.plan_steps_between(&stepy.result, goal_reg, depth, within)?;
 
             (to_step_plan, stepy, from_step_plan)
         } else {
-            let from_step_plan =
-                self.plan_steps_between(&stepx.result, goal_reg, depth - 1, within)?;
+            let from_step_plan = self.plan_steps_between(&stepx.result, goal_reg, depth, within)?;
 
             // Restrict the step result region, in case it is different from the from_step_plan initial region,
             // possibly changing the step initial region.
             let stepy = stepx.restrict_result_region(from_step_plan.initial_region());
 
-            let to_step_plan =
-                self.plan_steps_between(from_reg, &stepy.initial, depth - 1, within)?;
+            let to_step_plan = self.plan_steps_between(from_reg, &stepy.initial, depth, within)?;
 
             (to_step_plan, stepy, from_step_plan)
         };
@@ -633,8 +629,8 @@ impl SomeDomain {
             .link(&from_step_plan)
     }
 
-    /// Make a plan to change from a region to another region.
-    /// Accept an optional region that must encompass the intermediate steps of a returned plan.
+    /// Make a plan to change from a region to another region,
+    /// within a region that must encompass the intermediate steps of a returned plan.
     pub fn make_plans(
         &self,
         from_reg: &SomeRegion,
@@ -737,7 +733,7 @@ impl SomeDomain {
                     goal_reg,
                     &steps_str,
                     &steps_by_change_vov,
-                    num_depth - 1,
+                    num_depth,
                     within,
                 )
             })
