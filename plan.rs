@@ -333,7 +333,7 @@ impl SomePlan {
     /// Return a String representation of SomePlan.
     /// Initial region to goal region.
     fn formatted_str(&self) -> String {
-        if self.is_empty() {
+        if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
             return String::from("P[]");
         }
         let mut str = format!("P[{}", self.initial_region());
@@ -490,7 +490,7 @@ impl Index<usize> for SomePlan {
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
-        if self.is_empty() {
+        if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
             return 3;
         }
         let reg_len = self.initial_region().strlen();
@@ -503,6 +503,7 @@ impl FromStr for SomePlan {
     /// Return SomePlan, given a string representation.
     /// Like Plan[], Plan[r1010-0->r0101], or Plan[r101-0->r000-1->r100].
     fn from_str(str_in: &str) -> Result<Self, String> {
+        //println!("plan::from_str: {str_in}");
         let plan_str = str_in.trim();
 
         if plan_str.is_empty() {

@@ -78,9 +78,7 @@ use crate::plan::SomePlan;
 use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
 use crate::step::SomeStep;
-use crate::stepstore::all_mutually_exclusive_changes;
 use crate::tools::StrLen;
-use change::SomeChange;
 use need::SomeNeed;
 use pn::Pn;
 use region::SomeRegion;
@@ -482,13 +480,9 @@ pub fn do_interactive_session(sdx: &mut SessionData, message: String) {
 fn command_loop(sdx: &mut SessionData) {
     //println!("start command loop step {}", sdx.step_num);
     loop {
-        let mut cmd = Vec::<&str>::with_capacity(10);
+        let in_str = pause_for_input("\nPress Enter or type a command: ");
 
-        let guess = pause_for_input("\nPress Enter or type a command: ");
-
-        for word in guess.split_whitespace() {
-            cmd.push(word);
-        }
+        let cmd = in_str.split_whitespace().collect::<Vec<&str>>();
 
         // Default command, just press Enter
         if cmd.is_empty() {
@@ -844,21 +838,20 @@ fn do_to_rc_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
 
     match sdx.plan_using_least_negative_select_regions(&cur_regs, &goal_regions) {
         Ok(npln) => match npln {
-            NeedPlan::AtTarget {} => (),
+            NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
             NeedPlan::PlanFound { plan: planx } => {
                 println!("\nplan {planx}");
                 match sdx.run_planscorrstore(&planx) {
-                    Ok(num) => println!("{num} steps run."),
-                    Err(errstr) => println!("{errstr}"),
+                    Ok(num) => {
+                        println!("{num} steps run.");
+                        Ok(())
+                    }
+                    Err(errstr) => Err(errstr),
                 }
             }
         },
-        Err(errvec) => println!("{:?}", errvec),
+        Err(errvec) => Err(format!("{:?}", errvec)),
     }
-
-    pause_for_input("Press Enter to continue: ");
-
-    Ok(())
 }
 
 /// Do to-region command.
@@ -873,11 +866,10 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
 
     // Get ref to current domain.
     let mut dom_id = sdx.current_domain;
-    let mut domx = sdx.find(dom_id).expect("SNH");
+    let domx = sdx.find(dom_id).expect("SNH");
     if goal_region.num_bits() != domx.num_bits() {
         if let Some(idx) = sdx.domain_find_num_bits(goal_region.num_bits()) {
             dom_id = idx;
-            domx = sdx.find(dom_id).expect("SNH");
         } else {
             return Err(format!(
                 "Region does not have the same number of bits, {}, as the CCD, {}.",
@@ -887,120 +879,25 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), Strin
         }
     }
 
-    // Check if goal already satisfied.
-    let cur_state = domx.current_state().clone();
-
-    if goal_region.is_superset_of(&cur_state) {
-        println!(
-            "\nCurrent_state {} is already in region {}",
-            domx.cur_state, goal_region
-        );
-        return Ok(());
-    }
-
-    // Get needed change.
-    let needed_change = SomeChange::new_state_to_region(&cur_state, &goal_region);
-    println!(
-        "\nChange Current_state {cur_state}\n           to region {goal_region} num bit changes needed {}\n                0->1 {}\n                1->0 {}",
-        needed_change.number_changes(),
-        needed_change.m01, needed_change.m10
-    );
-
-    // Check if needed change bits are all changable with the current rules.
-    if let Some(agg_cng) = domx.aggregate_changes() {
-        if needed_change.is_subset_of(agg_cng) {
-        } else {
-            return Err(format!("Not all needed changes are available in the domain.\nMissing changes in the domain are: {}",
-                needed_change.intersection(&agg_cng.invert())));
-        }
-    } else {
-        return Err("No changes available in domain".to_string());
-    }
-
-    // Check for mutually exclusive changes.
-    let mut mutually_exclusive = false;
-    //let mut empty = false;
-    let rule_to_goal =
-        SomeRule::new_region_to_region_min(&SomeRegion::new(vec![cur_state.clone()]), &goal_region);
-
-    // Get possible steps.
-    let steps_st = domx.get_steps(&rule_to_goal.as_change(), &domx.maximum_region());
-    //println!("steps_st {steps_st}");
-
-    // Sort the steps by each needed bit change. (some actions may change more than one bit, so will be in more than one subvector)
-    let by_change = steps_st.split_steps_by_bit_change(&needed_change);
-    //for stp_vec in by_change.iter() {
-    //    println!("{}", tools::vec_ref_string(stp_vec));
-    //}
-
-    // Check each possible pair of single-bit changes.
-    let mut ret_err = String::new();
-    for inx in 0..(by_change.len() - 1) {
-        //if by_change[inx].is_empty() {
-        //    empty = true;
-        //    continue;
-        //}
-        for iny in (inx + 1)..by_change.len() {
-            //if by_change[iny].is_empty() {
-            //    empty = true;
-            //    continue;
-            //}
-            if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], &needed_change) {
-                let changes = needed_change
-                    .intersection(&by_change[inx][0].rule.as_change())
-                    .union(&needed_change.intersection(&by_change[iny][0].rule.as_change()));
-
-                ret_err.push_str(&format!("For changes {changes}, Steps "));
-
-                for stpx in by_change[inx].iter() {
-                    ret_err.push_str(&format!("{stpx} "));
-                }
-                ret_err.push_str("are mutually exclusive to Steps ");
-
-                for stpy in by_change[iny].iter() {
-                    ret_err.push_str(&format!("{stpy} "));
-                }
-                mutually_exclusive = true;
-            }
-        } // next iny
-    } // next inx
-
-    if mutually_exclusive {
-        return Err(ret_err);
-    }
-
-    let cur_state = domx.current_state().clone();
-
-    for _ in 0..6 {
-        println!("\nCalculating plan.");
-
-        match sdx.plan_using_least_negative_select_regions_get_plan(
-            &sdx.maximum_regions_except(dom_id, &SomeRegion::new(vec![cur_state.clone()])),
-            &sdx.maximum_regions_except(dom_id, &goal_region),
-            &vec![&sdx.maximum_regions()][..],
-            0,
-        ) {
-            Ok(plnx) => {
-                println!("{}", plnx.str_terse());
-                println!("\nrunning plan:");
-                match sdx.run_planscorrstore(&plnx) {
+    match sdx.plan_using_least_negative_select_regions(
+        &sdx.all_current_regions(),
+        &sdx.maximum_regions_except(dom_id, &goal_region),
+    ) {
+        Ok(npln) => match npln {
+            NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
+            NeedPlan::PlanFound { plan: planx } => {
+                println!("\nplan {planx}");
+                match sdx.run_planscorrstore(&planx) {
                     Ok(num) => {
-                        if num == 1 {
-                            println!("{num} step run.")
-                        } else {
-                            println!("{num} steps run.")
-                        }
-                        return Ok(());
+                        println!("{num} steps run.");
+                        Ok(())
                     }
-                    Err(errstr) => println!("{errstr}"),
+                    Err(errstr) => Err(errstr),
                 }
             }
-            Err(errvec) => println!("{:?}", errvec),
-        }
+        },
+        Err(errvec) => Err(format!("{:?}", errvec)),
     }
-    pause_for_input("Press Enter to continue: ");
-
-    Ok(())
 }
 
 /// Interactively step from an initial region to a goal region.
@@ -1850,6 +1747,7 @@ mod tests {
     use crate::needstore::NeedStore;
     use crate::regionscorr::RegionsCorr;
     use crate::selectregions::SelectRegions;
+    use crate::statescorr::StatesCorr;
     use crate::target::ATarget;
 
     #[test]
@@ -1865,17 +1763,99 @@ mod tests {
 
         match do_to_region_command(&mut sdx, &vec!["to", "s1110"]) {
             Ok(()) => {
+                sdx.print();
                 return Err(format!("command changed region?"));
             }
             Err(errstr) => {
-                if errstr == "For changes 01/../01/.., Steps [r1X0X -00> r0X1X Alt: none] are mutually exclusive to Steps [r0X0X -00> r1X0X Alt: none] " {
+                if errstr == "[\"No plan found\"]" {
                 } else {
                     return Err(format!("{errstr}"));
                 }
             }
         }
-        //assert!(1 == 2);
-        Ok(())
+
+        match do_to_region_command(&mut sdx, &vec!["to", "s1100"]) {
+            Ok(()) => {
+                sdx.print();
+                assert!(format!("{}", sdx.all_current_states()) == "SC[s1100]");
+                Ok(())
+            }
+            Err(errstr) => Err(format!("{errstr}")),
+        }
+    }
+
+    #[test]
+    fn do_to_rc_command1() -> Result<(), String> {
+        // Create SessionData, with mutually exclusive rules.
+        let mut sdx = SessionData::from_str(
+            "SD[DS[
+                DOMAIN[
+                    ACT[[01/XX/00/XX],
+                        [10/XX/01/XX], s0000, s0101, s1100, s1001]],
+                DOMAIN[
+                    ACT[[Xx_XX/XX/XX/XX], s0_0000, s1_1111]]],
+                SC[s1010, s0_1010],
+                ]",
+        )?;
+
+        sdx.print();
+
+        // Command that should fail.
+        let cmd = "to-rc RC[s1110, X_XXXX]"
+            .split_whitespace()
+            .collect::<Vec<&str>>();
+        match do_to_rc_command(&mut sdx, &cmd) {
+            Ok(()) => {
+                sdx.print();
+                return Err(format!("command changed region?"));
+            }
+            Err(errstr) => {
+                if errstr == "[\"No plan found\"]" {
+                } else {
+                    return Err(format!("{errstr}"));
+                }
+            }
+        }
+
+        // Chonge domain 0 only.
+        sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
+        let cmd = "to-rc RC[s1001, rX_XXXX]"
+            .split_whitespace()
+            .collect::<Vec<&str>>();
+        match do_to_rc_command(&mut sdx, &cmd) {
+            Ok(()) => {
+                sdx.print();
+                assert!(format!("{}", sdx.all_current_states()) == "SC[s1001, s0_1010]");
+            }
+            Err(errstr) => return Err(format!("{errstr}")),
+        }
+
+        // Change domain 1 only.
+        sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
+        let cmd = "to-rc RC[rXXXX, s1_1010]"
+            .split_whitespace()
+            .collect::<Vec<&str>>();
+        match do_to_rc_command(&mut sdx, &cmd) {
+            Ok(()) => {
+                sdx.print();
+                assert!(format!("{}", sdx.all_current_states()) == "SC[s0001, s1_1010]");
+            }
+            Err(errstr) => return Err(format!("{errstr}")),
+        }
+
+        // Change both domains.
+        sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
+        let cmd = "to-rc RC[s1001, s1_1010]"
+            .split_whitespace()
+            .collect::<Vec<&str>>();
+        match do_to_rc_command(&mut sdx, &cmd) {
+            Ok(()) => {
+                sdx.print();
+                assert!(format!("{}", sdx.all_current_states()) == "SC[s1001, s1_1010]");
+                Ok(())
+            }
+            Err(errstr) => Err(format!("{errstr}")),
+        }
     }
 
     /// Force a misapprehension of a rule for action 4.

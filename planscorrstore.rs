@@ -415,8 +415,7 @@ mod tests {
             "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0], PC[[P[r00-0->r01], P[r000-1->r100]], 0]]";
         let pcs3 = PlansCorrStore::from_str(&pcs3_str)?;
         println!("pcs3 {pcs3}");
-        println!("str  {pcs3_str}");
-        assert!(format!("{pcs3}") == pcs3_str);
+        assert!(format!("{pcs3}") == "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]]], PC[[P[r00-0->r01], P[r000-1->r100]]]]");
 
         Ok(())
     }

@@ -21,7 +21,11 @@ use std::fmt;
 
 impl fmt::Display for PlansCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "PC[{}, {}]", self.plans, self.rate)
+        if self.rate == 0 {
+            write!(f, "PC[{}]", self.plans)
+        } else {
+            write!(f, "PC[{}, {}]", self.plans, self.rate)
+        }
     }
 }
 
@@ -228,11 +232,10 @@ impl tools::StrLen for PlansCorr {
         let mut rtlen = 4; // PC[]
         rtlen += self.plans.strlen();
 
-        if self.rate < 0 {
-            rtlen += 4; // , -1
-        } else {
-            rtlen += 3; // , 0
+        if self.rate != 0 {
+            rtlen += format!("{}", self.rate).len() + 2;
         };
+
         rtlen
     }
 }
@@ -248,7 +251,7 @@ impl FromStr for PlansCorr {
     /// Return a PlansCorr instance, given a string representation.
     /// Like PC[[], 0], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
     fn from_str(str_in: &str) -> Result<Self, String> {
-        //println!("planscorr::from_str: {pc_str}");
+        //println!("planscorr::from_str: {str_in}");
         let pc_str = str_in.trim();
 
         if pc_str.is_empty() {
@@ -308,7 +311,7 @@ impl FromStr for PlansCorr {
         }
         if last_chr != "]" {
             return Err(format!(
-                "PlansCorr::from_str: Invalid string, {pc_str} should end with ]"
+                "PlansCorr::from_str: Invalid string, {pc_str} should end with ] instead of {last_chr}"
             ));
         }
         // Remove last right-bracket, balancing PCS[.
@@ -322,20 +325,16 @@ impl FromStr for PlansCorr {
                 comma = inx;
             }
         }
-        if comma == 0 {
-            return Err(format!(
-                "PlansCorr::from_str: Invalid string, {pc_str2} no comma found"
-            ));
-        }
 
         let mut ps_token = String::new();
+        let mut val_token = String::new();
         let mut tmp_token = String::new();
 
         for (inx, chr) in pc_str2.chars().enumerate() {
             if chr == ' ' {
                 continue;
             }
-            if inx == comma {
+            if comma > 0 && inx == comma {
                 if !ps_token.is_empty() {
                     return Err(format!(
                         "PlansCorr::from_str: Invalid string, {pc_str2} ps_token {ps_token}"
@@ -348,23 +347,30 @@ impl FromStr for PlansCorr {
 
             tmp_token.push(chr);
         }
-        let val_token = tmp_token;
-
-        // Check that there are two tokens.
-        if ps_token.is_empty() || val_token.is_empty() {
-            return Err(format!("PlansCorr::from_str: Invalid string, {pc_str2}"));
+        if comma == 0 {
+            ps_token = tmp_token;
+        } else {
+            val_token = tmp_token;
         }
 
         // Get the planscorr token value.
-        let plans = match PlanStore::from_str(&ps_token) {
-            Ok(plans) => plans,
-            Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+        let plans = if ps_token.is_empty() {
+            PlanStore::new(vec![])
+        } else {
+            match PlanStore::from_str(&ps_token) {
+                Ok(plans) => plans,
+                Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+            }
         };
 
         // Get the value token value.
-        let val = match val_token.parse::<isize>() {
-            Ok(val) => val,
-            Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+        let val = if val_token.is_empty() {
+            0
+        } else {
+            match val_token.parse::<isize>() {
+                Ok(val) => val,
+                Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+            }
         };
 
         Ok(Self { plans, rate: val })
@@ -462,9 +468,9 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let plncr1 = PlansCorr::from_str("PC[[], 0]")?;
+        let plncr1 = PlansCorr::from_str("PC[]")?;
         println!("plncr1 {plncr1}");
-        assert!(format!("{plncr1}") == "PC[[], 0]");
+        assert!(format!("{plncr1}") == "PC[[]]");
 
         let plncr2 = PlansCorr::from_str("PC[[P[r0000-0->r1111]], 1]")?;
         println!("plncr2 {plncr2}");
@@ -474,6 +480,11 @@ mod tests {
         let plncr3 = PlansCorr::from_str(&plncr3_str)?;
         println!("plncr3 {plncr3}");
         assert!(format!("{plncr3}") == plncr3_str);
+
+        let plncr4_str = "PC[[P[r0000-no->r0000]]]";
+        let plncr4 = PlansCorr::from_str(&plncr4_str)?;
+        println!("plncr4 {plncr4}");
+        assert!(format!("{plncr4}") == "PC[[P[]]]");
 
         Ok(())
     }
