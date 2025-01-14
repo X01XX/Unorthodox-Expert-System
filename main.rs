@@ -482,7 +482,7 @@ fn command_loop(sdx: &mut SessionData) {
     loop {
         let in_str = pause_for_input("\nPress Enter or type a command: ");
 
-        let cmd = in_str.split_whitespace().collect::<Vec<&str>>();
+        let cmd = tools::parse_input(&in_str);
 
         // Default command, just press Enter
         if cmd.is_empty() {
@@ -495,7 +495,7 @@ fn command_loop(sdx: &mut SessionData) {
         }
 
         // Do commands
-        match cmd[0] {
+        match &*cmd[0] {
             "aj" => {
                 if cmd.len() == 2 {
                     match display_action_anchor_info(sdx, &cmd) {
@@ -599,32 +599,29 @@ fn command_loop(sdx: &mut SessionData) {
                     pause_for_input("\nPress Enter to continue: ");
                 }
             },
-            "to" => match do_to_region_command(sdx, &cmd) {
-                Ok(()) => {
-                    return;
+            "to" => {
+                match do_to_region_command(sdx, &cmd) {
+                    Ok(()) => (),
+                    Err(error) => println!("{error}")
                 }
-                Err(error) => {
-                    println!("{error}");
-                    pause_for_input("\nPress Enter to continue: ");
-                }
+                pause_for_input("\nPress Enter to continue: ");
+                return;
             },
-            "to-rc" => match do_to_rc_command(sdx, &cmd) {
-                Ok(()) => {
-                    return;
+            "to-rc" => {
+                match do_to_rc_command(sdx, &cmd) {
+                    Ok(()) => (),
+                    Err(error) => println!("{error}")
                 }
-                Err(error) => {
-                    println!("{error}");
-                    pause_for_input("\nPress Enter to continue: ");
-                }
+                pause_for_input("\nPress Enter to continue: ");
+                return;
             },
-            "step" => match do_step_command(sdx, &cmd) {
-                Ok(()) => {
-                    return;
+            "step" => {
+                match do_step_command(sdx, &cmd) {
+                    Ok(()) => (),
+                    Err(error) => println!("{error}")
                 }
-                Err(error) => {
-                    println!("{error}");
-                    pause_for_input("\nPress Enter to continue: ");
-                }
+                pause_for_input("\nPress Enter to continue: ");
+                return;
             },
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
@@ -634,13 +631,13 @@ fn command_loop(sdx: &mut SessionData) {
 } // end command_loop
 
 /// Change the domain to a number given by user.
-fn do_change_domain(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_change_domain(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one number argument is needed for the cd command.".to_string());
     }
     // Get domain number from string
-    match domain_id_from_string(sdx, cmd[1]) {
+    match domain_id_from_string(sdx, &cmd[1]) {
         Ok(d_id) => {
             sdx.change_domain(d_id);
             Ok(())
@@ -661,7 +658,7 @@ fn do_any_need(sdx: &mut SessionData) {
 }
 
 /// Print details of a given plan
-fn do_print_plan_details(sdx: &SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_print_plan_details(sdx: &SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the ppd command.".to_string());
@@ -686,7 +683,7 @@ fn do_print_plan_details(sdx: &SessionData, cmd: &[&str]) -> Result<(), String> 
 }
 
 /// Try to satisfy a need chosen by the user.
-fn do_chosen_need(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_chosen_need(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one need-number argument is needed for the dn command.".to_string());
@@ -736,13 +733,13 @@ fn do_chosen_need(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
 }
 
 /// Do a change-state command.
-fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_change_state_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one state argument is needed for the cs command.".to_string());
     }
     // Get state from string
-    match SomeState::from_str(cmd[1]) {
+    match SomeState::from_str(&cmd[1]) {
         Ok(a_state) => {
             println!("Changed state to {a_state}");
             sdx.set_cur_state(a_state);
@@ -752,17 +749,17 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), St
     } // end match
 }
 
-fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_step_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 3 {
         return Err("Exactly two region arguments are needed for the step command.".to_string());
     }
 
     // Get from region from string
-    let from = SomeRegion::from_str(cmd[1])?;
+    let from = SomeRegion::from_str(&cmd[1])?;
 
     // Get to region from string
-    let to = SomeRegion::from_str(cmd[2])?;
+    let to = SomeRegion::from_str(&cmd[2])?;
 
     if from.num_bits() != to.num_bits() {
         return Err(format!(
@@ -807,26 +804,14 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
 }
 
 /// Do to-rc command.
-fn do_to_rc_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_to_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() < 2 {
         return Err("Exactly one RC, argument is needed for the to command.".to_string());
     }
 
-    // Recover from splitting RC at spaces.
-    let mut rc_in = String::new();
-    let mut first = true;
-    for tokx in cmd.iter().skip(1) {
-        if first {
-            first = false;
-        } else {
-            rc_in.push(' ');
-        }
-        rc_in.push_str(tokx);
-    }
-
     // Get region from string
-    let goal_regions = RegionsCorr::from_str(&rc_in)?;
+    let goal_regions = RegionsCorr::from_str(&cmd[1])?;
 
     // Check if goal already satisfied.
     let cur_regs = sdx.all_current_regions();
@@ -855,14 +840,14 @@ fn do_to_rc_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
 }
 
 /// Do to-region command.
-fn do_to_region_command(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_to_region_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 2 {
         return Err("Exactly one region, argument is needed for the to command.".to_string());
     }
 
     // Get region from string
-    let goal_region = SomeRegion::from_str(cmd[1])?;
+    let goal_region = SomeRegion::from_str(&cmd[1])?;
 
     // Get ref to current domain.
     let mut dom_id = sdx.current_domain;
@@ -1035,8 +1020,6 @@ fn step_by_step(
         }
 
         // Get user input.
-        let mut cmd = Vec::<&str>::with_capacity(10);
-
         let input_str = if let Some(ref planx) = ret_plan {
             println!("Plan found: {planx}");
             println!(" ");
@@ -1050,9 +1033,7 @@ fn step_by_step(
             ))
         };
 
-        for word in input_str.split_whitespace() {
-            cmd.push(word);
-        }
+        let cmd = tools::parse_input(&input_str);
 
         // Default command, just press Enter
         if cmd.is_empty() {
@@ -1061,7 +1042,7 @@ fn step_by_step(
         }
 
         // Do commands
-        match cmd[0] {
+        match &*cmd[0] {
             "q" | "Q" => {
                 println!("Done");
                 process::exit(0);
@@ -1255,7 +1236,7 @@ fn check_for_plan_completion(
 }
 
 /// Do sample-state command.
-fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<String>) -> Result<(), String> {
     if cmd.len() == 1 {
         return Err("Action number is needed for the ss command.".to_string());
     }
@@ -1278,7 +1259,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
 
     if cmd.len() == 3 {
         // Get state from string
-        let a_state = match SomeState::from_str(cmd[2]) {
+        let a_state = match SomeState::from_str(&cmd[2]) {
             Ok(a_state) => a_state,
             Err(error) => {
                 return Err(error);
@@ -1307,7 +1288,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
         // e.g. ss  0  s1010  s1111
 
         // Get i-state from string
-        let i_state = match SomeState::from_str(cmd[2]) {
+        let i_state = match SomeState::from_str(&cmd[2]) {
             Ok(i_state) => i_state,
             Err(error) => {
                 return Err(error);
@@ -1315,7 +1296,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
         };
 
         // Get r-state from string
-        let r_state = match SomeState::from_str(cmd[3]) {
+        let r_state = match SomeState::from_str(&cmd[3]) {
             Ok(r_state) => r_state,
             Err(error) => {
                 return Err(error);
@@ -1345,7 +1326,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<&str>) -> Result<(),
 /// Display anchors, rating, and adjacent squares, for an action.
 /// For a group that has an anchor, and is limited, the number edges, that can be changed with actions,
 /// should equal the sum of the first two number of the rating.
-fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[&str]) -> Result<(), String> {
+fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     let dom_id = sdx.current_domain;
 
     if cmd.len() == 1 {
@@ -1366,19 +1347,19 @@ fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[&str]) -> Result<(),
 }
 
 /// Do print-squares command.
-fn do_print_select_regions(sdx: &SessionData, cmd: &[&str]) -> Result<(), String> {
+fn do_print_select_regions(sdx: &SessionData, cmd: &[String]) -> Result<(), String> {
     if cmd.len() != 1 {
         return Err("No arguments needed for the psr command".to_string());
     }
 
     for selx in sdx.select.iter() {
-        print!("{}", selx);
+        println!("{}", selx);
     }
     Ok(())
 }
 
 /// Do print-squares command.
-fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
     let domx = sdx.find(dom_id).expect("SNH");
 
@@ -1409,7 +1390,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
 
     if cmd.len() == 3 {
         // Get region from command.
-        let aregion = SomeRegion::from_str(cmd[2])?;
+        let aregion = SomeRegion::from_str(&cmd[2])?;
 
         if aregion.num_bits() != domx.cur_state.num_bits() {
             return Err("Invalid number of bits in region.".to_string());
@@ -1507,7 +1488,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), St
 }
 
 /// Do adjacent-anchor command.
-fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
     let domx = sdx.find(dom_id).expect("SNH");
 
@@ -1527,7 +1508,7 @@ fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), S
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = SomeRegion::from_str(cmd[2])?;
+    let aregion = SomeRegion::from_str(&cmd[2])?;
 
     if aregion.num_bits() != domx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
@@ -1539,7 +1520,7 @@ fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), S
 /// Do print-group-defining-squares command.
 fn do_print_group_defining_squares_command(
     sdx: &SessionData,
-    cmd: &Vec<&str>,
+    cmd: &Vec<String>,
 ) -> Result<(), String> {
     let dom_id = sdx.current_domain;
     let domx = sdx.find(dom_id).expect("SNH");
@@ -1559,7 +1540,7 @@ fn do_print_group_defining_squares_command(
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    let aregion = SomeRegion::from_str(cmd[2])?;
+    let aregion = SomeRegion::from_str(&cmd[2])?;
 
     if aregion.num_bits() != domx.cur_state.num_bits() {
         return Err("Invalid number of bits in region given".to_string());
@@ -1711,7 +1692,7 @@ fn load_data(path_str: &str) -> Result<String, String> {
 }
 
 /// Store current data to a given path string.
-fn store_data(sdx: &SessionData, cmd: &Vec<&str>) -> Result<(), String> {
+fn store_data(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
     if cmd.len() != 2 {
         return Err(format!("Did not understand {cmd:?}"));
     }
@@ -1761,7 +1742,7 @@ mod tests {
 
         sdx.print();
 
-        match do_to_region_command(&mut sdx, &vec!["to", "s1110"]) {
+        match do_to_region_command(&mut sdx, &vec!["to".to_string(), "s1110".to_string()]) {
             Ok(()) => {
                 sdx.print();
                 return Err(format!("command changed region?"));
@@ -1774,7 +1755,7 @@ mod tests {
             }
         }
 
-        match do_to_region_command(&mut sdx, &vec!["to", "s1100"]) {
+        match do_to_region_command(&mut sdx, &vec!["to".to_string(), "s1100".to_string()]) {
             Ok(()) => {
                 sdx.print();
                 assert!(format!("{}", sdx.all_current_states()) == "SC[s1100]");
@@ -1801,9 +1782,7 @@ mod tests {
         sdx.print();
 
         // Command that should fail.
-        let cmd = "to-rc RC[s1110, X_XXXX]"
-            .split_whitespace()
-            .collect::<Vec<&str>>();
+        let cmd = tools::parse_input("to-rc RC[s1110, X_XXXX]");
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
                 sdx.print();
@@ -1817,11 +1796,10 @@ mod tests {
             }
         }
 
-        // Chonge domain 0 only.
+        // Change domain 0 only.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = "to-rc RC[s1001, rX_XXXX]"
-            .split_whitespace()
-            .collect::<Vec<&str>>();
+        let cmd = tools::parse_input("to-rc RC[s1001, rX_XXXX]");
+
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
                 sdx.print();
@@ -1832,9 +1810,8 @@ mod tests {
 
         // Change domain 1 only.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = "to-rc RC[rXXXX, s1_1010]"
-            .split_whitespace()
-            .collect::<Vec<&str>>();
+        let cmd = tools::parse_input("to-rc RC[rXXXX, s1_1010]");
+
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
                 sdx.print();
@@ -1845,9 +1822,8 @@ mod tests {
 
         // Change both domains.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = "to-rc RC[s1001, s1_1010]"
-            .split_whitespace()
-            .collect::<Vec<&str>>();
+        let cmd = tools::parse_input("to-rc RC[s1001, s1_1010]");
+
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
                 sdx.print();

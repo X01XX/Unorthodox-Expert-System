@@ -363,7 +363,7 @@ impl FromStr for PlansCorrStore {
                 num_right += 1;
             }
 
-            if chr == "," && num_left == num_right {
+            if (chr == "," || chr == " ") && num_left == num_right {
                 //println!("pc_str {pc_str}");
                 match PlansCorr::from_str(&pc_str) {
                     Ok(pcx) => pcs.push(pcx),

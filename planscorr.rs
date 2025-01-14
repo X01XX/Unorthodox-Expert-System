@@ -318,60 +318,58 @@ impl FromStr for PlansCorr {
         pc_str2.remove(pc_str2.len() - 1);
         pc_str2 = pc_str2.trim().to_string();
 
-        // Find last comma.
-        let mut comma = 0;
-        for (inx, chr) in pc_str2.chars().enumerate() {
-            if chr == ',' {
-                comma = inx;
-            }
-        }
-
-        let mut ps_token = String::new();
-        let mut val_token = String::new();
+        let mut tokens = vec![];
         let mut tmp_token = String::new();
 
-        for (inx, chr) in pc_str2.chars().enumerate() {
-            if chr == ' ' {
+        let mut left = 0;
+        let mut right = 0;
+
+        for chr in pc_str2.chars() {
+            if chr == '[' {
+                left += 1;
+                tmp_token.push(chr);
                 continue;
             }
-            if comma > 0 && inx == comma {
-                if !ps_token.is_empty() {
-                    return Err(format!(
-                        "PlansCorr::from_str: Invalid string, {pc_str2} ps_token {ps_token}"
-                    ));
+            if chr == ']' {
+                right += 1;
+                tmp_token.push(chr);
+                continue;
+            }
+
+            if (chr == ' ' || chr == ',') && left == right {
+                if tmp_token.is_empty() {
+                } else {
+                    tokens.push(tmp_token);
+                    tmp_token = String::new();
                 }
-                ps_token = tmp_token;
-                tmp_token = String::new();
                 continue;
             }
 
             tmp_token.push(chr);
         }
-        if comma == 0 {
-            ps_token = tmp_token;
+        if tmp_token.is_empty() {
         } else {
-            val_token = tmp_token;
+            tokens.push(tmp_token);
         }
 
-        // Get the planscorr token value.
-        let plans = if ps_token.is_empty() {
-            PlanStore::new(vec![])
-        } else {
-            match PlanStore::from_str(&ps_token) {
-                Ok(plans) => plans,
-                Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
-            }
-        };
+        //println!("tokens {:?}", tokens);
 
-        // Get the value token value.
-        let val = if val_token.is_empty() {
-            0
-        } else {
-            match val_token.parse::<isize>() {
-                Ok(val) => val,
-                Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+        // Process tokens.
+        let mut val = 0;
+        let mut plans = PlanStore::new(vec![]);
+        for tokx in tokens.iter() {
+            if tokx[0..1] == *"[" {
+                match PlanStore::from_str(tokx) {
+                    Ok(plansx) => plans = plansx,
+                    Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+                }
+            } else {
+                match tokx.parse::<isize>() {
+                    Ok(aval) => val = aval,
+                    Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+                }
             }
-        };
+        }
 
         Ok(Self { plans, rate: val })
     }
@@ -408,7 +406,7 @@ mod tests {
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00], P[r0X1-1->r000]]]")?;
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
@@ -420,7 +418,7 @@ mod tests {
 
     #[test]
     fn result_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]], 0]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[r0X-0->r00-1->r11], P[r0X1-1->r000-4->r101]]]")?;
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();

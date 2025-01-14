@@ -243,11 +243,125 @@ pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
     ret
 }
 
+// Remove comments from a string.
+pub fn remove_comments(str_in: &str) -> String {
+    let mut str_out = String::new(); // String to return.
+    let mut line = String::new(); // Current line being processed.
+    let mut last_chr = false; // True if the last character was a slash.
+
+    let mut skip_to_end = false; // Set when a comment is detected, to stop adding characters to the line.
+                                 // Until end-of-line or end-of-file.
+
+    for chr in str_in.graphemes(true) {
+        if skip_to_end {
+            if chr == "\n" {
+                if !line.is_empty() {
+                    line.push('\n');
+                    str_out.push_str(&line);
+                    line = String::new();
+                }
+                skip_to_end = false;
+                last_chr = false;
+            }
+            continue;
+        }
+
+        // Check if "//" has been detected.
+        if chr == "/" && last_chr {
+            line.remove(line.len() - 1); // remove the first slash character from the line.
+            skip_to_end = true;
+            continue;
+        }
+
+        // Accumulate characters in the line.
+        line.push_str(chr);
+
+        // End of line reached without finding a comment.
+        if chr == "\n" {
+            str_out.push_str(&line);
+            line = String::new();
+            last_chr = false;
+            continue;
+        }
+
+        // Save char flag for check in next loop cycle.
+        last_chr = chr == "/";
+    } // next chr.
+
+    // Check for line at end, without a trailing newline.
+    if !line.is_empty() {
+        str_out.push_str(&line);
+    }
+    // Return the string with comments removed.
+    str_out
+}
+
+/// Parse an input string into tokens.
+/// Separators are spaces and commas, between groups of balanced (or none) brackets.
+pub fn parse_input(str_in: &str) -> Vec<String> {
+    let mut left = 0;
+    let mut right = 0;
+    let mut tokens = vec![];
+    let mut tmp_token = String::new();
+
+    for chr in str_in.chars() {
+        if chr == '[' {
+            left += 1;
+            tmp_token.push(chr);
+            continue;
+        }
+        if chr == ']' {
+            right += 1;
+            tmp_token.push(chr);
+            continue;
+        }
+
+        if chr == ' ' || chr == ',' {
+            if tmp_token.is_empty() {
+                continue;
+            }
+            if left == right {
+                tokens.push(tmp_token);
+                tmp_token = String::new();
+                continue;
+            }
+        }
+
+        tmp_token.push(chr);
+    }
+    if tmp_token.is_empty() {
+    } else {
+        tokens.push(tmp_token);
+    }
+
+    tokens
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::state::SomeState;
     use std::str::FromStr;
+
+    #[test]
+    fn parse_input() -> Result<(), String> {
+        let tokens = super::parse_input(&"arg1, arg2, arg3".to_string());
+        println!("tokens {:?}", tokens);
+        assert!(tokens.len() == 3);
+        assert!(tokens[0] == "arg1");
+        assert!(tokens[1] == "arg2");
+        assert!(tokens[2] == "arg3");
+
+        let tokens = super::parse_input(&"arg1, [arg2, arg3], [arg4, [arg5, arg6]], ".to_string());
+        println!("tokens {:?}", tokens);
+        assert!(tokens.len() == 3);
+        assert!(tokens[0] == "arg1");
+        assert!(tokens[1] == "[arg2, arg3]");
+        assert!(tokens[2] == "[arg4, [arg5, arg6]]");
+
+        //assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn anyxofn() -> Result<(), String> {
@@ -327,57 +441,4 @@ mod tests {
         }
         Err("No odd  number was found".to_string())
     }
-}
-
-// Remove comments from a string.
-pub fn remove_comments(str_in: &str) -> String {
-    let mut str_out = String::new(); // String to return.
-    let mut line = String::new(); // Current line being processed.
-    let mut last_chr = false; // True if the last character was a slash.
-
-    let mut skip_to_end = false; // Set when a comment is detected, to stop adding characters to the line.
-                                 // Until end-of-line or end-of-file.
-
-    for chr in str_in.graphemes(true) {
-        if skip_to_end {
-            if chr == "\n" {
-                if !line.is_empty() {
-                    line.push('\n');
-                    str_out.push_str(&line);
-                    line = String::new();
-                }
-                skip_to_end = false;
-                last_chr = false;
-            }
-            continue;
-        }
-
-        // Check if "//" has been detected.
-        if chr == "/" && last_chr {
-            line.remove(line.len() - 1); // remove the first slash character from the line.
-            skip_to_end = true;
-            continue;
-        }
-
-        // Accumulate characters in the line.
-        line.push_str(chr);
-
-        // End of line reached without finding a comment.
-        if chr == "\n" {
-            str_out.push_str(&line);
-            line = String::new();
-            last_chr = false;
-            continue;
-        }
-
-        // Save char flag for check in next loop cycle.
-        last_chr = chr == "/";
-    } // next chr.
-
-    // Check for line at end, without a trailing newline.
-    if !line.is_empty() {
-        str_out.push_str(&line);
-    }
-    // Return the string with comments removed.
-    str_out
 }
