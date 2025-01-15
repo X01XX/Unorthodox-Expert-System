@@ -802,11 +802,8 @@ fn do_step_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> 
                     Ok(num) => println!("{num} steps run."),
                     Err(errstr) => println!("{errstr}"),
                 }
-            } else {
-                return Ok(());
             }
         }
-        pause_for_input("Press Enter to continue ");
     }
 
     Ok(())
@@ -909,8 +906,8 @@ fn step_by_step(
     let mut cur_from = from.clone();
     let mut cur_to = to.clone();
 
-    let mut forward_plan = SomePlan::new(vec![]);
-    let mut backward_plan = SomePlan::new(vec![]);
+    let mut forward_plan = SomePlan::new(dom_id, vec![]);
+    let mut backward_plan = SomePlan::new(dom_id, vec![]);
 
     let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
     let change_spaces = vec![' '; cng_len].iter().collect::<String>();
@@ -1079,8 +1076,8 @@ fn step_by_step(
                 }
             }
             "so" | "SO" => {
-                forward_plan = SomePlan::new(vec![]);
-                backward_plan = SomePlan::new(vec![]);
+                forward_plan = SomePlan::new(dom_id, vec![]);
+                backward_plan = SomePlan::new(dom_id, vec![]);
                 cur_from = from.clone();
                 cur_to = to.clone();
                 ret_plan = None;

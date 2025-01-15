@@ -21,7 +21,7 @@ use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
-use crate::tools::StrLen;
+use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -62,27 +62,22 @@ impl Eq for SomePlan {}
 #[derive(Debug, Clone, Deserialize, Serialize)]
 /// A struct containing a domain id and steps.
 pub struct SomePlan {
+    /// Domain id number.
+    pub dom_id: usize,
     /// A StepStore instance.
     pub steps: StepStore, // Do some steps
 }
 
 impl SomePlan {
     /// Return a new, empty, plan.
-    pub fn new(stepvec: Vec<SomeStep>) -> Self {
-        if stepvec.len() > 1 {
-            let last_inx = stepvec.len() - 1;
-            let mut initial_regs = vec![];
-            for (inx, stepx) in stepvec.iter().enumerate() {
-                assert!(!initial_regs.contains(&stepx.result));
-                if inx < last_inx {
-                    assert!(stepx.result == stepvec[inx + 1].initial);
-                }
-                initial_regs.push(stepx.initial.clone());
-            }
-        }
-
-        Self {
+    pub fn new(dom_id: usize, stepvec: Vec<SomeStep>) -> Self {
+        let ret = Self {
+            dom_id,
             steps: StepStore::new(stepvec),
+        };
+        match ret.valid_step_sequence() {
+            Ok(()) => ret,
+            Err(errstr) => panic!("{errstr}"),
         }
     }
 
@@ -114,7 +109,10 @@ impl SomePlan {
             steps.reverse_order();
         }
 
-        Some(Self { steps })
+        Some(Self {
+            dom_id: self.dom_id,
+            steps,
+        })
     }
 
     /// Return a plan after restricting its initial region.
@@ -140,7 +138,10 @@ impl SomePlan {
             steps.push(stepy);
         } //next stepx
 
-        Some(Self { steps })
+        Some(Self {
+            dom_id: self.dom_id,
+            steps,
+        })
     }
 
     /// Add a step to a SomePlan.
@@ -201,7 +202,7 @@ impl SomePlan {
             return Ok(self.clone());
         }
 
-        debug_assert!(self.num_bits() == other.num_bits());
+        debug_assert!(self.dom_id == other.dom_id);
 
         // Restrict the StepStores, forward and backward.
         let reg1 = self.result_region();
@@ -250,7 +251,7 @@ impl SomePlan {
 
     /// Return a string of action numbers to represent a plan.
     pub fn str_terse(&self) -> String {
-        let mut rs = String::new();
+        let mut rs = format!("P[{}:", self.dom_id);
 
         let mut flg = 0;
         for stpx in self.steps.iter() {
@@ -265,6 +266,7 @@ impl SomePlan {
                 rs.push_str("no");
             }
         }
+        rs.push(']');
         rs
     }
 
@@ -334,9 +336,9 @@ impl SomePlan {
     /// Initial region to goal region.
     fn formatted_str(&self) -> String {
         if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
-            return String::from("P[]");
+            return format!("P[{}]", self.dom_id);
         }
-        let mut str = format!("P[{}", self.initial_region());
+        let mut str = format!("P[{}, {}", self.dom_id, self.initial_region());
         for stpx in self.iter() {
             if let Some(act_id) = stpx.act_id {
                 str.push_str(&format!("-{}->{}", act_id, stpx.result));
@@ -463,13 +465,13 @@ impl SomePlan {
     }
 
     // Return true if a plan is valid.
-    pub fn is_valid(&self) -> Result<(), String> {
+    pub fn valid_step_sequence(&self) -> Result<(), String> {
         let mut last_step: Option<&SomeStep> = None;
         for stepx in self.iter() {
             if let Some(stepy) = last_step {
                 if stepy.result != stepx.initial {
                     return Err(format!(
-                        "SomePlan::is_valid: step result {} != following step initial {}",
+                        "SomePlan::valid_step_sequence: step result {} != following step initial {}",
                         stepy.result, stepx.initial
                     ));
                 }
@@ -491,27 +493,38 @@ impl Index<usize> for SomePlan {
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
         if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
-            return 3;
+            // P[] + dom_id.
+            if self.dom_id < 10 {
+                return 4;
+            } else {
+                return 5;
+            }
         }
-        let reg_len = self.initial_region().strlen();
-        reg_len * (self.len() + 1) + (4 * self.len()) + 3
+        let mut reg_len = self.initial_region().strlen();
+
+        reg_len = reg_len * (self.len() + 1) + (4 * self.len()) + 3;
+
+        // Add space for <dom_id>,
+        if self.dom_id < 10 {
+            reg_len += 3;
+        } else {
+            reg_len += 4;
+        }
+
+        reg_len
     }
 }
 
 impl FromStr for SomePlan {
     type Err = String;
     /// Return SomePlan, given a string representation.
-    /// Like P[], P[r1010-0->r0101], or P[r101-0->r000-1->r100].
+    /// Like P[1], P[1, r1010-0->r0101], or P[1, r101-0->r000-1->r100].
     fn from_str(str_in: &str) -> Result<Self, String> {
-        //println!("plan::from_str: {str_in}");
+        println!("plan::from_str: {str_in}");
         let str_in2 = str_in.trim();
 
-        if str_in2.is_empty() {
-            return Err("SomePlan::from_str: Empty string?".to_string());
-        }
-
-        if str_in2 == "P[]" {
-            return Ok(Self::new(vec![]));
+        if str_in2.len() < 4 {
+            return Err("SomePlan::from_str: string must be at least P[<dom_id>]".to_string());
         }
 
         if str_in2[0..2] != *"P[" {
@@ -524,11 +537,34 @@ impl FromStr for SomePlan {
         // Strip off surrounding brackets.
         let token_str = &str_in2[2..(str_in2.len() - 1)];
 
+        // Split string into SomeState tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("statestore::from_str: {errstr}")),
+        };
+        println!("tokens {:?}", tokens);
+
+        // Get domain id.
+        let dom_id = match tokens[0].parse::<usize>() {
+            Ok(val) => val,
+            Err(errstr) => return Err(format!("plan::from_str: {errstr}")),
+        };
+
         // Split string into <region>-<action number> tokens, plus region at end.
         let mut token = String::new();
         let mut token_list = Vec::<String>::new();
 
-        for chr in token_str.graphemes(true) {
+        if tokens.len() == 1 {
+            return Ok(Self::new(dom_id, vec![]));
+        }
+
+        if tokens.len() != 2 {
+            return Err(format!(
+                "plan::from_str: incorrect number of tokens {token_str}"
+            ));
+        }
+
+        for chr in tokens[1].graphemes(true) {
             if chr == ">" {
                 token_list.push(token);
                 token = String::new();
@@ -540,7 +576,7 @@ impl FromStr for SomePlan {
         //println!("token_list {:?}", token_list);
 
         if token_list.len() < 2 {
-            panic!("plan::from_str: invalid string {token_str}");
+            return Err(format!("plan::from_str: invalid string {token_str}"));
         }
 
         // Split tokens between region and action, plus region at end.
@@ -601,10 +637,10 @@ impl FromStr for SomePlan {
                 actions = vec![];
             }
         }
-        let ret_plan = SomePlan::new(steps);
+        let ret_plan = SomePlan::new(dom_id, steps);
         //println!("ret_plan {ret_plan}");
 
-        match ret_plan.is_valid() {
+        match ret_plan.valid_step_sequence() {
             Ok(()) => Ok(ret_plan),
             Err(errstr) => Err(format!("SomePlan::from_str: {errstr}")),
         }
@@ -617,7 +653,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_pln = SomePlan::from_str("P[]")?;
+        let tmp_pln = SomePlan::from_str("P[1]")?;
         println!("tmp_pln {tmp_pln}");
 
         let str_len = format!("{tmp_pln}").len();
@@ -625,7 +661,7 @@ mod tests {
         println!("str {tmp_pln} len {str_len} calculated len {calc_len}");
         assert!(str_len == calc_len);
 
-        let tmp_pln = SomePlan::from_str("P[r0000-0->r1111-0->r0011]")?;
+        let tmp_pln = SomePlan::from_str("P[10, r0000-0->r1111-0->r0011]")?;
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -640,7 +676,7 @@ mod tests {
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
         let pln1 = SomePlan::from_str(
-            "P[rX_1001-2->rX_1101-0->rX_1100-1->rX_1110-3->r1_1110-4->r1_0110]",
+            "P[1, rX_1001-2->rX_1101-0->rX_1100-1->rX_1110-3->r1_1110-4->r1_0110]",
         )?;
         println!("pln1 {}", pln1);
 
@@ -653,7 +689,7 @@ mod tests {
 
     #[test]
     fn restrict_result_region() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(plan2) = pln1.restrict_result_region(&SomeRegion::from_str("r1_1100")?) {
@@ -665,7 +701,7 @@ mod tests {
 
     #[test]
     fn result_from_initial_region() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(initial) = pln1.result_from_initial_region(&SomeRegion::from_str("r1_1001")?) {
@@ -678,7 +714,7 @@ mod tests {
 
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(initial) = pln1.result_from_initial_state(&SomeState::from_str("s1_1001")?) {
@@ -691,17 +727,17 @@ mod tests {
 
     #[test]
     fn causes_change() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[]")?;
+        let pln1 = SomePlan::from_str("P[0]")?;
         println!("pln1 {}", pln1);
 
         assert!(!pln1.causes_change());
 
-        let pln2 = SomePlan::from_str("P[rX_1001-no->rX_1001]")?;
+        let pln2 = SomePlan::from_str("P[0, rX_1001-no->rX_1001]")?;
         println!("pln2 {}", pln2);
 
         assert!(!pln2.causes_change());
 
-        let pln3 = SomePlan::from_str("P[rX_1001-2->rX_1101-0->rX_1000]")?;
+        let pln3 = SomePlan::from_str("P[0, rX_1001-2->rX_1101-0->rX_1000]")?;
         println!("pln3 {}", pln3);
 
         assert!(pln3.causes_change());
@@ -712,10 +748,10 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[r0x0x-0->r0x1x-1->r1x1x]")?;
+        let pln1 = SomePlan::from_str("P[0, r0x0x-0->r0x1x-1->r1x1x]")?;
         println!("pln1 {}", pln1);
 
-        let pln2 = SomePlan::from_str("P[r111x-2->r101x-3->r000x]")?;
+        let pln2 = SomePlan::from_str("P[0, r111x-2->r101x-3->r000x]")?;
         println!("pln2 {}", pln2);
 
         let Ok(pln3) = pln1.link(&pln2) else {
@@ -723,14 +759,14 @@ mod tests {
         };
         println!("pln3 {}", pln3);
 
-        assert!(format!("{pln3}") == "P[r010X-0->r011X-1->r111X-2->r101X-3->r000X]");
+        assert!(format!("{pln3}") == "P[0, r010X-0->r011X-1->r111X-2->r101X-3->r000X]");
 
         Ok(())
     }
 
     #[test]
     fn nop() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[r0X0X-no->r0X0X]")?;
+        let pln1 = SomePlan::from_str("P[0, r0X0X-no->r0X0X]")?;
         println!("pln1 {pln1}");
 
         Ok(())
@@ -738,7 +774,7 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let plan1_str = "P[]";
+        let plan1_str = "P[1]";
         let plan1 = match SomePlan::from_str(plan1_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
@@ -746,7 +782,7 @@ mod tests {
         println!("plan1 {plan1}");
         assert!(format!("{plan1}") == plan1_str);
 
-        let plan2_str = "P[r01X-0->r101-1->r011]";
+        let plan2_str = "P[1, r01X-0->r101-1->r011]";
         let plan2 = match SomePlan::from_str(plan2_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),

@@ -146,7 +146,7 @@ impl PlanStore {
     /// Return true if a PlanStore contains a plan.
     pub fn contains(&self, planx: &SomePlan) -> bool {
         for itemx in self.items.iter() {
-            if itemx.num_bits() == planx.num_bits() && itemx == planx {
+            if itemx.dom_id == planx.dom_id && itemx == planx {
                 return true;
             }
         }
@@ -264,7 +264,7 @@ mod tests {
             return Err(format!("str {} NE calced {}", fstr.len(), sb));
         }
 
-        plnstr.push(SomePlan::from_str("P[r0000_0000-0->r0000_0000]")?);
+        plnstr.push(SomePlan::from_str("P[0, r0000_0000-0->r0000_0000]")?);
         let fstr = plnstr.to_string();
         let sb = plnstr.strlen();
         println!("{}", plnstr);
@@ -281,12 +281,12 @@ mod tests {
         println!("plnst1 {plnst1}");
         assert!(format!("{plnst1}") == plnst1_str);
 
-        let plnst2_str = "[P[r001-0->r101]]";
+        let plnst2_str = "[P[0, r001-0->r101]]";
         let plnst2 = PlanStore::from_str(&plnst2_str)?;
         println!("plnst2 {plnst2}");
         assert!(format!("{plnst2}") == plnst2_str);
 
-        let plnst3_str = "[P[r001-0->r101], P[r101-0->r101]]";
+        let plnst3_str = "[P[0, r001-0->r101], P[1, r101-0->r101]]";
         let plnst3 = PlanStore::from_str(&plnst3_str)?;
         println!("plnst3 {plnst3}");
         assert!(format!("{plnst3}") == plnst3_str);

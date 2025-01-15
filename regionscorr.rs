@@ -43,11 +43,6 @@ impl PartialEq for RegionsCorr {
 impl Eq for RegionsCorr {}
 
 impl RegionsCorr {
-    /// Return a new RegionsCorr instance, given a RegionsStore.
-    pub fn new(regions: RegionStore) -> Self {
-        Self { regions }
-    }
-
     /// Return a new RegionsCorr instance, empty, with a specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);
@@ -395,10 +390,14 @@ impl FromStr for RegionsCorr {
             Ok(tokenvec) => tokenvec,
             Err(errstr) => return Err(format!("regionscorr::from_str: {errstr}")),
         };
-        //println!("tokens {:?}", tokens);
+        // println!("tokens {:?}", tokens);
 
         // Tally up tokens.
-        let mut regions = RegionStore::with_capacity(tokens.len());
+        let mut tlen = tokens.len();
+        if tlen == 0 {
+            tlen = 1;
+        }
+        let mut regions = Self::with_capacity(tlen);
 
         for tokenx in tokens.into_iter() {
             regions.push(
@@ -406,7 +405,7 @@ impl FromStr for RegionsCorr {
             );
         }
 
-        Ok(Self::new(regions))
+        Ok(regions)
     }
 }
 

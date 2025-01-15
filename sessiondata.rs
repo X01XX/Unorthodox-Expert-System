@@ -1482,7 +1482,7 @@ impl SessionData {
         for (dom_id, (regx, regy)) in from.iter().zip(goal.iter()).enumerate() {
             //println!("dom_id {dom_id}");
             if regy.is_superset_of(regx) {
-                plans_per_target.push(SomePlan::new(vec![SomeStep::new_no_op(regx)]));
+                plans_per_target.push(SomePlan::new(dom_id, vec![SomeStep::new_no_op(regx)]));
             } else {
                 // Try making plans.
                 match self.make_plans_domain(dom_id, regx, regy, &within[dom_id]) {
@@ -2370,8 +2370,9 @@ mod tests {
         )?;
 
         // Set up PlansCorr.
-        let plnsc1 =
-            PlansCorr::from_str("PC[[P[r0000-0->r0001], P[r001-no->r001], P[r10-0->r11]], 0]")?;
+        let plnsc1 = PlansCorr::from_str(
+            "PC[[P[0, r0000-0->r0001], P[1, r001-no->r001], P[2, r10-0->r11]], 0]",
+        )?;
         println!("{plnsc1}");
 
         let before = sdx.all_current_states();
@@ -2405,7 +2406,7 @@ mod tests {
         )?;
 
         // Set up PlansCorrStore.
-        let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[r0000-2->r0100], P[r1111-0->r1110]], 0], PC[[P[r0100-0->r0101], P[r1110-1->r1100]], 0]]")?;
+        let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[0, r0000-2->r0100], P[1, r1111-0->r1110]], 0], PC[[P[0, r0100-0->r0101], P[1, r1110-1->r1100]], 0]]")?;
         println!("plnscrstr {plnscrstr}");
 
         let before = sdx.all_current_states();

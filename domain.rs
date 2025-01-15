@@ -221,7 +221,7 @@ impl SomeDomain {
     /// Run a plan, return number steps if it runs to completion.
     pub fn run_plan(&mut self, pln: &SomePlan) -> Result<usize, String> {
         //debug_assert_eq!(pln.dom_id, self.id);
-        debug_assert!(pln.is_empty() || pln.num_bits().unwrap() == self.num_bits());
+        debug_assert!(pln.dom_id == self.id);
 
         let mut num_steps = 0;
 
@@ -338,7 +338,7 @@ impl SomeDomain {
                 if stepy.result.intersects(goal_reg) {
                     let stepz = stepy.restrict_result_region(goal_reg);
 
-                    return Ok(SomePlan::new(vec![stepz]));
+                    return Ok(SomePlan::new(self.id, vec![stepz]));
                 }
             }
         }
@@ -482,7 +482,7 @@ impl SomeDomain {
                 let plan_to_goal =
                     self.plan_steps_between(&stepy.result, goal_reg, depth - 1, within)?;
 
-                return SomePlan::new(vec![stepy]).link(&plan_to_goal);
+                return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
             } else {
                 return Err(format!("domain::depth_first_search: Step {stepy} result region is not a subset of within {within}"));
             }
@@ -503,7 +503,7 @@ impl SomeDomain {
                 let plan_to_step =
                     self.plan_steps_between(from_reg, &stepy.initial, depth - 1, within)?;
 
-                return plan_to_step.link(&SomePlan::new(vec![stepy]));
+                return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
             } else {
                 return Err(format!("domain::depth_first_search: Step {stepy} initial region is not a subset of within {within}"));
             }
@@ -624,7 +624,7 @@ impl SomeDomain {
         // Try linking two plans together with the step.
         //println!("\n    linking plan {to_step_plan} step {stepy} plan {from_step_plan}");
         to_step_plan
-            .link(&SomePlan::new(vec![stepy]))?
+            .link(&SomePlan::new(self.id, vec![stepy]))?
             .link(&from_step_plan)
     }
 
@@ -1037,10 +1037,11 @@ impl SomeDomain {
                 //println!("    Plans found 2");
                 for plany in plans2 {
                     //println!("    sub plan1 {}", plany);
-                    let mut new_plan = SomePlan::new(vec![]);
+                    let mut new_plan = SomePlan::new(self.id, vec![]);
                     if *from_inx > 0 {
                         for inz in 0..*from_inx {
-                            new_plan = match new_plan.link(&SomePlan::new(vec![planx[inz].clone()]))
+                            new_plan = match new_plan
+                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
                             {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
@@ -1055,7 +1056,8 @@ impl SomeDomain {
 
                     if *to_inx < planx.len() {
                         for inz in (to_inx + 1)..planx.len() {
-                            new_plan = match new_plan.link(&SomePlan::new(vec![planx[inz].clone()]))
+                            new_plan = match new_plan
+                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
                             {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
@@ -1773,7 +1775,7 @@ mod tests {
 
         println!("Acts: {}\n", domx.actions);
 
-        let pln1 = SomePlan::from_str("P[r0000-2->r0100-3->r1100-2->r1000]")?;
+        let pln1 = SomePlan::from_str("P[0, r0000-2->r0100-3->r1100-2->r1000]")?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
@@ -1803,8 +1805,9 @@ mod tests {
 
         println!("Acts: {}\n", domx.actions);
 
-        let pln1 =
-            SomePlan::from_str("P[r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]")?;
+        let pln1 = SomePlan::from_str(
+            "P[0, r0100-0->r0101-1->r0111-0->r0110-2->r0010-0->r0011-1->r1011]",
+        )?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
@@ -1838,7 +1841,7 @@ mod tests {
 
         println!("Acts: {}\n", domx.actions);
 
-        let pln1 = SomePlan::from_str("P[r1011-0->r1111-1->r1110-0->r0110-2->r0111]")?;
+        let pln1 = SomePlan::from_str("P[0, r1011-0->r1111-1->r1110-0->r0110-2->r0111]")?;
         println!("pln1: {}", pln1);
 
         if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
@@ -1875,7 +1878,7 @@ mod tests {
         let reg_f = SomeRegion::from_str("r1111")?;
 
         let pln1 = SomePlan::from_str(
-            "P[r0000-0->r0001-1->r0011-0->r0010-2->r0110-2->r0111-2->r0101-2->r1101-2->r1111]",
+            "P[0, r0000-0->r0001-1->r0011-0->r0010-2->r0110-2->r0111-2->r0101-2->r1101-2->r1111]",
         )?;
         println!("pln1: {}", pln1);
 
