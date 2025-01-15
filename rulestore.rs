@@ -88,10 +88,9 @@ impl RuleStore {
     }
 
     /// Add a rule to a RuleStore.
+    /// For rules of a group or square, there will be up to two rules. If two rules, they will have the same initial region.
+    /// For a RulesCorr instance, there will be rules correspanding to the domains in a DomainStore.
     pub fn push(&mut self, val: SomeRule) {
-        debug_assert!(self.is_empty() || self[0].num_bits() == val.num_bits());
-        debug_assert!(self.is_empty() || self[0].initial_region() == val.initial_region());
-
         self.items.push(val);
     }
 

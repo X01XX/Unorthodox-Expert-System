@@ -73,6 +73,9 @@ mod step;
 mod stepstore;
 mod target;
 mod tools;
+mod rulescorr;
+mod changestore;
+mod changescorr;
 
 use crate::plan::SomePlan;
 use crate::regionscorr::RegionsCorr;
@@ -86,6 +89,9 @@ use rulestore::RuleStore;
 use sample::SomeSample;
 use sessiondata::{NeedPlan, SessionData};
 use state::SomeState;
+use crate::planscorr::PlansCorr;
+use crate::planscorrstore::PlansCorrStore;
+use crate::rulescorr::RulesCorr;
 
 extern crate unicode_segmentation;
 
@@ -632,6 +638,14 @@ fn command_loop(sdx: &mut SessionData) {
                 pause_for_input("\nPress Enter to continue: ");
                 return;
             }
+            "step-rc" => {
+                match do_step_rc_command(sdx, &cmd) {
+                    Ok(()) => (),
+                    Err(error) => println!("{error}"),
+                }
+                pause_for_input("\nPress Enter to continue: ");
+                return;
+            }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
             }
@@ -757,6 +771,39 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), 
         Err(error) => Err(format!("\nDid not understand state, {error}")),
     } // end match
 }
+
+fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
+    // Check number args.
+    if cmd.len() != 3 {
+        return Err("Exactly two region arguments are needed for the step command.".to_string());
+    }
+
+    // Get from region from string
+    let from = RegionsCorr::from_str(&cmd[1])?;
+
+    // Get to region from string
+    let to = RegionsCorr::from_str(&cmd[2])?;
+
+    if !from.is_congruent(&to) {
+        return Err("Regionscorr given are not congruent".to_string());
+    }
+
+    if let Some(plans) = step_by_step_rc(sdx, &from, &to, 0) {
+        println!("found plan for {from} -> {to}: {plans}");
+        if plans.initial_regions() == sdx.all_current_regions() {
+            let cmd = pause_for_input("Press Enter to continue, or r to run ");
+            if cmd == "r" || cmd == "R" {
+                match sdx.run_planscorr(&plans) {
+                    Ok(num) => println!("{num} steps run."),
+                    Err(errstr) => println!("{errstr}"),
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 
 fn do_step_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
@@ -892,6 +939,35 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Str
 }
 
 /// Interactively step from an initial region to a goal region.
+#[allow(unused_variables, unused_mut)]
+fn step_by_step_rc(
+    sdx: &SessionData,
+    from: &RegionsCorr,
+    to: &RegionsCorr,
+    depth: usize,
+) -> Option<PlansCorr> {
+
+    let mut ret_plans: Option<PlansCorr> = None;
+
+    let mut cur_from = from.clone();
+    let mut cur_to = to.clone();
+
+    let mut forward_plans  = PlansCorrStore::new(vec![]);
+    let mut backward_plans = PlansCorrStore::new(vec![]);
+
+    let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
+    let wanted_changes = rules_to_goal.as_changes();
+    let unwanted_changes = rules_to_goal.unwanted_changes();
+    
+    //let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
+    //let change_spaces = vec![' '; cng_len].iter().collect::<String>();
+
+
+
+    None
+}
+
+/// Interactively step from an initial region to a goal region.
 fn step_by_step(
     sdx: &SessionData,
     dom_id: usize,
@@ -936,11 +1012,9 @@ fn step_by_step(
         println!("-----------------------------------");
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
 
-        let wanted_changes = SomeRule::new_region_to_region_min(&cur_from, &cur_to).as_change();
-
-        let unwanted_changes = wanted_changes
-            .invert()
-            .bitwise_and_mask(&cur_to.edge_mask());
+        let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
+        let wanted_changes   = rule_to_goal.as_change();
+        let unwanted_changes = rule_to_goal.unwanted_changes();
 
         // Get possible steps.
         let steps_st = domx.get_steps(&wanted_changes, &domx.maximum_region());

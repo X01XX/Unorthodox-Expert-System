@@ -39,14 +39,14 @@ impl fmt::Display for SomePlan {
 /// Implement the PartialEq trait.
 impl PartialEq for SomePlan {
     fn eq(&self, other: &Self) -> bool {
+        if self.dom_id != other.dom_id {
+            return false;
+        }
         if self.len() != other.len() {
             return false;
         }
         if self.is_empty() {
             return true;
-        }
-        if self[0].initial != other[0].initial {
-            return false;
         }
         for (stpx, stpy) in self.iter().zip(other.iter()) {
             if stpx != stpy {

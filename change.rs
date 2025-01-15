@@ -5,6 +5,7 @@ use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
+use crate::tools;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -209,6 +210,13 @@ impl FromStr for SomeChange {
             Ok(ruls) => Ok(ruls.as_change()),
             Err(errstr) => Err(format!("SomeChange::from_str: {errstr}")),
         }
+    }
+}
+
+/// Implement the trait StrLen for SomeChange.
+impl tools::StrLen for SomeChange {
+    fn strlen(&self) -> usize {
+        (3 * self.num_bits()) - 1
     }
 }
 
