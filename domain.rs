@@ -34,7 +34,6 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PathStep {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -1108,142 +1107,36 @@ impl FromStr for SomeDomain {
     /// All the rules must use the same number of bits, initial state will be set to a random value.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeDomain::from_str: {str_in}");
-        let src_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if src_str.is_empty() {
-            return Err("SomeDomain::from_str: Empty string?".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 8 {
+            return Err(
+                "domain::from_str: string should be at least = DOMAIN[<one action>]".to_string(),
+            );
         }
 
-        // Unwrap "DOMAIN[ ... ]". Check that the brackets are balanced.
-        let mut src_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in src_str.graphemes(true).enumerate() {
-            if chr == "\n" {
-                continue;
-            }
-            if inx == 0 {
-                if chr != "D" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 1 {
-                if chr != "O" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 2 {
-                if chr != "M" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 3 {
-                if chr != "A" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 4 {
-                if chr != "I" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 5 {
-                if chr != "N" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 6 {
-                if chr != "[" {
-                    return Err(
-                        "SomeDomain::from_str: Invalid string, should start with DOMAIN["
-                            .to_string(),
-                    );
-                }
-                left += 1;
-                continue;
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("SomeDomain::from_str: Brackets not balanced".to_string());
-                }
-            }
-
-            src_str2.push_str(chr);
+        if str_in2[0..7] != *"DOMAIN[" {
+            return Err("domain::from_str: string should begin with DOMAIN[".to_string());
         }
-        if left != right {
-            return Err("SomeDomain::from_str: Brackets not balanced".to_string());
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("domain::from_str: string should end with ]".to_string());
         }
 
-        // Remove last right-bracket, balancing first left bracket.
-        src_str2.remove(src_str2.len() - 1);
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[7..(str_in2.len() - 1)];
 
         // Split substring into tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
-        left = 0;
-        right = 0;
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("domain::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
-        for chr in src_str2.graphemes(true) {
-            if left == right && (chr == "," || chr == " ") {
-                continue;
-            }
-
-            token.push_str(chr);
-
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("SomeDomain::from_str: Brackets not balanced".to_string());
-                }
-            }
-            if left == right && left > 0 {
-                token_list.push(token);
-                token = String::new();
-                left = 0;
-                right = 0;
-            }
-        }
-        if !token.is_empty() {
-            token_list.push(token);
-        }
-        //println!("token_list {:?}", token_list);
-
-        let mut act_vec = Vec::<SomeAction>::new();
+        let mut act_vec = Vec::<SomeAction>::with_capacity(tokens.len());
 
         // Push each action.
-        for tokenx in token_list.iter() {
+        for tokenx in tokens.iter() {
             if tokenx[0..4] == *"ACT[" {
                 act_vec.push(SomeAction::from_str(tokenx)?);
             } else {

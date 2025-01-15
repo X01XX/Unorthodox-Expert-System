@@ -14,8 +14,6 @@ use std::ops::Index;
 use std::slice::Iter;
 use std::str::FromStr;
 
-use unicode_segmentation::UnicodeSegmentation;
-
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuleStore {
@@ -444,80 +442,43 @@ impl IntoIterator for RuleStore {
 impl FromStr for RuleStore {
     type Err = String;
     /// Return a rulestore, given a string representation.
-    /// Like [], [X0/11/11/10/00] or [00/X1/XX/Xx/xx, 01/X1/XX/Xx/xx].
+    /// Like [], [X0/11/11/10/00] or [01/00/XX, 00/00/XX].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("rulestore::from_str: {str_in}");
-        let src_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if src_str.is_empty() {
-            return Err("RuleStore::from_str: Empty string?".to_string());
+        if str_in2.len() < 2 {
+            return Err("rulestore::from_str: string should be at least = []".to_string());
         }
 
-        // Unwrap "[ ... ]", check that the brackets are balanced.
-        let mut src_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in src_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    left += 1;
-                    continue;
-                } else {
-                    return Err(
-                        "RuleStore::from_str: Invalid string, should start with [".to_string()
-                    );
-                }
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("RuleStore::from_str: Brackets not balanced".to_string());
-                }
-            }
-
-            src_str2.push_str(chr);
-        }
-        if left != right {
-            return Err("RuleStore::from_str: Brackets not balanced".to_string());
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        // Remove last right-bracket, balancing first left bracket.
-        src_str2.remove(src_str2.len() - 1);
-        //println!("src_str2 {src_str2}");
-
-        // Split string into <Rule> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
-
-        for chr in src_str2.graphemes(true) {
-            if chr == " " || chr == "," {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-                continue;
-            }
-
-            token.push_str(chr);
+        if str_in2[0..1] != *"[" {
+            return Err("rulestore::from_str: string should begin with [".to_string());
         }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("rulestore::from_str: string should end with ]".to_string());
         }
-        //println!("token_list {:?}", token_list);
+
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
+
+        // Split string into SomeRule tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("rulestore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
         // Tally up tokens.
-        let mut ret_store = RuleStore::with_capacity(token_list.len());
+        let mut ret_store = RuleStore::with_capacity(tokens.len());
 
-        for tokenx in token_list.into_iter() {
+        for tokenx in tokens.into_iter() {
             match SomeRule::from_str(&tokenx) {
                 Ok(rulx) => ret_store.push(rulx),
-                Err(errstr) => return Err(format!("RuleStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("rulestore::from_str: {errstr}")),
             }
         }
 
@@ -825,19 +786,22 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let rulst1 = RuleStore::from_str("[]")?;
+        let rulst1_str = "[]";
+        let rulst1 = RuleStore::from_str(&rulst1_str)?;
         println!("rulst1 {rulst1}");
-        assert!(format!("{rulst1}") == "[]");
+        assert!(format!("{rulst1}") == rulst1_str);
 
-        let rulst2 = RuleStore::from_str("[00/01/XX]")?;
+        let rulst2_str = "[X0_11/11/10/00]";
+        let rulst2 = RuleStore::from_str(&rulst2_str)?;
         println!("rulst2 {rulst2}");
-        assert!(format!("{rulst2}") == "[00/01/XX]");
+        assert!(format!("{rulst2}") == rulst2_str);
 
-        let rulst3_str = "[X0/11/10/X1, X1/10/11/X0]";
+        let rulst3_str = "[01/00/XX, 00/00/XX]";
         let rulst3 = RuleStore::from_str(&rulst3_str)?;
         println!("rulst3 {rulst3}");
         assert!(format!("{rulst3}") == rulst3_str);
 
+        //assert!(1 == 2);
         Ok(())
     }
 }

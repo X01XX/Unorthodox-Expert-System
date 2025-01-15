@@ -10,7 +10,6 @@ use crate::region::SomeRegion;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
 use crate::tools;
-use unicode_segmentation::UnicodeSegmentation;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -200,113 +199,49 @@ impl FromStr for SelectRegions {
     /// Like SR[RC[r1010], 1], or SR[RC[r101, r100], -1].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("selectregions::from_str: {str_in}");
-        let sr_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if sr_str.is_empty() {
-            return Err("SelectRegions::from_str: Empty string?".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 5 {
+            return Err(
+                "selectregions::from_str: string should be at least = SR[<one RegionsCorr, value>]"
+                    .to_string(),
+            );
         }
 
-        // Unwrap inner tokens.
-        let mut inner_tokens = String::new();
-
-        let mut last_chr = String::new();
-
-        for (inx, chr) in sr_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "S" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SelectRegions::from_str: Invalid string, {sr_str} should start with SR["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "R" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SelectRegions::from_str: Invalid string, {sr_str} should start with SR["
-                    ));
-                }
-            }
-            if inx == 2 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SelectRegions::from_str: Invalid string, {sr_str} should start with SR["
-                    ));
-                }
-            }
-
-            // Accumulate token value.
-            inner_tokens.push_str(chr);
-            last_chr = chr.to_string();
-        } // next inx, chr
-
-        if last_chr != "]" {
-            return Err(format!(
-                "SelectRegions::from_str: Invalid string, {sr_str} should end with ]"
-            ));
+        if str_in2[0..3] != *"SR[" {
+            return Err("selectregions::from_str: string should begin with SR[".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("selectregions::from_str: string should end with ]".to_string());
         }
 
-        inner_tokens.remove(inner_tokens.len() - 1); // Remove trailing "]" character.
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[3..(str_in2.len() - 1)];
 
         // Process inner tokens, into a RegionsCorr and value token.
-
-        // Find last comma.
-        let mut comma = 0;
-        for (inx, chr) in inner_tokens.chars().enumerate() {
-            if chr == ',' {
-                comma = inx;
-            }
-        }
-        if comma == 0 {
-            return Err(format!(
-                "SelectRegions::from_str: Invalid string, {sr_str} no comma found"
-            ));
-        }
-
-        let mut rc_token = String::new();
-        let mut tmp_token = String::new();
-
-        for (inx, chr) in inner_tokens.chars().enumerate() {
-            if chr == ' ' {
-                continue;
-            }
-            if inx == comma {
-                if !rc_token.is_empty() {
-                    return Err(format!(
-                        "SelectRegions::from_str: Invalid string, {sr_str} rc_token {rc_token}"
-                    ));
-                }
-                rc_token = tmp_token;
-                tmp_token = String::new();
-                continue;
-            }
-
-            tmp_token.push(chr);
-        }
-        let val_token = tmp_token;
-
-        // Check that there are two tokens.
-        if rc_token.is_empty() || val_token.is_empty() {
-            return Err(format!("SelectRegions::from_str: Invalid string, {sr_str}"));
-        }
-
-        //println!("rc {rc_token} val {val_token}");
-
-        // Get the regionscorr token value.
-        let rcx = match RegionsCorr::from_str(&rc_token) {
-            Ok(rcx) => rcx,
-            Err(errstr) => return Err(format!("SelectRegions::from_str: {errstr}")),
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("selectregions::from_str: {errstr}")),
         };
+        //println!("tokens {:?}", tokens);
 
-        // Get the value token value.
-        let val = match val_token.parse::<isize>() {
-            Ok(val) => val,
-            Err(errstr) => return Err(format!("SelectRegions::from_str: {errstr}")),
+        if tokens.is_empty() || tokens.len() > 2 {
+            return Err("selectregions::from_str: must have one SelectRegion token and optional value token".to_string());
+        }
+
+        // Get value, if any.
+        let mut val = 0;
+        if tokens.len() == 2 {
+            val = match tokens[1].parse::<isize>() {
+                Ok(val) => val,
+                Err(errstr) => return Err(format!("selectregions::from_str: {errstr}")),
+            };
+        }
+
+        let rcx = match RegionsCorr::from_str(&tokens[0]) {
+            Ok(rcx) => rcx,
+            Err(errstr) => return Err(format!("selectregions::from_str: {errstr}")),
         };
 
         Ok(Self::new(rcx, val))
@@ -365,7 +300,7 @@ mod tests {
         if let Some(srsint) = srs1.intersection(&srs3) {
             return Err(format!("srs1 int? srs3 = {srsint}"));
         }
-
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -422,10 +357,15 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let regst3_str = "SR[RC[r1010, r1111], -1]";
-        let regst3 = SelectRegions::from_str(&regst3_str)?;
-        println!("regst3 {regst3}");
-        assert!(format!("{regst3}") == regst3_str);
+        let selreg1_str = "SR[RC[r1010], +1]";
+        let selreg1 = SelectRegions::from_str(&selreg1_str)?;
+        println!("selreg1 {selreg1}");
+        assert!(format!("{selreg1}") == selreg1_str);
+
+        let selreg2_str = "SR[RC[r101, r100], -1]";
+        let selreg2 = SelectRegions::from_str(&selreg2_str)?;
+        println!("selreg2 {selreg2}");
+        assert!(format!("{selreg2}") == selreg2_str);
 
         Ok(())
     }

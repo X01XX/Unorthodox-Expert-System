@@ -9,7 +9,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
-use crate::tools::CorrespondingItems;
+use crate::tools::{self, CorrespondingItems};
 
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for DomainStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -350,103 +349,42 @@ impl FromStr for DomainStore {
     /// The string contains:
     ///   One, or more, actions,.
     ///
-    /// "DS[ DOMAIN[ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]]],
-    ///      DOMAIN[ACT[[XX/XX/XX/Xx/XX], ACT[XX/XX/Xx/XX/XX]]]"
+    /// DS[DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]]]]
     ///
     /// All the rules must use the same number of bits.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("DomainStore::from_str: {str_in}");
-        let ds_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        // Unwrap "DS[ ... ]". Check that the brackets are balanced.
-        let mut ds_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in ds_str.graphemes(true).enumerate() {
-            if chr == "\n" {
-                continue;
-            }
-            if inx == 0 {
-                if chr != "D" {
-                    return Err(
-                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 1 {
-                if chr != "S" {
-                    return Err(
-                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 2 {
-                if chr != "[" {
-                    return Err(
-                        "DomainStore::from_str: Invalid string, should start with DS[".to_string(),
-                    );
-                }
-                left += 1;
-                continue;
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("DomainStore::from_str: Brackets not balanced.".to_string());
-                }
-            }
-
-            ds_str2.push_str(chr);
+        // Strip off id and surrounding brackets.
+        if str_in2.len() < 5 {
+            return Err(
+                "domainstore::from_str: string should be at least = DS[<one domain>]".to_string(),
+            );
         }
-        if left != right {
-            return Err("DomainStore::from_str: Brackets not balanced.".to_string());
-        }
-        ds_str2 = ds_str2.trim().to_string();
 
-        // Find tokens
-        let mut token_vec = vec![];
-        let mut token = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for chr in ds_str2.graphemes(true) {
-            if chr == "\n" {
-                continue;
-            }
-            if left == right && (chr == "," || chr == " ") {
-                continue;
-            }
-            token.push_str(chr);
-
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if left == right && left > 0 && !token.is_empty() {
-                    token = token.trim().to_string();
-                    token_vec.push(token);
-                    token = String::new();
-                }
-            }
+        if str_in2[0..3] != *"DS[" {
+            return Err("domainstore::from_str: string should begin with DS[".to_string());
         }
-        if token.is_empty() {
-            token = token.trim().to_string();
-            token_vec.push(token);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("domainstore::from_str: string should end with ]".to_string());
         }
-        //println!("token_vec {:?}", token_vec);
+
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[3..(str_in2.len() - 1)];
+
+        // Split tokens
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("domainstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
         // Init DomainStore to return.
         let mut dmxs = DomainStore::new();
 
         // Process tokens.
-        for tokenx in token_vec.iter() {
+        for tokenx in tokens.iter() {
             if tokenx[0..7] == *"DOMAIN[" {
                 //println!("found SomeDomain {tokenx}");
                 match SomeDomain::from_str(tokenx) {
@@ -458,5 +396,21 @@ impl FromStr for DomainStore {
             }
         }
         Ok(dmxs)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let dom_str = "DS[DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]]]]";
+        let dom = DomainStore::from_str(&dom_str)?;
+        println!("dom {}", dom.formatted_def());
+        assert!(dom.formatted_def() == dom_str);
+
+        // assert!(1 == 2);
+        Ok(())
     }
 }

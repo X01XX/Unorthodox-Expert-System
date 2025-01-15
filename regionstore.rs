@@ -11,8 +11,6 @@ use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
 
-use unicode_segmentation::UnicodeSegmentation;
-
 impl fmt::Display for RegionStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", tools::vec_string(&self.items))
@@ -475,79 +473,44 @@ impl FromStr for RegionStore {
     /// Like [], [r1010] or [r1010, r0101].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("regionscorrstore::from_str: {str_in}");
-        let rs_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if rs_str.is_empty() {
-            return Err("RegionsStore::from_str: Empty string?".to_string());
+        if str_in2.len() < 2 {
+            return Err("regionstore::from_str: string should be at least = []".to_string());
         }
 
-        let mut rs_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in rs_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionStore::from_str: Invalid string, {rs_str} should start with ["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
-                ));
-            }
-            rs_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err(format!(
-                "RegionStore::from_str: Invalid string, {rs_str} should end with ]"
-            ));
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        if rs_str2.is_empty() {
-            return Ok(RegionStore::new(vec![]));
+        if str_in2[0..1] != *"[" {
+            return Err("regiosnstore::from_str: string should begin with [".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("regionstore::from_str: string should end with ]".to_string());
         }
 
-        // Split string into <region> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
 
-        for chr in rs_str2.graphemes(true) {
-            if chr == "," || chr == " " {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-            } else {
-                token.push_str(chr);
-            }
-        }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
-        }
+        // Split string into SomeRegion tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("regionstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
         // Tally up tokens.
-        let mut regions = Vec::<SomeRegion>::new();
+        let mut regions = Vec::<SomeRegion>::with_capacity(tokens.len());
 
-        for tokenx in token_list.into_iter() {
+        for tokenx in tokens.into_iter() {
             match SomeRegion::from_str(&tokenx) {
                 Ok(regx) => regions.push(regx),
-                Err(errstr) => return Err(format!("RegionStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("regionstore::from_str: {errstr}")),
             }
         }
-        let ret_regionstore = RegionStore::new(regions);
 
-        Ok(ret_regionstore)
+        Ok(Self::new(regions))
     }
 }
 
@@ -886,15 +849,17 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let regst1 = RegionStore::from_str("[]")?;
+        let regst1_str = "[]";
+        let regst1 = RegionStore::from_str(&regst1_str)?;
         println!("regst1 {regst1}");
-        assert!(format!("{regst1}") == "[]");
+        assert!(format!("{regst1}") == regst1_str);
 
-        let regst2 = RegionStore::from_str("[r1010]")?;
+        let regst2_str = "[r1010]";
+        let regst2 = RegionStore::from_str(&regst2_str)?;
         println!("regst2 {regst2}");
-        assert!(format!("{regst2}") == "[r1010]");
+        assert!(format!("{regst2}") == regst2_str);
 
-        let regst3_str = "[r1010, r1111]";
+        let regst3_str = "[r1010, r0101]";
         let regst3 = RegionStore::from_str(&regst3_str)?;
         println!("regst3 {regst3}");
         assert!(format!("{regst3}") == regst3_str);

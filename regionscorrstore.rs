@@ -9,7 +9,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -342,121 +341,39 @@ impl FromStr for RegionsCorrStore {
     /// Like RCS[], RCS[RC[r0010]] or RCS[RC[r1010], RC[r1111]].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("regionscorrstore::from_str: {str_in}");
-        let rcs_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if rcs_str.is_empty() {
-            return Err("RegionsCorrStore::from_str: Empty string?".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 5 {
+            return Err(
+                "regionscorrstore::from_str: string should be at least = RCS[<one RegionsCorr>]"
+                    .to_string(),
+            );
         }
 
-        // Unwrap "RCS[...]", check that brackets are balanced.
-        let mut rcs_str2 = String::new();
-        let mut num_left = 0;
-        let mut num_right = 0;
-        let mut last_chr = String::new();
-
-        for (inx, chr) in rcs_str.graphemes(true).enumerate() {
-            if chr == " " {
-                continue;
-            }
-            if inx == 0 {
-                if chr == "R" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
-                    ));
-                }
-            }
-            if inx == 2 {
-                if chr == "S" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
-                    ));
-                }
-            }
-            if inx == 3 {
-                if chr == "[" {
-                    num_left += 1;
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorrStore::from_str: Invalid string, {rcs_str} should start with RCS["
-                    ));
-                }
-            }
-            if chr == "[" {
-                num_left += 1;
-            }
-            if chr == "]" {
-                num_right += 1;
-            }
-            if num_right > num_left {
-                return Err(format!(
-                    "RegionsCorrStore::from_str: Invalid string, {rcs_str}, brackets are not balanced."
-                ));
-            }
-            last_chr = chr.to_string();
-            rcs_str2.push_str(chr);
+        if str_in2[0..4] != *"RCS[" {
+            return Err("regionscorrstore::from_str: string should begin with RCS[".to_string());
         }
-        if num_right != num_left {
-            return Err(format!(
-                "RegionsCorrStore::from_str: Invalid string, {rcs_str}, brackets are not balanced."
-            ));
-        }
-        if last_chr != "]" {
-            return Err(format!(
-                "RegionsCorrStore::from_str: Invalid string, {rcs_str} should end with ]"
-            ));
-        }
-        // Remove last right-bracket, balancing RCS[.
-        rcs_str2.remove(rcs_str2.len() - 1);
-        //println!("rcs_str2 {rcs_str2}");
-
-        // Process contents of RCS[], if any.
-        let mut rcs = RegionsCorrStore::new(vec![]);
-
-        let mut pc_str = String::new();
-        let mut num_left = 0;
-        let mut num_right = 0;
-
-        for chr in rcs_str2.graphemes(true) {
-            if chr == "[" {
-                num_left += 1;
-            }
-
-            if chr == "]" {
-                num_right += 1;
-            }
-
-            if chr == "," && num_left == num_right {
-                //println!("pc_str {pc_str}");
-                match RegionsCorr::from_str(&pc_str) {
-                    Ok(pcx) => rcs.push(pcx),
-                    Err(errstr) => return Err(format!("RegionsCorrStore::from_str: {errstr}")),
-                }
-                pc_str = String::new();
-                continue;
-            }
-
-            pc_str.push_str(chr);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("regionscorrstore::from_str: string should end with ]".to_string());
         }
 
-        if pc_str.is_empty() {
-        } else {
-            match RegionsCorr::from_str(&pc_str) {
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[4..(str_in2.len() - 1)];
+
+        // Split string into RegionsCorr tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("regionscorrstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
+
+        let mut rcs = RegionsCorrStore::new(Vec::<RegionsCorr>::with_capacity(tokens.len()));
+
+        for tokx in tokens.iter() {
+            match RegionsCorr::from_str(tokx) {
                 Ok(pcx) => rcs.push(pcx),
-                Err(errstr) => return Err(format!("RegionsCorrStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("regionscorrstore::from_str: {errstr}")),
             }
         }
 
@@ -549,19 +466,23 @@ mod tests {
         } else {
             println!("test 4 OK");
         }
+        //assert!(1 == 2);
         Ok(())
     }
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from_str("RCS[]")?;
+        let rcs1_str = "RCS[]";
+        let rcs1 = RegionsCorrStore::from_str(&rcs1_str)?;
         println!("rcs1 {rcs1}");
+        assert!(format!("{rcs1}") == rcs1_str);
 
-        let rcs2 = RegionsCorrStore::from_str("RCS[RC[r0X10, r100]]")?;
+        let rcs2_str = "RCS[RC[r0010]]";
+        let rcs2 = RegionsCorrStore::from_str(&rcs2_str)?;
         println!("rcs2 {rcs2}");
-        assert!(rcs2.len() == 1);
+        assert!(format!("{rcs2}") == rcs2_str);
 
-        let rcs3_str = "RCS[RC[r0X10, r100], RC[r0X11, r101]]";
+        let rcs3_str = "RCS[RC[r1010], RC[r1111]]";
         let rcs3 = RegionsCorrStore::from_str(&rcs3_str)?;
         println!("rcs3 {rcs3}");
         assert!(format!("{rcs3}") == rcs3_str);

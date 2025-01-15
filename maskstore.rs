@@ -8,7 +8,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for MaskStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -84,74 +83,46 @@ impl IndexMut<usize> for MaskStore {
 impl FromStr for MaskStore {
     type Err = String;
     /// Return a maskstore, given a string representation.
-    /// Like [] or [s1010, s0101].
+    /// Like [], [m1010] or [m1010, m1111].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("maskstore::from_str: {str_in}");
-        let maskstore_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if maskstore_str.is_empty() {
-            return Err("MaskStore::from_str: Empty string?".to_string());
+        if str_in2.len() < 2 {
+            return Err("maskstore::from_str: string should be at least = []".to_string());
         }
 
-        let mut maskstore_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in maskstore_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err("Invalid string, should start with [".to_string());
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                continue;
-            }
-
-            if last_chr {
-                return Err("Invalid string, should end with ]".to_string());
-            }
-            maskstore_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err("Invalid string, should end with ]".to_string());
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        if maskstore_str2.is_empty() {
-            return Ok(MaskStore::new(vec![]));
+        if str_in2[0..1] != *"[" {
+            return Err("masktore::from_str: string should begin with [".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("masktore::from_str: string should end with ]".to_string());
         }
 
-        // Split string into <region> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
 
-        for chr in maskstore_str2.graphemes(true) {
-            if chr == "," || chr == " " {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-            } else {
-                token.push_str(chr);
-            }
-        }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
-        }
+        // Split string into SomeMask tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("maskstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
         // Tally up tokens.
         let mut regions = Vec::<SomeMask>::new();
 
-        for tokenx in token_list.into_iter() {
-            regions.push(SomeMask::from_str(&tokenx).expect("Invalid region token"));
+        for tokenx in tokens.into_iter() {
+            regions.push(
+                SomeMask::from_str(&tokenx).expect("maskstore::from_str: Invalid region token"),
+            );
         }
-        let ret_maskstore = MaskStore::new(regions);
-        //println!("ret_maskstore {ret_maskstore}");
 
-        Ok(ret_maskstore)
+        Ok(Self::new(regions))
     }
 }
 
@@ -203,13 +174,15 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let mskst1 = MaskStore::from_str("[]")?;
+        let mskst1_str = "[]";
+        let mskst1 = MaskStore::from_str(&mskst1_str)?;
         println!("mskst1 {mskst1}");
-        assert!(format!("{mskst1}") == "[]");
+        assert!(format!("{mskst1}") == mskst1_str);
 
-        let mskst2 = MaskStore::from_str("[m1010]")?;
+        let mskst2_str = "[m1010]";
+        let mskst2 = MaskStore::from_str(&mskst2_str)?;
         println!("mskst2 {mskst2}");
-        assert!(format!("{mskst2}") == "[m1010]");
+        assert!(format!("{mskst2}") == mskst2_str);
 
         let mskst3_str = "[m1010, m1111]";
         let mskst3 = MaskStore::from_str(&mskst3_str)?;

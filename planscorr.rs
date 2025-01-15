@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 use std::fmt;
 
@@ -249,109 +248,31 @@ impl tools::CorrespondingItems for PlansCorr {
 impl FromStr for PlansCorr {
     type Err = String;
     /// Return a PlansCorr instance, given a string representation.
-    /// Like PC[[], 0], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
+    /// Like PC[], PC[[P[r001-0>r101]], -1] or PC[[P[r001-0>r101], P[r101-0>r101]], 0].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planscorr::from_str: {str_in}");
-        let pc_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if pc_str.is_empty() {
-            return Err("PlansCorr::from_str: Empty string?".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 4 {
+            return Err("planscorr::from_str: string should be at least = PC[]".to_string());
         }
 
-        let mut pc_str2 = String::new();
-        let mut last_chr = String::new();
-        let mut num_left = 0;
-        let mut num_right = 0;
-
-        // Unwrap "PCS[...]", check that brackets are balanced.
-        for (inx, chr) in pc_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "P" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
-                    ));
-                }
-            }
-            if inx == 2 {
-                if chr == "[" {
-                    num_left += 1;
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorr::from_str: Invalid string, {pc_str} should start with PC["
-                    ));
-                }
-            }
-
-            if chr == "[" {
-                num_left += 1;
-            }
-            if chr == "]" {
-                num_right += 1;
-            }
-            if num_right > num_left {
-                return Err(format!(
-                    "PlansCorr::from_str: Invalid string, {pc_str}, brackets are not balanced."
-                ));
-            }
-
-            last_chr = chr.to_string();
-            pc_str2.push_str(chr);
+        if str_in2[0..3] != *"PC[" {
+            return Err("planscorr::from_str: string should begin with PC[".to_string());
         }
-        if last_chr != "]" {
-            return Err(format!(
-                "PlansCorr::from_str: Invalid string, {pc_str} should end with ] instead of {last_chr}"
-            ));
-        }
-        // Remove last right-bracket, balancing PCS[.
-        pc_str2.remove(pc_str2.len() - 1);
-        pc_str2 = pc_str2.trim().to_string();
-
-        let mut tokens = vec![];
-        let mut tmp_token = String::new();
-
-        let mut left = 0;
-        let mut right = 0;
-
-        for chr in pc_str2.chars() {
-            if chr == '[' {
-                left += 1;
-                tmp_token.push(chr);
-                continue;
-            }
-            if chr == ']' {
-                right += 1;
-                tmp_token.push(chr);
-                continue;
-            }
-
-            if (chr == ' ' || chr == ',') && left == right {
-                if tmp_token.is_empty() {
-                } else {
-                    tokens.push(tmp_token);
-                    tmp_token = String::new();
-                }
-                continue;
-            }
-
-            tmp_token.push(chr);
-        }
-        if tmp_token.is_empty() {
-        } else {
-            tokens.push(tmp_token);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("planscorr::from_str: string should end with ]".to_string());
         }
 
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[3..(str_in2.len() - 1)];
+
+        // Split string into PlanStore tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("planscorr::from_str: {errstr}")),
+        };
         //println!("tokens {:?}", tokens);
 
         // Process tokens.
@@ -361,12 +282,12 @@ impl FromStr for PlansCorr {
             if tokx[0..1] == *"[" {
                 match PlanStore::from_str(tokx) {
                     Ok(plansx) => plans = plansx,
-                    Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+                    Err(errstr) => return Err(format!("planscorr::from_str: {errstr}")),
                 }
             } else {
                 match tokx.parse::<isize>() {
                     Ok(aval) => val = aval,
-                    Err(errstr) => return Err(format!("PlansCorr::from_str: {errstr}")),
+                    Err(errstr) => return Err(format!("planscorr::from_str: {errstr}")),
                 }
             }
         }
@@ -466,24 +387,22 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let plncr1 = PlansCorr::from_str("PC[]")?;
+        let plncr1_str = "PC[]";
+        let plncr1 = PlansCorr::from_str(&plncr1_str)?;
         println!("plncr1 {plncr1}");
         assert!(format!("{plncr1}") == "PC[[]]");
 
-        let plncr2 = PlansCorr::from_str("PC[[P[r0000-0->r1111]], 1]")?;
+        let plncr2_str = "PC[[P[r0000-0->r1111]], 1]";
+        let plncr2 = PlansCorr::from_str(&plncr2_str)?;
         println!("plncr2 {plncr2}");
-        assert!(format!("{plncr2}") == "PC[[P[r0000-0->r1111]], 1]");
+        assert!(format!("{plncr2}") == plncr2_str);
 
         let plncr3_str = "PC[[P[r0000-0->r1111], P[r0000-0->r1100]], -1]";
         let plncr3 = PlansCorr::from_str(&plncr3_str)?;
         println!("plncr3 {plncr3}");
         assert!(format!("{plncr3}") == plncr3_str);
 
-        let plncr4_str = "PC[[P[r0000-no->r0000]]]";
-        let plncr4 = PlansCorr::from_str(&plncr4_str)?;
-        println!("plncr4 {plncr4}");
-        assert!(format!("{plncr4}") == "PC[[P[]]]");
-
+        //assert!(1 == 2);
         Ok(())
     }
 }

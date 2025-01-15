@@ -501,64 +501,34 @@ impl StrLen for SomePlan {
 impl FromStr for SomePlan {
     type Err = String;
     /// Return SomePlan, given a string representation.
-    /// Like Plan[], Plan[r1010-0->r0101], or Plan[r101-0->r000-1->r100].
+    /// Like P[], P[r1010-0->r0101], or P[r101-0->r000-1->r100].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("plan::from_str: {str_in}");
-        let plan_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if plan_str.is_empty() {
+        if str_in2.is_empty() {
             return Err("SomePlan::from_str: Empty string?".to_string());
         }
 
-        let mut plan_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in plan_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "P" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SomePlan::from_str: Invalid string {plan_str}, should start with P["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SomePlan::from_str: Invalid string {plan_str}, should start with P["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "SomePlan::from_str: Invalid string, {plan_str} should end with ]"
-                ));
-            }
-            plan_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err(format!(
-                "SomePlan::from_str: Invalid string, {plan_str} should end with ]"
-            ));
+        if str_in2 == "P[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        if plan_str2.is_empty() {
-            return Ok(SomePlan::new(vec![]));
+        if str_in2[0..2] != *"P[" {
+            return Err("plan::from_str: string should begin with P[".to_string());
         }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("plan::from_str: string should end with ]".to_string());
+        }
+
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[2..(str_in2.len() - 1)];
 
         // Split string into <region>-<action number> tokens, plus region at end.
         let mut token = String::new();
         let mut token_list = Vec::<String>::new();
 
-        for chr in plan_str2.graphemes(true) {
+        for chr in token_str.graphemes(true) {
             if chr == ">" {
                 token_list.push(token);
                 token = String::new();
@@ -570,7 +540,7 @@ impl FromStr for SomePlan {
         //println!("token_list {:?}", token_list);
 
         if token_list.len() < 2 {
-            panic!("plan::from_str: invalid string {plan_str}");
+            panic!("plan::from_str: invalid string {token_str}");
         }
 
         // Split tokens between region and action, plus region at end.

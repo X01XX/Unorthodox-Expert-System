@@ -25,7 +25,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 use rayon::prelude::*;
 
@@ -1657,136 +1656,74 @@ impl FromStr for SessionData {
     ///   Zero, or more, SelectRegions, after the actions.
     ///   Zero, or one, StatesCorr, for each domain initial state. The default domain initial state is random.
     ///
-    /// "SD[DS[ DOMAIN[ACT[[XX/XX/XX/Xx], ACT[XX/XX/Xx/XX]]],
-    ///         DOMAIN[ACT[[XX/XX/XX/Xx/XX], ACT[XX/XX/Xx/XX/XX]]]],
-    ///       SR[RC[rx0x0x], 3],
-    ///       SR[RC[rx0x1x], -1],
-    ///       SC[s1010]]"
+    /// SD[DS[DOMAIN[
+    ///     ACT[[XX/XX/XX/Xx]],
+    ///     ACT[[XX/XX/Xx/XX]],
+    ///     ACT[[XX/Xx/XX/XX]],
+    ///     ACT[[Xx/XX/XX/XX]]]],
+    ///     SR[RC[r0X0X], 3],
+    ///     SR[RC[r0XX1], -1],
+    ///     SR[RC[rX111], -2],
+    ///     SC[s1011]]
     ///
     /// All the rules must use the same number of bits.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SessionData::from_str: {str_in}");
-        let ds_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if str_in.len() < 3 {
-            return Err("sessiondata::from_str: Invalid data".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 4 {
+            return Err("sessiondata::from_str: should be at least SD[]?".to_string());
         }
 
-        // Unwrap "SD[ ... ]", check that the brackets are balanced.
-        let mut ds_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in ds_str.graphemes(true).enumerate() {
-            if chr == "\n" {
-                continue;
-            }
-            if inx == 0 {
-                if chr != "S" {
-                    return Err(
-                        "SessionData::from_str: Invalid string, should start with SD[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 1 {
-                if chr != "D" {
-                    return Err(
-                        "SessionData::from_str: Invalid string, should start with SD[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 2 {
-                if chr != "[" {
-                    return Err(
-                        "SessionData::from_str: Invalid string, should start with SD[".to_string(),
-                    );
-                }
-                left += 1;
-                continue;
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("SessionData::from_str: Brackets not balanced.".to_string());
-                }
-            }
-
-            ds_str2.push_str(chr);
+        if str_in2[0..3] != *"SD[" {
+            return Err("sessiondata::from_str: string should begin with SD[".to_string());
         }
-        if left != right {
-            return Err("SessionData::from_str: Brackets not balanced.".to_string());
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("sessiondata::from_str: string should end with ]".to_string());
         }
-        ds_str2 = ds_str2.trim().to_string();
 
-        // Find tokens
-        let mut token_vec = vec![];
-        let mut token = String::new();
-        let mut left = 0;
-        let mut right = 0;
+        // Strip off id and surrounding brackets.
+        let token_str = &str_in2[3..(str_in2.len() - 1)];
 
-        for chr in ds_str2.graphemes(true) {
-            if chr == "\n" {
-                continue;
-            }
-            if left == right && (chr == "," || chr == " ") {
-                continue;
-            }
-            token.push_str(chr);
-
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if left == right && left > 0 && !token.is_empty() {
-                    token = token.trim().to_string();
-                    token_vec.push(token);
-                    token = String::new();
-                }
-            }
-        }
-        if token.is_empty() {
-            token = token.trim().to_string();
-            token_vec.push(token);
-        }
+        // Split string into DS, SR or SC tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokvec) => tokvec,
+            Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
+        };
 
         // Process tokens.
-        let mut sdx_opt: Option<SessionData> = None;
 
-        for tokenx in token_vec.iter() {
-            //println!("token {tokenx}");
+        // There must be a DomainStore..
+        let mut sdx_opt: Option<SessionData> = None;
+        for tokenx in tokens.iter() {
             if tokenx[0..3] == *"DS[" {
-                //println!("found SomeDomain {tokenx}");
                 match DomainStore::from_str(tokenx) {
                     Ok(dsx) => sdx_opt = Some(SessionData::new(dsx)),
-                    Err(errstr) => return Err(format!("SessionData::from_str: {errstr}")),
+                    Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
                 }
+                break;
             }
         }
 
-        let mut sdx = sdx_opt.expect("no DomainStore token found");
+        let mut sdx = sdx_opt.expect("No DomainStore token found");
 
-        for tokenx in token_vec.iter() {
+        for tokenx in tokens.iter() {
             if tokenx[0..3] == *"DS[" {
             } else if tokenx[0..3] == *"SR[" {
                 //println!("found SelectRegions {tokenx}");
                 match SelectRegions::from_str(tokenx) {
                     Ok(selx) => sdx.add_select(selx),
-                    Err(errstr) => return Err(format!("SessionData::from_str: {errstr}")),
+                    Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
                 }
             } else if tokenx[0..3] == *"SC[" {
                 //println!("found StatesCorr {tokenx}");
                 match StatesCorr::from_str(tokenx) {
                     Ok(stacx) => sdx.set_cur_states(&stacx),
-                    Err(errstr) => return Err(format!("SessionData::from_str: {errstr}")),
+                    Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
                 }
             } else {
-                return Err(format!("SessionData::from_str: Invalid token, {tokenx}"));
+                return Err(format!("sessiondata::from_str: Invalid token, {tokenx}"));
             }
         }
         // Finish up.
@@ -1857,7 +1794,7 @@ mod tests {
             ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[r01X1], -1],
             SR[RC[rX101], -2],
-            s0000
+            SC[s0000]
         ]",
         )?;
 
@@ -1899,7 +1836,7 @@ mod tests {
             ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[r0101], -1],
             SR[RC[r1001], -1],
-            s0000
+            SC[s0000]
         ]",
         )?;
 
@@ -1938,7 +1875,7 @@ mod tests {
             SR[RC[r01x1], -1],
             SR[RC[r10x1], -1],
             SR[RC[r101x], -1],
-            s0000
+            SC[s0000]
         ]",
         )?;
 
@@ -1973,7 +1910,7 @@ mod tests {
             ACT[[XX/Xx/XX/XX], s0000, s1111],
             ACT[[Xx/XX/XX/XX], s0000, s1111]]],
             SR[RC[rxx0x], -1],
-            s0000
+            SC[s0000]
         ]",
         )?;
 

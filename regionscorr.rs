@@ -15,7 +15,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for RegionsCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -44,6 +43,11 @@ impl PartialEq for RegionsCorr {
 impl Eq for RegionsCorr {}
 
 impl RegionsCorr {
+    /// Return a new RegionsCorr instance, given a RegionsStore.
+    pub fn new(regions: RegionStore) -> Self {
+        Self { regions }
+    }
+
     /// Return a new RegionsCorr instance, empty, with a specified capacity.
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);
@@ -370,56 +374,39 @@ impl FromStr for RegionsCorr {
     /// Like RC[], RC[r1010], or RC[r101, r1000].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("regionscorr::from_str: {str_in}");
-        let rc_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if rc_str.is_empty() {
-            return Err("RegionsCorr::from_str: Empty string?".to_string());
+        if str_in2.len() < 4 {
+            return Err("regionscorr::from_str: should be at least RC[]?".to_string());
         }
 
-        let mut rc_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in rc_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "R" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "RegionsCorr::from_str: Invalid string, {rc_str} should start with RC["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                rc_str2.push_str(chr);
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
-                ));
-            }
-            rc_str2.push_str(chr);
+        if str_in2[0..3] != *"RC[" {
+            return Err("regionscorr::from_str: string should begin with RC[".to_string());
         }
-        if !last_chr {
-            return Err(format!(
-                "RegionsCorr::from_str: Invalid string, {rc_str} should end with ]"
-            ));
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("regionscorr::from_str: string should end with ]".to_string());
         }
 
-        let regions = RegionStore::from_str(&rc_str2)?;
+        // Strip off id and surrounding brackets.
+        let token_str = &str_in2[3..(str_in2.len() - 1)];
 
-        Ok(Self { regions })
+        // Split string into SomeState tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("regionscorr::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
+
+        // Tally up tokens.
+        let mut regions = RegionStore::with_capacity(tokens.len());
+
+        for tokenx in tokens.into_iter() {
+            regions.push(
+                SomeRegion::from_str(&tokenx).expect("regionscorr::from_str: invalid region token"),
+            );
+        }
+
+        Ok(Self::new(regions))
     }
 }
 
@@ -577,18 +564,20 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let regst1 = RegionsCorr::from_str("RC[]")?;
-        println!("regst1 {regst1}");
-        assert!(format!("{regst1}") == "RC[]");
+        let regcor1_str = "RC[]";
+        let regcor1 = RegionsCorr::from_str(&regcor1_str)?;
+        println!("regcor1 {regcor1}");
+        assert!(format!("{regcor1}") == regcor1_str);
 
-        let regst2 = RegionsCorr::from_str("RC[r1010]")?;
-        println!("regst2 {regst2}");
-        assert!(format!("{regst2}") == "RC[r1010]");
+        let regcor2_str = "RC[r1010]";
+        let regcor2 = RegionsCorr::from_str(&regcor2_str)?;
+        println!("regcor2 {regcor2}");
+        assert!(format!("{regcor2}") == regcor2_str);
 
-        let regst3_str = "RC[r1010, r1111]";
-        let regst3 = RegionsCorr::from_str(&regst3_str)?;
-        println!("regst3 {regst3}");
-        assert!(format!("{regst3}") == regst3_str);
+        let regcor3_str = "RC[r101, r1000]";
+        let regcor3 = RegionsCorr::from_str(&regcor3_str)?;
+        println!("regcor3 {regcor3}");
+        assert!(format!("{regcor3}") == regcor3_str);
 
         Ok(())
     }

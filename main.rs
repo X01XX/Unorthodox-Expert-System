@@ -482,7 +482,16 @@ fn command_loop(sdx: &mut SessionData) {
     loop {
         let in_str = pause_for_input("\nPress Enter or type a command: ");
 
-        let cmd = tools::parse_input(&in_str);
+        let cmd = match tools::parse_input(&in_str) {
+            Ok(cmdvec) => cmdvec,
+            Err(errstr) => {
+                println!("{errstr}");
+                vec!["error".to_string()]
+            }
+        };
+        if cmd.len() == 1 && cmd[0] == "error" {
+            continue;
+        }
 
         // Default command, just press Enter
         if cmd.is_empty() {
@@ -602,27 +611,27 @@ fn command_loop(sdx: &mut SessionData) {
             "to" => {
                 match do_to_region_command(sdx, &cmd) {
                     Ok(()) => (),
-                    Err(error) => println!("{error}")
+                    Err(error) => println!("{error}"),
                 }
                 pause_for_input("\nPress Enter to continue: ");
                 return;
-            },
+            }
             "to-rc" => {
                 match do_to_rc_command(sdx, &cmd) {
                     Ok(()) => (),
-                    Err(error) => println!("{error}")
+                    Err(error) => println!("{error}"),
                 }
                 pause_for_input("\nPress Enter to continue: ");
                 return;
-            },
+            }
             "step" => {
                 match do_step_command(sdx, &cmd) {
                     Ok(()) => (),
-                    Err(error) => println!("{error}")
+                    Err(error) => println!("{error}"),
                 }
                 pause_for_input("\nPress Enter to continue: ");
                 return;
-            },
+            }
             _ => {
                 println!("\nDid not understand command: {cmd:?}");
             }
@@ -1033,11 +1042,16 @@ fn step_by_step(
             ))
         };
 
-        let cmd = tools::parse_input(&input_str);
+        let cmd = match tools::parse_input(&input_str) {
+            Ok(strvec) => strvec,
+            Err(errstr) => {
+                println!("{errstr}");
+                vec![]
+            }
+        };
 
-        // Default command, just press Enter
+        // No input, or error.
         if cmd.is_empty() {
-            // Process needs
             continue;
         }
 
@@ -1782,7 +1796,10 @@ mod tests {
         sdx.print();
 
         // Command that should fail.
-        let cmd = tools::parse_input("to-rc RC[s1110, X_XXXX]");
+        let cmd = match tools::parse_input("to-rc RC[s1110, X_XXXX]") {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(errstr),
+        };
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
                 sdx.print();
@@ -1798,7 +1815,10 @@ mod tests {
 
         // Change domain 0 only.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = tools::parse_input("to-rc RC[s1001, rX_XXXX]");
+        let cmd = match tools::parse_input("to-rc RC[s1001, rX_XXXX]") {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(errstr),
+        };
 
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
@@ -1810,7 +1830,10 @@ mod tests {
 
         // Change domain 1 only.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = tools::parse_input("to-rc RC[rXXXX, s1_1010]");
+        let cmd = match tools::parse_input("to-rc RC[rXXXX, s1_1010]") {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(errstr),
+        };
 
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {
@@ -1822,7 +1845,10 @@ mod tests {
 
         // Change both domains.
         sdx.set_cur_states(&StatesCorr::from_str("SC[s0001, s0_1010]")?);
-        let cmd = tools::parse_input("to-rc RC[s1001, s1_1010]");
+        let cmd = match tools::parse_input("to-rc RC[s1001, s1_1010]") {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(errstr),
+        };
 
         match do_to_rc_command(&mut sdx, &cmd) {
             Ok(()) => {

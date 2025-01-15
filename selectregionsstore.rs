@@ -11,7 +11,6 @@ use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for SelectRegionsStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -334,96 +333,45 @@ impl FromStr for SelectRegionsStore {
     /// Like [], [SR[RC[r1010], 1]], or [SR[RC[r101, r100], -1], SR[RC[r111, r101], 0]].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("selectregionsstore::from_str: {str_in}");
-        let src_str = str_in.trim();
-
-        if src_str.is_empty() {
-            return Err("SelectRegionsStore::from_str: Empty string?".to_string());
+        let str_in2 = str_in.trim();
+        if str_in2.len() < 2 {
+            return Err("selectregionstore::from_str: string should be at least = []".to_string());
         }
 
-        // Unwrap "SRS[ ... ]", check that the brackets are balanced.
-        let mut src_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in src_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    left += 1;
-                    continue;
-                } else {
-                    return Err(format!(
-                        "SelectRegionsStore::from_str: Invalid string, {src_str} should start with ["
-                    ));
-                }
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err(format!(
-                        "SelectRegionsStore::from_str: Invalid string, {src_str}"
-                    ));
-                }
-            }
-
-            src_str2.push_str(chr);
-        }
-        if left != right {
-            return Err(format!(
-                "SelectRegionsStore::from_str: Invalid string, {src_str}"
-            ));
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        // Remove last right-bracket, balancing first left bracket.
-        src_str2.remove(src_str2.len() - 1);
-
-        // Split string into <SelectRegions> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
-        left = 0;
-        right = 0;
-
-        for chr in src_str2.graphemes(true) {
-            if token.is_empty() && (chr == " " || chr == ",") {
-                continue;
-            }
-
-            token.push_str(chr);
-
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err(format!(
-                        "SelectRegionsStore::from_str: Invalid string, {src_str}"
-                    ));
-                }
-            }
-            if left == right && left > 0 {
-                token_list.push(token);
-                token = String::new();
-                left = 0;
-                right = 0;
-            }
+        if str_in2[0..1] != *"[" {
+            return Err("selectregionsstore::from_str: string should begin with [".to_string());
         }
-        //println!("token_list {:?}", token_list);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("selectregionsstore::from_str: string should end with ]".to_string());
+        }
+
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
+        println!("token_str: {token_str}");
+
+        // Split string into SelectRegion tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("selectregionsstore::from_str: {errstr}")),
+        };
+
+        println!("tokens {:?}", tokens);
 
         // Tally up tokens.
         let mut sregions = Vec::<SelectRegions>::new();
 
-        for tokenx in token_list.into_iter() {
+        for tokenx in tokens.into_iter() {
             match SelectRegions::from_str(&tokenx) {
                 Ok(regx) => sregions.push(regx),
-                Err(errstr) => return Err(format!("SelectRegionsStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("selectregionsstore::from_str: {errstr}")),
             }
         }
-        let ret_store = SelectRegionsStore::new(sregions);
 
-        Ok(ret_store)
+        Ok(SelectRegionsStore::new(sregions))
     }
 }
 
@@ -529,6 +477,7 @@ mod tests {
                 assert!(errstr == "SR[RC[rX111], +2] is a superset of SR[RC[r0111], +2]");
             }
         }
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -769,5 +718,23 @@ mod tests {
         assert!(frags.len() == 7);
 
         check_fragments(&srs1, &frags)
+    }
+
+    #[test]
+    fn from_str() -> Result<(), String> {
+        let srs1 = SelectRegionsStore::from_str("[]")?;
+        println!("srs1 {srs1}");
+        assert!(format!("{srs1}") == "[]");
+
+        let srs2 = SelectRegionsStore::from_str("[SR[RC[r1010], +1]]")?;
+        println!("srs2 {srs2}");
+        assert!(format!("{srs2}") == "[SR[RC[r1010], +1]]");
+
+        let srs3 = SelectRegionsStore::from_str("[SR[RC[r101, r100], -1], SR[RC[r111, r101], 0]]")?;
+        println!("srs3 {srs3}");
+        assert!(format!("{srs3}") == "[SR[RC[r101, r100], -1], SR[RC[r111, r101], +0]]");
+
+        //assert!(1 == 2);
+        Ok(())
     }
 }

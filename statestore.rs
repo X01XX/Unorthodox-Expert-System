@@ -3,7 +3,7 @@
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::state::SomeState;
-use crate::tools::{vec_refs, vec_string, AvecRef};
+use crate::tools::{self, vec_refs, vec_string, AvecRef};
 
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};
@@ -11,8 +11,6 @@ use std::slice::Iter;
 use std::str::FromStr;
 
 use std::fmt;
-
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for StateStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -122,71 +120,42 @@ impl FromStr for StateStore {
     /// Like [] or [s1010, s0101].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("statestore::from_str: {str_in}");
-        let statestore_str = str_in.trim();
-
-        if statestore_str.is_empty() {
-            return Err("StateStore::from_str: Empty string?".to_string());
+        let str_in2 = str_in.trim();
+        if str_in2.len() < 2 {
+            return Err("statestore::from_str: string should be at least = []".to_string());
         }
 
-        let mut statestore_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in statestore_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err("Invalid string, should start with [".to_string());
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                continue;
-            }
-
-            if last_chr {
-                return Err("Invalid string, should end with ]".to_string());
-            }
-            statestore_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err("Invalid string, should end with ]".to_string());
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        if statestore_str2.is_empty() {
-            return Ok(StateStore::new(vec![]));
+        if str_in2[0..1] != *"[" {
+            return Err("statestore::from_str: string should begin with [".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("statestore::from_str: string should end with ]".to_string());
         }
 
-        // Split string into <region> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
 
-        for chr in statestore_str2.graphemes(true) {
-            if chr == "," || chr == " " {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-            } else {
-                token.push_str(chr);
-            }
-        }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
-        }
+        // Split string into SomeState tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("statestore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
         // Tally up tokens.
-        let mut regions = Vec::<SomeState>::new();
+        let mut state_vec = Vec::<SomeState>::with_capacity(tokens.len());
 
-        for tokenx in token_list.into_iter() {
-            regions.push(SomeState::from_str(&tokenx).expect("Invalid region token"));
+        for tokenx in tokens.into_iter() {
+            state_vec.push(
+                SomeState::from_str(&tokenx).expect("statestore::from_str: invalid region token"),
+            );
         }
-        let ret_statestore = StateStore::new(regions);
-        //println!("ret_statestore {ret_statestore}");
 
-        Ok(ret_statestore)
+        Ok(Self::new(state_vec))
     }
 }
 
@@ -228,6 +197,7 @@ mod tests {
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == stast3_str);
 
+        //assert!(1 == 2);
         Ok(())
     }
 }

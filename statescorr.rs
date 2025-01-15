@@ -14,8 +14,6 @@ use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
 
-use unicode_segmentation::UnicodeSegmentation;
-
 impl fmt::Display for StatesCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "SC{}", self.states)
@@ -99,57 +97,34 @@ impl FromStr for StatesCorr {
     /// Like SC[], SC[s1010], or SC[s101, s100].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("statescorr::from_str: {str_in}");
-        let sc_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if sc_str.is_empty() {
-            return Err("StatesCorr::from_str: Empty string?".to_string());
+        // Strip off surrounding id and brackets.
+        if str_in2.len() < 4 {
+            return Err(
+                "statescorr::from_str: string should be at least = SC[<one RegionsCorr, value>]"
+                    .to_string(),
+            );
         }
 
-        let mut sc_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in sc_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "S" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "StatesCorr::from_str: Invalid string, {sc_str} should start with SC["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "StatesCorr::from_str: Invalid string, {sc_str} should start with SC["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                sc_str2.push_str(chr);
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "StatesCorr::from_str: Invalid string, {sc_str} should end with ]"
-                ));
-            }
-            sc_str2.push_str(chr);
+        if str_in2 == "SC[]" {
+            return Ok(Self::with_capacity(1));
         }
-        if !last_chr {
-            return Err(format!(
-                "StatesCorr::from_str: Invalid string, {sc_str} should end with ]"
-            ));
+
+        if str_in2[0..3] != *"SC[" {
+            return Err("statescorr::from_str: string should begin with SC[".to_string());
         }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("statescorr::from_str: string should end with ]".to_string());
+        }
+
+        // Strip off id.
+        let token_str = &str_in2[2..];
 
         //println!("sc_str2 {sc_str2}");
-        match StateStore::from_str(&sc_str2) {
+        match StateStore::from_str(token_str) {
             Ok(states) => Ok(Self { states }),
-            Err(errstr) => Err(format!("StatesCorr::from_str: {errstr}")),
+            Err(errstr) => Err(format!("statescorr::from_str: {errstr}")),
         }
     }
 }
@@ -160,15 +135,17 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let stast1 = StatesCorr::from_str("SC[]")?;
+        let stast1_str = "SC[]";
+        let stast1 = StatesCorr::from_str(&stast1_str)?;
         println!("stast1 {stast1}");
-        assert!(format!("{stast1}") == "SC[]");
+        assert!(format!("{stast1}") == stast1_str);
 
-        let stast2 = StatesCorr::from_str("SC[s1010]")?;
+        let stast2_str = "SC[s1010]";
+        let stast2 = StatesCorr::from_str(&stast2_str)?;
         println!("stast2 {stast2}");
-        assert!(format!("{stast2}") == "SC[s1010]");
+        assert!(format!("{stast2}") == stast2_str);
 
-        let stast3_str = "SC[s1010, s1111]";
+        let stast3_str = "SC[s101, s100]";
         let stast3 = StatesCorr::from_str(&stast3_str)?;
         println!("stast3 {stast3}");
         assert!(format!("{stast3}") == stast3_str);

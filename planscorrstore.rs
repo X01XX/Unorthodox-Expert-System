@@ -11,7 +11,6 @@ use std::fmt;
 use std::ops::Index;
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlansCorrStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -261,126 +260,42 @@ impl Index<usize> for PlansCorrStore {
 impl FromStr for PlansCorrStore {
     type Err = String;
     /// Return a PlansCorrStore instance, given a string representation.
-    /// Like PCS[], PCS[PC[P[r001-0>r101]]] or PCS[PC[P[r001-0>r101]], PC[P[r101-0>r101]]].
+    /// Like PCS[], PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 1]] or PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]]], PC[[P[r00-0->r01], P[r000-1->r100]], 1]].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planscorrstore::from_str: {pcs_str}");
-        let pcs_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if pcs_str.is_empty() {
-            return Err("PlansCorrStore::from_str: Empty string?".to_string());
+        // Strip off id and surrounding brackets.
+        if str_in2.len() < 5 {
+            return Err(
+                "planscorrstore::from_str: string should be at least = RCS[<one RegionsCorr>]"
+                    .to_string(),
+            );
         }
 
-        // Unwrap "PCS[...]", check that brackets are balanced.
-        let mut pcs_str2 = String::new();
-        let mut num_left = 0;
-        let mut num_right = 0;
-        let mut last_chr = String::new();
-
-        for (inx, chr) in pcs_str.graphemes(true).enumerate() {
-            if chr == " " {
-                continue;
-            }
-            if inx == 0 {
-                if chr == "P" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorrStore::from_str: Invalid string, {pcs_str} should start with PCS["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorrStore::from_str: Invalid string, {pcs_str} should start with PCS["
-                    ));
-                }
-            }
-            if inx == 2 {
-                if chr == "S" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorrStore::from_str: Invalid string, {pcs_str} should start with PCS["
-                    ));
-                }
-            }
-            if inx == 3 {
-                if chr == "[" {
-                    num_left += 1;
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlansCorrStore::from_str: Invalid string, {pcs_str} should start with PCS["
-                    ));
-                }
-            }
-            if chr == "[" {
-                num_left += 1;
-            }
-            if chr == "]" {
-                num_right += 1;
-            }
-            if num_right > num_left {
-                return Err(format!(
-                    "PlansCorrStore::from_str: Invalid string, {pcs_str}, brackets are not balanced."
-                ));
-            }
-            last_chr = chr.to_string();
-            pcs_str2.push_str(chr);
+        if str_in2[0..4] != *"PCS[" {
+            return Err("planscorrstore::from_str: string should begin with PCS[".to_string());
         }
-        if num_right != num_left {
-            return Err(format!(
-                "PlansCorrStore::from_str: Invalid string, {pcs_str}, brackets are not balanced."
-            ));
-        }
-        if last_chr != "]" {
-            return Err(format!(
-                "PlansCorrStore::from_str: Invalid string, {pcs_str} should end with ]"
-            ));
-        }
-        // Remove last right-bracket, balancing PCS[.
-        pcs_str2.remove(pcs_str2.len() - 1);
-        //println!("pcs_str2 {pcs_str2}");
-
-        pcs_str2 = pcs_str2.trim().to_string();
-
-        // Process contents of PCS[], if any.
-        let mut pcs = PlansCorrStore::new(vec![]);
-
-        let mut pc_str = String::new();
-        let mut num_left = 0;
-        let mut num_right = 0;
-
-        for chr in pcs_str2.graphemes(true) {
-            if chr == "[" {
-                num_left += 1;
-            }
-
-            if chr == "]" {
-                num_right += 1;
-            }
-
-            if (chr == "," || chr == " ") && num_left == num_right {
-                //println!("pc_str {pc_str}");
-                match PlansCorr::from_str(&pc_str) {
-                    Ok(pcx) => pcs.push(pcx),
-                    Err(errstr) => return Err(format!("PlansCorrStore::from_str: {errstr}")),
-                }
-                pc_str = String::new();
-                continue;
-            }
-
-            pc_str.push_str(chr);
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("planscorrstore::from_str: string should end with ]".to_string());
         }
 
-        if pc_str.is_empty() {
-        } else {
-            match PlansCorr::from_str(&pc_str) {
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[4..(str_in2.len() - 1)];
+
+        // Split string into SomeState tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("plancorrstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
+
+        let mut pcs = Self::new(Vec::<PlansCorr>::with_capacity(tokens.len()));
+
+        for tokx in tokens.iter() {
+            match PlansCorr::from_str(tokx) {
                 Ok(pcx) => pcs.push(pcx),
-                Err(errstr) => return Err(format!("PlansCorrStore::from_str: {errstr}")),
+                Err(errstr) => return Err(format!("planscorrstore::from_str: {errstr}")),
             }
         }
 
@@ -404,19 +319,23 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let pcs1 = PlansCorrStore::from_str("PCS[]")?;
+        let pcs1_str = "PCS[]";
+        let pcs1 = PlansCorrStore::from_str(&pcs1_str)?;
         println!("pcs1 {pcs1}");
+        assert!(format!("{pcs1}") == pcs1_str);
 
-        let pcs2 = PlansCorrStore::from_str("PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0]]")?;
+        let pcs2_str = "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 1]]";
+        let pcs2 = PlansCorrStore::from_str(&pcs2_str)?;
         println!("pcs2 {pcs2}");
-        assert!(pcs2.len() == 1);
+        assert!(format!("{pcs2}") == pcs2_str);
 
         let pcs3_str =
-            "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]], 0], PC[[P[r00-0->r01], P[r000-1->r100]], 0]]";
+            "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]]], PC[[P[r00-0->r01], P[r000-1->r100]], 1]]";
         let pcs3 = PlansCorrStore::from_str(&pcs3_str)?;
         println!("pcs3 {pcs3}");
-        assert!(format!("{pcs3}") == "PCS[PC[[P[r0X-0->r00], P[r0X1-1->r000]]], PC[[P[r00-0->r01], P[r000-1->r100]]]]");
+        assert!(format!("{pcs3}") == pcs3_str);
 
+        //assert!(1 == 2);
         Ok(())
     }
 

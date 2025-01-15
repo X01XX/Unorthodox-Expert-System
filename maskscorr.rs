@@ -12,7 +12,6 @@ use std::fmt;
 use std::ops::{Index, IndexMut};
 use std::slice::Iter;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for MasksCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -153,60 +152,32 @@ impl tools::CorrespondingItems for MasksCorr {
 impl FromStr for MasksCorr {
     type Err = String;
     /// Return a MasksCorr, given a string representation.
-    /// Like SC[], SC[s1010], or SC[s101, s100].
+    /// Like MC[], MC[m1010], or MC[m101, m100].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("maskscorr::from_str: {str_in}");
-        let mc_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if mc_str.is_empty() {
-            return Err("MasksCorr::from_str: Empty string?".to_string());
+        if str_in2.len() < 4 {
+            return Err("maskscorr::from_str: string should be at least = MC[]".to_string());
         }
 
-        let mut mc_str2 = String::new();
-        let mut last_chr = false;
-
-        for (inx, chr) in mc_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "M" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "MasksCorr::from_str: Invalid string, {mc_str} should mskrt with MC["
-                    ));
-                }
-            }
-            if inx == 1 {
-                if chr == "C" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "MasksCorr::from_str: Invalid string, {mc_str} should mskrt with MC["
-                    ));
-                }
-            }
-            if chr == "]" {
-                last_chr = true;
-                mc_str2.push_str(chr);
-                continue;
-            }
-
-            if last_chr {
-                return Err(format!(
-                    "MasksCorr::from_str: Invalid string, {mc_str} should end with ]"
-                ));
-            }
-            mc_str2.push_str(chr);
-        }
-        if !last_chr {
-            return Err(format!(
-                "MasksCorr::from_str: Invalid string, {mc_str} should end with ]"
-            ));
+        if str_in2 == "MC[]" {
+            return Ok(Self::with_capacity(1));
         }
 
-        //println!("mc_str2 {mc_str2}");
-        match MaskStore::from_str(&mc_str2) {
+        if str_in2[0..3] != *"MC[" {
+            return Err("maskscorr::from_str: string should begin with MC[".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("maskscorr::from_str: string should end with ]".to_string());
+        }
+
+        // Strip off the id.
+        let token_str = &str_in2[2..];
+
+        match MaskStore::from_str(token_str) {
             Ok(masks) => Ok(Self { masks }),
-            Err(errstr) => Err(format!("MasksCorr::from_str: {errstr}")),
+            Err(errstr) => Err(format!("maskscorr::from_str: {errstr}")),
         }
     }
 }
@@ -232,7 +203,7 @@ mod tests {
         println!("mskst2 {mskst2}");
         assert!(format!("{mskst2}") == "MC[m1010]");
 
-        let mskst3_str = "MC[m1010, m1111]";
+        let mskst3_str = "MC[m101, m100]";
         let mskst3 = MasksCorr::from_str(&mskst3_str)?;
         println!("mskst3 {mskst3}");
         assert!(format!("{mskst3}") == mskst3_str);

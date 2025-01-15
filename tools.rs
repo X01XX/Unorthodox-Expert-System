@@ -298,13 +298,17 @@ pub fn remove_comments(str_in: &str) -> String {
 
 /// Parse an input string into tokens.
 /// Separators are spaces and commas, between groups of balanced (or none) brackets.
-pub fn parse_input(str_in: &str) -> Vec<String> {
+pub fn parse_input(str_in: &str) -> Result<Vec<String>, String> {
+    //println!("tools::parse_input: {str_in}");
     let mut left = 0;
     let mut right = 0;
     let mut tokens = vec![];
     let mut tmp_token = String::new();
 
     for chr in str_in.chars() {
+        if chr == '\n' {
+            continue;
+        }
         if chr == '[' {
             left += 1;
             tmp_token.push(chr);
@@ -313,6 +317,9 @@ pub fn parse_input(str_in: &str) -> Vec<String> {
         if chr == ']' {
             right += 1;
             tmp_token.push(chr);
+            if right > left {
+                return Err("tools::parse_input: unbalanced brackets".to_string());
+            }
             continue;
         }
 
@@ -329,12 +336,15 @@ pub fn parse_input(str_in: &str) -> Vec<String> {
 
         tmp_token.push(chr);
     }
+    if left != right {
+        return Err("tools::parse_input: unbalanced brackets".to_string());
+    }
     if tmp_token.is_empty() {
     } else {
         tokens.push(tmp_token);
     }
 
-    tokens
+    Ok(tokens)
 }
 
 #[cfg(test)]
@@ -345,14 +355,21 @@ mod tests {
 
     #[test]
     fn parse_input() -> Result<(), String> {
-        let tokens = super::parse_input(&"arg1, arg2, arg3".to_string());
+        let tokens = match super::parse_input(&"arg1, arg2, arg3".to_string()) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(errstr),
+        };
         println!("tokens {:?}", tokens);
         assert!(tokens.len() == 3);
         assert!(tokens[0] == "arg1");
         assert!(tokens[1] == "arg2");
         assert!(tokens[2] == "arg3");
 
-        let tokens = super::parse_input(&"arg1, [arg2, arg3], [arg4, [arg5, arg6]], ".to_string());
+        let tokens =
+            match super::parse_input(&"arg1, [arg2, arg3], [arg4, [arg5, arg6]], ".to_string()) {
+                Ok(tokenvec) => tokenvec,
+                Err(errstr) => return Err(errstr),
+            };
         println!("tokens {:?}", tokens);
         assert!(tokens.len() == 3);
         assert!(tokens[0] == "arg1");

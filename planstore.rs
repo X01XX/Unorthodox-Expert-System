@@ -14,7 +14,6 @@ use std::fmt;
 use std::ops::Index;
 use std::slice::{Iter, IterMut};
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 impl fmt::Display for PlanStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -207,80 +206,47 @@ impl IntoIterator for PlanStore {
 impl FromStr for PlanStore {
     type Err = String;
     /// Return a planstore, given a string representation.
-    /// Like [], [P[r001-0>r101]] or [P[r001-0>r101], P[r101-0>r101]].
+    /// Like [], [P[r001-0->r101]] or [P[r001-0->r101], P[r101-0->r101]].
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("planstore::from_str: {ps_str}");
-        let ps_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if ps_str.is_empty() {
-            return Err("PlansStore::from_str: Empty string?".to_string());
+        if str_in2.len() < 2 {
+            return Err("planstore::from_str: string should be at least = []".to_string());
         }
 
-        let mut ps_str2 = String::new();
-        let mut last_chr = String::new();
-
-        for (inx, chr) in ps_str.graphemes(true).enumerate() {
-            if inx == 0 {
-                if chr == "[" {
-                    continue;
-                } else {
-                    return Err(format!(
-                        "PlanStore::from_str: Invalid string, {ps_str} should start with ["
-                    ));
-                }
-            }
-
-            last_chr = chr.to_string();
-            ps_str2.push_str(chr);
-        }
-        if last_chr != "]" {
-            return Err(format!(
-                "PlanStore::from_str: Invalid string, {ps_str} should end with ]"
-            ));
+        if str_in2 == "[]" {
+            return Ok(Self::new(vec![]));
         }
 
-        if ps_str2.is_empty() {
-            return Ok(PlanStore::new(vec![]));
+        if str_in2[0..1] != *"[" {
+            return Err("planstore::from_str: string should begin with [".to_string());
+        }
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("planstore::from_str: string should end with ]".to_string());
         }
 
-        // Remove last ] character.
-        ps_str2.remove(ps_str2.len() - 1);
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[1..(str_in2.len() - 1)];
 
-        // Split string into <plan> tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
+        // Split string into SomePlan tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("planstore::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
-        for chr in ps_str2.graphemes(true) {
-            if chr == "," || chr == " " {
-                if token.is_empty() {
-                } else {
-                    token_list.push(token);
-                    token = String::new();
-                }
-            } else {
-                token.push_str(chr);
-            }
-        }
-        if token.is_empty() {
-        } else {
-            token_list.push(token);
-        }
-        //println!("token_list {:?}", token_list);
+        // Convert tokens.
+        let mut plans = Vec::<SomePlan>::with_capacity(tokens.len());
 
-        // println!("token_list2 {:?}", token_list2);
-
-        // Tally up tokens.
-        let mut plans = Vec::<SomePlan>::new();
-
-        for tokenx in token_list.into_iter() {
+        for tokenx in tokens.into_iter() {
             match SomePlan::from_str(&tokenx) {
                 Ok(regx) => plans.push(regx),
                 Err(errstr) => return Err(format!("PlanStore::from_str: {errstr}")),
             }
         }
-        let ret_planstore = PlanStore::new(plans);
 
-        Ok(ret_planstore)
+        Ok(Self::new(plans))
     }
 }
 
@@ -310,19 +276,22 @@ mod tests {
 
     #[test]
     fn from_str() -> Result<(), String> {
-        let plnst1 = PlanStore::from_str("[]")?;
+        let plnst1_str = "[]";
+        let plnst1 = PlanStore::from_str(&plnst1_str)?;
         println!("plnst1 {plnst1}");
-        assert!(format!("{plnst1}") == "[]");
+        assert!(format!("{plnst1}") == plnst1_str);
 
-        let plnst2 = PlanStore::from_str("[P[r0000-0->r1111]]")?;
+        let plnst2_str = "[P[r001-0->r101]]";
+        let plnst2 = PlanStore::from_str(&plnst2_str)?;
         println!("plnst2 {plnst2}");
-        assert!(format!("{plnst2}") == "[P[r0000-0->r1111]]");
+        assert!(format!("{plnst2}") == plnst2_str);
 
-        let plnst3_str = "[P[r0000-0->r1111], P[r0000-0->r1100]]";
+        let plnst3_str = "[P[r001-0->r101], P[r101-0->r101]]";
         let plnst3 = PlanStore::from_str(&plnst3_str)?;
         println!("plnst3 {plnst3}");
         assert!(format!("{plnst3}") == plnst3_str);
 
+        //assert!(1 == 2);
         Ok(())
     }
 }

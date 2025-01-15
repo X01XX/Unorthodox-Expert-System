@@ -37,7 +37,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use unicode_segmentation::UnicodeSegmentation;
 
 const CLEANUP_TRIGGER: usize = 5;
 
@@ -2637,121 +2636,42 @@ impl FromStr for SomeAction {
     /// There must be at least one, non-empty, rulestore.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeAction::from_str: {str_in}");
-        let src_str = str_in.trim();
+        let str_in2 = str_in.trim();
 
-        if src_str.is_empty() {
-            return Err("SomeAction::from_str: Empty string?".to_string());
+        // Strip off id and surrounding brackets.
+        if str_in2.len() < 5 {
+            return Err(
+                "action::from_str: string should be at least = ACT[<one RulesStore>]".to_string(),
+            );
         }
 
-        // Unwrap "ACT[...]". Check that the brackets are balanced.
-        let mut src_str2 = String::new();
-        let mut left = 0;
-        let mut right = 0;
-
-        for (inx, chr) in src_str.graphemes(true).enumerate() {
-            if chr == "\n" {
-                continue;
-            }
-            if inx == 0 {
-                if chr != "A" {
-                    return Err(
-                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 1 {
-                if chr != "C" {
-                    return Err(
-                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 2 {
-                if chr != "T" {
-                    return Err(
-                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
-                    );
-                }
-                continue;
-            }
-            if inx == 3 {
-                if chr != "[" {
-                    return Err(
-                        "SomeAction::from_str: Invalid string, should start with ACT[".to_string(),
-                    );
-                }
-                left += 1;
-                continue;
-            }
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("SomeAction::from_str: Brackets not balanced.".to_string());
-                }
-            }
-
-            src_str2.push_str(chr);
+        if str_in2[0..4] != *"ACT[" {
+            return Err("action::from_str: string should begin with ACT[".to_string());
         }
-        if left != right {
-            return Err("SomeAction::from_str: Brackets not balanced.".to_string());
+        if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
+            return Err("action::from_str: string should end with ]".to_string());
         }
 
-        // Remove last right-bracket, balancing first left bracket.
-        src_str2.remove(src_str2.len() - 1);
+        // Strip off surrounding brackets.
+        let token_str = &str_in2[4..(str_in2.len() - 1)];
 
-        // Split substring into tokens.
-        let mut token = String::new();
-        let mut token_list = Vec::<String>::new();
-        left = 0;
-        right = 0;
+        // Split string into RuleStore tokens.
+        let tokens = match tools::parse_input(token_str) {
+            Ok(tokenvec) => tokenvec,
+            Err(errstr) => return Err(format!("action::from_str: {errstr}")),
+        };
+        //println!("tokens {:?}", tokens);
 
-        for chr in src_str2.graphemes(true) {
-            if left == right && (chr == "," || chr == " ") {
-                if left == right && !token.is_empty() {
-                    token_list.push(token);
-                    token = String::new();
-                }
-                continue;
-            }
-
-            token.push_str(chr);
-
-            if chr == "[" {
-                left += 1;
-            }
-            if chr == "]" {
-                right += 1;
-                if right > left {
-                    return Err("SomeAction::from_str: Brackets not balanced.".to_string());
-                }
-            }
-            if left == right && left > 0 {
-                token_list.push(token);
-                token = String::new();
-                left = 0;
-                right = 0;
-            }
-        }
-        if !token.is_empty() {
-            token_list.push(token);
-        }
-        //println!("token_list {:?}", token_list);
-
-        let mut rs_vec = Vec::<RuleStore>::new();
+        let mut rs_vec = Vec::<RuleStore>::with_capacity(tokens.len());
 
         // Generate vector of RuleStores for action.
-        for tokenx in token_list.iter() {
+        for tokenx in tokens.iter() {
             //println!("rulestores for an action: {tokenx}");
             if tokenx[0..1] == *"[" {
                 match RuleStore::from_str(tokenx) {
                     Ok(rulstrx) => {
                         if rulstrx.is_empty() {
-                            return Err("SomeAction::from_str: Empty RuleStore.".to_string());
+                            return Err("action::from_str: Empty RuleStore.".to_string());
                         }
                         rs_vec.push(rulstrx);
                     }
@@ -2760,20 +2680,18 @@ impl FromStr for SomeAction {
             } else if tokenx[0..1] == *"s" {
                 continue;
             } else {
-                return Err(format!(
-                    "SomeAction::from_str: Unrecognized token, {tokenx}"
-                ));
+                return Err(format!("action::from_str: Unrecognized token, {tokenx}"));
             }
         }
 
         if rs_vec.is_empty() {
-            return Err("SomeAction::from_str: No RuleStore.".to_string());
+            return Err("action::from_str: No RuleStore.".to_string());
         }
         // Init the action.
         let mut actx = SomeAction::new(rs_vec);
 
         // Generate samples for each.
-        for tokenx in token_list.iter() {
+        for tokenx in tokens.iter() {
             //println!("rulestores for an action: {tokenx}");
             if tokenx[0..1] == *"[" {
                 continue;
@@ -2788,25 +2706,25 @@ impl FromStr for SomeAction {
                 //println!("tokeny {tokeny} num_str {num_str}");
 
                 match SomeState::from_str(&tokeny) {
-                    Ok(stax) => match num_str.parse::<usize>() {
-                        Ok(num) => {
-                            //println!("num times = {num}");
-                            if num > 0 {
-                                for _ in 0..num {
-                                    actx.take_action_arbitrary(&stax);
+                    Ok(stax) => {
+                        match num_str.parse::<usize>() {
+                            Ok(num) => {
+                                //println!("num times = {num}");
+                                if num > 0 {
+                                    for _ in 0..num {
+                                        actx.take_action_arbitrary(&stax);
+                                    }
+                                } else {
+                                    return Err(format!("action::from_str: Did not understand count in token {tokenx}"));
                                 }
-                            } else {
-                                return Err(format!("Did not understand count in token {tokenx}"));
                             }
+                            Err(errstr) => return Err(errstr.to_string()),
                         }
-                        Err(errstr) => return Err(errstr.to_string()),
-                    },
+                    }
                     Err(errstr) => return Err(errstr),
                 }
             } else {
-                return Err(format!(
-                    "SomeAction::from_str: Unrecognized token, {tokenx}"
-                ));
+                return Err(format!("action::from_str: Unrecognized token, {tokenx}"));
             }
         }
 
@@ -3003,20 +2921,10 @@ mod tests {
     /// Test action definition from string to instance, then instance to string(2), then string(2) to instance.
     fn from_str() -> Result<(), String> {
         let actx_str = "ACT[[XX_10/XX/XX/XX], [Xx_00/XX/XX/XX]]";
-        println!("actx_str {actx_str}");
-
         let actx = SomeAction::from_str(&actx_str)?; // String to instance.
-
-        let actx_str2 = actx.formatted_def(); // Instance to string(2).
-        println!("actxstr2 {actx_str2}",);
-
-        match SomeAction::from_str(&actx_str2) {
-            // String(2) to instance.
-            Ok(acty) => {
-                assert!(acty == actx);
-                Ok(())
-            }
-            Err(errstr) => Err(errstr),
-        }
+        println!("actx {}", actx.formatted_def());
+        assert!(actx_str == actx.formatted_def());
+        //assert!(1 == 2);
+        Ok(())
     }
 }
