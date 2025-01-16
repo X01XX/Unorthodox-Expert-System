@@ -388,42 +388,28 @@ impl SomeRule {
         debug_assert!(self.num_bits() == wanted.num_bits());
         debug_assert!(!wanted.any_x_to_x_not());
 
-        self.sequence_blocks_changes(other, wanted) && other.sequence_blocks_changes(self, wanted)
+        self.sequence_blocks_all_wanted_changes(other, wanted) && other.sequence_blocks_all_wanted_changes(self, wanted)
     }
 
     /// Return true if all wanted changes in rule are blocked by running a second rule.
     ///
-    /// The result region of the first rule may not intersect the initial region of the second rule.
-    ///
-    /// For a change to pass from one rule through a second rule:
-    ///    A wanted 0->1 change in first rule should correspond to a 1 result in the second rule.
-    ///    A wanted 1->0 change in first rule should correspond to a 0 result in the second rule.
-    pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
+    /// The result region of the first rule may, or may not, intersect the initial region of the second rule.
+    pub fn sequence_blocks_all_wanted_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
         //println!(
-        //    "sequence_blocks_change: {} to {} change wanted {}",
+        //    "rule::sequence_blocks_all_wanted_change: {} to {} change wanted {}",
         //    self, other, wanted
         //);
         debug_assert!(self.num_bits() == other.num_bits());
         debug_assert!(self.num_bits() == wanted.num_bits());
         debug_assert!(wanted.is_not_low());
 
-        let changes_care_01 = self.m01.bitwise_and(&wanted.m01);
-
-        let changes_care_10 = self.m10.bitwise_and(&wanted.m10);
-
-        if changes_care_01.is_low() && changes_care_10.is_low() {
-            return false;
-        }
+        let changes_to_preserve = self.as_change().intersection(wanted);
 
         let seq = self.combine_sequence(other);
-        //println!("seq = {seq}");
 
-        let changes_care_01_ok = changes_care_01.bitwise_and(&seq.m01);
+        let changes_preserved = seq.as_change().intersection(&changes_to_preserve);
 
-        let changes_care_10_ok = changes_care_10.bitwise_and(&seq.m10);
-
-        !(changes_care_01.is_subset_ones_of(&changes_care_01_ok)
-            && changes_care_10.is_subset_ones_of(&changes_care_10_ok))
+        changes_preserved.is_low()
     }
 
     /// Return a SomeChange instance.
@@ -870,13 +856,13 @@ mod tests {
     }
 
     #[test]
-    fn sequence_blocks_changes() -> Result<(), String> {
+    fn sequence_blocks_all_wanted_changes() -> Result<(), String> {
         // All possible change pass-through conditions can be tested at once.
         let rul1 = SomeRule::from_str("01/01/01/10/10/10")?;
         let rul2 = SomeRule::from_str("11/X1/XX/00/X0/XX")?;
         let chg1 = SomeChange::from_str("01/01/01/10/10/10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(!rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         // Change non pass-through conditions must be tested one-by-one.
 
@@ -885,38 +871,38 @@ mod tests {
         let rul2 = SomeRule::from_str("10")?;
         let chg1 = SomeChange::from_str("01")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("01")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(!rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("X0")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("Xx")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         // Test 1->0 non pass-through conditions.
         let rul1 = SomeRule::from_str("10")?;
         let rul2 = SomeRule::from_str("01")?;
         let chg1 = SomeChange::from_str("10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("10")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(!rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(!rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("X1")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         let rul2 = SomeRule::from_str("Xx")?;
         println!("rul1 {rul1}\nrul2 {rul2}\nchg1 {chg1}");
-        assert!(rul1.sequence_blocks_changes(&rul2, &chg1));
+        assert!(rul1.sequence_blocks_all_wanted_changes(&rul2, &chg1));
 
         Ok(())
     }
