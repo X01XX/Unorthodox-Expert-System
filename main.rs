@@ -39,6 +39,8 @@ mod actioninterface;
 mod actionstore;
 mod bits;
 mod change;
+mod changescorr;
+mod changestore;
 mod domain;
 mod domainstore;
 mod group;
@@ -59,6 +61,7 @@ mod regionscorrstore;
 mod regionstore;
 mod resultstore;
 mod rule;
+mod rulescorr;
 mod rulestore;
 mod sample;
 mod selectregions;
@@ -73,14 +76,15 @@ mod step;
 mod stepstore;
 mod target;
 mod tools;
-mod rulescorr;
-mod changestore;
-mod changescorr;
 
 use crate::plan::SomePlan;
+use crate::planscorr::PlansCorr;
+use crate::planscorrstore::PlansCorrStore;
 use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
+use crate::rulescorr::RulesCorr;
 use crate::step::SomeStep;
+use crate::stepstore::StepStore;
 use crate::tools::StrLen;
 use need::SomeNeed;
 use pn::Pn;
@@ -89,9 +93,6 @@ use rulestore::RuleStore;
 use sample::SomeSample;
 use sessiondata::{NeedPlan, SessionData};
 use state::SomeState;
-use crate::planscorr::PlansCorr;
-use crate::planscorrstore::PlansCorrStore;
-use crate::rulescorr::RulesCorr;
 
 extern crate unicode_segmentation;
 
@@ -804,7 +805,6 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
     Ok(())
 }
 
-
 fn do_step_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
     if cmd.len() != 3 {
@@ -946,23 +946,69 @@ fn step_by_step_rc(
     to: &RegionsCorr,
     depth: usize,
 ) -> Option<PlansCorr> {
-
     let mut ret_plans: Option<PlansCorr> = None;
 
     let mut cur_from = from.clone();
     let mut cur_to = to.clone();
 
-    let mut forward_plans  = PlansCorrStore::new(vec![]);
+    let mut forward_plans = PlansCorrStore::new(vec![]);
     let mut backward_plans = PlansCorrStore::new(vec![]);
 
     let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
     let wanted_changes = rules_to_goal.as_changes();
+    if wanted_changes.is_low() {
+        return None;
+    }
     let unwanted_changes = rules_to_goal.unwanted_changes();
-    
-    //let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
-    //let change_spaces = vec![' '; cng_len].iter().collect::<String>();
 
+    let mut stepscorr = Vec::<StepStore>::with_capacity(from.len());
 
+    // Init step options vector, with StepStores containing a no-op step.
+    for regx in cur_from.iter() {
+        stepscorr.push(StepStore::new(vec![SomeStep::new_no_op(regx)]));
+    }
+
+    // Get steps needed to make changes.
+    // No limits within which the step must operate.
+    let max_regs = sdx.maximum_regions();
+
+    for (inx, rulx) in rules_to_goal.iter().enumerate() {
+        let wanted_changes = rulx.as_change();
+        if wanted_changes.is_not_low() {
+            let steps = sdx.get_steps_domain(inx, &wanted_changes, &max_regs[inx]);
+            if steps.is_empty() {
+                return None;
+            }
+            stepscorr[inx].append(steps);
+        }
+    }
+
+    // Load a vector of step references.
+    let mut step_refs = Vec::<Vec<&SomeStep>>::with_capacity(from.len());
+    for stepsx in stepscorr.iter() {
+        let mut tmp_vec = Vec::<&SomeStep>::with_capacity(stepsx.len());
+        for stpx in stepsx.iter() {
+            tmp_vec.push(stpx);
+        }
+        step_refs.push(tmp_vec);
+    }
+
+    print!("number steps per domain: ");
+    let mut num = 1;
+    for stp_vec in stepscorr.iter() {
+        print!("{} ", stp_vec.len());
+        num *= stp_vec.len();
+    }
+    print!(", number options s-b {}", num - 1);
+    println!(" ");
+
+    let mut options = tools::any_one_of_each(&step_refs);
+    options.remove(0); // Remove option of all no-op steps.
+
+    println!("options:");
+    for optx in options.iter() {
+        println!("  {}", tools::vec_ref_string(optx));
+    }
 
     None
 }
@@ -1013,7 +1059,7 @@ fn step_by_step(
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
 
         let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
-        let wanted_changes   = rule_to_goal.as_change();
+        let wanted_changes = rule_to_goal.as_change();
         let unwanted_changes = rule_to_goal.unwanted_changes();
 
         // Get possible steps.
@@ -1815,6 +1861,32 @@ mod tests {
     use crate::selectregions::SelectRegions;
     use crate::statescorr::StatesCorr;
     use crate::target::ATarget;
+
+    #[test]
+    fn test_step_by_step_rc() -> Result<(), String> {
+        let sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx], s0000/3, s1111/3],
+            ACT[[XX/XX/Xx/XX], s0000/3, s1111/3],
+            ACT[[XX/Xx/XX/XX], s0000/3, s1111/3],
+            ACT[[Xx/XX/XX/XX], s0000/3, s1111/3]],
+            DOMAIN[
+            ACT[[XX/XX/Xx], s000/3, s111/3],
+            ACT[[XX/Xx/XX], s000/3, s111/3],
+            ACT[[Xx/XX/XX], s000/3, s111/3]]
+        ]]",
+        )?;
+
+        step_by_step_rc(
+            &sdx,
+            &RegionsCorr::from_str("RC[s0101, s111]")?,
+            &RegionsCorr::from_str("RC[s1001, s100]")?,
+            0,
+        );
+
+        // assert!(1 == 2);
+        Ok(())
+    }
 
     #[test]
     fn do_to_region_command1() -> Result<(), String> {

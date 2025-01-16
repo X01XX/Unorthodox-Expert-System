@@ -1,3 +1,4 @@
+use crate::change::SomeChange;
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;
 use crate::needstore::NeedStore;
@@ -9,6 +10,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
+use crate::stepstore::StepStore;
 use crate::tools::{self, CorrespondingItems};
 
 use rayon::prelude::*;
@@ -327,6 +329,16 @@ impl DomainStore {
         } else {
             None
         }
+    }
+
+    /// Collect steps that contain at least one wanted change.
+    pub fn get_steps_domain(
+        &self,
+        dom_id: usize,
+        wanted_changes: &SomeChange,
+        within: &SomeRegion,
+    ) -> StepStore {
+        self.items[dom_id].get_steps(wanted_changes, within)
     }
 }
 

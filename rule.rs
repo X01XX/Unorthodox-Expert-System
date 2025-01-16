@@ -568,7 +568,6 @@ impl SomeRule {
         let edges = self.result_region().edge_mask();
         SomeChange::new(self.m00.bitwise_and(&edges), self.m11.bitwise_and(&edges))
     }
-    
 } // end impl SomeRule
 
 /// Implement the trait StrLen for SomeRule.

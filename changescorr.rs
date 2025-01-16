@@ -6,8 +6,8 @@
 use crate::change::SomeChange;
 use crate::changestore::ChangeStore;
 
-use std::slice::Iter;
 use std::fmt;
+use std::slice::Iter;
 
 impl fmt::Display for ChangesCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -16,7 +16,7 @@ impl fmt::Display for ChangesCorr {
         } else {
             write!(f, "CC{}", self.changes)
         }
-    }   
+    }
 }
 
 #[readonly::make]
@@ -63,5 +63,13 @@ impl ChangesCorr {
         self.changes.iter()
     }
 
+    /// Return true if all changes are low.
+    pub fn is_low(&self) -> bool {
+        for cngx in self.changes.iter() {
+            if cngx.is_not_low() {
+                return false;
+            }
+        }
+        true
+    }
 }
-

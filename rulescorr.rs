@@ -3,14 +3,14 @@
 //! Each rule will have a number of bits equal to the bits used by the corresponding
 //! domain, not necessarily the same as other rules in the vector.
 
+use crate::changescorr::ChangesCorr;
+use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
-use crate::regionscorr::RegionsCorr;
 use crate::tools;
-use crate::changescorr::ChangesCorr;
 
-use std::slice::Iter;
 use std::fmt;
+use std::slice::Iter;
 use std::str::FromStr;
 
 impl fmt::Display for RulesCorr {
@@ -20,7 +20,7 @@ impl fmt::Display for RulesCorr {
         } else {
             write!(f, "RUC{}", self.rules)
         }
-    }   
+    }
 }
 
 #[readonly::make]
@@ -141,24 +141,24 @@ impl FromStr for RulesCorr {
 
         Ok(ret_corr)
     }
-}                                
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn from_str() -> Result<(), String> {                                                                                                             
+    fn from_str() -> Result<(), String> {
         let rulcr1_str = "RUC[]";
         let rulcr1 = RulesCorr::from_str(&rulcr1_str)?;
         println!("rulcr1 {rulcr1}");
         assert!(format!("{rulcr1}") == rulcr1_str);
-    
+
         let rulcr2_str = "RUC[X0_11/11/10/00]";
         let rulcr2 = RulesCorr::from_str(&rulcr2_str)?;
         println!("rulcr2 {rulcr2}");
         assert!(format!("{rulcr2}") == rulcr2_str);
-        
+
         let rulcr3_str = "RUC[01/00/XX, 00/00]";
         let rulcr3 = RulesCorr::from_str(&rulcr3_str)?;
         println!("rulcr3 {rulcr3}");
@@ -166,7 +166,7 @@ mod tests {
 
         //assert!(1 == 2);
         Ok(())
-    }   
+    }
 
     #[test]
     fn new_rc_to_rc() -> Result<(), String> {
@@ -178,7 +178,7 @@ mod tests {
         assert!(format!("{ruc}") == "RUC[11/00/11/01, 11_00/10/XX/00]");
 
         //assert!(1 == 2);
-        Ok(()) 
+        Ok(())
     }
 
     #[test]
@@ -198,6 +198,6 @@ mod tests {
         assert!(format!("{cngs}") == "CC[10/01/10/.., 10_01/../../01]");
 
         //assert!(1 == 2);
-        Ok(()) 
+        Ok(())
     }
 }

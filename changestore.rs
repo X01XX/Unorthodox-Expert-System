@@ -3,7 +3,6 @@
 use crate::change::SomeChange;
 use crate::tools::{self, StrLen};
 
-
 use std::fmt;
 use std::slice::Iter;
 

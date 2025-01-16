@@ -1,6 +1,7 @@
 //! The DomainStore struct, a vector of SomeDomain structs,
 //! and values/methods that manage the domains.
 
+use crate::change::SomeChange;
 use crate::domain::SomeDomain;
 use crate::domainstore::DomainStore;
 use crate::need::SomeNeed;
@@ -18,6 +19,7 @@ use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
 use crate::step::{AltRuleHint::AltRule, SomeStep};
+use crate::stepstore::StepStore;
 use crate::target::ATarget;
 use crate::tools::{self, CorrespondingItems};
 
@@ -1645,6 +1647,17 @@ impl SessionData {
     /// If exactly one domain uses a given number of bits, return its ID.
     pub fn domain_find_num_bits(&self, num_bits: usize) -> Option<usize> {
         self.domains.find_num_bits(num_bits)
+    }
+
+    /// Collect steps that contain at least one wanted change.
+    pub fn get_steps_domain(
+        &self,
+        dom_id: usize,
+        wanted_changes: &SomeChange,
+        within: &SomeRegion,
+    ) -> StepStore {
+        self.domains
+            .get_steps_domain(dom_id, wanted_changes, within)
     }
 }
 
