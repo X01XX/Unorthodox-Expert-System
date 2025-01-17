@@ -1659,6 +1659,22 @@ impl SessionData {
         self.domains
             .get_steps_domain(dom_id, wanted_changes, within)
     }
+
+    /// Return a SelectRegions rating for a given RegionsCorr.
+    pub fn rate_results(&self, regscr: &RegionsCorr) -> (isize, isize) {
+        let mut pos = 0;
+        let mut neg = 0;
+        for selx in self.select.iter() {
+            if selx.regions.is_superset_of(regscr) {
+                if selx.value < 0 {
+                    neg += selx.value;
+                } else {
+                    pos += selx.value;
+                }
+            }
+        }
+        (pos, neg)
+    }
 }
 
 impl FromStr for SessionData {

@@ -15,12 +15,28 @@ use std::slice::Iter;
 impl fmt::Display for StepsCorr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_empty() {
-            write!(f, "CC[]")
+            write!(f, "STC[]")
         } else {
-            write!(f, "CC{}", self.steps)
+            write!(f, "STC{}", self.steps)
         }
     }
 }
+impl PartialEq for StepsCorr {
+    fn eq(&self, other: &Self) -> bool {
+        debug_assert!(self.len() == other.len());
+
+        for (stpx, stpy) in self.iter().zip(other.iter()) {
+            if stpx.act_id != stpy.act_id {
+                return false;
+            }
+            if stpx.initial != stpy.initial {
+                return false;
+            }
+        }
+        true
+    }
+}
+impl Eq for StepsCorr {}
 
 #[readonly::make]
 #[derive(Debug, Clone)]

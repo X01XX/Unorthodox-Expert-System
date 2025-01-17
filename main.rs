@@ -88,7 +88,6 @@ use crate::rulescorr::RulesCorr;
 use crate::step::SomeStep;
 use crate::stepscorr::StepsCorr;
 use crate::stepstore::StepStore;
-use crate::tools::StrLen;
 use need::SomeNeed;
 use pn::Pn;
 use region::SomeRegion;
@@ -1033,22 +1032,40 @@ fn step_by_step_rc(
         if cur_to.intersects(&stpstox.result_regions()) {
             to_int = true;
         }
+        // Check for step that can do forward and backward chaining.
         if from_int && to_int {
             let stp_from = stpstox.restrict_initial_regions(&cur_from);
             let stp_to = stpstox.restrict_result_regions(&cur_to);
 
-            if stp_from.initial_regions() == stp_to.initial_regions() {
+            if stp_from == stp_to {
                 stepscorr_vec2.push(stp_from);
             } else {
                 stepscorr_vec2.push(stp_from);
                 stepscorr_vec2.push(stp_to);
             }
         } else if from_int {
+            // Forward chaining only.
             stepscorr_vec2.push(stpstox.restrict_initial_regions(&cur_from));
         } else if to_int {
+            // Backward chaining only.
             stepscorr_vec2.push(stpstox.restrict_result_regions(&cur_to));
         } else {
-            stepscorr_vec2.push(stpstox);
+            // Asymmetric chaining.
+            let stp_f = stpstox.restrict_initial_regions(
+                &RulesCorr::new_region_to_region_min(&cur_from, &stpstox.initial_regions())
+                    .result_regions(),
+            );
+            let stp_b = stpstox.restrict_result_regions(
+                &RulesCorr::new_region_from_region_min(&stpstox.result_regions(), &cur_to)
+                    .initial_regions(),
+            );
+
+            if stp_f == stp_b {
+                stepscorr_vec2.push(stp_f);
+            } else {
+                stepscorr_vec2.push(stp_f);
+                stepscorr_vec2.push(stp_b);
+            }
         }
     }
     println!("stepscorr_vec2 len {}", stepscorr_vec2.len());
@@ -1099,7 +1116,7 @@ fn step_by_step_rc(
             // Calc wanted_changes.
             let optx_changes = optx.changes();
             let mut optx_wanted_changes = optx_changes.intersection(&wanted_changes);
-            print!(", wanted: {optx_wanted_changes}");
+            print!(", W: {optx_wanted_changes}");
 
             // Calc unwanted changes.
             let optx_unwanted_changes = if from_int {
@@ -1109,10 +1126,17 @@ fn step_by_step_rc(
                     .combine_sequence(&optx.rules())
                     .intersection_changes(&unwanted_changes)
             };
-            print!(", unwanted: {optx_unwanted_changes}");
+            print!(", U: {optx_unwanted_changes}");
 
             // Check select regions.
-            // TODO
+            let rate = sdx.rate_results(&optx.result_regions());
+            if rate.0 != 0 && rate.1 != 0 {
+                print!(", rate {:2} {:?}", rate.0 + rate.1, rate);
+            } else if rate.0 != 0 {
+                print!(", rate {:2}", rate.0);
+            } else if rate.1 != 0 {
+                print!(", rate {:2}", rate.1);
+            }
 
             println!(" ");
         }
@@ -1157,9 +1181,6 @@ fn step_by_step(
     let mut forward_plan = SomePlan::new(dom_id, vec![]);
     let mut backward_plan = SomePlan::new(dom_id, vec![]);
 
-    let cng_len = SomeRule::new_region_to_region_min(from, to).strlen();
-    let change_spaces = vec![' '; cng_len].iter().collect::<String>();
-
     let mut first_cycle = true;
     loop {
         if first_cycle && depth == 0 {
@@ -1195,22 +1216,51 @@ fn step_by_step(
         }
 
         // Display steps.
-        let mut steps_dis = Vec::<&SomeStep>::with_capacity(steps_st.len());
+        let mut steps_dis = Vec::<SomeStep>::with_capacity(steps_st.len());
 
         for stpx in steps_st.iter() {
-            if stpx.initial.intersects(&cur_from) {
-                steps_dis.push(stpx);
+            // Check for a step that can do forward or backward chaining.
+            if stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
+                let stpx_from = stpx.restrict_initial_region(&cur_from);
+                let stpx_to = stpx.restrict_result_region(&cur_to);
+
+                if stpx_from.initial == stpx_to.initial {
+                    steps_dis.push(stpx_from);
+                } else {
+                    steps_dis.push(stpx_from);
+                    steps_dis.push(stpx_to);
+                }
             }
         }
+        // Check for a step that can do only forward chaining.
+        for stpx in steps_st.iter() {
+            if stpx.initial.intersects(&cur_from) && !stpx.result.intersects(&cur_to) {
+                steps_dis.push(stpx.restrict_initial_region(&cur_from));
+            }
+        }
+        // Check for a step that can do only backward chaining.
         for stpx in steps_st.iter() {
             if !stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
-                steps_dis.push(stpx);
+                steps_dis.push(stpx.restrict_result_region(&cur_to));
             }
         }
+        // Check for steps that require asymmetric chaining.
         for stpx in steps_st.iter() {
             if stpx.initial.intersects(&cur_from) || stpx.result.intersects(&cur_to) {
             } else {
-                steps_dis.push(stpx);
+                let stpx_to = stpx.restrict_initial_region(
+                    &SomeRule::new_region_to_region_min(&cur_from, &stpx.initial).result_region(),
+                );
+                let stpx_from = stpx.restrict_result_region(
+                    &SomeRule::new_region_from_region_min(&stpx.result, &cur_to).initial_region(),
+                );
+
+                if stpx_from.initial == stpx_to.initial {
+                    steps_dis.push(stpx_from);
+                } else {
+                    steps_dis.push(stpx_from);
+                    steps_dis.push(stpx_to);
+                }
             }
         }
 
@@ -1226,47 +1276,35 @@ fn step_by_step(
         if steps_dis.is_empty() {
         } else {
             for (inx, stpx) in steps_dis.iter().enumerate() {
-                let mut rule_forward = stpx.rule.clone();
-                let mut rule_backward = stpx.rule.clone();
-
-                print!("{inx:2} Act {} {}", stpx.act_id.unwrap(), stpx.rule);
+                print!("{inx:2} {}", stpx);
                 if stpx.initial.intersects(&cur_from) {
-                    rule_forward = rule_forward.restrict_initial_region(&cur_from);
-                    print!("  FC: {}->{} ", cur_from, rule_forward.result_region());
+                    print!(" FC");
                 } else {
-                    let int_reg = cur_from.translate_to_intersect(&stpx.initial);
-                    rule_forward = rule_forward.restrict_initial_region(&int_reg);
-                    print!("  FA: {}->{}?", cur_from, rule_backward.result_region());
+                    print!(" FA");
+                }
+
+                if stpx.result.intersects(&cur_to) {
+                    print!(" BC,");
+                } else {
+                    print!(" BA,");
                 }
 
                 // Calc wanted and unwanted changes.
-                let step_wanted_changes = rule_forward.as_change().intersection(&wanted_changes);
+                let step_wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
 
                 let step_unwanted_changes =
-                    SomeRule::new_region_to_region_min(&cur_from, &rule_forward.result_region())
+                    SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
                         .as_change()
                         .intersection(&unwanted_changes);
 
                 // Print forward wanted and unwanted changes.
-                if step_wanted_changes.is_low() {
-                    print!("     {change_spaces}");
-                } else {
-                    print!("  W: {step_wanted_changes}",);
-                }
+                print!("  W: {step_wanted_changes}",);
+
                 if step_unwanted_changes.is_low() {
-                    print!("     {change_spaces}");
                 } else {
                     print!("  U: {step_unwanted_changes}",);
                 }
 
-                if stpx.result.intersects(&cur_to) {
-                    rule_backward = rule_backward.restrict_result_region(&cur_to);
-                    print!("  BC:  {}<-{}", rule_backward.initial_region(), cur_to);
-                } else {
-                    let int_reg = cur_to.translate_to_intersect(&stpx.result);
-                    rule_backward = rule_backward.restrict_result_region(&int_reg);
-                    print!("  BA: ?{}<-{}", rule_backward.initial_region(), cur_to);
-                }
                 println!(" ");
             }
         }

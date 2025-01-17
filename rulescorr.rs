@@ -96,7 +96,7 @@ impl RulesCorr {
     }
 
     /// Return a RulesCorr' initial regions.
-    pub fn _initial_regions(&self) -> RegionsCorr {
+    pub fn initial_regions(&self) -> RegionsCorr {
         let mut ret = RegionsCorr::with_capacity(self.len());
 
         for rulx in self.iter() {
@@ -106,7 +106,7 @@ impl RulesCorr {
     }
 
     /// Return a RulesCorrs' result regions.
-    pub fn _result_regions(&self) -> RegionsCorr {
+    pub fn result_regions(&self) -> RegionsCorr {
         let mut ret = RegionsCorr::with_capacity(self.len());
 
         for rulx in self.iter() {
@@ -136,13 +136,19 @@ impl RulesCorr {
     }
 
     /// Return the minimum-change rule to change a RegionsCorr into a subset of a second RegionsCorr.
-    /// The result will never contain X->x.
-    /// 1->X positions will be translated to 1->1.
-    /// 0->X positions will be translated to 0->0.
-    pub fn new_region_to_region_min(from: &RegionsCorr, to: &RegionsCorr) -> RulesCorr {
-        let mut ret = RulesCorr::with_capacity(from.len());
-        for (regx, regy) in from.iter().zip(to.iter()) {
+    pub fn new_region_to_region_min(first: &RegionsCorr, second: &RegionsCorr) -> RulesCorr {
+        let mut ret = RulesCorr::with_capacity(first.len());
+        for (regx, regy) in first.iter().zip(second.iter()) {
             ret.push(SomeRule::new_region_to_region_min(regx, regy));
+        }
+        ret
+    }
+
+    /// Return the minimum-change rule to change first a RegionsCorr to a subset of another RegionsCorr.
+    pub fn new_region_from_region_min(first: &RegionsCorr, second: &RegionsCorr) -> RulesCorr {
+        let mut ret = RulesCorr::with_capacity(first.len());
+        for (regx, regy) in first.iter().zip(second.iter()) {
+            ret.push(SomeRule::new_region_from_region_min(regx, regy));
         }
         ret
     }

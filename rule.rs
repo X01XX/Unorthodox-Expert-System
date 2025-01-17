@@ -422,30 +422,63 @@ impl SomeRule {
     /// The result will never contain X->x.
     /// 1->X positions will be translated to 1->1.
     /// 0->X positions will be translated to 0->0.
-    pub fn new_region_to_region_min(from: &SomeRegion, to: &SomeRegion) -> SomeRule {
-        debug_assert_eq!(from.num_bits(), to.num_bits());
+    pub fn new_region_to_region_min(first: &SomeRegion, second: &SomeRegion) -> SomeRule {
+        debug_assert_eq!(first.num_bits(), second.num_bits());
 
-        let f0 = from.edge_zeros_mask();
-        let f1 = from.edge_ones_mask();
-        let fx = from.x_mask();
+        let f0 = first.edge_zeros_mask();
+        let f1 = first.edge_ones_mask();
+        let fx = first.x_mask();
 
-        let t0 = to.edge_zeros_mask();
-        let t1 = to.edge_ones_mask();
-        let tx = to.x_mask();
+        let s0 = second.edge_zeros_mask();
+        let s1 = second.edge_ones_mask();
+        let sx = second.x_mask();
 
         Self {
             m00: f0
-                .bitwise_and(&t0) // 0->0
-                .bitwise_or(&fx.bitwise_and(&t0)) // X->0
-                .bitwise_or(&f0.bitwise_and(&tx)) // 0->X
-                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
-            m01: f0.bitwise_and(&t1).bitwise_or(&fx.bitwise_and(&t1)), // 0->1, X->1
+                .bitwise_and(&s0) // 0->0
+                .bitwise_or(&fx.bitwise_and(&s0)) // X->0
+                .bitwise_or(&f0.bitwise_and(&sx)) // 0->X
+                .bitwise_or(&fx.bitwise_and(&sx)), // X->X
+            m01: f0.bitwise_and(&s1).bitwise_or(&fx.bitwise_and(&s1)), // 0->1, X->1
             m11: f1
-                .bitwise_and(&t1) // 1->1
-                .bitwise_or(&fx.bitwise_and(&t1)) // X->1
-                .bitwise_or(&f1.bitwise_and(&tx)) // 1->X
-                .bitwise_or(&fx.bitwise_and(&tx)), // X->X
-            m10: f1.bitwise_and(&t0).bitwise_or(&fx.bitwise_and(&t0)), // 1->0, X->0
+                .bitwise_and(&s1) // 1->1
+                .bitwise_or(&fx.bitwise_and(&s1)) // X->1
+                .bitwise_or(&f1.bitwise_and(&sx)) // 1->X
+                .bitwise_or(&fx.bitwise_and(&sx)), // X->X
+            m10: f1.bitwise_and(&s0).bitwise_or(&fx.bitwise_and(&s0)), // 1->0, X->0
+        }
+    }
+
+    /// Return the minimum-change rule to change to a subset of a region from a second region.
+    /// The result will never contain X->x.
+    /// 1<-X positions will be translated to 1->1.
+    /// 0<-X positions will be translated to 0->0.
+    /// X<-0 positions will be translated to 0->0.
+    /// X<-1 positions will be translated to 1->1.
+    pub fn new_region_from_region_min(first: &SomeRegion, second: &SomeRegion) -> SomeRule {
+        debug_assert_eq!(first.num_bits(), second.num_bits());
+
+        let f0 = first.edge_zeros_mask();
+        let f1 = first.edge_ones_mask();
+        let fx = first.x_mask();
+
+        let s0 = second.edge_zeros_mask();
+        let s1 = second.edge_ones_mask();
+        let sx = second.x_mask();
+
+        Self {
+            m00: f0
+                .bitwise_and(&s0) // 0<-0
+                .bitwise_or(&fx.bitwise_and(&s0)) // X<-0
+                .bitwise_or(&f0.bitwise_and(&sx)) // 0<-X
+                .bitwise_or(&fx.bitwise_and(&sx)), // X<-X
+            m01: f0.bitwise_and(&s1), // 0<-1
+            m11: f1
+                .bitwise_and(&s1) // 1<-1
+                .bitwise_or(&fx.bitwise_and(&s1)) // X<-1
+                .bitwise_or(&f1.bitwise_and(&sx)) // 1<-X
+                .bitwise_or(&fx.bitwise_and(&sx)), // X<-X
+            m10: f1.bitwise_and(&s0), // 1<-0
         }
     }
 
@@ -700,6 +733,20 @@ mod tests {
         println!("rul1: {rul1}");
 
         assert!(rul1 == SomeRule::from_str("00/01/00_10/11/11_X0/X1/XX")?);
+
+        Ok(())
+    }
+
+    #[test]
+    fn new_region_from_region_min() -> Result<(), String> {
+        let reg1 = SomeRegion::from_str("000_111_XXX")?;
+        let reg2 = SomeRegion::from_str("01X_01X_01X")?;
+        let rul1 = SomeRule::new_region_from_region_min(&reg1, &reg2);
+        println!("reg1: {reg1}");
+        println!("reg2: {reg2}");
+        println!("rul1: {rul1}");
+
+        assert!(rul1 == SomeRule::from_str("00/01/00_10/11/11_00/11/XX")?);
 
         Ok(())
     }
