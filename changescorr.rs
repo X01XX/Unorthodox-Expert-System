@@ -1,4 +1,4 @@
-//! The ChangesCorr struct, a store of SomeChanges, correspanding in order, to domains in a DomainStore instance.
+//! The ChangesCorr struct, a store of SomeChanges, corresponding in order, to domains in a DomainStore instance.
 //!
 //! Each change will have a number of bits equal to the bits used by the corresponding
 //! domain, not necessarily the same as other changes in the vector.
@@ -71,5 +71,14 @@ impl ChangesCorr {
             }
         }
         true
+    }
+
+    /// Return the intersection of two ChangesCorr.
+    pub fn intersection(&self, other: &Self) -> Self {
+        let mut ret = Self::with_capacity(self.len());
+        for (cngx, cngy) in self.iter().zip(other.iter()) {
+            ret.push(cngx.intersection(cngy));
+        }
+        ret
     }
 }

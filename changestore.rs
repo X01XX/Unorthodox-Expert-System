@@ -75,7 +75,7 @@ impl ChangeStore {
 
     /// Add a change to a ChangeStore.
     /// For changes of a group or square, there will be up to two changes. If two changes, they will have the same initial region.
-    /// For a ChangesCorr instance, there will be changes correspanding to the domains in a DomainStore.
+    /// For a ChangesCorr instance, there will be changes corresponding to the domains in a DomainStore.
     pub fn push(&mut self, val: SomeChange) {
         self.items.push(val);
     }

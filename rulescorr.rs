@@ -1,4 +1,4 @@
-//! The RulesCorr struct, a store of SomeRules, correspanding in order, to domains in a DomainStore instance.
+//! The RulesCorr struct, a store of SomeRules, corresponding in order, to domains in a DomainStore instance.
 //!
 //! Each rule will have a number of bits equal to the bits used by the corresponding
 //! domain, not necessarily the same as other rules in the vector.
@@ -91,6 +91,78 @@ impl RulesCorr {
 
         for rulx in self.iter() {
             ret.push(rulx.unwanted_changes());
+        }
+        ret
+    }
+
+    /// Return a RulesCorr' initial regions.
+    pub fn _initial_regions(&self) -> RegionsCorr {
+        let mut ret = RegionsCorr::with_capacity(self.len());
+
+        for rulx in self.iter() {
+            ret.push(rulx.initial_region());
+        }
+        ret
+    }
+
+    /// Return a RulesCorrs' result regions.
+    pub fn _result_regions(&self) -> RegionsCorr {
+        let mut ret = RegionsCorr::with_capacity(self.len());
+
+        for rulx in self.iter() {
+            ret.push(rulx.result_region());
+        }
+        ret
+    }
+
+    /// Return a RulesCorr with restricted initial regions.
+    pub fn _restrict_initial_regions(&self, regions: &RegionsCorr) -> Self {
+        let mut ret = Self::with_capacity(self.len());
+
+        for (rulx, regy) in self.iter().zip(regions.iter()) {
+            ret.push(rulx.restrict_initial_region(regy));
+        }
+        ret
+    }
+
+    /// Return a RulesCorr with restricted result regions.
+    pub fn _restrict_result_regions(&self, regions: &RegionsCorr) -> Self {
+        let mut ret = Self::with_capacity(self.len());
+
+        for (rulx, regy) in self.iter().zip(regions.iter()) {
+            ret.push(rulx.restrict_result_region(regy));
+        }
+        ret
+    }
+
+    /// Return the minimum-change rule to change a RegionsCorr into a subset of a second RegionsCorr.
+    /// The result will never contain X->x.
+    /// 1->X positions will be translated to 1->1.
+    /// 0->X positions will be translated to 0->0.
+    pub fn new_region_to_region_min(from: &RegionsCorr, to: &RegionsCorr) -> RulesCorr {
+        let mut ret = RulesCorr::with_capacity(from.len());
+        for (regx, regy) in from.iter().zip(to.iter()) {
+            ret.push(SomeRule::new_region_to_region_min(regx, regy));
+        }
+        ret
+    }
+
+    /// Combine two RulesCorr into a single, aggregate, RulesCorr.
+    /// Order matters.
+    pub fn combine_sequence(&self, other: &Self) -> Self {
+        let mut ret = Self::with_capacity(self.len());
+        for (rulx, ruly) in self.iter().zip(other.iter()) {
+            ret.push(SomeRule::combine_sequence(rulx, ruly));
+        }
+        ret
+    }
+
+    /// Return the intersection af a RulesCorrs' changes and a given ChangesCorr instance.
+    /// Avoids creating an intermediate change instance compared to rules.as_change().intersection(changes).
+    pub fn intersection_changes(&self, changes: &ChangesCorr) -> ChangesCorr {
+        let mut ret = ChangesCorr::with_capacity(self.len());
+        for (rulx, cngy) in self.iter().zip(changes.iter()) {
+            ret.push(rulx.intersection_changes(cngy));
         }
         ret
     }

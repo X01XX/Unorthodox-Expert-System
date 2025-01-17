@@ -178,7 +178,8 @@ impl SomeStep {
         if self.act_id == other.act_id && self.group_inx == other.group_inx {
             return false;
         }
-        self.rule.sequence_blocks_all_wanted_changes(&other.rule, wanted)
+        self.rule
+            .sequence_blocks_all_wanted_changes(&other.rule, wanted)
     }
     /// Return the number of bits changed in a step.
     pub fn num_bits_changed(&self) -> usize {

@@ -1,0 +1,16 @@
+// Use this for testing step-rc
+SD[DS[DOMAIN[
+            ACT[[XX/XX/XX/Xx], s0000/3, s1111/3],
+            ACT[[XX/XX/Xx/XX], s0000/3, s1111/3],
+            ACT[[XX/Xx/XX/XX], s0000/3, s1111/3],
+            ACT[[XX/Xx/XX/Xx], s0000/3, s1111/3],
+            ACT[[Xx/XX/XX/XX], s0000/3, s1111/3]],
+            DOMAIN[
+            ACT[[XX/XX/Xx], s000/3, s111/3],
+            ACT[[XX/Xx/XX], s000/3, s111/3],
+            ACT[[00/Xx/XX], s000/3, s011/3],
+            ACT[[Xx/XX/XX], s000/3, s111/3]]],
+            SR[RC[r1101, r110], -1]]
+
+// Test with command: step-rc RC[s0101, s111] RC[s1001, s100]
+

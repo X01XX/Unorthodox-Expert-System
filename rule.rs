@@ -388,7 +388,8 @@ impl SomeRule {
         debug_assert!(self.num_bits() == wanted.num_bits());
         debug_assert!(!wanted.any_x_to_x_not());
 
-        self.sequence_blocks_all_wanted_changes(other, wanted) && other.sequence_blocks_all_wanted_changes(self, wanted)
+        self.sequence_blocks_all_wanted_changes(other, wanted)
+            && other.sequence_blocks_all_wanted_changes(self, wanted)
     }
 
     /// Return true if all wanted changes in rule are blocked by running a second rule.
@@ -459,6 +460,7 @@ impl SomeRule {
     }
 
     /// Combine two rules into a single, aggregate, rule.
+    /// Order matters.
     pub fn combine_sequence(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
@@ -553,6 +555,15 @@ impl SomeRule {
     pub fn unwanted_changes(&self) -> SomeChange {
         let edges = self.result_region().edge_mask();
         SomeChange::new(self.m00.bitwise_and(&edges), self.m11.bitwise_and(&edges))
+    }
+
+    /// Return the intersection af a rules' changes and a given SomeChange instance.
+    /// Avoids creating an intermediate change instance compared to rule.as_change().intersection(change).
+    pub fn intersection_changes(&self, achange: &SomeChange) -> SomeChange {
+        SomeChange::new(
+            self.m01.bitwise_and(&achange.m01),
+            self.m10.bitwise_and(&achange.m10),
+        )
     }
 } // end impl SomeRule
 

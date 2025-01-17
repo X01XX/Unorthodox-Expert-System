@@ -55,12 +55,6 @@ impl StepStore {
 
     /// Add a step to a StepStore.
     pub fn push(&mut self, val: SomeStep) {
-        debug_assert!(if let Some(num_bits) = self.num_bits() {
-            num_bits == val.num_bits()
-        } else {
-            true
-        });
-
         self.items.push(val);
     }
 

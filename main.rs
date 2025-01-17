@@ -73,10 +73,12 @@ mod state;
 mod statescorr;
 mod statestore;
 mod step;
+mod stepscorr;
 mod stepstore;
 mod target;
 mod tools;
 
+//use crate::changescorr::ChangesCorr;
 use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
 use crate::planscorrstore::PlansCorrStore;
@@ -84,6 +86,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::rule::SomeRule;
 use crate::rulescorr::RulesCorr;
 use crate::step::SomeStep;
+use crate::stepscorr::StepsCorr;
 use crate::stepstore::StepStore;
 use crate::tools::StrLen;
 use need::SomeNeed;
@@ -999,18 +1002,141 @@ fn step_by_step_rc(
         print!("{} ", stp_vec.len());
         num *= stp_vec.len();
     }
-    print!(", number options s-b {}", num - 1);
+    print!(", number options s/b {}", num - 1); // Options - first item.
     println!(" ");
 
-    let mut options = tools::any_one_of_each(&step_refs);
+    // Get possible options .
+    let mut options: Vec<Vec<&SomeStep>> = tools::any_one_of_each(&step_refs);
     options.remove(0); // Remove option of all no-op steps.
 
-    println!("options:");
+    // Convert to StepsCorr instances.
+    let mut stepscorr_vec = Vec::<StepsCorr>::with_capacity(options.len());
     for optx in options.iter() {
-        println!("  {}", tools::vec_ref_string(optx));
+        let mut tmp_store = StepsCorr::with_capacity(optx.len());
+        for stpx in optx.iter() {
+            tmp_store.push((*stpx).clone());
+        }
+        stepscorr_vec.push(tmp_store);
     }
+    println!("stepscorr_vec len {}", stepscorr_vec.len());
 
-    None
+    // Further massaging for forward or backward chaining.
+    let mut stepscorr_vec2 = Vec::<StepsCorr>::with_capacity(options.len());
+    for stpstox in stepscorr_vec {
+        // Check for forward chaining.
+        let mut from_int = false;
+        if cur_from.intersects(&stpstox.initial_regions()) {
+            from_int = true;
+        }
+        // Check for backward chaining.
+        let mut to_int = false;
+        if cur_to.intersects(&stpstox.result_regions()) {
+            to_int = true;
+        }
+        if from_int && to_int {
+            let stp_from = stpstox.restrict_initial_regions(&cur_from);
+            let stp_to = stpstox.restrict_result_regions(&cur_to);
+
+            if stp_from.initial_regions() == stp_to.initial_regions() {
+                stepscorr_vec2.push(stp_from);
+            } else {
+                stepscorr_vec2.push(stp_from);
+                stepscorr_vec2.push(stp_to);
+            }
+        } else if from_int {
+            stepscorr_vec2.push(stpstox.restrict_initial_regions(&cur_from));
+        } else if to_int {
+            stepscorr_vec2.push(stpstox.restrict_result_regions(&cur_to));
+        } else {
+            stepscorr_vec2.push(stpstox);
+        }
+    }
+    println!("stepscorr_vec2 len {}", stepscorr_vec2.len());
+
+    let mut cur_start = 0;
+    let num_to_display = 10;
+
+    let mut first = true;
+    // Command loop.
+    loop {
+        if first {
+            first = false;
+            println!("Available commands:");
+            println!("    q = quit step-rc.");
+            println!("    n = next slice of options, if any.");
+            println!("    p = previous slice of options, if any.");
+            println!("    no input = redisplay options.");
+        }
+        println!("options:");
+        let mut cur_opt = cur_start;
+
+        let mut num_left = num_to_display;
+        loop {
+            if num_left == 0 || cur_opt >= stepscorr_vec2.len() {
+                break;
+            }
+            let optx = &stepscorr_vec2[cur_opt];
+            print!("{cur_opt:3}  {optx}");
+            num_left -= 1;
+            cur_opt += 1;
+
+            // Check if steps initial regions intersect from regions.
+            let from_int = cur_from.intersects(&optx.initial_regions());
+            if from_int {
+                print!(" FC");
+            } else {
+                print!(" FA");
+            }
+
+            // Check if steps result regions intersect to regions.
+            let to_int = cur_to.intersects(&optx.result_regions());
+            if to_int {
+                print!(" BC");
+            } else {
+                print!(" BA");
+            }
+
+            // Calc wanted_changes.
+            let optx_changes = optx.changes();
+            let mut optx_wanted_changes = optx_changes.intersection(&wanted_changes);
+            print!(", wanted: {optx_wanted_changes}");
+
+            // Calc unwanted changes.
+            let optx_unwanted_changes = if from_int {
+                optx_changes.intersection(&unwanted_changes)
+            } else {
+                RulesCorr::new_region_to_region_min(&cur_from, &optx.initial_regions())
+                    .combine_sequence(&optx.rules())
+                    .intersection_changes(&unwanted_changes)
+            };
+            print!(", unwanted: {optx_unwanted_changes}");
+
+            // Check select regions.
+            // TODO
+
+            println!(" ");
+        }
+
+        let input = pause_for_input("Press Enter to continue, or a command: ");
+        if input == "q" || input == "Q" {
+            return None;
+        } else if input == "n" || input == "N" {
+            // Show next slice of options, if any.
+            if cur_start + num_to_display >= options.len() {
+            } else {
+                cur_start += num_to_display;
+            }
+        } else if input == "p" || input == "P" {
+            // Show previous slice of options, if any.
+            if cur_start >= num_to_display {
+                cur_start -= num_to_display;
+            }
+        } else if input.is_empty() {
+            continue;
+        } else {
+            println!("Did not understand command");
+        }
+    } // end command loop.
 }
 
 /// Interactively step from an initial region to a goal region.
@@ -1861,32 +1987,6 @@ mod tests {
     use crate::selectregions::SelectRegions;
     use crate::statescorr::StatesCorr;
     use crate::target::ATarget;
-
-    #[test]
-    fn test_step_by_step_rc() -> Result<(), String> {
-        let sdx = SessionData::from_str(
-            "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000/3, s1111/3],
-            ACT[[XX/XX/Xx/XX], s0000/3, s1111/3],
-            ACT[[XX/Xx/XX/XX], s0000/3, s1111/3],
-            ACT[[Xx/XX/XX/XX], s0000/3, s1111/3]],
-            DOMAIN[
-            ACT[[XX/XX/Xx], s000/3, s111/3],
-            ACT[[XX/Xx/XX], s000/3, s111/3],
-            ACT[[Xx/XX/XX], s000/3, s111/3]]
-        ]]",
-        )?;
-
-        step_by_step_rc(
-            &sdx,
-            &RegionsCorr::from_str("RC[s0101, s111]")?,
-            &RegionsCorr::from_str("RC[s1001, s100]")?,
-            0,
-        );
-
-        // assert!(1 == 2);
-        Ok(())
-    }
 
     #[test]
     fn do_to_region_command1() -> Result<(), String> {
