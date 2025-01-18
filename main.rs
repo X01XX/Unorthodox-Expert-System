@@ -996,7 +996,15 @@ fn step_by_step_rc(
             println!("    so = Start over, clear forward and backward plans at the current depth.");
             println!("    n = next slice of options, if any.");
             println!("    p = previous slice of options, if any.");
-            println!("    no input = redisplay options.");
+            println!("\n    fpop = Forward plans pop step at end.");
+            println!("    bpop = Backward plans pop step at beginning.");
+            println!("\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
+            println!("    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
+            println!("\n    W: = Wanted change(s), going forward.");
+            println!("    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
+            println!("         Unwanted change(s) must eventually be reversed.");
+            println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
+            println!("\n    no input = redisplay options.");
         }
 
         let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
@@ -1059,7 +1067,7 @@ fn step_by_step_rc(
             }
             stepscorr_vec.push(tmp_store);
         }
-        println!("stepscorr_vec len {}", stepscorr_vec.len());
+        //println!("stepscorr_vec len {}", stepscorr_vec.len());
 
         // Further massaging for forward or backward chaining.
         let mut steps_dis = Vec::<StepsCorr>::with_capacity(options.len());
@@ -1111,7 +1119,6 @@ fn step_by_step_rc(
                 }
             }
         }
-        println!("steps_dis len {}", steps_dis.len());
 
         println!("-----------------------------------");
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
@@ -1128,7 +1135,7 @@ fn step_by_step_rc(
         if steps_dis.is_empty() {
             println!("options: None");
         } else {
-            println!("options:");
+            println!("options (of {}):", steps_dis.len());
 
             let mut num_left = num_to_display;
 
@@ -1343,7 +1350,6 @@ fn step_by_step(
             println!("    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
             println!("         Unwanted change(s) must eventually be reversed.");
             println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
-            println!("         Forward, to rule initial region. Backward, from rule result region.");
         }
         println!("-----------------------------------");
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
