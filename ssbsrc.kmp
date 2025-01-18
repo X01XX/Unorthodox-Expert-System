@@ -9,9 +9,11 @@ SD[DS[DOMAIN[
             ACT[[XX/XX/Xx], s000/3, s111/3],
             ACT[[XX/Xx/XX], s000/3, s111/3],
             ACT[[00/Xx/XX], s000/3, s011/3],
+            ACT[[11/Xx/XX], s000/3, s011/3],
             ACT[[Xx/XX/XX], s000/3, s111/3]]],
-            SR[RC[r110X, r110], -1]
-            SR[RC[r11X1, r110],  2]
+            SR[RC[r110X, r110], -1],
+            SR[RC[r11X1, r110],  2],
+            SC[s0101, s111]
   ]
 
 // Test with command: step-rc RC[s0101, s111] RC[s1001, s100]

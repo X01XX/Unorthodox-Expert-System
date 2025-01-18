@@ -796,7 +796,7 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
         if plans.initial_regions() == sdx.all_current_regions() {
             let cmd = pause_for_input("Press Enter to continue, or r to run ");
             if cmd == "r" || cmd == "R" {
-                match sdx.run_planscorr(&plans) {
+                match sdx.run_planscorrstore(&plans) {
                     Ok(num) => println!("{num} steps run."),
                     Err(errstr) => println!("{errstr}"),
                 }
@@ -940,6 +940,32 @@ fn do_to_region_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Str
     }
 }
 
+fn check_for_plan_completion_rc(
+    from: &RegionsCorr,
+    to: &RegionsCorr,
+    forward_plan: &PlansCorrStore,
+    backward_plan: &PlansCorrStore,
+) -> Option<PlansCorrStore> {
+    if forward_plan.is_not_empty()
+        && backward_plan.is_not_empty()
+        && forward_plan
+            .result_regions()
+            .intersects(&backward_plan.initial_regions())
+    {
+        match forward_plan.link(backward_plan) {
+            Ok(planx) => return Some(planx),
+            Err(errstr) => {
+                println!("linking failed {forward_plan} to {backward_plan} {errstr}")
+            }
+        }
+    } else if forward_plan.is_not_empty() && forward_plan.result_regions().intersects(to) {
+        return forward_plan.restrict_result_regions(to);
+    } else if backward_plan.is_not_empty() && backward_plan.initial_regions() == *from {
+        return backward_plan.restrict_initial_regions(from);
+    }
+    None
+}
+
 /// Interactively step from an initial region to a goal region.
 #[allow(unused_variables, unused_mut)]
 fn step_by_step_rc(
@@ -947,8 +973,8 @@ fn step_by_step_rc(
     from: &RegionsCorr,
     to: &RegionsCorr,
     depth: usize,
-) -> Option<PlansCorr> {
-    let mut ret_plans: Option<PlansCorr> = None;
+) -> Option<PlansCorrStore> {
+    let mut ret_plans: Option<PlansCorrStore> = None;
 
     let mut cur_from = from.clone();
     let mut cur_to = to.clone();
@@ -956,134 +982,139 @@ fn step_by_step_rc(
     let mut forward_plans = PlansCorrStore::new(vec![]);
     let mut backward_plans = PlansCorrStore::new(vec![]);
 
-    let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
-    let wanted_changes = rules_to_goal.as_changes();
-    if wanted_changes.is_low() {
-        return None;
-    }
-    let unwanted_changes = rules_to_goal.unwanted_changes();
-
-    let mut stepscorr = Vec::<StepStore>::with_capacity(from.len());
-
-    // Init step options vector, with StepStores containing a no-op step.
-    for regx in cur_from.iter() {
-        stepscorr.push(StepStore::new(vec![SomeStep::new_no_op(regx)]));
-    }
-
-    // Get steps needed to make changes.
-    // No limits within which the step must operate.
-    let max_regs = sdx.maximum_regions();
-
-    for (inx, rulx) in rules_to_goal.iter().enumerate() {
-        let wanted_changes = rulx.as_change();
-        if wanted_changes.is_not_low() {
-            let steps = sdx.get_steps_domain(inx, &wanted_changes, &max_regs[inx]);
-            if steps.is_empty() {
-                return None;
-            }
-            stepscorr[inx].append(steps);
-        }
-    }
-
-    // Load a vector of step references.
-    let mut step_refs = Vec::<Vec<&SomeStep>>::with_capacity(from.len());
-    for stepsx in stepscorr.iter() {
-        let mut tmp_vec = Vec::<&SomeStep>::with_capacity(stepsx.len());
-        for stpx in stepsx.iter() {
-            tmp_vec.push(stpx);
-        }
-        step_refs.push(tmp_vec);
-    }
-
-    print!("number steps per domain: ");
-    let mut num = 1;
-    for stp_vec in stepscorr.iter() {
-        print!("{} ", stp_vec.len());
-        num *= stp_vec.len();
-    }
-    print!(", number options s/b {}", num - 1); // Options - first item.
-    println!(" ");
-
-    // Get possible options .
-    let mut options: Vec<Vec<&SomeStep>> = tools::any_one_of_each(&step_refs);
-    options.remove(0); // Remove option of all no-op steps.
-
-    // Convert to StepsCorr instances.
-    let mut stepscorr_vec = Vec::<StepsCorr>::with_capacity(options.len());
-    for optx in options.iter() {
-        let mut tmp_store = StepsCorr::with_capacity(optx.len());
-        for stpx in optx.iter() {
-            tmp_store.push((*stpx).clone());
-        }
-        stepscorr_vec.push(tmp_store);
-    }
-    println!("stepscorr_vec len {}", stepscorr_vec.len());
-
-    // Further massaging for forward or backward chaining.
-    let mut steps_dis = Vec::<StepsCorr>::with_capacity(options.len());
-    for stpstox in stepscorr_vec {
-        // Check for forward chaining.
-        let mut from_int = false;
-        if cur_from.intersects(&stpstox.initial_regions()) {
-            from_int = true;
-        }
-        // Check for backward chaining.
-        let mut to_int = false;
-        if cur_to.intersects(&stpstox.result_regions()) {
-            to_int = true;
-        }
-        // Check for step that can do forward and backward chaining.
-        if from_int && to_int {
-            let stp_from = stpstox.restrict_initial_regions(&cur_from);
-            let stp_to = stpstox.restrict_result_regions(&cur_to);
-
-            if stp_from == stp_to {
-                steps_dis.push(stp_from);
-            } else {
-                steps_dis.push(stp_from);
-                steps_dis.push(stp_to);
-            }
-        } else if from_int {
-            // Forward chaining only.
-            steps_dis.push(stpstox.restrict_initial_regions(&cur_from));
-        } else if to_int {
-            // Backward chaining only.
-            steps_dis.push(stpstox.restrict_result_regions(&cur_to));
-        } else {
-            // Asymmetric chaining.
-            let stp_f = stpstox.restrict_initial_regions(
-                &RulesCorr::new_region_to_region_min(&cur_from, &stpstox.initial_regions())
-                    .result_regions(),
-            );
-            let stp_b = stpstox.restrict_result_regions(
-                &RulesCorr::new_region_from_region_min(&stpstox.result_regions(), &cur_to)
-                    .initial_regions(),
-            );
-
-            if stp_f == stp_b {
-                steps_dis.push(stp_f);
-            } else {
-                steps_dis.push(stp_f);
-                steps_dis.push(stp_b);
-            }
-        }
-    }
-    println!("steps_dis len {}", steps_dis.len());
-
     let mut cur_start = 0;
     let num_to_display = 10;
-
     let mut first = true;
+
     // Command loop.
     loop {
         if first {
             first = false;
             println!("Available commands:");
             println!("    q = quit step-rc.");
+            println!("    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
+            println!("    so = Start over, clear forward and backward plans at the current depth.");
             println!("    n = next slice of options, if any.");
             println!("    p = previous slice of options, if any.");
             println!("    no input = redisplay options.");
         }
+
+        let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
+        let wanted_changes = rules_to_goal.as_changes();
+        //if wanted_changes.is_not_low() {
+
+        let unwanted_changes = rules_to_goal.unwanted_changes();
+
+        let mut stepscorr = Vec::<StepStore>::with_capacity(from.len());
+
+        // Init step options vector, with StepStores containing a no-op step.
+        for regx in cur_from.iter() {
+            stepscorr.push(StepStore::new(vec![SomeStep::new_no_op(regx)]));
+        }
+
+        // Get steps needed to make changes.
+        // No limits within which the step must operate.
+        let max_regs = sdx.maximum_regions();
+
+        for (inx, rulx) in rules_to_goal.iter().enumerate() {
+            let wanted_changes = rulx.as_change();
+            if wanted_changes.is_not_low() {
+                let steps = sdx.get_steps_domain(inx, &wanted_changes, &max_regs[inx]);
+                if steps.is_empty() {
+                } else {
+                    stepscorr[inx].append(steps);
+                }
+            }
+        }
+
+        // Load a vector of step references.
+        let mut step_refs = Vec::<Vec<&SomeStep>>::with_capacity(from.len());
+        for stepsx in stepscorr.iter() {
+            let mut tmp_vec = Vec::<&SomeStep>::with_capacity(stepsx.len());
+            for stpx in stepsx.iter() {
+                tmp_vec.push(stpx);
+            }
+            step_refs.push(tmp_vec);
+        }
+
+        //print!("number steps per domain: ");
+        //let mut num = 1;
+        //for stp_vec in stepscorr.iter() {
+        //    print!("{} ", stp_vec.len());
+        //    num *= stp_vec.len();
+        //}
+        //print!(", number options s/b {}", num - 1); // Options - first item.
+        println!(" ");
+
+        // Get possible options .
+        let mut options: Vec<Vec<&SomeStep>> = tools::any_one_of_each(&step_refs);
+        options.remove(0); // Remove option of all no-op steps.
+
+        // Convert to StepsCorr instances.
+        let mut stepscorr_vec = Vec::<StepsCorr>::with_capacity(options.len());
+        for optx in options.iter() {
+            let mut tmp_store = StepsCorr::with_capacity(optx.len());
+            for stpx in optx.iter() {
+                tmp_store.push((*stpx).clone());
+            }
+            stepscorr_vec.push(tmp_store);
+        }
+        println!("stepscorr_vec len {}", stepscorr_vec.len());
+
+        // Further massaging for forward or backward chaining.
+        let mut steps_dis = Vec::<StepsCorr>::with_capacity(options.len());
+        for stpstox in stepscorr_vec {
+            // Check for forward chaining.
+            let mut from_int = false;
+            if cur_from.intersects(&stpstox.initial_regions()) {
+                from_int = true;
+            }
+            // Check for backward chaining.
+            let mut to_int = false;
+            if cur_to.intersects(&stpstox.result_regions()) {
+                to_int = true;
+            }
+            // Check for step that can do forward and backward chaining.
+            if from_int && to_int {
+                let stp_from = stpstox.restrict_initial_regions(&cur_from);
+                let stp_to = stpstox.restrict_result_regions(&cur_to);
+
+                if stp_from == stp_to {
+                    steps_dis.push(stp_from);
+                } else {
+                    steps_dis.push(stp_from);
+                    steps_dis.push(stp_to);
+                    
+                }
+            } else if from_int {
+                // Forward chaining only.
+                steps_dis.push(stpstox.restrict_initial_regions(&cur_from));
+            } else if to_int {
+                // Backward chaining only.
+                steps_dis.push(stpstox.restrict_result_regions(&cur_to));
+            } else {
+                // Asymmetric chaining.
+                let stp_f = stpstox.restrict_initial_regions(
+                    &RulesCorr::new_region_to_region_min(&cur_from, &stpstox.initial_regions())
+                        .result_regions(),
+                );
+                let stp_b = stpstox.restrict_result_regions(
+                    &RulesCorr::new_region_from_region_min(&stpstox.result_regions(), &cur_to)
+                        .initial_regions(),
+                );
+
+                if stp_f == stp_b {
+                    steps_dis.push(stp_f);
+                } else {
+                    steps_dis.push(stp_f);
+                    steps_dis.push(stp_b);
+                }
+            }
+        }
+        println!("steps_dis len {}", steps_dis.len());
+
+        println!("-----------------------------------");
+        println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
         println!(" ");
         println!("Forward plans:  {forward_plans}");
 
@@ -1094,64 +1125,80 @@ fn step_by_step_rc(
         println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
         println!(" ");
 
-        println!("options:");
-        let mut cur_opt = cur_start;
+        if steps_dis.is_empty() {
+            println!("options: None");
+        } else {
+            println!("options:");
 
-        let mut num_left = num_to_display;
-        loop {
-            if num_left == 0 || cur_opt >= steps_dis.len() {
-                break;
+            let mut num_left = num_to_display;
+
+            let mut cur_opt = cur_start;
+            loop {
+                if num_left == 0 || cur_opt >= steps_dis.len() {
+                    break;
+                }
+                let optx = &steps_dis[cur_opt];
+                print!("{cur_opt:3}  {optx}");
+                num_left -= 1;
+                cur_opt += 1;
+
+                // Check if steps initial regions intersect from regions.
+                let from_int = cur_from.intersects(&optx.initial_regions());
+                if from_int {
+                    print!(" FC");
+                } else {
+                    print!(" FA");
+                }
+
+                // Check if steps result regions intersect to regions.
+                let to_int = cur_to.intersects(&optx.result_regions());
+                if to_int {
+                    print!(" BC");
+                } else {
+                    print!(" BA");
+                }
+
+                // Calc wanted_changes.
+                let optx_changes = optx.changes();
+                let mut optx_wanted_changes = optx_changes.intersection(&wanted_changes);
+                print!(", W: {optx_wanted_changes}");
+
+                // Calc unwanted changes.
+                let optx_unwanted_changes = if from_int {
+                    optx_changes.intersection(&unwanted_changes)
+                } else {
+                    RulesCorr::new_region_to_region_min(&cur_from, &optx.initial_regions())
+                        .combine_sequence(&optx.rules())
+                        .intersection_changes(&unwanted_changes)
+                };
+                print!(", U: {optx_unwanted_changes}");
+
+                // Check select regions.
+                let rate = sdx.rate_results(&optx.result_regions());
+                if rate.0 != 0 && rate.1 != 0 {
+                    print!(", rate {:2} {:?}", rate.0 + rate.1, rate);
+                } else if rate.0 != 0 {
+                    print!(", rate {:2}", rate.0);
+                } else if rate.1 != 0 {
+                    print!(", rate {:2}", rate.1);
+                }
+
+                println!(" ");
             }
-            let optx = &steps_dis[cur_opt];
-            print!("{cur_opt:3}  {optx}");
-            num_left -= 1;
-            cur_opt += 1;
-
-            // Check if steps initial regions intersect from regions.
-            let from_int = cur_from.intersects(&optx.initial_regions());
-            if from_int {
-                print!(" FC");
-            } else {
-                print!(" FA");
-            }
-
-            // Check if steps result regions intersect to regions.
-            let to_int = cur_to.intersects(&optx.result_regions());
-            if to_int {
-                print!(" BC");
-            } else {
-                print!(" BA");
-            }
-
-            // Calc wanted_changes.
-            let optx_changes = optx.changes();
-            let mut optx_wanted_changes = optx_changes.intersection(&wanted_changes);
-            print!(", W: {optx_wanted_changes}");
-
-            // Calc unwanted changes.
-            let optx_unwanted_changes = if from_int {
-                optx_changes.intersection(&unwanted_changes)
-            } else {
-                RulesCorr::new_region_to_region_min(&cur_from, &optx.initial_regions())
-                    .combine_sequence(&optx.rules())
-                    .intersection_changes(&unwanted_changes)
-            };
-            print!(", U: {optx_unwanted_changes}");
-
-            // Check select regions.
-            let rate = sdx.rate_results(&optx.result_regions());
-            if rate.0 != 0 && rate.1 != 0 {
-                print!(", rate {:2} {:?}", rate.0 + rate.1, rate);
-            } else if rate.0 != 0 {
-                print!(", rate {:2}", rate.0);
-            } else if rate.1 != 0 {
-                print!(", rate {:2}", rate.1);
-            }
-
-            println!(" ");
         }
 
-        let input_str = pause_for_input("Press Enter to continue, or a command: ");
+        let input_str = if let Some(ref planx) = ret_plans {
+            println!("Plan found: {planx}");
+            println!(" ");
+            pause_for_input(&format!(
+                "Depth: {depth} Enter q, r (plan), fpop, bpop, so: "
+            ))
+        } else {
+            println!(" ");
+            pause_for_input(&format!(
+                "Depth: {depth} Enter q, r (None), <step number> [f, b], fpop, bpop, so: "
+            ))
+        };
 
         let cmd = match tools::parse_input(&input_str) {
             Ok(strvec) => strvec,
@@ -1174,7 +1221,7 @@ fn step_by_step_rc(
             }
             "n" | "N" => {
                 // Show next slice of options, if any.
-                if cur_start + num_to_display >= options.len() {
+                if cur_start + num_to_display >= steps_dis.len() {
                 } else {
                     cur_start += num_to_display;
                 }
@@ -1184,6 +1231,9 @@ fn step_by_step_rc(
                 if cur_start >= num_to_display {
                     cur_start -= num_to_display;
                 }
+            }
+            "r" | "R" => {
+                return ret_plans;
             }
             "fpop" | "FPOP" => {
                 if let Some(top_from) = forward_plans.pop() {
@@ -1199,6 +1249,13 @@ fn step_by_step_rc(
                     println!("backward_plan is empty");
                 }
             }
+            "so" | "SO" => {
+                forward_plans    = PlansCorrStore::new(vec![]);
+                backward_plans = PlansCorrStore::new(vec![]);
+                cur_from = from.clone();
+                cur_to = to.clone();
+                ret_plans = None;
+            }
             _ => (),
         }
         if cmd.len() == 2 {
@@ -1212,12 +1269,12 @@ fn step_by_step_rc(
                             let stp_tmp = steps_dis[num].restrict_initial_regions(&cur_from);
                             match forward_plans.push_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
                                 Ok(()) => {
-                                    //ret_plan = check_for_plan_completion(
-                                    //    from,
-                                    //    to,
-                                    //    &forward_plan,
-                                    //    &backward_plan,
-                                    //);
+                                    ret_plans = check_for_plan_completion_rc(
+                                        from,
+                                        to,
+                                        &forward_plans,
+                                        &backward_plans,
+                                    );
                                     cur_from = forward_plans.result_regions();
                                 }
                                 Err(errstr) => println!("forward plan push failed {errstr}"),
@@ -1231,12 +1288,12 @@ fn step_by_step_rc(
                                 .push_first_link(PlansCorr::new_from_stepscorr(&stp_tmp))
                             {
                                 Ok(()) => {
-                                    //ret_plan = check_for_plan_completion(
-                                    //    from,
-                                    //    to,
-                                    //    &forward_plan,
-                                    //    &backward_plan,
-                                    //);
+                                    ret_plans = check_for_plan_completion_rc(
+                                        from,
+                                        to,
+                                        &forward_plans,
+                                        &backward_plans,
+                                    );
                                     cur_to = backward_plans.initial_regions();
                                 }
                                 Err(errstr) => println!("backward plan push_first failed {errstr}"),
@@ -1275,19 +1332,18 @@ fn step_by_step(
             println!("-----------------------------------");
             println!("Available step commands:");
             println!(" ");
-            println!("q = Quit session.");
-            println!("r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
-            println!("so = Start over, clear forward and backward plans at the current depth.");
-            println!("\nfpop = Forward plan pop step at end.");
-            println!("bpop = Backward plan pop step at beginning.");
-            println!("\n<step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
-            println!("<step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
-            println!("\nW: = Wanted change(s), going forward.");
-            println!("U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
-            println!("     Unwanted change(s) must eventually be reversed.");
-            println!("\nIf there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
-            println!("?  = Region calculated based on least change to intersect the rule region.");
-            println!("     Forward, to rule initial region. Backward, from rule result region.");
+            println!("    q = Quit session.");
+            println!("    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
+            println!("    so = Start over, clear forward and backward plans at the current depth.");
+            println!("\n    fpop = Forward plan pop step at end.");
+            println!("    bpop = Backward plan pop step at beginning.");
+            println!("\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
+            println!("    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
+            println!("\n    W: = Wanted change(s), going forward.");
+            println!("    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
+            println!("         Unwanted change(s) must eventually be reversed.");
+            println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
+            println!("         Forward, to rule initial region. Backward, from rule result region.");
         }
         println!("-----------------------------------");
         println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
@@ -1611,7 +1667,7 @@ fn check_for_plan_completion(
         }
     } else if forward_plan.is_not_empty() && forward_plan.result_region().intersects(to) {
         return forward_plan.restrict_result_region(to);
-    } else if backward_plan.is_not_empty() && backward_plan.initial_region().intersects(from) {
+    } else if backward_plan.is_not_empty() && backward_plan.initial_region() == from {
         return backward_plan.restrict_initial_region(from);
     }
     None
