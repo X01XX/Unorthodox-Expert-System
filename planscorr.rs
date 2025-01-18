@@ -9,6 +9,7 @@ use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::regionscorr::RegionsCorr;
 use crate::statescorr::StatesCorr;
+use crate::stepscorr::StepsCorr;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,16 @@ impl PlansCorr {
             plans: PlanStore::with_capacity(cap),
             rate: 0,
         }
+    }
+
+    /// Return a new instance from a StepsCorr instance.
+    pub fn new_from_stepscorr(stepsc: &StepsCorr) -> Self {
+        let mut ret = Self::with_capacity(stepsc.len());
+
+        for (inx, stpx) in stepsc.iter().enumerate() {
+            ret.push(SomePlan::new(inx, vec![stpx.clone()]));
+        }
+        ret
     }
 
     /// Set the value of the planscorr.
@@ -217,6 +228,37 @@ impl PlansCorr {
     /// Return true if corresponding regions in two vectors have the same number of bits.
     pub fn is_congruent(&self, other: &impl tools::CorrespondingItems) -> bool {
         self.num_bits_vec() == other.num_bits_vec()
+    }
+
+    /// Return true if PlansCorr result regions intersect a given RegionsCorr.
+    pub fn result_regions_intersect(&self, rcx: &RegionsCorr) -> bool {
+        for (plnx, regx) in self.iter().zip(rcx.iter()) {
+            if plnx.result_region().intersects(regx) {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Return true if PlansCorr initial regions intersect a given RegionsCorr.
+    pub fn initial_regions_intersect(&self, rcx: &RegionsCorr) -> bool {
+        for (plnx, regx) in self.iter().zip(rcx.iter()) {
+            if plnx.initial_region().intersects(regx) {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Return a string representation in the from  (<-) format.
+    pub fn formatted_str_from(&self) -> String {
+        if self.rate == 0 {
+            format!("PC[{}]", self.plans.formatted_str_from())
+        } else {
+            format!("PC[{}, {}]", self.plans.formatted_str_from(), self.rate)
+        }
     }
 }
 

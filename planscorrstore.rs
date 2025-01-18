@@ -248,6 +248,95 @@ impl PlansCorrStore {
 
         self.items.push(pcx);
     }
+
+    /// Push a PlansCorr into a PlansCorrStore.
+    pub fn push_link(&mut self, pcx: PlansCorr) -> Result<(), String> {
+        if self.is_not_empty() {
+            if !self.result_regions().intersects(&pcx.initial_regions()) {
+                return Err(format!("planscorr::push_link: plan {self} result regions do not intersect {pcx} initial regions"));
+            }
+            if self.any_initial_intersects(&pcx.result_regions()) {
+                return Err(format!(
+                    "planscorr::push_link: plan {self} adding {pcx}, but circles back"
+                ));
+            }
+        }
+
+        self.items.push(pcx);
+        Ok(())
+    }
+    /// Return true if a PlansCorr contains an intersecting results region.
+    #[allow(dead_code)]
+    fn any_result_intersects(&self, regsx: &RegionsCorr) -> bool {
+        for plancx in self.iter() {
+            if plancx.result_regions_intersect(regsx) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return true if a PlansCorr contains an intersecting initial regions.
+    #[allow(dead_code)]
+    fn any_initial_intersects(&self, regsx: &RegionsCorr) -> bool {
+        for plancx in self.iter() {
+            if plancx.initial_regions_intersect(regsx) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Remove an item from a plan.
+    pub fn pop(&mut self) -> Option<PlansCorr> {
+        self.items.pop()
+    }
+
+    /// Add a PlansCorr to the beginning of a PlansCorrStore.
+    pub fn push_first_link(&mut self, pcx: PlansCorr) -> Result<(), String> {
+        if self.is_not_empty() {
+            if !self.items[0].initial_regions_intersect(&pcx.result_regions()) {
+                return Err(format!("planscorr::push_first_link: {self} initial regions do not intersect {pcx} result regions"));
+            }
+            if self.any_result_intersects(&pcx.initial_regions()) {
+                return Err(format!(
+                    "planscorr::push_first_link: {self} plan {self} adding {pcx}, but circles back"
+                ));
+            }
+        }
+
+        let mut new_items = vec![pcx];
+        new_items.append(&mut self.items);
+
+        self.items = new_items;
+        Ok(())
+    }
+
+    /// Remove an item from the beginning of a PlansCorrStore.
+    pub fn pop_first(&mut self) -> Option<PlansCorr> {
+        if self.items.is_empty() {
+            None
+        } else {
+            Some(self.items.remove(0))
+        }
+    }
+
+    /// Return a string representation in the from  (<-) format.
+    pub fn formatted_str_from(&self) -> String {
+        let mut ret = String::from("PCS[");
+
+        let mut first = true;
+        for plncx in self.items.iter() {
+            if first {
+                first = false;
+            } else {
+                ret.push_str(", ");
+            }
+            ret.push_str(&plncx.formatted_str_from());
+        }
+        ret.push(']');
+        ret
+    }
 }
 
 impl Index<usize> for PlansCorrStore {

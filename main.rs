@@ -1020,7 +1020,7 @@ fn step_by_step_rc(
     println!("stepscorr_vec len {}", stepscorr_vec.len());
 
     // Further massaging for forward or backward chaining.
-    let mut stepscorr_vec2 = Vec::<StepsCorr>::with_capacity(options.len());
+    let mut steps_dis = Vec::<StepsCorr>::with_capacity(options.len());
     for stpstox in stepscorr_vec {
         // Check for forward chaining.
         let mut from_int = false;
@@ -1038,17 +1038,17 @@ fn step_by_step_rc(
             let stp_to = stpstox.restrict_result_regions(&cur_to);
 
             if stp_from == stp_to {
-                stepscorr_vec2.push(stp_from);
+                steps_dis.push(stp_from);
             } else {
-                stepscorr_vec2.push(stp_from);
-                stepscorr_vec2.push(stp_to);
+                steps_dis.push(stp_from);
+                steps_dis.push(stp_to);
             }
         } else if from_int {
             // Forward chaining only.
-            stepscorr_vec2.push(stpstox.restrict_initial_regions(&cur_from));
+            steps_dis.push(stpstox.restrict_initial_regions(&cur_from));
         } else if to_int {
             // Backward chaining only.
-            stepscorr_vec2.push(stpstox.restrict_result_regions(&cur_to));
+            steps_dis.push(stpstox.restrict_result_regions(&cur_to));
         } else {
             // Asymmetric chaining.
             let stp_f = stpstox.restrict_initial_regions(
@@ -1061,14 +1061,14 @@ fn step_by_step_rc(
             );
 
             if stp_f == stp_b {
-                stepscorr_vec2.push(stp_f);
+                steps_dis.push(stp_f);
             } else {
-                stepscorr_vec2.push(stp_f);
-                stepscorr_vec2.push(stp_b);
+                steps_dis.push(stp_f);
+                steps_dis.push(stp_b);
             }
         }
     }
-    println!("stepscorr_vec2 len {}", stepscorr_vec2.len());
+    println!("steps_dis len {}", steps_dis.len());
 
     let mut cur_start = 0;
     let num_to_display = 10;
@@ -1084,15 +1084,25 @@ fn step_by_step_rc(
             println!("    p = previous slice of options, if any.");
             println!("    no input = redisplay options.");
         }
+        println!(" ");
+        println!("Forward plans:  {forward_plans}");
+
+        println!(" ");
+        println!("Backward plans: {}", backward_plans.formatted_str_from());
+
+        println!(" ");
+        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
+        println!(" ");
+
         println!("options:");
         let mut cur_opt = cur_start;
 
         let mut num_left = num_to_display;
         loop {
-            if num_left == 0 || cur_opt >= stepscorr_vec2.len() {
+            if num_left == 0 || cur_opt >= steps_dis.len() {
                 break;
             }
-            let optx = &stepscorr_vec2[cur_opt];
+            let optx = &steps_dis[cur_opt];
             print!("{cur_opt:3}  {optx}");
             num_left -= 1;
             cur_opt += 1;
@@ -1141,24 +1151,101 @@ fn step_by_step_rc(
             println!(" ");
         }
 
-        let input = pause_for_input("Press Enter to continue, or a command: ");
-        if input == "q" || input == "Q" {
-            return None;
-        } else if input == "n" || input == "N" {
-            // Show next slice of options, if any.
-            if cur_start + num_to_display >= options.len() {
-            } else {
-                cur_start += num_to_display;
+        let input_str = pause_for_input("Press Enter to continue, or a command: ");
+
+        let cmd = match tools::parse_input(&input_str) {
+            Ok(strvec) => strvec,
+            Err(errstr) => {
+                println!("{errstr}");
+                vec![]
             }
-        } else if input == "p" || input == "P" {
-            // Show previous slice of options, if any.
-            if cur_start >= num_to_display {
-                cur_start -= num_to_display;
-            }
-        } else if input.is_empty() {
+        };
+
+        // No input, or error.
+        if cmd.is_empty() {
             continue;
-        } else {
-            println!("Did not understand command");
+        }
+
+        // Do commands
+        match &*cmd[0] {
+            "q" | "Q" => {
+                println!("Done");
+                process::exit(0);
+            }
+            "n" | "N" => {
+                // Show next slice of options, if any.
+                if cur_start + num_to_display >= options.len() {
+                } else {
+                    cur_start += num_to_display;
+                }
+            }
+            "p" | "P" => {
+                // Show previous slice of options, if any.
+                if cur_start >= num_to_display {
+                    cur_start -= num_to_display;
+                }
+            }
+            "fpop" | "FPOP" => {
+                if let Some(top_from) = forward_plans.pop() {
+                    cur_from = top_from.initial_regions();
+                } else {
+                    println!("forward_plan is empty");
+                }
+            }
+            "bpop" | "BPOP" => {
+                if let Some(stp_back) = backward_plans.pop_first() {
+                    cur_to = stp_back.result_regions();
+                } else {
+                    println!("backward_plan is empty");
+                }
+            }
+            _ => (),
+        }
+        if cmd.len() == 2 {
+            match cmd[0].parse::<usize>() {
+                Ok(num) => {
+                    if num >= steps_dis.len() {
+                        println!("Step number is too high");
+                    } else if cmd[1] == "F" || cmd[1] == "f" {
+                        // Check for forward chaining, else forward asymmetric chaining.
+                        if steps_dis[num].initial_regions_intersect(&cur_from) {
+                            let stp_tmp = steps_dis[num].restrict_initial_regions(&cur_from);
+                            match forward_plans.push_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
+                                Ok(()) => {
+                                    //ret_plan = check_for_plan_completion(
+                                    //    from,
+                                    //    to,
+                                    //    &forward_plan,
+                                    //    &backward_plan,
+                                    //);
+                                    cur_from = forward_plans.result_regions();
+                                }
+                                Err(errstr) => println!("forward plan push failed {errstr}"),
+                            }
+                        }
+                    } else if cmd[1] == "B" || cmd[1] == "b" {
+                        // Check for backward chaining, else backward asymmetric chaining.
+                        if steps_dis[num].result_regions_intersect(&cur_to) {
+                            let stp_tmp = steps_dis[num].restrict_result_regions(&cur_to);
+                            match backward_plans
+                                .push_first_link(PlansCorr::new_from_stepscorr(&stp_tmp))
+                            {
+                                Ok(()) => {
+                                    //ret_plan = check_for_plan_completion(
+                                    //    from,
+                                    //    to,
+                                    //    &forward_plan,
+                                    //    &backward_plan,
+                                    //);
+                                    cur_to = backward_plans.initial_regions();
+                                }
+                                Err(errstr) => println!("backward plan push_first failed {errstr}"),
+                            }
+                        }
+                    }
+                }
+                Err(errstr) => println!("{errstr}"),
+            }
         }
     } // end command loop.
 }

@@ -147,4 +147,26 @@ impl StepsCorr {
         }
         ret
     }
+
+    /// Return true if a StepsCorr initial regions intersect a given regionsCorr.
+    pub fn initial_regions_intersect(&self, rcx: &RegionsCorr) -> bool {
+        for (stpx, regx) in self.iter().zip(rcx.iter()) {
+            if stpx.initial.intersects(regx) {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+
+    /// Return true if a StepsCorr result regions intersect a given regionsCorr.
+    pub fn result_regions_intersect(&self, rcx: &RegionsCorr) -> bool {
+        for (stpx, regx) in self.iter().zip(rcx.iter()) {
+            if stpx.result.intersects(regx) {
+            } else {
+                return false;
+            }
+        }
+        true
+    }
 }

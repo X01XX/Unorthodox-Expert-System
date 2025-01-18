@@ -113,6 +113,26 @@ impl PlanStore {
         rc_str
     }
 
+    /// Return a string representation in the from  (<-) format.
+    pub fn formatted_str_from(&self) -> String {
+        let mut rc_str = String::with_capacity(self.strlen());
+
+        rc_str.push('[');
+
+        let mut first = true;
+        for planx in &self.items {
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
+            }
+            rc_str.push_str(&planx.formatted_str_from());
+        }
+        rc_str.push(']');
+
+        rc_str
+    }
+
     /// Extend a StepStore by pushing another StepStore.
     pub fn append(&mut self, other: Self) {
         for planx in other.items {
