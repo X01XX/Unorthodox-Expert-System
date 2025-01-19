@@ -1092,7 +1092,6 @@ fn step_by_step_rc(
                 } else {
                     steps_dis.push(stp_from);
                     steps_dis.push(stp_to);
-                    
                 }
             } else if from_int {
                 // Forward chaining only.
@@ -1257,7 +1256,7 @@ fn step_by_step_rc(
                 }
             }
             "so" | "SO" => {
-                forward_plans    = PlansCorrStore::new(vec![]);
+                forward_plans = PlansCorrStore::new(vec![]);
                 backward_plans = PlansCorrStore::new(vec![]);
                 cur_from = from.clone();
                 cur_to = to.clone();
@@ -1286,6 +1285,48 @@ fn step_by_step_rc(
                                 }
                                 Err(errstr) => println!("forward plan push failed {errstr}"),
                             }
+                        } else if let Some(mut planx) = step_by_step_rc(
+                            sdx,
+                            &cur_from,
+                            &steps_dis[num].initial_regions(),
+                            depth + 1,
+                        ) {
+                            println!(
+                                "Forward asymmetric plan {planx} being linked to step {}",
+                                steps_dis[num]
+                            );
+                            pause_for_input("Press Enter to continue: ");
+                            match planx.push_link(PlansCorr::new_from_stepscorr(
+                                &steps_dis[num].restrict_initial_regions(&planx.result_regions()),
+                            )) {
+                                Ok(()) => {
+                                    println!("Giving plan {planx}");
+                                    pause_for_input("Press Enter to continue: ");
+                                    match forward_plans.link(&planx) {
+                                        Ok(plany) => {
+                                            forward_plans = plany;
+                                            cur_from = forward_plans.result_regions().clone();
+                                            ret_plans = check_for_plan_completion_rc(
+                                                from,
+                                                to,
+                                                &forward_plans,
+                                                &backward_plans,
+                                            );
+                                        }
+                                        Err(errstr) => {
+                                            println!("Linking {forward_plans} to {planx} failed: {errstr}");
+                                            pause_for_input("Press Enter to continue: ");
+                                        }
+                                    }
+                                }
+                                Err(errstr) => {
+                                    println!("Linking to {}:failed: {errstr}", steps_dis[num]);
+                                    pause_for_input("Press Enter to continue: ");
+                                }
+                            }
+                        } else {
+                            println!("Forward chaining to {} returned None.", steps_dis[num]);
+                            pause_for_input("Press Enter to continue: ");
                         }
                     } else if cmd[1] == "B" || cmd[1] == "b" {
                         // Check for backward chaining, else backward asymmetric chaining.
@@ -1305,12 +1346,58 @@ fn step_by_step_rc(
                                 }
                                 Err(errstr) => println!("backward plan push_first failed {errstr}"),
                             }
+                        } else if let Some(mut planx) = step_by_step_rc(
+                            sdx,
+                            &steps_dis[num].result_regions(),
+                            &cur_to,
+                            depth + 1,
+                        ) {
+                            println!(
+                                "Backward asymmetric step {} being linked to plan {planx}",
+                                steps_dis[num]
+                            );
+                            pause_for_input("Press Enter to continue: ");
+
+                            match planx.push_first_link(PlansCorr::new_from_stepscorr(
+                                &steps_dis[num].restrict_result_regions(&planx.initial_regions()),
+                            )) {
+                                Ok(()) => {
+                                    println!("Giving plan {planx}");
+                                    pause_for_input("Press Enter to continue: ");
+
+                                    match planx.link(&backward_plans) {
+                                        Ok(plany) => {
+                                            backward_plans = plany;
+                                            cur_to = backward_plans.initial_regions().clone();
+                                            ret_plans = check_for_plan_completion_rc(
+                                                from,
+                                                to,
+                                                &forward_plans,
+                                                &backward_plans,
+                                            );
+                                        }
+                                        Err(errstr) => {
+                                            println!(
+                                                "link {planx} to {backward_plans} failed {errstr}."
+                                            );
+                                            pause_for_input("Press Enter to continue: ");
+                                        }
+                                    }
+                                }
+                                Err(errstr) => {
+                                    println!("Linking {planx} and backward plan {backward_plans} failed: {errstr}.");
+                                    pause_for_input("Press Enter to continue: ");
+                                }
+                            }
+                        } else {
+                            println!("Backward chaining return None.");
+                            pause_for_input("Press Enter to continue: ");
                         }
-                    }
-                }
+                    } // end cmd[1] == "B"
+                } // end Ok(num)
                 Err(errstr) => println!("{errstr}"),
-            }
-        }
+            } // match cmd[0].parse::<usize>()
+        } // end cmp.len() == 2
     } // end command loop.
 }
 
@@ -1552,7 +1639,6 @@ fn step_by_step(
                             {
                                 Ok(()) => {
                                     println!("Giving plan {planx}");
-                                    println!("Linking forward plan {forward_plan} and {planx}");
                                     pause_for_input("Press Enter to continue: ");
                                     match forward_plan.link(&planx) {
                                         Ok(plany) => {
@@ -1610,7 +1696,6 @@ fn step_by_step(
                             ) {
                                 Ok(()) => {
                                     println!("Giving plan {planx}");
-                                    println!("Linking {planx} and backward plan {backward_plan}");
                                     pause_for_input("Press Enter to continue: ");
 
                                     match planx.link(&backward_plan) {
@@ -1639,14 +1724,17 @@ fn step_by_step(
                             }
                         } else {
                             println!("Backward chaining return None.");
+                            pause_for_input("Press Enter to continue: ");
                         }
                     } else {
                         // not F, f, B or b.
                         println!("\nDid not understand command: {cmd:?}");
+                        pause_for_input("Press Enter to continue: ");
                     }
                 } // end Ok(num)
                 Err(_) => {
                     println!("\nDid not understand command: {cmd:?}");
+                    pause_for_input("Press Enter to continue: ");
                 }
             }
         } // end cmd.len() == 2

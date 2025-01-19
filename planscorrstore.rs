@@ -139,6 +139,13 @@ impl PlansCorrStore {
 
     /// Return a PlansCorrStorr linked to another.
     pub fn link(&self, other: &Self) -> Result<Self, String> {
+        if self.is_empty() {
+            return Ok(other.clone());
+        }
+        if other.is_empty() {
+            return Ok(self.clone());
+        }
+
         //println!("planscorrstore::link {self} to {other}");
         if let Some(pcx) = self.last() {
             debug_assert_eq!(pcx.num_bits_vec(), other[0].num_bits_vec());
