@@ -791,7 +791,7 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
         return Err("Regionscorr given are not congruent".to_string());
     }
 
-    if let Some(plans) = step_by_step_rc(sdx, &from, &to, 0) {
+    if let Some(plans) = step_by_step_rc(sdx, &from, &to, None, None, 0) {
         println!("found plan for {from} -> {to}: {plans}");
         if plans.initial_regions() == sdx.all_current_regions() {
             let cmd = pause_for_input("Press Enter to continue, or r to run ");
@@ -972,6 +972,8 @@ fn step_by_step_rc(
     sdx: &SessionData,
     from: &RegionsCorr,
     to: &RegionsCorr,
+    forward_asymmetric: Option<&RegionsCorr>,
+    backward_asymmetric: Option<&RegionsCorr>,
     depth: usize,
 ) -> Option<PlansCorrStore> {
     let mut ret_plans: Option<PlansCorrStore> = None;
@@ -988,7 +990,7 @@ fn step_by_step_rc(
 
     // Command loop.
     loop {
-        if first {
+        if first && depth == 0 {
             first = false;
             println!("Available commands:");
             println!("    q = quit step-rc.");
@@ -1120,7 +1122,16 @@ fn step_by_step_rc(
         }
 
         println!("-----------------------------------");
-        println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
+
+        if let Some(rcx) = forward_asymmetric {
+            println!(
+                "Original Forward: ({from} -> {to}) -> {rcx}, Current: from {cur_from} -> {cur_to}"
+            );
+        } else if let Some(rcx) = backward_asymmetric {
+            println!("Original Backward: {rcx} -> ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
+        } else {
+            println!("Original: ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
+        }
         println!(" ");
         println!("Forward plans:  {forward_plans}");
 
@@ -1134,7 +1145,11 @@ fn step_by_step_rc(
         if steps_dis.is_empty() {
             println!("options: None");
         } else {
-            println!("options (of {}):", steps_dis.len());
+            if steps_dis.len() > num_to_display {
+                println!("options (of {}):", steps_dis.len());
+            } else {
+                println!("options:");
+            }
 
             let mut num_left = num_to_display;
 
@@ -1244,6 +1259,7 @@ fn step_by_step_rc(
             "fpop" | "FPOP" => {
                 if let Some(top_from) = forward_plans.pop() {
                     cur_from = top_from.initial_regions();
+                    ret_plans = None;
                 } else {
                     println!("forward_plan is empty");
                 }
@@ -1251,6 +1267,7 @@ fn step_by_step_rc(
             "bpop" | "BPOP" => {
                 if let Some(stp_back) = backward_plans.pop_first() {
                     cur_to = stp_back.result_regions();
+                    ret_plans = None;
                 } else {
                     println!("backward_plan is empty");
                 }
@@ -1289,6 +1306,8 @@ fn step_by_step_rc(
                             sdx,
                             &cur_from,
                             &steps_dis[num].initial_regions(),
+                            Some(&steps_dis[num].result_regions()),
+                            None,
                             depth + 1,
                         ) {
                             println!(
@@ -1350,6 +1369,8 @@ fn step_by_step_rc(
                             sdx,
                             &steps_dis[num].result_regions(),
                             &cur_to,
+                            None,
+                            Some(&steps_dis[num].initial_regions()),
                             depth + 1,
                         ) {
                             println!(
@@ -1439,7 +1460,7 @@ fn step_by_step(
             println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
         }
         println!("-----------------------------------");
-        println!("Original from {from} to {to}, current from {cur_from} to {cur_to}");
+        println!("Original: from {from} to {to}, Current: from {cur_from} to {cur_to}");
 
         let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
         let wanted_changes = rule_to_goal.as_change();
@@ -2119,7 +2140,7 @@ fn usage() {
     println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
     println!("\n\n    aj <act num>             - For an Action in the CDD, display all groups anchor, and adJacent, info.");
-    println!("    aj <act num> <region>    - For an Action in the CDD, display group anchor, and adJacent, info.");
+    println!("    aj <act num> <region>      For an Action in the CDD, display group anchor, and adJacent, info.");
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
     println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");
@@ -2131,22 +2152,37 @@ fn usage() {
     println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!(
-        "    ps <act num> <region>    - Print Squares in a given action and region, of the CDD."
+        "    ps <act num> <region>      Print Squares in a given action and region, of the CDD."
     );
     println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    ss <act num>                        - Sample the current State, for a given action, for the CDD.");
-    println!("    ss <act num> <state>                - Sample State for a given action and state, for the CDD.");
+    println!("\n    ss <act num>             - Sample the current State, for a given action, for the CDD.");
     println!(
-        "    ss <act num> <state> <result-state> - Sample State, for a given action, state and arbitrary result, for the CDD."
+        "    ss <act num> <state>       Sample State for a given action and state, for the CDD."
     );
-    println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
-    println!("\n    to-rc <RegionsCorr>      - Change the current state TO within a RegionsCorr, like RC[<region domain 0>, <region domain 1>, ...].");
-    println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to/from a goal region.");
-    println!("                              This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
-    println!("                              The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
+    println!("    ss <act num> <s1> <s2>     Sample State, for a given action, state and arbitrary result, for the CDD."
+    );
+    //    println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
     println!(
-        "                              giving immediate access to a fully develped set of rules."
+        "\n    to-rc <RC>               - Change the current states TO within a set of regions."
+    );
+    println!("\n                               Like: to-rc RC[r1010, r1_000]");
+    println!(
+        "                               To target less than all domains: to-rc RC[r1010, rX_XXXX]"
+    );
+    //    println!("\n    step <region> <region>    Interactively use rules to navigate, step by step, from an initial region to a goal region.");
+    //    println!("                              This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
+    //    println!("                              The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
+    //    println!(
+    //        "                              giving immediate access to a fully develped set of rules."
+    //    );
+    println!("\n    step_rc <RC> <RC>        - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions.");
+    println!("\n                               Like: step_rc RC[r0101, r111] RC[r1001, r100]");
+    println!("                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100]");
+    println!("\n                               This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
+    println!("                               The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
+    println!(
+        "                               giving immediate access to a fully develped set of rules."
     );
     println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
