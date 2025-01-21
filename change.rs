@@ -2,7 +2,6 @@
 
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
-use crate::region::SomeRegion;
 use crate::rule::SomeRule;
 use crate::state::SomeState;
 use crate::tools;
@@ -107,16 +106,6 @@ impl SomeChange {
         .formatted_str()
     }
 
-    /// Return a change for translating from a state to a region.
-    pub fn new_state_to_region(from: &SomeState, to: &SomeRegion) -> SomeChange {
-        debug_assert_eq!(from.num_bits(), to.num_bits());
-
-        SomeChange {
-            m01: to.edge_ones_mask().bitwise_and_not(from),
-            m10: to.edge_zeros_mask().bitwise_and(from),
-        }
-    }
-
     /// Return the result of applying a change to a state.
     pub fn apply_changes(&self, stax: &SomeState) -> SomeState {
         debug_assert_eq!(stax.num_bits(), self.num_bits());
@@ -132,22 +121,6 @@ impl SomeChange {
     /// Return the number of bits used by the change's masks.
     pub fn num_bits(&self) -> usize {
         self.m01.num_bits()
-    }
-
-    /// Return a change after doing a bitwise and operation with a given mask.
-    pub fn bitwise_and_mask(&self, amask: &SomeMask) -> Self {
-        SomeChange {
-            m01: self.m01.bitwise_and(amask),
-            m10: self.m10.bitwise_and(amask),
-        }
-    }
-
-    /// Return the invert of a given change.
-    pub fn invert(&self) -> Self {
-        SomeChange {
-            m01: self.m01.bitwise_not(),
-            m10: self.m10.bitwise_not(),
-        }
     }
 
     /// Return true if there is anf X->x bit positions.
@@ -292,22 +265,6 @@ mod tests {
         println!("cng3 {cng3}");
 
         assert!(cng3 == SomeChange::from_str("01/../../10_../../../..")?);
-
-        Ok(())
-    }
-
-    #[test]
-    fn new_state_to_region() -> Result<(), String> {
-        let sta1 = SomeState::from_str("s01_0110")?;
-        println!("sta1 {sta1}");
-
-        let reg1 = SomeRegion::from_str("xx_1010")?;
-        println!("reg1 {reg1}");
-
-        let cng1 = SomeChange::new_state_to_region(&sta1, &reg1);
-        println!("cng1 {cng1}");
-
-        assert!(cng1 == SomeChange::from_str("../.._/01/10/../..")?);
 
         Ok(())
     }

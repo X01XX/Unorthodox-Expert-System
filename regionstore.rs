@@ -128,16 +128,6 @@ impl RegionStore {
         Self::new(regs)
     }
 
-    /// Return the number of regions that are a superset of a given item.
-    pub fn number_supersets_of(&self, itmx: &impl tools::AccessStates) -> usize {
-        debug_assert!(self.is_empty() || itmx.num_bits() == self.num_bits().unwrap());
-
-        self.items
-            .iter()
-            .map(|regx| if regx.is_superset_of(itmx) { 1 } else { 0 })
-            .sum()
-    }
-
     /// Return true if a RegionStore contains a region.
     /// Regions may be equal, without matching states.
     /// A region formed by 0 and 5 will equal a region formed by 4 and 1.

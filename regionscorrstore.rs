@@ -1,7 +1,6 @@
 //! The RegionsCorrStore, a vector of RegionsCorr structs.
 
 use crate::regionscorr::RegionsCorr;
-use crate::regionstore::RegionStore;
 use crate::tools::{self, StrLen};
 
 use serde::{Deserialize, Serialize};
@@ -48,19 +47,6 @@ impl RegionsCorrStore {
         let mut ret = Self::with_capacity(self.len());
         for rcx in self.iter() {
             ret.push(rcx.combine());
-        }
-        ret
-    }
-
-    /// Return a RegionStore from a  RCS.
-    pub fn to_regionstore(&self) -> RegionStore {
-        let mut ret = RegionStore::with_capacity(self.len());
-        for rcx in self.iter() {
-            if rcx.len() == 1 {
-                ret.push(rcx.regions[0].clone());
-            } else {
-                ret.push(rcx.combine().regions[0].clone());
-            }
         }
         ret
     }
@@ -382,6 +368,20 @@ impl FromStr for RegionsCorrStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::regionstore::RegionStore;
+
+    /// Return a RegionStore from a  RCS.
+    pub fn to_regionstore(rcsx: &RegionsCorrStore) -> RegionStore {
+        let mut ret = RegionStore::with_capacity(rcsx.len());
+        for rcx in rcsx.iter() {
+            if rcx.len() == 1 {
+                ret.push(rcx.regions[0].clone());
+            } else {
+                ret.push(rcx.combine().regions[0].clone());
+            }
+        }
+        ret
+    }
 
     /// Check fragments of a RS for various error conditions.
     fn check_fragments(srs1: &RegionsCorrStore, frags: &RegionsCorrStore) -> Result<(), String> {
@@ -547,21 +547,6 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn to_regionstore() -> Result<(), String> {
-        let rcs1 = RegionsCorrStore::from_str("RCS[RC[r0011], RC[r1xx1]]")?;
-        let rs1 = rcs1.to_regionstore();
-        println!("{rcs1} to {rs1}");
-        assert!(rs1 == RegionStore::from_str("[r0011, r1xx1]")?);
-
-        let rcs1 = RegionsCorrStore::from_str("RCS[RC[r00, r11], RC[r1x, rx1]]")?;
-        let rs1 = rcs1.to_regionstore();
-        println!("{rcs1} to {rs1}");
-        assert!(rs1 == RegionStore::from_str("[r0011, r1xx1]")?);
-
-        Ok(())
-    }
-
     // Test subtract, and equivalence to regionstore subtraction.
     #[test]
     fn eqv_subtract() -> Result<(), String> {
@@ -569,7 +554,7 @@ mod tests {
         let rcs2 = RegionsCorrStore::from_str("RCS[RC[r1X, rX1]]")?;
         let rcs3 = rcs1.subtract(&rcs2);
         println!("{rcs1} - {rcs2} = {rcs3}");
-        let rs1 = rcs3.to_regionstore();
+        let rs1 = to_regionstore(&rcs3);
         let rs2 = RegionStore::from_str("[rX10X]")?.subtract(&RegionStore::from_str("[1XX1]")?);
         println!("{rs1} should be eq {rs2}");
         assert!(rs1 == rs2);
@@ -583,7 +568,7 @@ mod tests {
         let rcs1 = RegionsCorrStore::from_str("RCS[RC[rX1, r0X], RC[r1X, rX1]]")?;
         let rcs2 = rcs1.split_by_intersections();
         println!("{rcs1} split = {rcs2}");
-        let rs1 = rcs2.to_regionstore();
+        let rs1 = to_regionstore(&rcs2);
         let rs2 = RegionStore::from_str("[rX10X, r1XX1]")?.split_by_intersections();
         println!("{rs1} should be eq {rs2}");
         assert!(rs1 == rs2);

@@ -14,16 +14,6 @@ pub fn vec_contains<T, U>(avec: &[T], testfn: fn(&T, &U) -> bool, item: &U) -> b
     false
 }
 
-/// Return true if a vector contains the same reference given.
-pub fn _vec_contains_ref<T>(avec: &[&T], item: &T) -> bool {
-    for itemx in avec.iter() {
-        if std::ptr::eq(*itemx, item) {
-            return true;
-        }
-    }
-    false
-}
-
 /// Remove an element from a vector, not caring about order, avoid the
 /// copying that the remove command does.
 /// If iterating over a vector, accumulating a vector of indices to remove,

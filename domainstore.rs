@@ -316,21 +316,6 @@ impl DomainStore {
         }
     }
 
-    /// If exactly one domain uses a given number of bits, return its ID.
-    pub fn find_num_bits(&self, num_bits: usize) -> Option<usize> {
-        let mut dom_ids = vec![];
-        for domx in self.items.iter() {
-            if domx.num_bits() == num_bits {
-                dom_ids.push(domx.id);
-            }
-        }
-        if dom_ids.len() == 1 {
-            Some(dom_ids[0])
-        } else {
-            None
-        }
-    }
-
     /// Collect steps that contain at least one wanted change.
     pub fn get_steps_domain(
         &self,

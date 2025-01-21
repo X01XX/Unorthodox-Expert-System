@@ -114,26 +114,6 @@ impl RulesCorr {
         ret
     }
 
-    /// Return a RulesCorr with restricted initial regions.
-    pub fn _restrict_initial_regions(&self, regions: &RegionsCorr) -> Self {
-        let mut ret = Self::with_capacity(self.len());
-
-        for (rulx, regy) in self.iter().zip(regions.iter()) {
-            ret.push(rulx.restrict_initial_region(regy));
-        }
-        ret
-    }
-
-    /// Return a RulesCorr with restricted result regions.
-    pub fn _restrict_result_regions(&self, regions: &RegionsCorr) -> Self {
-        let mut ret = Self::with_capacity(self.len());
-
-        for (rulx, regy) in self.iter().zip(regions.iter()) {
-            ret.push(rulx.restrict_result_region(regy));
-        }
-        ret
-    }
-
     /// Return the minimum-change rule to change a RegionsCorr into a subset of a second RegionsCorr.
     pub fn new_region_to_region_min(first: &RegionsCorr, second: &RegionsCorr) -> RulesCorr {
         let mut ret = RulesCorr::with_capacity(first.len());

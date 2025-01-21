@@ -882,8 +882,8 @@ fn step_by_step_rc(
             println!("    q = quit step-rc.");
             println!("    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
             println!("    so = Start over, clear forward and backward plans at the current depth.");
-            println!("    n = next slice of options, if any.");
-            println!("    p = previous slice of options, if any.");
+            println!("    n = next slice of options.");
+            println!("    p = previous slice of options.");
             println!("\n    fpop = Forward plans pop step at end.");
             println!("    bpop = Backward plans pop step at beginning.");
             println!("\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
@@ -1106,12 +1106,22 @@ fn step_by_step_rc(
             }
         }
 
+        let pop_str = if forward_plans.is_not_empty() && backward_plans.is_not_empty() {
+            ", fpop, bpop"
+        } else if forward_plans.is_not_empty() {
+            ", fpop"
+        } else if backward_plans.is_not_empty() {
+            ", bpop"
+        } else {
+            ""
+        };
 
         let input_str = if let Some(ref planx) = ret_plans {
             println!("Plan found: {planx}");
             println!(" ");
             pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (plan), fpop, bpop, so: "
+                "Depth: {depth} Enter q, r (plan){}, so: ",
+                pop_str
             ))
         } else {
             let pn_opts = if p_flag && n_flag {
@@ -1125,8 +1135,8 @@ fn step_by_step_rc(
             };
             println!(" ");
             pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (None), <step number> [f|b], fpop, bpop, so{}: ",
-                pn_opts
+                "Depth: {depth} Enter q, r (None), <step number> [f|b]{}, so{}: ",
+                pop_str, pn_opts
             ))
         };
 
