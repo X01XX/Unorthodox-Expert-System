@@ -225,14 +225,6 @@ fn anyxofn2<'a, T>(xitems: usize, xlist: &[&'a T], nlist: &[&'a T]) -> Vec<Vec<&
     ret_vec
 }
 
-/// For those awkward situations when you want to use referenced items, instead of cloning,
-/// and you want to use non-reference items, generated from the referenced items.
-#[allow(dead_code)]
-enum Either<'a, T> {
-    Itemref { aref: &'a T },
-    Item { item: T },
-}
-
 /// Return a vector of references, from a given vector.
 pub fn vec_refs<T>(avec: &[T]) -> Vec<&T> {
     let mut ret = Vec::<&T>::with_capacity(avec.len());
@@ -356,7 +348,6 @@ pub fn parse_input(str_in: &str) -> Result<Vec<String>, String> {
 /// An interesting regularity is that the first option is always a list of all first elements
 /// of each vector.
 /// ########################################################################################
-#[allow(dead_code)]
 pub fn any_one_of_each<T: Copy>(tvec: &[Vec<T>]) -> Vec<Vec<T>> {
     // Calc number of options.
     let num_options = any_one_of_result_len(tvec);
@@ -382,7 +373,6 @@ pub fn any_one_of_each<T: Copy>(tvec: &[Vec<T>]) -> Vec<Vec<T>> {
 
 /// Calc the number of options expected in the final result.
 /// ########################################################
-#[allow(dead_code)]
 fn any_one_of_result_len<T>(avec: &[Vec<T>]) -> usize {
     let mut num_options = 1;
     for vecx in avec.iter() {
@@ -396,7 +386,6 @@ fn any_one_of_result_len<T>(avec: &[Vec<T>]) -> usize {
 /// So the next imtermediate result length is the vector to process length times the intermediate
 /// results length.
 /// ###############################################################################################
-#[allow(dead_code)]
 fn add_one_of_next<T: Copy>(avec: &[Vec<T>], options: &[Vec<T>]) -> Vec<Vec<T>> {
     let mut next_options = Vec::<Vec<T>>::with_capacity(options.len() * avec[0].len());
 

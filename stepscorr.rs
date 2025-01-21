@@ -47,7 +47,6 @@ pub struct StepsCorr {
 
 impl StepsCorr {
     /// Return a new StepsCorr instance, empty, with a specified capacity.
-    #[allow(dead_code)]
     pub fn with_capacity(cap: usize) -> Self {
         debug_assert!(cap > 0);
         Self {
@@ -56,7 +55,6 @@ impl StepsCorr {
     }
 
     /// Return the number of steps.
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.steps.len()
     }
@@ -67,25 +65,21 @@ impl StepsCorr {
     }
 
     /// Return true if the store is not empty.
-    #[allow(dead_code)]
     pub fn is_not_empty(&self) -> bool {
         !self.steps.is_empty()
     }
 
     /// Add a step to the step store.
-    #[allow(dead_code)]
     pub fn push(&mut self, rulx: SomeStep) {
         self.steps.push(rulx);
     }
 
     /// Return a vector iterator.
-    #[allow(dead_code)]
     pub fn iter(&self) -> Iter<SomeStep> {
         self.steps.iter()
     }
 
     /// Return a StepsCorrs' rules initial regions.
-    #[allow(dead_code)]
     pub fn initial_regions(&self) -> RegionsCorr {
         let mut ret = RegionsCorr::with_capacity(self.len());
 
@@ -96,7 +90,6 @@ impl StepsCorr {
     }
 
     /// Return a StepsCorrs' rules result regions.
-    #[allow(dead_code)]
     pub fn result_regions(&self) -> RegionsCorr {
         let mut ret = RegionsCorr::with_capacity(self.len());
 
@@ -107,7 +100,6 @@ impl StepsCorr {
     }
 
     /// Return a StepsCorr with restricted initial regions.
-    #[allow(dead_code)]
     pub fn restrict_initial_regions(&self, regions: &RegionsCorr) -> Self {
         let mut ret = Self::with_capacity(self.len());
 
@@ -118,7 +110,6 @@ impl StepsCorr {
     }
 
     /// Return a StepsCorr with restricted result regions.
-    #[allow(dead_code)]
     pub fn restrict_result_regions(&self, regions: &RegionsCorr) -> Self {
         let mut ret = Self::with_capacity(self.len());
 

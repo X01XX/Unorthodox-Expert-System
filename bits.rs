@@ -7,6 +7,7 @@
 //!
 
 /// The unsigned integer type used in a vector of bits, for all domains.
+/// When this changes, all bits::tests, using more than one integer, should still succeed.
 type Bitint = u8;
 
 use crate::tools::StrLen;
@@ -563,22 +564,19 @@ mod tests {
     use super::*;
     use crate::tools;
 
-    /// Build a new bits instance, given number bits and integer vector.
-    /// The length of the vector must be the minimum needed to cover the given number of bits.
+    /// Build a new bits instance, given number bits in the leftmost integer, and an integer vector with more than 1 integer.
     ///
     /// Used to force the creation of multi-integer SomeBits instances, given that BitInt may be u8, u16, u32, u64.
-    fn build_from_vec(num_bits: Bitint, ints: Vec<Bitint>) -> SomeBits {
-        // Verify length of integer vector.
-        let num_ints = SomeBits::number_bits_to_ints(num_bits);
-        assert!(num_ints == ints.len() as Bitint);
+    fn build_from_vec(leftmost_bits: Bitint, ints: Vec<Bitint>) -> SomeBits {
+        assert!(ints.len() > 1);
+        assert!(leftmost_bits > 0);
+        assert!(leftmost_bits <= Bitint::BITS as Bitint);
 
-        // Check that there is not too large a number of bits in the first integer.
-        let bits_left = num_bits % Bitint::BITS as Bitint;
-
-        if bits_left > 0 {
-            let int0_high = ((2_u32.pow(bits_left as u32)) - 1) as Bitint;
-            assert!(ints[0] <= int0_high);
+        if leftmost_bits < Bitint::BITS as Bitint {
+            assert!(ints[0] < 2_u32.pow(leftmost_bits.into()) as Bitint);
         }
+
+        let num_bits = leftmost_bits + ((ints.len() - 1) * Bitint::BITS as usize) as Bitint;
 
         SomeBits { num_bits, ints }
     }
@@ -628,19 +626,19 @@ mod tests {
         println!("bits2 {bits2}");
         assert!(bits1 == bits2);
 
-        let bits1 = build_from_vec(Bitint::BITS as Bitint * 2, vec![5, 1]);
+        let bits1 = build_from_vec(Bitint::BITS as Bitint, vec![5, 1]);
         println!("bits1 {bits1}");
 
-        let bits2 = build_from_vec(Bitint::BITS as Bitint * 2, vec![5, 1]);
+        let bits2 = build_from_vec(Bitint::BITS as Bitint, vec![5, 1]);
         println!("bits2 {bits2}");
 
         assert!(bits1 == bits2);
         assert!(bits1.num_bits == Bitint::BITS as Bitint * 2);
 
-        let bits1 = build_from_vec(Bitint::BITS as Bitint + 3, vec![5, 1]);
+        let bits1 = build_from_vec(3, vec![5, 1]);
         println!("bits1 {bits1}");
 
-        let bits2 = build_from_vec(Bitint::BITS as Bitint + 3, vec![4, 1]);
+        let bits2 = build_from_vec(3, vec![4, 1]);
         println!("bits2 {bits2}");
 
         assert!(bits1 != bits2);
@@ -662,7 +660,7 @@ mod tests {
         assert!(high.ints[0] == 255);
 
         // Test new_high with multi-int bits, given that the definition of Bitint may change.
-        let ur_bits = build_from_vec(Bitint::BITS as Bitint + 2, vec![0, 0]);
+        let ur_bits = build_from_vec(2, vec![0, 0]);
 
         let high = ur_bits.new_high();
         println!("high two ints {high}");
@@ -717,7 +715,7 @@ mod tests {
         assert!(len == calc_len);
 
         // Test strlen with multi-int bits, given that the definition of Bitint may change.
-        let tmp_bts = build_from_vec(Bitint::BITS as Bitint + 2, vec![0, 0]);
+        let tmp_bts = build_from_vec(2, vec![0, 0]);
         let strrep = format!("{tmp_bts}");
         let len = strrep.len();
         let calc_len = tmp_bts.strlen();
@@ -839,16 +837,13 @@ mod tests {
 
     #[test]
     fn b_eqv() -> Result<(), String> {
-        let b1 = build_from_vec(Bitint::BITS as Bitint + 8, vec![0x55, 5]);
+        let b1 = build_from_vec(8, vec![0x55, 5]);
         println!("b1: {b1}");
-        let b2 = build_from_vec(Bitint::BITS as Bitint + 8, vec![0xa6, 5]);
+        let b2 = build_from_vec(8, vec![0xa6, 5]);
         println!("b2: {b2}");
-        let b3 = b1.b_eqv(&b2).b_and(&build_from_vec(
-            Bitint::BITS as Bitint + 8,
-            vec![0x0f, 0xff],
-        ));
+        let b3 = b1.b_eqv(&b2).b_and(&build_from_vec(8, vec![0x0f, 0xff]));
         println!("b3: {b3}");
-        let b4 = build_from_vec(Bitint::BITS as Bitint + 8, vec![0x0c, 0xff]);
+        let b4 = build_from_vec(8, vec![0x0c, 0xff]);
         println!("b4: {b4}");
 
         assert_eq!(b3, b4);
@@ -896,9 +891,7 @@ mod tests {
         let mut bitsz = bitsx.b_not();
         println!("bitsz: {bitsz}");
         assert!(bitsz.is_high());
-        assert!(
-            bitsz == build_from_vec(Bitint::BITS as Bitint + 2, vec![0x3, Bitint::MAX as Bitint])
-        );
+        assert!(bitsz == build_from_vec(2, vec![0x3, Bitint::MAX as Bitint]));
 
         bitsx = tmp_bts.new_high();
         bitsz = bitsx.b_not();
@@ -1016,14 +1009,13 @@ mod tests {
         println!("dist: {dist}");
         assert!(dist == 0);
 
-        let dist = build_from_vec(Bitint::BITS as Bitint + 3, vec![5, 5])
-            .distance(&SomeBits::new(Bitint::BITS as Bitint + 3));
+        let dist =
+            build_from_vec(3, vec![5, 5]).distance(&SomeBits::new(Bitint::BITS as Bitint + 3));
         println!("dist: {dist}");
         assert!(dist == 4);
 
-        let dist = build_from_vec(Bitint::BITS as Bitint + 8, vec![0b10101010, 0b01010]).distance(
-            &build_from_vec(Bitint::BITS as Bitint + 8, vec![0b10, 0b010]),
-        );
+        let dist = build_from_vec(8, vec![0b10101010, 0b01010])
+            .distance(&build_from_vec(8, vec![0b10, 0b010]));
 
         println!("dist: {dist}");
         assert!(dist == 4);
@@ -1033,7 +1025,7 @@ mod tests {
 
     #[test]
     fn is_bit_set() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 4, vec![10, 10]);
+        let bitsx = build_from_vec(4, vec![10, 10]);
 
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_bit_set(0));
@@ -1051,18 +1043,15 @@ mod tests {
 
     #[test]
     fn is_high() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 1, vec![0, Bitint::MAX as Bitint]);
+        let bitsx = build_from_vec(1, vec![0, Bitint::MAX as Bitint]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bitsx = build_from_vec(
-            Bitint::BITS as Bitint + 1,
-            vec![1, (Bitint::MAX as Bitint) - 1],
-        );
+        let bitsx = build_from_vec(1, vec![1, (Bitint::MAX as Bitint) - 1]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_high());
 
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 1, vec![1, Bitint::MAX as Bitint]);
+        let bitsx = build_from_vec(1, vec![1, Bitint::MAX as Bitint]);
         println!("bitsx2: {bitsx}");
         assert!(bitsx.is_high());
 
@@ -1071,15 +1060,15 @@ mod tests {
 
     #[test]
     fn is_low() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 1, vec![0x1, 0]);
+        let bitsx = build_from_vec(1, vec![0x1, 0]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 1, vec![0, 0x1]);
+        let bitsx = build_from_vec(1, vec![0, 0x1]);
         println!("bitsx: {bitsx}");
         assert!(!bitsx.is_low());
 
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 1, vec![0, 0]);
+        let bitsx = build_from_vec(1, vec![0, 0]);
         println!("bitsx: {bitsx}");
         assert!(bitsx.is_low());
 
@@ -1088,12 +1077,12 @@ mod tests {
 
     #[test]
     fn num_one_bits() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint * 2, vec![0, 0]);
+        let bitsx = build_from_vec(Bitint::BITS as Bitint, vec![0, 0]);
         println!("bitsx: {bitsx} num 1 {}", bitsx.num_one_bits());
         assert!(bitsx.num_one_bits() == 0);
 
         let bitsx = build_from_vec(
-            Bitint::BITS as Bitint * 2,
+            Bitint::BITS as Bitint,
             vec![Bitint::MAX << 1, Bitint::MAX >> 1],
         );
         println!("bitsx: {bitsx} num 1 {}", bitsx.num_one_bits());
@@ -1104,17 +1093,17 @@ mod tests {
 
     #[test]
     fn split() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 8, vec![0x50, 0x5]);
+        let bitsx = build_from_vec(8, vec![0x50, 0x5]);
         println!("bitsx: {bitsx}");
 
         let avec: Vec<SomeBits> = bitsx.split();
         println!("split bits: {}", tools::vec_string(&avec));
 
         assert!(avec.len() == 4);
-        assert!(avec.contains(&build_from_vec(Bitint::BITS as Bitint + 8, vec![0x40, 0])));
-        assert!(avec.contains(&build_from_vec(Bitint::BITS as Bitint + 8, vec![0x10, 0])));
-        assert!(avec.contains(&build_from_vec(Bitint::BITS as Bitint + 8, vec![0, 0x4])));
-        assert!(avec.contains(&build_from_vec(Bitint::BITS as Bitint + 8, vec![0, 1])));
+        assert!(avec.contains(&build_from_vec(8, vec![0x40, 0])));
+        assert!(avec.contains(&build_from_vec(8, vec![0x10, 0])));
+        assert!(avec.contains(&build_from_vec(8, vec![0, 0x4])));
+        assert!(avec.contains(&build_from_vec(8, vec![0, 1])));
 
         let bitsx = SomeBits::from_str("0000_0001_0000")?;
         println!("bitsx: {bitsx}");
@@ -1137,13 +1126,13 @@ mod tests {
 
     #[test]
     fn is_adjacent() -> Result<(), String> {
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 8, vec![0, 0]);
-        let bitsy = build_from_vec(Bitint::BITS as Bitint + 8, vec![1, 1]);
+        let bitsx = build_from_vec(8, vec![0, 0]);
+        let bitsy = build_from_vec(8, vec![1, 1]);
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(!bitsx.is_adjacent(&bitsy));
 
-        let bitsx = build_from_vec(Bitint::BITS as Bitint + 4, vec![1, 1]);
-        let bitsy = build_from_vec(Bitint::BITS as Bitint + 4, vec![3, 1]);
+        let bitsx = build_from_vec(4, vec![1, 1]);
+        let bitsy = build_from_vec(4, vec![3, 1]);
         println!("bitsx: {bitsx} bitsy: {bitsy}");
         assert!(bitsx.is_adjacent(&bitsy));
 
@@ -1152,9 +1141,9 @@ mod tests {
 
     #[test]
     fn is_between() -> Result<(), String> {
-        let bts2 = build_from_vec(Bitint::BITS as Bitint + 8, vec![0, 0x10]);
-        let bts3 = build_from_vec(Bitint::BITS as Bitint + 8, vec![0, 0x11]);
-        let bts5 = build_from_vec(Bitint::BITS as Bitint + 8, vec![1, 1]);
+        let bts2 = build_from_vec(8, vec![0, 0x10]);
+        let bts3 = build_from_vec(8, vec![0, 0x11]);
+        let bts5 = build_from_vec(8, vec![1, 1]);
         assert!(bts3.is_between(&bts2, &bts5));
         assert!(!bts5.is_between(&bts2, &bts3));
         Ok(())

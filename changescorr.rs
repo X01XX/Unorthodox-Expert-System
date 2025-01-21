@@ -5,6 +5,7 @@
 
 use crate::change::SomeChange;
 use crate::changestore::ChangeStore;
+use crate::tools::StrLen;
 
 use std::fmt;
 use std::slice::Iter;
@@ -36,7 +37,6 @@ impl ChangesCorr {
     }
 
     /// Return the number of changes.
-    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.changes.len()
     }
@@ -47,7 +47,6 @@ impl ChangesCorr {
     }
 
     /// Return true if the store is not empty.
-    #[allow(dead_code)]
     pub fn is_not_empty(&self) -> bool {
         !self.changes.is_empty()
     }
@@ -58,7 +57,6 @@ impl ChangesCorr {
     }
 
     /// Return a vector iterator.
-    #[allow(dead_code)]
     pub fn iter(&self) -> Iter<SomeChange> {
         self.changes.iter()
     }
@@ -73,6 +71,11 @@ impl ChangesCorr {
         true
     }
 
+    /// Return true if any changes are not low.
+    pub fn is_not_low(&self) -> bool {
+        !self.is_low()
+    }
+
     /// Return the intersection of two ChangesCorr.
     pub fn intersection(&self, other: &Self) -> Self {
         let mut ret = Self::with_capacity(self.len());
@@ -80,5 +83,16 @@ impl ChangesCorr {
             ret.push(cngx.intersection(cngy));
         }
         ret
+    }
+}
+
+/// Implement the trait StrLen for Changescorr.
+impl StrLen for ChangesCorr {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 2; // for "CC"
+
+        rc_len += self.changes.strlen();
+
+        rc_len
     }
 }

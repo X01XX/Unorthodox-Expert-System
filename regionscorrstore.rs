@@ -71,7 +71,6 @@ impl RegionsCorrStore {
     }
 
     /// Return true if the store is empty.
-    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.items.is_empty()
     }
@@ -243,7 +242,6 @@ impl RegionsCorrStore {
     }
 
     /// Return true if a RegionsCorr is a superset of a RegionsCorrStore.
-    #[allow(dead_code)]
     pub fn is_superset_of(&self, other: &Self) -> bool {
         debug_assert!(
             self.is_empty()

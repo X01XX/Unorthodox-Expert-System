@@ -196,7 +196,7 @@ impl FromStr for SomeChange {
             return Err("SomeChange::from_str: Empty string?".to_string());
         }
 
-        // Convert ".." to "XX".
+        // Convert ".." to "XX". 0->0, 1->1 will be discarded later.
         let mut str3 = String::new();
         for chr in str2.graphemes(true) {
             if chr == "." {
@@ -216,7 +216,7 @@ impl FromStr for SomeChange {
 /// Implement the trait StrLen for SomeChange.
 impl tools::StrLen for SomeChange {
     fn strlen(&self) -> usize {
-        (3 * self.num_bits()) - 1
+        (3 * self.num_bits()) - 1 // Same as rule::strlen.
     }
 }
 
@@ -226,56 +226,34 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        // Create a mask that uses one integer for bits.
+        let cng1 = SomeChange::from_str("Xx/../Xx/..")?;
 
-        let cng1 = SomeChange {
-            m01: SomeMask::from_str("m1010")?,
-            m10: SomeMask::from_str("m1010")?,
-        };
-        let cng2 = SomeChange {
-            m01: SomeMask::from_str("m1001")?,
-            m10: SomeMask::from_str("m0110")?,
-        };
-        let cng3 = SomeChange {
-            m01: SomeMask::from_str("m1000")?,
-            m10: SomeMask::from_str("m0010")?,
-        };
-        let cng4 = cng1.intersection(&cng2);
-        println!("cng4 {cng4}");
+        let cng2 = SomeChange::from_str("01/10/10/01")?;
 
-        assert!(cng3 == cng4);
+        let cng3 = cng1.intersection(&cng2);
+        println!("cng3 {cng3}");
+
+        assert!(cng3 == SomeChange::from_str("01/../10/..")?);
 
         Ok(())
     }
 
     #[test]
     fn union() -> Result<(), String> {
-        // Create a mask that uses one integer for bits.
+        let cng1 = SomeChange::from_str("Xx/../Xx/..")?;
 
-        let cng1 = SomeChange {
-            m01: SomeMask::from_str("m1010")?,
-            m10: SomeMask::from_str("m1010")?,
-        };
-        let cng2 = SomeChange {
-            m01: SomeMask::from_str("m1001")?,
-            m10: SomeMask::from_str("m0110")?,
-        };
-        let cng3 = SomeChange {
-            m01: SomeMask::from_str("m1011")?,
-            m10: SomeMask::from_str("m1110")?,
-        };
-        let cng4 = cng1.union(&cng2);
-        println!("cng4 {cng4}");
+        let cng2 = SomeChange::from_str("01/10/10/01")?;
 
-        assert!(cng3 == cng4);
+        let cng3 = cng1.union(&cng2);
+        println!("cng3 {cng3}");
+
+        assert!(cng3 == SomeChange::from_str("Xx/10/Xx/01")?);
 
         Ok(())
     }
 
     #[test]
     fn apply_changes() -> Result<(), String> {
-        // Create a domain that uses one integer for bits.
-
         let wanted_changes = SomeChange::from_str("01/01/10/10")?;
         println!("wanted_changes    {wanted_changes}");
 
@@ -313,10 +291,7 @@ mod tests {
         let cng3 = cng1.difference(&cng2);
         println!("cng3 {cng3}");
 
-        let cng4 = SomeChange::from_str("01/../../10_../../../..")?;
-        println!("cng4 {cng4}");
-
-        assert!(cng3 == cng4);
+        assert!(cng3 == SomeChange::from_str("01/../../10_../../../..")?);
 
         Ok(())
     }
@@ -332,10 +307,7 @@ mod tests {
         let cng1 = SomeChange::new_state_to_region(&sta1, &reg1);
         println!("cng1 {cng1}");
 
-        let cng2 = SomeChange::from_str("../.._/01/10/../..")?;
-        println!("cng2 {cng2}");
-
-        assert!(cng1 == cng2);
+        assert!(cng1 == SomeChange::from_str("../.._/01/10/../..")?);
 
         Ok(())
     }
@@ -345,6 +317,7 @@ mod tests {
         let cng1_str = "01/10/Xx/..";
         let cng1 = SomeChange::from_str(&cng1_str)?;
         println!("str {cng1_str} cng1 {cng1}");
+
         assert!(format!("{cng1}") == cng1_str);
 
         Ok(())

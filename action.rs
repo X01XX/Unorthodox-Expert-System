@@ -1805,7 +1805,7 @@ impl SomeAction {
 
         let mut stps = StepStore::new(vec![]);
 
-        for (inx, grpx) in self.groups.iter().enumerate() {
+        for grpx in self.groups.iter() {
             // Skip no-change groups.
             if !grpx.causes_predictable_change() {
                 continue;
@@ -1826,15 +1826,11 @@ impl SomeAction {
                 }
 
                 // Process possible rule(s)
-                let mut stpsx = self.get_steps_from_rulestore(rules, wanted_changes, within);
+                let stpsx = self.get_steps_from_rulestore(rules, wanted_changes, within);
                 if stpsx.is_empty() {
                     continue;
                 }
 
-                // Set group num for later need priority, lower number is higher priority.
-                for stpx in stpsx.iter_mut() {
-                    stpx.set_group_inx(inx);
-                }
                 stps.append(stpsx);
             }
         }
@@ -2440,7 +2436,6 @@ impl SomeAction {
     }
 
     /// Return a from_str compatible string for a SomeAction instance.
-    #[allow(dead_code)]
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("ACT[");
         let mut first = true;

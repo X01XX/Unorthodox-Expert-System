@@ -68,7 +68,6 @@ impl ChangeStore {
     }
 
     /// Return true if the store is not empty.
-    #[allow(dead_code)]
     pub fn is_not_empty(&self) -> bool {
         !self.items.is_empty()
     }

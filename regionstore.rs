@@ -352,7 +352,6 @@ impl RegionStore {
     }
 
     /// Return true if a RegionStore is a superset of a Region.
-    #[allow(dead_code)]
     pub fn is_superset_of(&self, other: &Self) -> bool {
         other.subtract(self).is_empty()
     }

@@ -18,7 +18,7 @@ use crate::selectregions::SelectRegions;
 use crate::selectregionsstore::SelectRegionsStore;
 use crate::state::SomeState;
 use crate::statescorr::StatesCorr;
-use crate::step::{AltRuleHint::AltRule, SomeStep};
+use crate::step::{AltRuleHint, SomeStep};
 use crate::stepstore::StepStore;
 use crate::target::ATarget;
 use crate::tools::{self, CorrespondingItems};
@@ -1390,7 +1390,7 @@ impl SessionData {
                         cur_states[dom_id] =
                             stepx.rule.result_from_initial_state(&cur_states[dom_id]);
 
-                        if let AltRule { .. } = &stepx.alt_rule {
+                        if let AltRuleHint::AltRule { .. } = &stepx.alt_rule {
                             print!(" Alt_rule: -1");
                         }
 

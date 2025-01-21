@@ -37,6 +37,7 @@ use std::time::{Duration, Instant};
 mod action;
 mod actioninterface;
 mod actionstore;
+mod altrulehint;
 mod bits;
 mod change;
 mod changescorr;
@@ -78,16 +79,14 @@ mod stepstore;
 mod target;
 mod tools;
 
-//use crate::changescorr::ChangesCorr;
-use crate::plan::SomePlan;
 use crate::planscorr::PlansCorr;
 use crate::planscorrstore::PlansCorrStore;
 use crate::regionscorr::RegionsCorr;
-use crate::rule::SomeRule;
 use crate::rulescorr::RulesCorr;
 use crate::step::SomeStep;
 use crate::stepscorr::StepsCorr;
 use crate::stepstore::StepStore;
+use crate::tools::StrLen;
 use need::SomeNeed;
 use pn::Pn;
 use region::SomeRegion;
@@ -617,24 +616,8 @@ fn command_loop(sdx: &mut SessionData) {
                     pause_for_input("\nPress Enter to continue: ");
                 }
             },
-            "to" => {
-                match do_to_region_command(sdx, &cmd) {
-                    Ok(()) => (),
-                    Err(error) => println!("{error}"),
-                }
-                pause_for_input("\nPress Enter to continue: ");
-                return;
-            }
             "to-rc" => {
                 match do_to_rc_command(sdx, &cmd) {
-                    Ok(()) => (),
-                    Err(error) => println!("{error}"),
-                }
-                pause_for_input("\nPress Enter to continue: ");
-                return;
-            }
-            "step" => {
-                match do_step_command(sdx, &cmd) {
                     Ok(()) => (),
                     Err(error) => println!("{error}"),
                 }
@@ -807,57 +790,6 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
     Ok(())
 }
 
-fn do_step_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
-    // Check number args.
-    if cmd.len() != 3 {
-        return Err("Exactly two region arguments are needed for the step command.".to_string());
-    }
-
-    // Get from region from string
-    let from = SomeRegion::from_str(&cmd[1])?;
-
-    // Get to region from string
-    let to = SomeRegion::from_str(&cmd[2])?;
-
-    if from.num_bits() != to.num_bits() {
-        return Err(format!(
-            "Regions do not have the same number of bits, {} vs {}.",
-            from.num_bits(),
-            to.num_bits()
-        ));
-    }
-
-    // Get ref to current domain.
-    let mut dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
-    if from.num_bits() != domx.num_bits() {
-        if let Some(idx) = sdx.domain_find_num_bits(from.num_bits()) {
-            dom_id = idx;
-        } else {
-            return Err(format!(
-                "Regions do not have the same number of bits, {}, as the CCD, {}.",
-                from.num_bits(),
-                domx.num_bits()
-            ));
-        }
-    }
-
-    if let Some(planx) = step_by_step(sdx, dom_id, &from, &to, 0) {
-        println!("found plan for {from} -> {to}: {planx}");
-        if *planx.initial_region() == SomeRegion::new(vec![sdx.cur_state(dom_id).clone()]) {
-            let cmd = pause_for_input("Press Enter to continue, or r to run ");
-            if cmd == "r" || cmd == "R" {
-                match sdx.run_plan_domain(dom_id, &planx) {
-                    Ok(num) => println!("{num} steps run."),
-                    Err(errstr) => println!("{errstr}"),
-                }
-            }
-        }
-    }
-
-    Ok(())
-}
-
 /// Do to-rc command.
 fn do_to_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
@@ -877,52 +809,6 @@ fn do_to_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String>
     }
 
     match sdx.plan_using_least_negative_select_regions(&cur_regs, &goal_regions) {
-        Ok(npln) => match npln {
-            NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
-            NeedPlan::PlanFound { plan: planx } => {
-                println!("\nplan {planx}");
-                match sdx.run_planscorrstore(&planx) {
-                    Ok(num) => {
-                        println!("{num} steps run.");
-                        Ok(())
-                    }
-                    Err(errstr) => Err(errstr),
-                }
-            }
-        },
-        Err(errvec) => Err(format!("{:?}", errvec)),
-    }
-}
-
-/// Do to-region command.
-fn do_to_region_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
-    // Check number args.
-    if cmd.len() != 2 {
-        return Err("Exactly one region, argument is needed for the to command.".to_string());
-    }
-
-    // Get region from string
-    let goal_region = SomeRegion::from_str(&cmd[1])?;
-
-    // Get ref to current domain.
-    let mut dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
-    if goal_region.num_bits() != domx.num_bits() {
-        if let Some(idx) = sdx.domain_find_num_bits(goal_region.num_bits()) {
-            dom_id = idx;
-        } else {
-            return Err(format!(
-                "Region does not have the same number of bits, {}, as the CCD, {}.",
-                goal_region.num_bits(),
-                domx.num_bits()
-            ));
-        }
-    }
-
-    match sdx.plan_using_least_negative_select_regions(
-        &sdx.all_current_regions(),
-        &sdx.maximum_regions_except(dom_id, &goal_region),
-    ) {
         Ok(npln) => match npln {
             NeedPlan::AtTarget {} => Err("AtTarget not expected".to_string()),
             NeedPlan::PlanFound { plan: planx } => {
@@ -1047,13 +933,6 @@ fn step_by_step_rc(
             step_refs.push(tmp_vec);
         }
 
-        //print!("number steps per domain: ");
-        //let mut num = 1;
-        //for stp_vec in stepscorr.iter() {
-        //    print!("{} ", stp_vec.len());
-        //    num *= stp_vec.len();
-        //}
-        //print!(", number options s/b {}", num - 1); // Options - first item.
         println!(" ");
 
         // Get possible options .
@@ -1069,7 +948,6 @@ fn step_by_step_rc(
             }
             stepscorr_vec.push(tmp_store);
         }
-        //println!("stepscorr_vec len {}", stepscorr_vec.len());
 
         // Further massaging for forward or backward chaining.
         let mut steps_dis = Vec::<StepsCorr>::with_capacity(options.len());
@@ -1145,7 +1023,7 @@ fn step_by_step_rc(
         if steps_dis.is_empty() {
             println!("options: None");
         } else {
-            if steps_dis.len() > num_to_display {
+            if steps_dis.len() > num_to_display && steps_dis.len() - cur_start >= num_to_display {
                 println!("options (of {}):", steps_dis.len());
             } else {
                 println!("options:");
@@ -1192,16 +1070,21 @@ fn step_by_step_rc(
                         .combine_sequence(&optx.rules())
                         .intersection_changes(&unwanted_changes)
                 };
-                print!(", U: {optx_unwanted_changes}");
+
+                if optx_unwanted_changes.is_not_low() {
+                    print!(", U: {optx_unwanted_changes}");
+                } else {
+                    print!("     {}", " ".repeat(optx_unwanted_changes.strlen()));
+                }
 
                 // Check select regions.
                 let rate = sdx.rate_results(&optx.result_regions());
                 if rate.0 != 0 && rate.1 != 0 {
-                    print!(", rate {:2} {:?}", rate.0 + rate.1, rate);
+                    print!(" rate {:2} {:?}", rate.0 + rate.1, rate);
                 } else if rate.0 != 0 {
-                    print!(", rate {:2}", rate.0);
+                    print!(" rate {:2}", rate.0);
                 } else if rate.1 != 0 {
-                    print!(", rate {:2}", rate.1);
+                    print!(" rate {:2}", rate.1);
                 }
 
                 println!(" ");
@@ -1420,372 +1303,6 @@ fn step_by_step_rc(
             } // match cmd[0].parse::<usize>()
         } // end cmp.len() == 2
     } // end command loop.
-}
-
-/// Interactively step from an initial region to a goal region.
-fn step_by_step(
-    sdx: &SessionData,
-    dom_id: usize,
-    from: &SomeRegion,
-    to: &SomeRegion,
-    depth: usize,
-) -> Option<SomePlan> {
-    let domx = sdx.find(dom_id).expect("SNH");
-
-    let mut ret_plan: Option<SomePlan> = None;
-
-    let mut cur_from = from.clone();
-    let mut cur_to = to.clone();
-
-    let mut forward_plan = SomePlan::new(dom_id, vec![]);
-    let mut backward_plan = SomePlan::new(dom_id, vec![]);
-
-    let mut first_cycle = true;
-    loop {
-        if first_cycle && depth == 0 {
-            first_cycle = false;
-            println!("-----------------------------------");
-            println!("Available step commands:");
-            println!(" ");
-            println!("    q = Quit session.");
-            println!("    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
-            println!("    so = Start over, clear forward and backward plans at the current depth.");
-            println!("\n    fpop = Forward plan pop step at end.");
-            println!("    bpop = Backward plan pop step at beginning.");
-            println!("\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
-            println!("    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
-            println!("\n    W: = Wanted change(s), going forward.");
-            println!("    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
-            println!("         Unwanted change(s) must eventually be reversed.");
-            println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
-        }
-        println!("-----------------------------------");
-        println!("Original: from {from} to {to}, Current: from {cur_from} to {cur_to}");
-
-        let rule_to_goal = SomeRule::new_region_to_region_min(&cur_from, &cur_to);
-        let wanted_changes = rule_to_goal.as_change();
-        let unwanted_changes = rule_to_goal.unwanted_changes();
-
-        // Get possible steps.
-        let steps_st = domx.get_steps(&wanted_changes, &domx.maximum_region());
-        if steps_st.is_empty() {
-            println!("No steps found");
-        }
-
-        // Display steps.
-        let mut steps_dis = Vec::<SomeStep>::with_capacity(steps_st.len());
-
-        for stpx in steps_st.iter() {
-            // Check for a step that can do forward or backward chaining.
-            if stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
-                let stpx_from = stpx.restrict_initial_region(&cur_from);
-                let stpx_to = stpx.restrict_result_region(&cur_to);
-
-                if stpx_from.initial == stpx_to.initial {
-                    steps_dis.push(stpx_from);
-                } else {
-                    steps_dis.push(stpx_from);
-                    steps_dis.push(stpx_to);
-                }
-            }
-        }
-        // Check for a step that can do only forward chaining.
-        for stpx in steps_st.iter() {
-            if stpx.initial.intersects(&cur_from) && !stpx.result.intersects(&cur_to) {
-                steps_dis.push(stpx.restrict_initial_region(&cur_from));
-            }
-        }
-        // Check for a step that can do only backward chaining.
-        for stpx in steps_st.iter() {
-            if !stpx.initial.intersects(&cur_from) && stpx.result.intersects(&cur_to) {
-                steps_dis.push(stpx.restrict_result_region(&cur_to));
-            }
-        }
-        // Check for steps that require asymmetric chaining.
-        for stpx in steps_st.iter() {
-            if stpx.initial.intersects(&cur_from) || stpx.result.intersects(&cur_to) {
-            } else {
-                let stpx_to = stpx.restrict_initial_region(
-                    &SomeRule::new_region_to_region_min(&cur_from, &stpx.initial).result_region(),
-                );
-                let stpx_from = stpx.restrict_result_region(
-                    &SomeRule::new_region_from_region_min(&stpx.result, &cur_to).initial_region(),
-                );
-
-                if stpx_from.initial == stpx_to.initial {
-                    steps_dis.push(stpx_from);
-                } else {
-                    steps_dis.push(stpx_from);
-                    steps_dis.push(stpx_to);
-                }
-            }
-        }
-
-        println!(" ");
-        println!("Forward plan:  {forward_plan}");
-
-        println!(" ");
-        println!("Backward plan: {}", backward_plan.formatted_str_from());
-
-        println!(" ");
-        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
-        println!(" ");
-        if steps_dis.is_empty() {
-        } else {
-            for (inx, stpx) in steps_dis.iter().enumerate() {
-                print!("{inx:2} {}", stpx);
-                if stpx.initial.intersects(&cur_from) {
-                    print!(" FC");
-                } else {
-                    print!(" FA");
-                }
-
-                if stpx.result.intersects(&cur_to) {
-                    print!(" BC,");
-                } else {
-                    print!(" BA,");
-                }
-
-                // Calc wanted and unwanted changes.
-                let step_wanted_changes = stpx.rule.as_change().intersection(&wanted_changes);
-
-                let step_unwanted_changes =
-                    SomeRule::new_region_to_region_min(&cur_from, &stpx.result)
-                        .as_change()
-                        .intersection(&unwanted_changes);
-
-                // Print forward wanted and unwanted changes.
-                print!("  W: {step_wanted_changes}",);
-
-                if step_unwanted_changes.is_low() {
-                } else {
-                    print!("  U: {step_unwanted_changes}",);
-                }
-
-                println!(" ");
-            }
-        }
-
-        // Get user input.
-        let input_str = if let Some(ref planx) = ret_plan {
-            println!("Plan found: {planx}");
-            println!(" ");
-            pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (plan), fpop, bpop, so: "
-            ))
-        } else {
-            println!(" ");
-            pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (None), <step number> [f, b], fpop, bpop, so: "
-            ))
-        };
-
-        let cmd = match tools::parse_input(&input_str) {
-            Ok(strvec) => strvec,
-            Err(errstr) => {
-                println!("{errstr}");
-                vec![]
-            }
-        };
-
-        // No input, or error.
-        if cmd.is_empty() {
-            continue;
-        }
-
-        // Do commands
-        match &*cmd[0] {
-            "q" | "Q" => {
-                println!("Done");
-                process::exit(0);
-            }
-            "r" | "R" => {
-                return ret_plan;
-            }
-            "fpop" | "FPOP" => {
-                if let Some(top_from) = forward_plan.pop() {
-                    cur_from = top_from.initial.clone();
-                } else {
-                    println!("forward_plan is empty");
-                }
-            }
-            "bpop" | "BPOP" => {
-                if let Some(stp_back) = backward_plan.pop_first() {
-                    cur_to = stp_back.result.clone();
-                } else {
-                    println!("backward_plan is empty");
-                }
-            }
-            "so" | "SO" => {
-                forward_plan = SomePlan::new(dom_id, vec![]);
-                backward_plan = SomePlan::new(dom_id, vec![]);
-                cur_from = from.clone();
-                cur_to = to.clone();
-                ret_plan = None;
-            }
-            _ => (),
-        };
-
-        if cmd.len() == 2 {
-            match cmd[0].parse::<usize>() {
-                Ok(num) => {
-                    if num >= steps_dis.len() {
-                        println!("Step number is too high");
-                    } else if cmd[1] == "F" || cmd[1] == "f" {
-                        // Check for forward chaining, else forward asymmetric chaining.
-                        if steps_dis[num].initial.intersects(&cur_from) {
-                            let stp_tmp = steps_dis[num].restrict_initial_region(&cur_from);
-                            match forward_plan.push(stp_tmp) {
-                                Ok(()) => {
-                                    ret_plan = check_for_plan_completion(
-                                        from,
-                                        to,
-                                        &forward_plan,
-                                        &backward_plan,
-                                    );
-                                    cur_from = forward_plan.result_region().clone();
-                                }
-                                Err(errstr) => println!("forward plan push failed {errstr}"),
-                            }
-                        } else if let Some(mut planx) =
-                            step_by_step(sdx, dom_id, &cur_from, &steps_dis[num].initial, depth + 1)
-                        {
-                            println!(
-                                "Forward asymmetric plan {planx} being linked to step {}",
-                                steps_dis[num]
-                            );
-                            pause_for_input("Press Enter to continue: ");
-                            match planx
-                                .push(steps_dis[num].restrict_initial_region(planx.result_region()))
-                            {
-                                Ok(()) => {
-                                    println!("Giving plan {planx}");
-                                    pause_for_input("Press Enter to continue: ");
-                                    match forward_plan.link(&planx) {
-                                        Ok(plany) => {
-                                            forward_plan = plany;
-                                            cur_from = forward_plan.result_region().clone();
-                                            ret_plan = check_for_plan_completion(
-                                                from,
-                                                to,
-                                                &forward_plan,
-                                                &backward_plan,
-                                            );
-                                        }
-                                        Err(errstr) => {
-                                            println!("Linking {forward_plan} to {planx} failed: {errstr}");
-                                            pause_for_input("Press Enter to continue: ");
-                                        }
-                                    }
-                                }
-                                Err(errstr) => {
-                                    println!("Linking to {}:failed: {errstr}", steps_dis[num]);
-                                    pause_for_input("Press Enter to continue: ");
-                                }
-                            }
-                        } else {
-                            println!("Forward chaining to {} returned None.", steps_dis[num]);
-                            pause_for_input("Press Enter to continue: ");
-                        }
-                    } else if cmd[1] == "B" || cmd[1] == "b" {
-                        // Check for backward chaining, else backward asymmetric chaining.
-                        if steps_dis[num].result.intersects(&cur_to) {
-                            let stp_tmp = steps_dis[num].restrict_result_region(&cur_to);
-                            match backward_plan.push_first(stp_tmp) {
-                                Ok(()) => {
-                                    ret_plan = check_for_plan_completion(
-                                        from,
-                                        to,
-                                        &forward_plan,
-                                        &backward_plan,
-                                    );
-                                    cur_to = backward_plan.initial_region().clone();
-                                }
-                                Err(errstr) => println!("backward plan push_first failed {errstr}"),
-                            }
-                        } else if let Some(mut planx) =
-                            step_by_step(sdx, dom_id, &steps_dis[num].result, &cur_to, depth + 1)
-                        {
-                            println!(
-                                "Backward asymmetric step {} being linked to plan {planx}",
-                                steps_dis[num]
-                            );
-                            pause_for_input("Press Enter to continue: ");
-
-                            match planx.push_first(
-                                steps_dis[num].restrict_result_region(planx.initial_region()),
-                            ) {
-                                Ok(()) => {
-                                    println!("Giving plan {planx}");
-                                    pause_for_input("Press Enter to continue: ");
-
-                                    match planx.link(&backward_plan) {
-                                        Ok(plany) => {
-                                            backward_plan = plany;
-                                            cur_to = backward_plan.initial_region().clone();
-                                            ret_plan = check_for_plan_completion(
-                                                from,
-                                                to,
-                                                &forward_plan,
-                                                &backward_plan,
-                                            );
-                                        }
-                                        Err(errstr) => {
-                                            println!(
-                                                "link {planx} to {backward_plan} failed {errstr}."
-                                            );
-                                            pause_for_input("Press Enter to continue: ");
-                                        }
-                                    }
-                                }
-                                Err(errstr) => {
-                                    println!("Linking {planx} and backward plan {backward_plan} failed: {errstr}.");
-                                    pause_for_input("Press Enter to continue: ");
-                                }
-                            }
-                        } else {
-                            println!("Backward chaining return None.");
-                            pause_for_input("Press Enter to continue: ");
-                        }
-                    } else {
-                        // not F, f, B or b.
-                        println!("\nDid not understand command: {cmd:?}");
-                        pause_for_input("Press Enter to continue: ");
-                    }
-                } // end Ok(num)
-                Err(_) => {
-                    println!("\nDid not understand command: {cmd:?}");
-                    pause_for_input("Press Enter to continue: ");
-                }
-            }
-        } // end cmd.len() == 2
-    } // end loop
-}
-
-fn check_for_plan_completion(
-    from: &SomeRegion,
-    to: &SomeRegion,
-    forward_plan: &SomePlan,
-    backward_plan: &SomePlan,
-) -> Option<SomePlan> {
-    if forward_plan.is_not_empty()
-        && backward_plan.is_not_empty()
-        && forward_plan
-            .result_region()
-            .intersects(backward_plan.initial_region())
-    {
-        match forward_plan.link(backward_plan) {
-            Ok(planx) => return Some(planx),
-            Err(errstr) => {
-                println!("linking failed {forward_plan} to {backward_plan} {errstr}")
-            }
-        }
-    } else if forward_plan.is_not_empty() && forward_plan.result_region().intersects(to) {
-        return forward_plan.restrict_result_region(to);
-    } else if backward_plan.is_not_empty() && backward_plan.initial_region() == from {
-        return backward_plan.restrict_initial_region(from);
-    }
-    None
 }
 
 /// Do sample-state command.
@@ -2298,40 +1815,6 @@ mod tests {
     use crate::selectregions::SelectRegions;
     use crate::statescorr::StatesCorr;
     use crate::target::ATarget;
-
-    #[test]
-    fn do_to_region_command1() -> Result<(), String> {
-        // Create SessionData, with mutually exclusive rules.
-        let mut sdx = SessionData::from_str(
-            "SD[DS[DOMAIN[
-            ACT[[01/XX/00/XX],
-                [10/XX/01/XX], s0000, s0101, s1100, s1001]]], SC[s0100]]",
-        )?;
-
-        sdx.print();
-
-        match do_to_region_command(&mut sdx, &vec!["to".to_string(), "s1110".to_string()]) {
-            Ok(()) => {
-                sdx.print();
-                return Err(format!("command changed region?"));
-            }
-            Err(errstr) => {
-                if errstr == "[\"No plan found\"]" {
-                } else {
-                    return Err(format!("{errstr}"));
-                }
-            }
-        }
-
-        match do_to_region_command(&mut sdx, &vec!["to".to_string(), "s1100".to_string()]) {
-            Ok(()) => {
-                sdx.print();
-                assert!(format!("{}", sdx.all_current_states()) == "SC[s1100]");
-                Ok(())
-            }
-            Err(errstr) => Err(format!("{errstr}")),
-        }
-    }
 
     #[test]
     fn do_to_rc_command1() -> Result<(), String> {

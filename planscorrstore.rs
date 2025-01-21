@@ -273,7 +273,6 @@ impl PlansCorrStore {
         Ok(())
     }
     /// Return true if a PlansCorr contains an intersecting results region.
-    #[allow(dead_code)]
     fn any_result_intersects(&self, regsx: &RegionsCorr) -> bool {
         for plancx in self.iter() {
             if plancx.result_regions_intersect(regsx) {
@@ -284,7 +283,6 @@ impl PlansCorrStore {
     }
 
     /// Return true if a PlansCorr contains an intersecting initial regions.
-    #[allow(dead_code)]
     fn any_initial_intersects(&self, regsx: &RegionsCorr) -> bool {
         for plancx in self.iter() {
             if plancx.initial_regions_intersect(regsx) {

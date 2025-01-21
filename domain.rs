@@ -904,7 +904,6 @@ impl SomeDomain {
     }
 
     /// Return a from_str compatible string for a SomeDomain instance.
-    #[allow(dead_code)]
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("DOMAIN[");
 

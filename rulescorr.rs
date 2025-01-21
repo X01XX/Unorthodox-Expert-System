@@ -50,7 +50,6 @@ impl RulesCorr {
     }
 
     /// Return true if the store is not empty.
-    #[allow(dead_code)]
     pub fn is_not_empty(&self) -> bool {
         !self.rules.is_empty()
     }
