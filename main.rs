@@ -897,7 +897,7 @@ fn step_by_step_rc(
 
         let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
         let wanted_changes = rules_to_goal.as_changes();
-        //if wanted_changes.is_not_low() {
+        let cc_fil = " ".repeat(wanted_changes.strlen());
 
         let unwanted_changes = rules_to_goal.unwanted_changes();
 
@@ -1020,10 +1020,22 @@ fn step_by_step_rc(
         println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
         println!(" ");
 
+        let n_flag =
+            steps_dis.len() > num_to_display && steps_dis.len() - cur_start >= num_to_display;
+        let p_flag = cur_start != 0;
+
         if steps_dis.is_empty() {
             println!("options: None");
         } else {
-            if steps_dis.len() > num_to_display && steps_dis.len() - cur_start >= num_to_display {
+            // Get max StepsCorr length.
+            let mut max_len = 0;
+            for stpcx in steps_dis.iter() {
+                if stpcx.strlen() > max_len {
+                    max_len = stpcx.strlen();
+                }
+            }
+
+            if n_flag {
                 println!("options (of {}):", steps_dis.len());
             } else {
                 println!("options:");
@@ -1038,6 +1050,9 @@ fn step_by_step_rc(
                 }
                 let optx = &steps_dis[cur_opt];
                 print!("{cur_opt:3}  {optx}");
+                if optx.strlen() < max_len {
+                    print!("{}", " ".repeat(max_len - optx.strlen()));
+                }
                 num_left -= 1;
                 cur_opt += 1;
 
@@ -1074,7 +1089,7 @@ fn step_by_step_rc(
                 if optx_unwanted_changes.is_not_low() {
                     print!(", U: {optx_unwanted_changes}");
                 } else {
-                    print!("     {}", " ".repeat(optx_unwanted_changes.strlen()));
+                    print!("     {}", cc_fil);
                 }
 
                 // Check select regions.
@@ -1091,6 +1106,7 @@ fn step_by_step_rc(
             }
         }
 
+
         let input_str = if let Some(ref planx) = ret_plans {
             println!("Plan found: {planx}");
             println!(" ");
@@ -1098,9 +1114,19 @@ fn step_by_step_rc(
                 "Depth: {depth} Enter q, r (plan), fpop, bpop, so: "
             ))
         } else {
+            let pn_opts = if p_flag && n_flag {
+                ", p, n"
+            } else if n_flag {
+                ", n"
+            } else if p_flag {
+                ", p"
+            } else {
+                ""
+            };
             println!(" ");
             pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (None), <step number> [f, b], fpop, bpop, so: "
+                "Depth: {depth} Enter q, r (None), <step number> [f|b], fpop, bpop, so{}: ",
+                pn_opts
             ))
         };
 

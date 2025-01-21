@@ -1845,7 +1845,7 @@ impl SomeAction {
         wanted_changes: &SomeChange,
         within: &SomeRegion,
     ) -> StepStore {
-        //println!("action::get_steps_from_rulestore: Dom {} Act {} rules {rules} rule_to_goal {rule_to_goal} within {within}", self.dom_id, self.id);
+        //println!("action::get_steps_from_rulestore: Dom {} Act {} rules {rules} wanted {wanted_changes} within {within}", self.dom_id, self.id);
         debug_assert!(rules.is_not_empty());
         debug_assert!(wanted_changes.is_not_low());
 

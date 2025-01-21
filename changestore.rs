@@ -90,9 +90,14 @@ impl StrLen for ChangeStore {
     fn strlen(&self) -> usize {
         let mut rc_len = 2; // for "[]"
 
-        if !self.is_empty() {
-            rc_len += self.items[0].strlen() * self.len(); // Each rule length.
-            rc_len += 2 * (self.len() - 1); // Each ", " separator.
+        let mut first = true;
+        for cngx in self.iter() {
+            if first {
+                first = false;
+            } else {
+                rc_len += 2; // for ", "
+            }
+            rc_len += cngx.strlen();
         }
 
         rc_len

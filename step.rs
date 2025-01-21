@@ -53,21 +53,40 @@ impl Eq for SomeStep {}
 impl SomeStep {
     /// Return a new Step struct instance.
     pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint) -> Self {
+        //println!("SomeStep::new: rule {rule}");
+        //println!("SomeStep::new: alt_rule {alt_rule}");
+        debug_assert!(rule.is_valid_union());
+        debug_assert!(rule.is_valid_intersection());
+
+        let initial = rule.initial_region();
+
         debug_assert!(match &alt_rule {
             AltRuleHint::NoAlt {} => true,
             AltRuleHint::AltNoChange {} => true,
             AltRuleHint::AltRule { rule: arule } => {
                 arule.num_bits() == arule.num_bits()
-                    && arule.initial_region() == rule.initial_region()
+                    && arule.initial_region().is_superset_of(&initial)
                     && *arule != rule
                     && arule.is_valid_union()
                     && arule.is_valid_intersection()
             }
         });
-        debug_assert!(rule.is_valid_union());
-        debug_assert!(rule.is_valid_intersection());
 
-        let initial = rule.initial_region();
+        // Massage alt_rule, as needed.
+        let alt_rule2 = match &alt_rule {
+            AltRuleHint::NoAlt {} => AltRuleHint::NoAlt {},
+            AltRuleHint::AltNoChange {} => AltRuleHint::AltNoChange {},
+            AltRuleHint::AltRule { rule: arule } => {
+                let tmp_rule = arule.restrict_initial_region(&initial);
+                if tmp_rule == rule {
+                    AltRuleHint::NoAlt {}
+                } else if tmp_rule.causes_predictable_change() {
+                    AltRuleHint::AltRule { rule: tmp_rule }
+                } else {
+                    AltRuleHint::AltNoChange {}
+                }
+            }
+        };
 
         let result = rule.result_region();
 
@@ -76,7 +95,7 @@ impl SomeStep {
             initial,
             result,
             rule,
-            alt_rule,
+            alt_rule: alt_rule2,
         }
     }
 
@@ -98,12 +117,27 @@ impl SomeStep {
 
         let rule_new = self.rule.restrict_initial_region(reg);
 
+        let alt_rule = match &self.alt_rule {
+            AltRuleHint::NoAlt {} => AltRuleHint::NoAlt {},
+            AltRuleHint::AltNoChange {} => AltRuleHint::AltNoChange {},
+            AltRuleHint::AltRule { rule: arule } => {
+                let tmp_rule = arule.restrict_initial_region(reg);
+                if tmp_rule == rule_new {
+                    AltRuleHint::NoAlt {}
+                } else if tmp_rule.causes_predictable_change() {
+                    AltRuleHint::AltRule { rule: tmp_rule }
+                } else {
+                    AltRuleHint::AltNoChange {}
+                }
+            }
+        };
+
         Self {
             act_id: self.act_id,
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
-            alt_rule: self.alt_rule.clone(),
+            alt_rule,
         }
     }
 
@@ -114,12 +148,27 @@ impl SomeStep {
 
         let rule_new = self.rule.restrict_result_region(reg);
 
+        let alt_rule = match &self.alt_rule {
+            AltRuleHint::NoAlt {} => AltRuleHint::NoAlt {},
+            AltRuleHint::AltNoChange {} => AltRuleHint::AltNoChange {},
+            AltRuleHint::AltRule { rule: arule } => {
+                let tmp_rule = arule.restrict_initial_region(&rule_new.initial_region());
+                if tmp_rule == rule_new {
+                    AltRuleHint::NoAlt {}
+                } else if tmp_rule.causes_predictable_change() {
+                    AltRuleHint::AltRule { rule: tmp_rule }
+                } else {
+                    AltRuleHint::AltNoChange {}
+                }
+            }
+        };
+
         Self {
             act_id: self.act_id,
             initial: rule_new.initial_region(),
             result: rule_new.result_region(),
             rule: rule_new,
-            alt_rule: self.alt_rule.clone(),
+            alt_rule,
         }
     }
 

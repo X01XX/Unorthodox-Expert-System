@@ -8,6 +8,7 @@ use crate::regionscorr::RegionsCorr;
 use crate::rulescorr::RulesCorr;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
+use crate::tools::StrLen;
 
 use std::fmt;
 use std::slice::Iter;
@@ -159,5 +160,15 @@ impl StepsCorr {
             }
         }
         true
+    }
+}
+
+impl StrLen for StepsCorr {
+    fn strlen(&self) -> usize {
+        let mut rc_len = 3; // for "STC"
+
+        rc_len += self.steps.strlen();
+
+        rc_len
     }
 }
