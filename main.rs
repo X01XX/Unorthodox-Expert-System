@@ -846,7 +846,7 @@ fn check_for_plan_completion_rc(
         }
     } else if forward_plan.is_not_empty() && forward_plan.result_regions().intersects(to) {
         return forward_plan.restrict_result_regions(to);
-    } else if backward_plan.is_not_empty() && backward_plan.initial_regions() == *from {
+    } else if backward_plan.is_not_empty() && backward_plan.initial_regions().is_superset_of(from) {
         return backward_plan.restrict_initial_regions(from);
     }
     None
@@ -1140,19 +1140,27 @@ fn step_by_step_rc(
                 return ret_plans;
             }
             "fpop" | "FPOP" => {
-                if let Some(top_from) = forward_plans.pop() {
-                    cur_from = top_from.initial_regions();
+                if let Some(_top_from) = forward_plans.pop() {
+                    if forward_plans.is_empty() {
+                        cur_from = from.clone();
+                    } else {
+                        cur_from = forward_plans.result_regions();
+                    }
                     ret_plans = None;
                 } else {
-                    println!("forward_plan is empty");
+                    println!("forward_plans is empty");
                 }
             }
             "bpop" | "BPOP" => {
-                if let Some(stp_back) = backward_plans.pop_first() {
-                    cur_to = stp_back.result_regions();
+                if let Some(_stp_back) = backward_plans.pop_first() {
+                    if backward_plans.is_empty() {
+                        cur_to = to.clone();
+                    } else {
+                        cur_to = backward_plans.initial_regions();
+                    }
                     ret_plans = None;
                 } else {
-                    println!("backward_plan is empty");
+                    println!("backward_plans is empty");
                 }
             }
             "so" | "SO" => {

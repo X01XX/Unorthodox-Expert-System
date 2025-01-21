@@ -247,7 +247,7 @@ impl PlansCorrStore {
     }
 
     /// Push a PlansCorr into a PlansCorrStore.
-    pub fn push(&mut self, pcx: PlansCorr) {
+    fn push(&mut self, pcx: PlansCorr) {
         if let Some(pcl) = self.last() {
             assert!(pcl.num_bits_vec() == pcx.num_bits_vec());
             assert!(pcl.is_linked(&pcx));
@@ -269,7 +269,7 @@ impl PlansCorrStore {
             }
         }
 
-        self.items.push(pcx);
+        self.push(pcx);
         Ok(())
     }
     /// Return true if a PlansCorr contains an intersecting results region.
