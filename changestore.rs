@@ -1,7 +1,7 @@
 //! The ChangeStore struct, a vector of SomeChange structs.
 //!
 use crate::change::SomeChange;
-use crate::tools::{self, StrLen};
+use crate::tools::StrLen;
 
 use std::fmt;
 use std::slice::Iter;
@@ -14,7 +14,7 @@ pub struct ChangeStore {
 
 impl fmt::Display for ChangeStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", tools::vec_string(&self.items))
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -83,23 +83,44 @@ impl ChangeStore {
     pub fn iter(&self) -> Iter<SomeChange> {
         self.items.iter()
     }
+
+    /// Return a string representing a ChangeStore.
+    fn formatted_str(&self) -> String {
+        let mut rc_str = String::with_capacity(self.strlen());
+        rc_str.push('[');
+
+        let mut first = true;
+        for cngx in self.items.iter() {
+            if cngx.is_not_low() {
+                if first {
+                    first = false;
+                } else {
+                    rc_str.push_str(", ");
+                }
+                rc_str.push_str(&cngx.to_string());
+            }
+        }
+        rc_str.push(']');
+
+        rc_str
+    }
 }
 
 /// Implement the trait StrLen for ChangeStore.
 impl StrLen for ChangeStore {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2; // for "[]"
-
+        let mut ret = 2; // [..]
         let mut first = true;
-        for cngx in self.iter() {
-            if first {
-                first = false;
-            } else {
-                rc_len += 2; // for ", "
+        for cngx in self.items.iter() {
+            if cngx.is_not_low() {
+                if first {
+                    first = false;
+                } else {
+                    ret += 2; // for ", "
+                }
+                ret += cngx.strlen();
             }
-            rc_len += cngx.strlen();
         }
-
-        rc_len
+        ret
     }
 }

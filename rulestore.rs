@@ -405,10 +405,11 @@ impl RuleStore {
                 }
             } else if within.intersects(&initial) {
                 let ruly = rulx.restrict_initial_region(within);
+
                 let result = ruly.result_region();
 
                 if within.is_superset_of(&result) {
-                    ret.push(Some(ruly.clone()));
+                    ret.push(Some(ruly));
                 } else if within.intersects(&result) {
                     ret.push(Some(ruly.restrict_result_region(within)));
                 } else {
@@ -426,15 +427,6 @@ impl Index<usize> for RuleStore {
     type Output = SomeRule;
     fn index(&self, i: usize) -> &SomeRule {
         &self.items[i]
-    }
-}
-
-impl IntoIterator for RuleStore {
-    type Item = SomeRule;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.into_iter()
     }
 }
 
@@ -474,7 +466,7 @@ impl FromStr for RuleStore {
         // Tally up tokens.
         let mut ret_store = RuleStore::with_capacity(tokens.len());
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             match SomeRule::from_str(&tokenx) {
                 Ok(rulx) => ret_store.push(rulx),
                 Err(errstr) => return Err(format!("rulestore::from_str: {errstr}")),
@@ -488,14 +480,7 @@ impl FromStr for RuleStore {
 /// Implement the trait StrLen for RuleStore.
 impl StrLen for RuleStore {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2; // for "[]"
-
-        if !self.is_empty() {
-            rc_len += self[0].strlen() * self.len(); // Each rule length.
-            rc_len += 2 * (self.len() - 1); // Each ", " separator.
-        }
-
-        rc_len
+        tools::strlen(&self.items)
     }
 }
 

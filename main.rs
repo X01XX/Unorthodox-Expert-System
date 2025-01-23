@@ -764,11 +764,19 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
         return Err("Exactly two region arguments are needed for the step command.".to_string());
     }
 
-    // Get from region from string
-    let from = RegionsCorr::from_str(&cmd[1])?;
+    // Get from RC, validate/massage it.
+    let mut from = RegionsCorr::from_str(&cmd[1])?;
+    from = match sdx.validate_rc(from) {
+        Ok(rcx) => rcx,
+        Err(errstr) => return Err(errstr),
+    };
 
-    // Get to region from string
-    let to = RegionsCorr::from_str(&cmd[2])?;
+    // Get to RC, validate/massage it.
+    let mut to = RegionsCorr::from_str(&cmd[2])?;
+    to = match sdx.validate_rc(to) {
+        Ok(rcx) => rcx,
+        Err(errstr) => return Err(errstr),
+    };
 
     if !from.is_congruent(&to) {
         return Err("Regionscorr given are not congruent".to_string());
@@ -776,7 +784,10 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
 
     if let Some(plans) = step_by_step_rc(sdx, &from, &to, None, None, 0) {
         println!("found plan for {from} -> {to}: {plans}");
-        if plans.initial_regions() == sdx.all_current_regions() {
+        if plans
+            .initial_regions()
+            .is_superset_states(&sdx.all_current_states())
+        {
             let cmd = pause_for_input("Press Enter to continue, or r to run ");
             if cmd == "r" || cmd == "R" {
                 match sdx.run_planscorrstore(&plans) {
@@ -797,8 +808,12 @@ fn do_to_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String>
         return Err("Exactly one RC, argument is needed for the to command.".to_string());
     }
 
-    // Get region from string
-    let goal_regions = RegionsCorr::from_str(&cmd[1])?;
+    // Get region from string, validate/massage it.
+    let mut goal_regions = RegionsCorr::from_str(&cmd[1])?;
+    goal_regions = match sdx.validate_rc(goal_regions) {
+        Ok(rcx) => rcx,
+        Err(errstr) => return Err(errstr),
+    };
 
     // Check if goal already satisfied.
     let cur_regs = sdx.all_current_regions();
@@ -1739,7 +1754,7 @@ fn usage() {
     //    );
     println!("\n    step_rc <RC> <RC>        - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions.");
     println!("\n                               Like: step_rc RC[r0101, r111] RC[r1001, r100]");
-    println!("                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100]");
+    println!("                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100], or step_rc RC[s111] RC[s100]");
     println!("\n                               This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
     println!("                               The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
     println!(
@@ -1755,6 +1770,7 @@ fn usage() {
     println!("    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.  Two states is a goal.");
     println!("\n    A region, or state, may contain the separator '_', which will be ignored. All bit positions must be specified.");
     println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
+    println!("\n    An RC must have at least one region. An RC can have missing, and out of order regions, when the regions use different numbers of bits.");
     println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
     println!("          The bar for this is fairly low.");

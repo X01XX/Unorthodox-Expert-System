@@ -325,6 +325,57 @@ impl DomainStore {
     ) -> StepStore {
         self.items[dom_id].get_steps(wanted_changes, within)
     }
+
+    /// Change a RegionsCorr to match a DomainStore, if needed,
+    /// to make user input of RegionsCorr definition easier.
+    ///
+    /// Each domain will match one, or zero, regions. Matching left to right, first match wins.
+    /// At least one RC region must be given.
+    /// All given regions must match a domain, based on number of bits used.
+    /// Out of order regions, using the same number bits, will remain out of order.
+    /// Domains matching zero regions will default to the domains' maximum region.
+    pub fn validate_rc(&self, rcx: RegionsCorr) -> Result<RegionsCorr, String> {
+        if rcx.is_empty() {
+            return Err("domainstore::validate_rc: rc empty".to_string());
+        }
+        if rcx.len() > self.len() {
+            return Err("domainstore::validate_rc: rc has too many regions".to_string());
+        }
+        // Check for correct, complete, input.
+        if rcx.len() == self.len() && self.is_congruent(&rcx) {
+            return Ok(rcx);
+        }
+        // Check for no domain match. Correct order error, if any.
+        let mut regs: Vec<Option<SomeRegion>> = vec![None; self.len()];
+        for regx in rcx {
+            let mut not_found = true;
+            for (inx, domx) in self.iter().enumerate() {
+                if domx.num_bits() == regx.num_bits() && regs[inx].is_none() {
+                    // Domain match
+                    regs[inx] = Some(regx.clone());
+                    not_found = false;
+                    break;
+                }
+            }
+            if not_found {
+                return Err(format!(
+                    "domainstore::validate_rc: Region {regx} with no domain match"
+                ));
+            }
+        }
+
+        // Replace missing regions with domain maximum region.
+        let mut regs2 = RegionsCorr::with_capacity(self.len());
+        for (optx, domx) in regs.into_iter().zip(self.iter()) {
+            if let Some(regx) = optx {
+                regs2.push(regx);
+            } else {
+                regs2.push(domx.maximum_region());
+            }
+        }
+
+        Ok(regs2)
+    }
 }
 
 impl Index<usize> for DomainStore {
@@ -360,7 +411,7 @@ impl FromStr for DomainStore {
             );
         }
 
-        if str_in2[0..3] != *"DS[" {
+        if str_in2[0..3].to_uppercase() != *"DS[" {
             return Err("domainstore::from_str: string should begin with DS[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
@@ -382,7 +433,7 @@ impl FromStr for DomainStore {
 
         // Process tokens.
         for tokenx in tokens.iter() {
-            if tokenx[0..7] == *"DOMAIN[" {
+            if tokenx[0..7].to_uppercase() == *"DOMAIN[" {
                 //println!("found SomeDomain {tokenx}");
                 match SomeDomain::from_str(tokenx) {
                     Ok(domx) => dmxs.push(domx),
@@ -408,6 +459,67 @@ mod tests {
         assert!(dom.formatted_def() == dom_str);
 
         // assert!(1 == 2);
+        Ok(())
+    }
+
+    #[test]
+    fn validate_rc() -> Result<(), String> {
+        let dom_str = "DS[
+                        DOMAIN[ACT[[XX_XX/XX/XX/Xx], s0_0000, s1_1111]],
+                        DOMAIN[ACT[[XX/XX/XX/Xx], s0000, s1111]],
+                        DOMAIN[ACT[[XX/Xx/00], s000, s110]],
+                        DOMAIN[ACT[[Xx/Xx], s00, s11]]
+                    ]";
+
+        let dsx = DomainStore::from_str(&dom_str)?;
+        println!("{dsx}");
+
+        // Test an RC set up as expected.
+        let rc_str = "RC[r0_0000, r0000, r000, r00]";
+        let rc = RegionsCorr::from_str(&rc_str)?;
+        println!("rc {rc}");
+
+        let rc2 = dsx.validate_rc(rc)?;
+        println!("rc2 {rc2}");
+        assert!(format!("{rc2}") == rc_str);
+
+        // Test an RC with one out of order region and one missing region.
+        let rc_str = "RC[r000, r0_0000, r0000]";
+        let rc3 = RegionsCorr::from_str(&rc_str)?;
+        println!("rc3 {rc3}");
+
+        let rc4 = dsx.validate_rc(rc3)?;
+        println!("rc4 {rc4}");
+        assert!(format!("{rc4}") == "RC[r0_0000, r0000, r000, rXX]");
+
+        // Test an RC that is empty.
+        let rc5 = RegionsCorr::from_str("RC[]")?;
+        println!("rc5 {rc5}");
+
+        match dsx.validate_rc(rc5) {
+            Ok(rcx) => return Err(format!("validate of rc5 worked {rcx} ?")),
+            Err(errstr) => println!("rc5 {errstr}"),
+        }
+
+        // Test an RC with extra region.
+        let rc6 = RegionsCorr::from_str("RC[r0_0000, r0000, r000, r00, r0]")?;
+        println!("rc6 {rc6}");
+
+        match dsx.validate_rc(rc6) {
+            Ok(rcx) => return Err(format!("validate of rc6 worked {rcx} ?")),
+            Err(errstr) => println!("rc6 {errstr}"),
+        }
+
+        // Test an RC with two regions of the same number bits, but only one matching domain.
+        let rc7 = RegionsCorr::from_str("RC[r0_0000, r0000, r000, r000]")?;
+        println!("rc7 {rc7}");
+
+        match dsx.validate_rc(rc7) {
+            Ok(rcx) => return Err(format!("validate of rc7 worked {rcx} ?")),
+            Err(errstr) => println!("rc7 {errstr}"),
+        }
+
+        //assert!(1 == 2);
         Ok(())
     }
 }

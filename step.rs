@@ -332,7 +332,7 @@ impl FromStr for SomeStep {
             Err(errstr) => return Err(format!("step::from_str: action token problem: {errstr}")),
         };
 
-        if tokens[3] == "Alt:" {
+        if tokens[3].to_uppercase() == "ALT:" {
         } else {
             return Err("step::from_str: fourth token s/b Alt:".to_string());
         }

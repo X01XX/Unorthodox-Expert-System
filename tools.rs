@@ -73,16 +73,7 @@ impl RandomPick {
 
 /// Return a string representing a vector of items.
 pub fn vec_string<T: fmt::Display + StrLen>(avec: &[T]) -> String {
-    let mut len = 2; // Length of brackets.
-    if avec.is_empty() {
-    } else {
-        // Length of items may be different, as in corresponding region, or state, vectors.
-        for itmx in avec.iter() {
-            len += itmx.strlen(); // Length of item.
-        }
-        len += (avec.len() - 1) * 2; // Length of separators.
-    }
-    let mut rc_str = String::with_capacity(len);
+    let mut rc_str = String::with_capacity(strlen(avec));
     rc_str.push('[');
 
     let mut first = true;
@@ -400,6 +391,22 @@ fn add_one_of_next<T: Copy>(avec: &[Vec<T>], options: &[Vec<T>]) -> Vec<Vec<T>> 
     }
 
     add_one_of_next(&avec[1..], &next_options)
+}
+
+/// Return the length of a string representing a vector of structs.
+pub fn strlen<T: StrLen>(avec: &[T]) -> usize {
+    let mut rc_len = 2; // for "[]"
+
+    let mut first = true;
+    for itmx in avec.iter() {
+        if first {
+            first = false;
+        } else {
+            rc_len += 2; // for ", "
+        }
+        rc_len += itmx.strlen();
+    }
+    rc_len
 }
 
 #[cfg(test)]

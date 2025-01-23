@@ -343,7 +343,7 @@ impl SomeAction {
 
         // Store possible groups, some may be duplicates.
         for grpstrx in groups {
-            for grpx in grpstrx.into_iter() {
+            for grpx in grpstrx {
                 if !self.groups.any_superset_of(&grpx.region) {
                     self.groups_push_nosubs(grpx);
                 }
@@ -1875,7 +1875,6 @@ impl SomeAction {
         }
 
         // Must be a two-rule store, unfortunately.
-
         // Return if no rule within.
         if rules2[0].is_none() && rules2[1].is_none() {
             return stps;
@@ -2640,7 +2639,7 @@ impl FromStr for SomeAction {
             );
         }
 
-        if str_in2[0..4] != *"ACT[" {
+        if str_in2[0..4].to_uppercase() != *"ACT[" {
             return Err("action::from_str: string should begin with ACT[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
@@ -2672,7 +2671,7 @@ impl FromStr for SomeAction {
                     }
                     Err(errstr) => return Err(errstr),
                 }
-            } else if tokenx[0..1] == *"s" {
+            } else if tokenx[0..1].to_lowercase() == *"s" {
                 continue;
             } else {
                 return Err(format!("action::from_str: Unrecognized token, {tokenx}"));
@@ -2690,7 +2689,7 @@ impl FromStr for SomeAction {
             //println!("rulestores for an action: {tokenx}");
             if tokenx[0..1] == *"[" {
                 continue;
-            } else if tokenx[0..1] == *"s" {
+            } else if tokenx[0..1].to_lowercase() == *"s" {
                 let mut num_str = "1".to_string();
                 let mut tokeny = tokenx.clone();
                 // Split state token by "/" separator, if any.

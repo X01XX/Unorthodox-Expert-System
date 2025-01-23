@@ -107,11 +107,11 @@ impl FromStr for StatesCorr {
             );
         }
 
-        if str_in2 == "SC[]" {
+        if str_in2.to_uppercase() == "SC[]" {
             return Ok(Self::with_capacity(1));
         }
 
-        if str_in2[0..3] != *"SC[" {
+        if str_in2[0..3].to_uppercase() != *"SC[" {
             return Err("statescorr::from_str: string should begin with SC[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {

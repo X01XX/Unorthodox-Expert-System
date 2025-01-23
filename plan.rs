@@ -235,7 +235,7 @@ impl SomePlan {
         //println!("steps2 {steps2}");
 
         // Push each step to check each step for problems.
-        for stepx in steps2.steps.into_iter() {
+        for stepx in steps2.steps {
             match steps1.push(stepx) {
                 Ok(()) => continue,
                 Err(errstr) => {
@@ -520,7 +520,7 @@ impl FromStr for SomePlan {
     /// Return SomePlan, given a string representation.
     /// Like P[1], P[1, r1010-0->r0101], or P[1, r101-0->r000-1->r100].
     fn from_str(str_in: &str) -> Result<Self, String> {
-        println!("plan::from_str: {str_in}");
+        //println!("plan::from_str: {str_in}");
         let str_in2 = str_in.trim();
 
         if str_in2.len() < 4 {
@@ -542,7 +542,7 @@ impl FromStr for SomePlan {
             Ok(tokenvec) => tokenvec,
             Err(errstr) => return Err(format!("statestore::from_str: {errstr}")),
         };
-        println!("tokens {:?}", tokens);
+        //println!("tokens {:?}", tokens);
 
         // Get domain id.
         let dom_id = match tokens[0].parse::<usize>() {
@@ -662,6 +662,15 @@ mod tests {
         assert!(str_len == calc_len);
 
         let tmp_pln = SomePlan::from_str("P[10, r0000-0->r1111-0->r0011]")?;
+        println!("tmp_pln {tmp_pln}");
+
+        let strrep = format!("{tmp_pln}");
+        let len = strrep.len();
+        let calc_len = tmp_pln.strlen();
+        println!("str {tmp_pln} len {len} calculated len {calc_len}");
+        assert!(len == calc_len);
+
+        let tmp_pln = SomePlan::from_str("P[10, r0000-no->r0000]")?; // -> P[10]
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");

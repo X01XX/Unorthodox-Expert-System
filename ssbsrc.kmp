@@ -19,4 +19,5 @@ SD[DS[DOMAIN[
 
 // Test with command: step-rc RC[s0101, s111] RC[s1001, s100]
 // Test with command: step-rc RC[s0101, s111] RC[r10XX, r1X0]
+// Test with command: step-rc RC[r010X, r1X1] RC[r10XX, r1X0]
 

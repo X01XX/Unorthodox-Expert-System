@@ -243,7 +243,7 @@ impl FromStr for SomeState {
         // Check for first character.
         if let Some(char0) = str2.graphemes(true).nth(0) {
             // Check the first character.
-            if char0 == "s" {
+            if char0.to_lowercase() == "s" {
                 // Create the result from the not-first characters.
                 match SomeBits::from_str(&str2.to_string()[1..]) {
                     Ok(bts) => Ok(Self { bts }),

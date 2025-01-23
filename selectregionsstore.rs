@@ -194,19 +194,7 @@ impl SelectRegionsStore {
 
     /// Return a string represeting an SelectRegionsStore.
     fn formatted_str(&self) -> String {
-        let mut ret_str = String::from("[");
-
-        let mut first = true;
-        for orx in self.items.iter() {
-            if first {
-                first = false;
-            } else {
-                ret_str.push_str(", ");
-            }
-            ret_str.push_str(&orx.to_string());
-        }
-        ret_str.push(']');
-        ret_str
+        tools::vec_string(&self.items)
     }
 
     /// Return true if a SelectRegionsStore contains a given SelectRegions.
@@ -364,7 +352,7 @@ impl FromStr for SelectRegionsStore {
         // Tally up tokens.
         let mut sregions = Vec::<SelectRegions>::new();
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             match SelectRegions::from_str(&tokenx) {
                 Ok(regx) => sregions.push(regx),
                 Err(errstr) => return Err(format!("selectregionsstore::from_str: {errstr}")),

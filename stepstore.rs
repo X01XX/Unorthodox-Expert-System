@@ -12,7 +12,7 @@ use std::slice::{Iter, IterMut};
 
 impl fmt::Display for StepStore {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.formatted_str(""))
+        write!(f, "{}", self.formatted_str())
     }
 }
 
@@ -108,19 +108,20 @@ impl StepStore {
     }
 
     /// Return a string representing a StepStore.
-    fn formatted_str(&self, prefix: &str) -> String {
-        let mut rc_str = String::with_capacity(prefix.len() + self.strlen());
-        rc_str.push_str(prefix);
+    fn formatted_str(&self) -> String {
+        let mut rc_str = String::with_capacity(self.strlen());
         rc_str.push('[');
 
         let mut first = true;
         for stpx in self.items.iter() {
-            if first {
-                first = false;
-            } else {
-                rc_str.push_str(", ");
+            if stpx.act_id.is_some() {
+                if first {
+                    first = false;
+                } else {
+                    rc_str.push_str(", ");
+                }
+                rc_str.push_str(&stpx.to_string());
             }
-            rc_str.push_str(&stpx.to_string());
         }
         rc_str.push(']');
 
@@ -376,19 +377,19 @@ impl IntoIterator for StepStore {
 /// Implement the trait StrLen for StepStore.
 impl StrLen for StepStore {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2;
-
+        let mut ret = 2; // [..]
         let mut first = true;
-        for itemx in self.items.iter() {
-            if first {
-                first = false;
-            } else {
-                rc_len += 2; // for ", "
+        for stpx in self.items.iter() {
+            if stpx.act_id.is_some() {
+                if first {
+                    first = false;
+                } else {
+                    ret += 2; // for ", "
+                }
+                ret += stpx.strlen();
             }
-            rc_len += itemx.strlen();
         }
-
-        rc_len
+        ret
     }
 }
 

@@ -375,7 +375,7 @@ impl FromStr for RegionsCorr {
             return Err("regionscorr::from_str: should be at least RC[]?".to_string());
         }
 
-        if str_in2[0..3] != *"RC[" {
+        if str_in2[0..3].to_uppercase() != *"RC[" {
             return Err("regionscorr::from_str: string should begin with RC[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
@@ -399,13 +399,22 @@ impl FromStr for RegionsCorr {
         }
         let mut regions = Self::with_capacity(tlen);
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             regions.push(
                 SomeRegion::from_str(&tokenx).expect("regionscorr::from_str: invalid region token"),
             );
         }
 
         Ok(regions)
+    }
+}
+
+impl IntoIterator for RegionsCorr {
+    type Item = SomeRegion;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.regions.into_iter()
     }
 }
 

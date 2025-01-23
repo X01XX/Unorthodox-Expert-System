@@ -94,11 +94,11 @@ impl fmt::Display for Path {
 /// Implement the trait StrLen for Path.
 impl StrLen for Path {
     fn strlen(&self) -> usize {
-        if self.steps.is_empty() {
-            2
-        } else {
-            (2 * self.steps.len()) + (self.steps[0].strlen() * self.steps.len())
+        let mut ret = 2; // for [...]
+        if !self.steps.is_empty() {
+            ret += (2 * self.steps.len()) + (self.steps[0].strlen() * self.steps.len())
         }
+        ret
     }
 }
 
@@ -1116,7 +1116,7 @@ impl FromStr for SomeDomain {
             );
         }
 
-        if str_in2[0..7] != *"DOMAIN[" {
+        if str_in2[0..7].to_uppercase() != *"DOMAIN[" {
             return Err("domain::from_str: string should begin with DOMAIN[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
@@ -1137,7 +1137,7 @@ impl FromStr for SomeDomain {
 
         // Push each action.
         for tokenx in tokens.iter() {
-            if tokenx[0..4] == *"ACT[" {
+            if tokenx[0..4].to_uppercase() == *"ACT[" {
                 act_vec.push(SomeAction::from_str(tokenx)?);
             } else {
                 return Err(format!(

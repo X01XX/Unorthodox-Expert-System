@@ -149,7 +149,7 @@ impl FromStr for StateStore {
         // Tally up tokens.
         let mut state_vec = Vec::<SomeState>::with_capacity(tokens.len());
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             state_vec.push(
                 SomeState::from_str(&tokenx).expect("statestore::from_str: invalid region token"),
             );

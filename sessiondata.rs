@@ -1670,6 +1670,11 @@ impl SessionData {
         }
         (pos, neg)
     }
+
+    /// Validate, massage, RegionsCorr input by user.
+    pub fn validate_rc(&self, rcx: RegionsCorr) -> Result<RegionsCorr, String> {
+        self.domains.validate_rc(rcx)
+    }
 }
 
 impl FromStr for SessionData {
@@ -1700,7 +1705,7 @@ impl FromStr for SessionData {
             return Err("sessiondata::from_str: should be at least SD[]?".to_string());
         }
 
-        if str_in2[0..3] != *"SD[" {
+        if str_in2[0..3].to_uppercase() != *"SD[" {
             return Err("sessiondata::from_str: string should begin with SD[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
@@ -1721,7 +1726,7 @@ impl FromStr for SessionData {
         // There must be a DomainStore..
         let mut sdx_opt: Option<SessionData> = None;
         for tokenx in tokens.iter() {
-            if tokenx[0..3] == *"DS[" {
+            if tokenx[0..3].to_uppercase() == *"DS[" {
                 match DomainStore::from_str(tokenx) {
                     Ok(dsx) => sdx_opt = Some(SessionData::new(dsx)),
                     Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
@@ -1733,14 +1738,14 @@ impl FromStr for SessionData {
         let mut sdx = sdx_opt.expect("No DomainStore token found");
 
         for tokenx in tokens.iter() {
-            if tokenx[0..3] == *"DS[" {
-            } else if tokenx[0..3] == *"SR[" {
+            if tokenx[0..3].to_uppercase() == *"DS[" {
+            } else if tokenx[0..3].to_uppercase() == *"SR[" {
                 //println!("found SelectRegions {tokenx}");
                 match SelectRegions::from_str(tokenx) {
                     Ok(selx) => sdx.add_select(selx),
                     Err(errstr) => return Err(format!("sessiondata::from_str: {errstr}")),
                 }
-            } else if tokenx[0..3] == *"SC[" {
+            } else if tokenx[0..3].to_uppercase() == *"SC[" {
                 //println!("found StatesCorr {tokenx}");
                 match StatesCorr::from_str(tokenx) {
                     Ok(stacx) => sdx.set_cur_states(&stacx),

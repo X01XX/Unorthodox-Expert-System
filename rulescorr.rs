@@ -189,7 +189,7 @@ impl FromStr for RulesCorr {
         // Tally up tokens.
         let mut ret_corr = RulesCorr::with_capacity(tokens.len());
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             match SomeRule::from_str(&tokenx) {
                 Ok(rulx) => ret_corr.push(rulx),
                 Err(errstr) => return Err(format!("rulescorr::from_str: {errstr}")),

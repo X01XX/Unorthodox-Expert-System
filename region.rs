@@ -585,9 +585,9 @@ impl FromStr for SomeRegion {
         let mut skip = 0;
         // Check the first character.
         if let Some(char0) = str2.graphemes(true).nth(0) {
-            if char0 == "r" {
+            if char0.to_lowercase() == "r" {
                 skip = 1;
-            } else if char0 == "s" {
+            } else if char0.to_lowercase() == "s" {
                 // Create a region from a single state.
                 // An advantage is that hexadecimal digits can be used if there are no X-bit positions.
                 let stax = SomeState::from_str(str2)?;

@@ -116,22 +116,13 @@ impl FromStr for MaskStore {
         // Tally up tokens.
         let mut regions = Vec::<SomeMask>::new();
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             regions.push(
                 SomeMask::from_str(&tokenx).expect("maskstore::from_str: Invalid region token"),
             );
         }
 
         Ok(Self::new(regions))
-    }
-}
-
-impl IntoIterator for MaskStore {
-    type Item = SomeMask;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.items.into_iter()
     }
 }
 

@@ -445,14 +445,7 @@ impl tools::AvecRef for RegionStore {
 /// Implement the trait StrLen for RegionStore.
 impl tools::StrLen for RegionStore {
     fn strlen(&self) -> usize {
-        let mut rc_len = 2;
-
-        if self.is_not_empty() {
-            rc_len += self.items.len() * self.items[0].strlen();
-            rc_len += (self.items.len() - 1) * 2;
-        }
-
-        rc_len
+        tools::strlen(&self.items)
     }
 }
 
@@ -492,7 +485,7 @@ impl FromStr for RegionStore {
         // Tally up tokens.
         let mut regions = Vec::<SomeRegion>::with_capacity(tokens.len());
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             match SomeRegion::from_str(&tokenx) {
                 Ok(regx) => regions.push(regx),
                 Err(errstr) => return Err(format!("regionstore::from_str: {errstr}")),

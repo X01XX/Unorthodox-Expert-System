@@ -209,7 +209,7 @@ impl FromStr for SelectRegions {
             );
         }
 
-        if str_in2[0..3] != *"SR[" {
+        if str_in2[0..3].to_uppercase() != *"SR[" {
             return Err("selectregions::from_str: string should begin with SR[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {

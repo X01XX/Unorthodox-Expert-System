@@ -203,14 +203,7 @@ impl Index<usize> for PlanStore {
 /// Implement the trait StrLen for SomePlan.
 impl tools::StrLen for PlanStore {
     fn strlen(&self) -> usize {
-        let mut cnt = 2; // brackets.
-        for (inx, planx) in self.items.iter().enumerate() {
-            if inx > 0 {
-                cnt += 2; // comma space
-            }
-            cnt += planx.strlen();
-        }
-        cnt
+        tools::strlen(&self.items)
     }
 }
 
@@ -259,7 +252,7 @@ impl FromStr for PlanStore {
         // Convert tokens.
         let mut plans = Vec::<SomePlan>::with_capacity(tokens.len());
 
-        for tokenx in tokens.into_iter() {
+        for tokenx in tokens {
             match SomePlan::from_str(&tokenx) {
                 Ok(regx) => plans.push(regx),
                 Err(errstr) => return Err(format!("PlanStore::from_str: {errstr}")),
