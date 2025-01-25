@@ -332,7 +332,6 @@ impl SomePlan {
     /// Initial region to goal region.
     pub fn formatted_str(&self) -> String {
         if self.is_empty() || (self.len() == 1 && self[0].act_id == 0) {
-            //return format!("P[{}]", self.dom_id);
             return String::new();
         }
         let mut str = format!("P[{}, {}", self.dom_id, self.initial_region());

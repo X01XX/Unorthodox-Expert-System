@@ -273,13 +273,6 @@ fn any_mutually_exclusive_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeCha
             //println!("any_mutually_exclusive_changes checking {:?} and {:?}", by_change[inx], by_change[iny]);
             //println!("any_mutually_exclusive_changes checking {inx} and {iny}");
             if all_mutually_exclusive_changes(&by_change[inx], &by_change[iny], wanted) {
-                //println!("any_mutually_exclusive_changes checking {inx} and {iny}");
-                //for stpx in by_change[inx].iter() {
-                //    println!("inx: {stpx}");
-                //}
-                //for stpy in by_change[iny].iter() {
-                //    println!("iny: {stpy}");
-                //}
                 return true;
             }
         } // next iny
@@ -380,14 +373,12 @@ impl StrLen for StepStore {
         let mut ret = 2; // [..]
         let mut first = true;
         for stpx in self.items.iter() {
-            // if stpx.act_id > 0 {
             if first {
                 first = false;
             } else {
                 ret += 2; // for ", "
             }
             ret += stpx.strlen();
-            //}
         }
         ret
     }

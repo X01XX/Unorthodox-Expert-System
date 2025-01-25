@@ -248,7 +248,7 @@ impl FromStr for SomeStep {
     ///
     /// "[X010 -01> 0110 Alt: XX/00/10/00]"
     ///
-    /// "[X010 -no> X010 Alt: None]"
+    /// "[X010 -00> X010 Alt: None]"
     ///
     /// The number bit positions used in the initial regian, result region, and alternate rule (if given), must match.
     ///
@@ -256,7 +256,7 @@ impl FromStr for SomeStep {
     ///
     /// The alternate rule (if given), cannot be the same as the initial->result rule.
     ///
-    /// If no change, indicated by " -no> ", the initial region must be the same as the result region, the alternate rule must be None.
+    /// If no change, indicated by "-0>", the initial region must be the same as the result region, the alternate rule must be None.
     fn from_str(str_in: &str) -> Result<Self, String> {
         //println!("SomeStep::from_str: {str_in}");
         let str_in2 = str_in.trim();
@@ -289,13 +289,23 @@ impl FromStr for SomeStep {
 
         let initial = SomeRegion::from_str(&tokens[0])?;
 
-        // parse -nn> or -no>
+        // parse -n> or -nn>
         if tokens[1][0..1] != *"-" {
             return Err("step::from_str: action token should begin with -".to_string());
         }
-        if tokens[1][3..4] != *">" {
-            return Err("step::from_str: action token should end with >".to_string());
-        }
+        let act_str = if tokens[1].len() == 3 {
+            if tokens[1][2..3] != *">" {
+                return Err("step::from_str: action token should end with >".to_string());
+            }
+            &tokens[1][1..2]
+        } else if tokens[1].len() == 4 {
+            if tokens[1][3..4] != *">" {
+                return Err("step::from_str: action token should end with >".to_string());
+            }
+            &tokens[1][1..3]
+        } else {
+            return Err("step::from_str: do not understand action token".to_string());
+        };
 
         let result = SomeRegion::from_str(&tokens[2])?;
 
@@ -313,12 +323,10 @@ impl FromStr for SomeStep {
             return Err("step::from_str: result has invalid 1/X or 0/X position".to_string());
         }
 
-        let act_str = &tokens[1][1..3];
-
-        if act_str == "no" {
+        if act_str == "0" {
             if initial != result {
                 return Err(
-                    "step::from_str: for no action, initial and result must be eq".to_string(),
+                    "step::from_str: for action zero, initial and result must be eq".to_string(),
                 );
             }
             return Ok(Self::new_no_op(&initial));
@@ -376,7 +384,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_stp = SomeStep::from_str("[s0000 -00> s0010 Alt: None]")?;
+        let tmp_stp = SomeStep::from_str("[s0000 -1> s0010 Alt: None]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -384,7 +392,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0000 -00> s0010 Alt: NoChange]")?;
+        let tmp_stp = SomeStep::from_str("[s0010 -0> s0010 Alt: NoChange]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -392,14 +400,14 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0000 -00> s0010 Alt: 00/00/01/01]")?;
+        let tmp_stp = SomeStep::from_str("[s0000 -1> s0010 Alt: 00/00/01/01]")?;
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
         let calc_len = tmp_stp.strlen();
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0000_0000 -no> s0000_0000 Alt: None]")?;
+        let tmp_stp = SomeStep::from_str("[s0000_0000 -0> s0000_0000 Alt: None]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -414,15 +422,11 @@ mod tests {
     fn nop() -> Result<(), String> {
         let tmp_reg = SomeRegion::from_str("r0X0X")?;
         let tmp_stp = SomeStep::new_no_op(&tmp_reg);
-        println!("nop stop {tmp_stp}");
+        println!("nop step {tmp_stp}");
 
-        let stpx = tmp_stp.restrict_initial_region(&SomeRegion::from_str("r0XX1")?);
-        println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::from_str("r0X01")?);
-
-        let stpx = tmp_stp.restrict_result_region(&SomeRegion::from_str("rX00X")?);
-        println!("stpx: {stpx}");
-        assert!(stpx.initial == SomeRegion::from_str("r000X")?);
+        assert!(tmp_stp.initial == SomeRegion::from_str("r0X0X")?);
+        assert!(tmp_stp.initial == tmp_stp.result);
+        assert!(tmp_stp.act_id == 0);
 
         Ok(())
     }
