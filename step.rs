@@ -22,7 +22,7 @@ impl fmt::Display for SomeStep {
 /// A step that changes a state to another.
 pub struct SomeStep {
     /// Action number.
-    pub act_id: Option<usize>,
+    pub act_id: usize,
     /// Initial region of rule.
     pub initial: SomeRegion,
     /// Result region of rule.
@@ -91,7 +91,7 @@ impl SomeStep {
         let result = rule.result_region();
 
         Self {
-            act_id: Some(act_id),
+            act_id,
             initial,
             result,
             rule,
@@ -102,7 +102,7 @@ impl SomeStep {
     /// Return a no-op step.
     pub fn new_no_op(regx: &SomeRegion) -> Self {
         Self {
-            act_id: None,
+            act_id: 0,
             initial: regx.clone(),
             result: regx.clone(),
             rule: SomeRule::new_region_to_region_min(regx, regx),
@@ -177,11 +177,8 @@ impl SomeStep {
         let mut rcstr = String::with_capacity(self.strlen());
         rcstr.push('[');
         rcstr.push_str(&self.initial.to_string());
-        if let Some(act_id) = self.act_id {
-            rcstr.push_str(&format!(" -{:02}> ", act_id));
-        } else {
-            rcstr.push_str(" -no> ");
-        }
+        rcstr.push_str(&format!(" -{:02}> ", self.act_id));
+
         rcstr.push_str(&self.result.to_string());
         rcstr.push_str(&format!(" {}", self.alt_rule));
         rcstr.push(']');

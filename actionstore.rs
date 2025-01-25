@@ -82,7 +82,8 @@ impl ActionStore {
         // Run a get_needs thread for each action
         let vecx: Vec<NeedStore> = self
             .items
-            .par_iter_mut() // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages
+            .par_iter_mut()
+            .skip(1) // par_iter_mut for parallel, .iter_mut for easier reading of diagnostic messages. Don't get action 0 needs.
             .map(|actx| actx.get_needs(cur_state, &max_reg))
             .collect::<Vec<NeedStore>>();
 

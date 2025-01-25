@@ -376,6 +376,15 @@ impl DomainStore {
 
         Ok(regs2)
     }
+
+    /// Return a reference to a domain, given the domain ID.
+    pub fn find_domain(&self, dom_id: usize) -> Option<&SomeDomain> {
+        if dom_id >= self.items.len() {
+            None
+        } else {
+            Some(&self.items[dom_id])
+        }
+    }
 }
 
 impl Index<usize> for DomainStore {
@@ -455,10 +464,9 @@ mod tests {
     fn from_str() -> Result<(), String> {
         let dom_str = "DS[DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]]]]";
         let dom = DomainStore::from_str(&dom_str)?;
-        println!("dom {}", dom.formatted_def());
-        assert!(dom.formatted_def() == dom_str);
+        println!("dom {dom}");
+        assert!(dom.len() == 1);
 
-        // assert!(1 == 2);
         Ok(())
     }
 

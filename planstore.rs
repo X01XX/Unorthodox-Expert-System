@@ -101,12 +101,16 @@ impl PlanStore {
 
         let mut first = true;
         for planx in &self.items {
+            let tmp_str = planx.formatted_str();
+            if tmp_str.is_empty() {
+                continue;
+            }
             if first {
                 first = false;
             } else {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&format!("{}", planx));
+            rc_str.push_str(&tmp_str);
         }
         rc_str.push(']');
 
@@ -121,12 +125,16 @@ impl PlanStore {
 
         let mut first = true;
         for planx in &self.items {
+            let tmp_str = planx.formatted_str_from();
+            if tmp_str.is_empty() {
+                continue;
+            }
             if first {
                 first = false;
             } else {
                 rc_str.push_str(", ");
             }
-            rc_str.push_str(&planx.formatted_str_from());
+            rc_str.push_str(&tmp_str);
         }
         rc_str.push(']');
 
@@ -294,12 +302,12 @@ mod tests {
         println!("plnst1 {plnst1}");
         assert!(format!("{plnst1}") == plnst1_str);
 
-        let plnst2_str = "[P[0, r001-0->r101]]";
+        let plnst2_str = "[P[0, r001-1->r101]]";
         let plnst2 = PlanStore::from_str(&plnst2_str)?;
         println!("plnst2 {plnst2}");
         assert!(format!("{plnst2}") == plnst2_str);
 
-        let plnst3_str = "[P[0, r001-0->r101], P[1, r101-0->r101]]";
+        let plnst3_str = "[P[0, r001-1->r101], P[1, r101-1->r101]]";
         let plnst3 = PlanStore::from_str(&plnst3_str)?;
         println!("plnst3 {plnst3}");
         assert!(format!("{plnst3}") == plnst3_str);

@@ -91,14 +91,12 @@ impl ChangeStore {
 
         let mut first = true;
         for cngx in self.items.iter() {
-            if cngx.is_not_low() {
-                if first {
-                    first = false;
-                } else {
-                    rc_str.push_str(", ");
-                }
-                rc_str.push_str(&cngx.to_string());
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
             }
+            rc_str.push_str(&cngx.to_string());
         }
         rc_str.push(']');
 
@@ -112,14 +110,12 @@ impl StrLen for ChangeStore {
         let mut ret = 2; // [..]
         let mut first = true;
         for cngx in self.items.iter() {
-            if cngx.is_not_low() {
-                if first {
-                    first = false;
-                } else {
-                    ret += 2; // for ", "
-                }
-                ret += cngx.strlen();
+            if first {
+                first = false;
+            } else {
+                ret += 2; // for ", "
             }
+            ret += cngx.strlen();
         }
         ret
     }

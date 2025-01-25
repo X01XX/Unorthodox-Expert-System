@@ -1397,7 +1397,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<String>) -> Result<(
 
         let dom_id = sdx.current_domain;
 
-        let domx = sdx.find(dom_id).expect("SNH");
+        let domx = sdx.find_domain(dom_id).expect("SNH");
 
         if a_state.num_bits() != domx.num_bits() {
             return Err("State does not have the same number of bits as the CCD.".to_string());
@@ -1437,7 +1437,7 @@ fn do_sample_state_command(sdx: &mut SessionData, cmd: &Vec<String>) -> Result<(
         }
 
         let dom_id = sdx.current_domain;
-        let domx = sdx.find(dom_id).expect("SNH");
+        let domx = sdx.find_domain(dom_id).expect("SNH");
 
         if i_state.num_bits() != domx.num_bits() {
             return Err("States do not have the same number of bits as the CCD.".to_string());
@@ -1471,7 +1471,7 @@ fn display_action_anchor_info(sdx: &mut SessionData, cmd: &[String]) -> Result<(
     };
 
     // Display the rates
-    let domx = sdx.find(dom_id).expect("SNH");
+    let domx = sdx.find_domain(dom_id).expect("SNH");
     domx.display_action_anchor_info(act_id)
 }
 
@@ -1490,7 +1490,7 @@ fn do_print_select_regions(sdx: &SessionData, cmd: &[String]) -> Result<(), Stri
 /// Do print-squares command.
 fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
+    let domx = sdx.find_domain(dom_id).expect("SNH");
 
     if cmd.len() == 1 {
         return Err("Need to supply at least an action number".to_string());
@@ -1619,7 +1619,7 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), 
 /// Do adjacent-anchor command.
 fn display_group_anchor_info(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
+    let domx = sdx.find_domain(dom_id).expect("SNH");
 
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
@@ -1652,7 +1652,7 @@ fn do_print_group_defining_squares_command(
     cmd: &Vec<String>,
 ) -> Result<(), String> {
     let dom_id = sdx.current_domain;
-    let domx = sdx.find(dom_id).expect("SNH");
+    let domx = sdx.find_domain(dom_id).expect("SNH");
     if cmd.len() == 1 {
         return Err(format!("Did not understand {cmd:?}"));
     }
@@ -1975,8 +1975,8 @@ mod tests {
 
         sdx.print();
 
-        assert!(sdx.find(0).expect("SNH").actions[4].number_groups() == 1);
-        let grpx = sdx.find(0).expect("SNH").actions[4]
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].number_groups() == 1);
+        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("XXXX")?)
             .unwrap();
@@ -1985,13 +1985,13 @@ mod tests {
         do_session(&mut sdx); // Figure other actions, and test group in action 4.
         sdx.print();
 
-        assert!(sdx.find(0).expect("SNH").actions[4].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
-        let grpx = sdx.find(0).expect("SNH").actions[4]
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].number_groups() == 2); // s/b XX/XX/10/X0, XX/XX/01/X1.
+        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("XX1X")?)
             .unwrap();
         println!("Group {} found", grpx.region);
-        let grpx = sdx.find(0).expect("SNH").actions[4]
+        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("XX0X")?)
             .unwrap();
@@ -2020,14 +2020,15 @@ mod tests {
         do_session(&mut sdx);
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[4].groups.len() == 6);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[4].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 6);
 
-        // Check action 4 primary groups.
-        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
+        // Check action 5 primary groups.
+        if let Some(grpx) = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("rX10X")?)
         {
@@ -2035,7 +2036,7 @@ mod tests {
         } else {
             return Err("Group rX10X not found?".to_string());
         }
-        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
+        if let Some(grpx) = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("r1X1X")?)
         {
@@ -2043,7 +2044,7 @@ mod tests {
         } else {
             return Err("Group r1X1X not found?".to_string());
         }
-        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
+        if let Some(grpx) = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("rX00X")?)
         {
@@ -2051,7 +2052,7 @@ mod tests {
         } else {
             return Err("Group rX00X not found?".to_string());
         }
-        if let Some(grpx) = sdx.find(0).expect("SNH").actions[4]
+        if let Some(grpx) = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&SomeRegion::from_str("r0X1X")?)
         {
@@ -2061,39 +2062,39 @@ mod tests {
         }
 
         // Check unneeded groups.
-        let subs = sdx.find(0).expect("SNH").actions[4]
+        let subs = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         println!("subsets of r00XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = sdx.find(0).expect("SNH").actions[4]
+        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&subs[0])
             .expect("SNH");
         assert!(!grpx.limited);
 
-        let subs = sdx.find(0).expect("SNH").actions[4]
+        let subs = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         println!("subsets of r11XX {subs}");
         assert!(subs.len() == 1);
-        let grpx = sdx.find(0).expect("SNH").actions[4]
+        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .find(&subs[0])
             .expect("SNH");
         assert!(!grpx.limited);
 
         // Do cleanup to delete unneeded groups.
-        sdx.cleanup(0, 4, &NeedStore::new(vec![]));
+        sdx.cleanup(0, 5, &NeedStore::new(vec![]));
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[4].groups.len() == 4);
-        let subs = sdx.find(0).expect("SNH").actions[4]
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 4);
+        let subs = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .subsets_of(&SomeRegion::from_str("r11XX")?);
         assert!(subs.is_empty());
 
-        let subs = sdx.find(0).expect("SNH").actions[4]
+        let subs = sdx.find_domain(0).expect("SNH").actions[5]
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
@@ -2132,15 +2133,15 @@ mod tests {
         ));
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         // Move to positive region.
         do_any_need(&mut sdx);
 
-        assert!(sdx.find(0).expect("SNH").cur_state == (SomeState::from_str("s1000")?));
+        assert!(sdx.find_domain(0).expect("SNH").cur_state == (SomeState::from_str("s1000")?));
 
         generate_and_display_needs(&mut sdx);
         generate_and_display_needs(&mut sdx);
@@ -2171,10 +2172,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         // Inc boredom by 1.
         generate_and_display_needs(&mut sdx);
@@ -2258,10 +2259,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         Ok(())
     }
@@ -2285,10 +2286,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         Ok(())
     }
@@ -2312,10 +2313,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         Ok(())
     }
@@ -2339,10 +2340,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         Ok(())
     }
@@ -2366,10 +2367,10 @@ mod tests {
         }
 
         sdx.print();
-        assert!(sdx.find(0).expect("SNH").actions[0].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[1].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[2].groups.len() == 1);
-        assert!(sdx.find(0).expect("SNH").actions[3].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[1].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
+        assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
 
         Ok(())
     }

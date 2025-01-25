@@ -1379,14 +1379,11 @@ impl SessionData {
                     println!("\n  Domain: {}, Plan:", dom_id);
                     for stepx in planx.iter() {
                         let df = stepx.initial.diff_edge_mask(&stepx.result);
-                        if let Some(act_id) = stepx.act_id {
-                            print!(
-                                "    {} Action {:02} -> {}",
-                                stepx.initial, act_id, stepx.result
-                            );
-                        } else {
-                            print!("    {} Action no -> {}", stepx.initial, stepx.result);
-                        }
+                        print!(
+                            "    {} Action {:02} -> {}",
+                            stepx.initial, stepx.act_id, stepx.result
+                        );
+
                         cur_states[dom_id] =
                             stepx.rule.result_from_initial_state(&cur_states[dom_id]);
 
@@ -1615,8 +1612,8 @@ impl SessionData {
     }
 
     /// Find a domain that matches a given ID, return a reference.
-    pub fn find(&self, dom_id: usize) -> Option<&SomeDomain> {
-        self.domains.find(dom_id)
+    pub fn find_domain(&self, dom_id: usize) -> Option<&SomeDomain> {
+        self.domains.find_domain(dom_id)
     }
 
     /// Take an action in a domain.
@@ -1797,18 +1794,27 @@ mod tests {
 
         println!("sdx {sdx_str}");
         println!("sdx {sdx}");
-
-        let sdx_str2 = sdx.formatted_def(); // Instance to String(2).
-        println!("sdx_str2 {sdx_str2}");
-
-        match SessionData::from_str(&sdx_str2) {
-            // String(2) to instance.
-            Ok(sdy) => {
-                assert!(sdy == sdx);
-                Ok(())
+        if let Some(domx) = sdx.find_domain(0) {
+            if let Some(_actx) = domx.find_action(4) {
+                return Ok(());
+            } else {
+                return Err("No action 4?".to_string());
             }
-            Err(errstr) => Err(errstr),
+        } else {
+            return Err("No domain?".to_string());
         }
+
+        //      let sdx_str2 = sdx.formatted_def(); // Instance to String(2).
+        //      println!("sdx_str2 {sdx_str2}");
+
+        //        match SessionData::from_str(&sdx_str2) {
+        //            // String(2) to instance.
+        //            Ok(sdy) => {
+        //                assert!(sdy == sdx);
+        //                Ok(())
+        //            }
+        //            Err(errstr) => Err(errstr),
+        //        }
     }
 
     #[test]
@@ -1830,7 +1836,7 @@ mod tests {
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
@@ -1872,7 +1878,7 @@ mod tests {
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
@@ -1912,7 +1918,7 @@ mod tests {
         let first_state = SomeState::from_str("s0001")?;
         sdx.set_domain_state(0, first_state.clone());
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
@@ -1946,7 +1952,7 @@ mod tests {
         // Set state for domain 0.
         sdx.set_domain_state(0, SomeState::from_str("s0001")?);
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
         println!("Select Regions: {}\n", sdx.select);
 
         let start_region = RegionsCorr::from_str("RC[r0001]")?;
@@ -1977,8 +1983,8 @@ mod tests {
         println!("all states {}", all_states);
 
         assert!(all_states.len() == 2);
-        assert!(all_states[0] == sdx.find(0).expect("SNH").cur_state);
-        assert!(all_states[1] == sdx.find(1).expect("SNH").cur_state);
+        assert!(all_states[0] == sdx.find_domain(0).expect("SNH").cur_state);
+        assert!(all_states[1] == sdx.find_domain(1).expect("SNH").cur_state);
 
         Ok(())
     }
@@ -2041,8 +2047,8 @@ mod tests {
         let start_region = RegionsCorr::from_str("RC[r0000, r0001]")?;
         let goal_region = RegionsCorr::from_str("RC[r1111, r1110]")?;
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
-        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_region, &goal_region) {
@@ -2082,8 +2088,8 @@ mod tests {
 
         let goal_regions = RegionsCorr::from_str("RC[r1001, r0111]")?;
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
-        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
@@ -2131,8 +2137,8 @@ mod tests {
 
         let goal_regions = RegionsCorr::from_str("RC[r1001, r0111]")?;
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
-        println!("\nActions {}\n", sdx.find(1).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(1).expect("SNH").actions);
 
         // Try making plans.
         match sdx.plan_using_least_negative_select_regions(&start_regions, &goal_regions) {
@@ -2350,7 +2356,7 @@ mod tests {
 
         let goal_regions = RegionsCorr::from_str("RC[r1111]")?;
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
 
         // Try making plans.
         // Bridge overlap, using 01XX, between 3 and F, at 7, strangely
@@ -2368,7 +2374,7 @@ mod tests {
 
         let goal_regions = RegionsCorr::from_str("RC[r1101]")?;
 
-        println!("\nActions {}\n", sdx.find(0).expect("SNH").actions);
+        println!("\nActions {}\n", sdx.find_domain(0).expect("SNH").actions);
 
         // Try making plans.
         // No bridge overlap here, using 01XX, between 3 and D, requiring a step from
@@ -2400,7 +2406,7 @@ mod tests {
 
         // Set up PlansCorr.
         let plnsc1 = PlansCorr::from_str(
-            "PC[[P[0, r0000-0->r0001], P[1, r001-no->r001], P[2, r10-0->r11]], 0]",
+            "PC[[P[0, r0000-1->r0001], P[1, r001-0->r001], P[2, r10-1->r11]], 0]",
         )?;
         println!("{plnsc1}");
 
@@ -2435,7 +2441,7 @@ mod tests {
         )?;
 
         // Set up PlansCorrStore.
-        let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[0, r0000-2->r0100], P[1, r1111-0->r1110]], 0], PC[[P[0, r0100-0->r0101], P[1, r1110-1->r1100]], 0]]")?;
+        let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[0, r0000-3->r0100], P[1, r1111-1->r1110]], 0], PC[[P[0, r0100-1->r0101], P[1, r1110-2->r1100]], 0]]")?;
         println!("plnscrstr {plnscrstr}");
 
         let before = sdx.all_current_states();

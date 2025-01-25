@@ -114,14 +114,14 @@ impl StepStore {
 
         let mut first = true;
         for stpx in self.items.iter() {
-            if stpx.act_id.is_some() {
-                if first {
-                    first = false;
-                } else {
-                    rc_str.push_str(", ");
-                }
-                rc_str.push_str(&stpx.to_string());
+            // if stpx.act_id > 0 {
+            if first {
+                first = false;
+            } else {
+                rc_str.push_str(", ");
             }
+            rc_str.push_str(&stpx.to_string());
+            // }
         }
         rc_str.push(']');
 
@@ -380,14 +380,14 @@ impl StrLen for StepStore {
         let mut ret = 2; // [..]
         let mut first = true;
         for stpx in self.items.iter() {
-            if stpx.act_id.is_some() {
-                if first {
-                    first = false;
-                } else {
-                    ret += 2; // for ", "
-                }
-                ret += stpx.strlen();
+            // if stpx.act_id > 0 {
+            if first {
+                first = false;
+            } else {
+                ret += 2; // for ", "
             }
+            ret += stpx.strlen();
+            //}
         }
         ret
     }

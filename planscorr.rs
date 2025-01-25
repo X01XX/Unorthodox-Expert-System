@@ -354,13 +354,13 @@ mod tests {
         println!("plncr1 {plncr1} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr2 = PlansCorr::from_str("PC[[P[0, r0000-0->r1111]], 0]")?;
+        let plncr2 = PlansCorr::from_str("PC[[P[0, r0000-1->r1111]], 0]")?;
         let lenx = plncr2.strlen();
         let strx = format!("{plncr2}");
         println!("plncr2 {plncr2} len {} calced len {lenx}", strx.len());
         assert!(lenx == strx.len());
 
-        let plncr3 = PlansCorr::from_str("PC[[P[0, r0000-0->r1111], P[1, r0000-0->r1100]], -1]")?;
+        let plncr3 = PlansCorr::from_str("PC[[P[0, r0000-1->r1111], P[1, r0000-1->r1100]], -1]")?;
         let lenx = plncr3.strlen();
         let strx = format!("{plncr3}");
         println!("plncr3 {plncr3} len {} calced len {lenx}", strx.len());
@@ -371,7 +371,7 @@ mod tests {
 
     #[test]
     fn initial_regions() -> Result<(), String> {
-        let plnsc1 = PlansCorr::from_str("PC[[P[0, r0X-0->r00], P[1, r0X1-1->r000]]]")?;
+        let plnsc1 = PlansCorr::from_str("PC[[P[0, r0X-1->r00], P[1, r0X1-2->r000]]]")?;
         println!("{plnsc1}");
 
         let initial_regs = plnsc1.initial_regions();
@@ -384,7 +384,7 @@ mod tests {
     #[test]
     fn result_regions() -> Result<(), String> {
         let plnsc1 =
-            PlansCorr::from_str("PC[[P[0, r0X-0->r00-1->r11], P[1, r0X1-1->r000-4->r101]]]")?;
+            PlansCorr::from_str("PC[[P[0, r0X-1->r00-2->r11], P[1, r0X1-1->r000-4->r101]]]")?;
         println!("{plnsc1}");
 
         let result_regs = plnsc1.result_regions();
@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn restrict_initial_regions() -> Result<(), String> {
         let plnsc1 =
-            PlansCorr::from_str("PC[[P[0, rXX-0->rx0], P[1, r0X0x-1->r0x11-2->r1X11]], 0]")?;
+            PlansCorr::from_str("PC[[P[0, rXX-1->rx0], P[1, r0X0x-2->r0x11-3->r1X11]], 0]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from_str("RC[r11, r0100]")?;
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn restrict_result_regions() -> Result<(), String> {
         let plnsc1 =
-            PlansCorr::from_str("PC[[P[0, rXX-0->rx0], P[1, r0X0x-1->r0x11-2->1X11]], 0]")?;
+            PlansCorr::from_str("PC[[P[0, rXX-1->rx0], P[1, r0X0x-2->r0x11-3->1X11]], 0]")?;
         println!("{plnsc1}");
 
         let restrict = RegionsCorr::from_str("RC[r00, r1111]")?;
@@ -439,12 +439,12 @@ mod tests {
         println!("plncr1 {plncr1}");
         assert!(format!("{plncr1}") == "PC[[]]");
 
-        let plncr2_str = "PC[[P[0, r0000-0->r1111]], 1]";
+        let plncr2_str = "PC[[P[0, r0000-1->r1111]], 1]";
         let plncr2 = PlansCorr::from_str(&plncr2_str)?;
         println!("plncr2 {plncr2}");
         assert!(format!("{plncr2}") == plncr2_str);
 
-        let plncr3_str = "PC[[P[0, r0000-0->r1111], P[1, r0000-0->r1100]], -1]";
+        let plncr3_str = "PC[[P[0, r0000-1->r1111], P[1, r0000-1->r1100]], -1]";
         let plncr3 = PlansCorr::from_str(&plncr3_str)?;
         println!("plncr3 {plncr3}");
         assert!(format!("{plncr3}") == plncr3_str);

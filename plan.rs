@@ -260,11 +260,7 @@ impl SomePlan {
             } else {
                 rs.push(',');
             }
-            if let Some(act_id) = stpx.act_id {
-                rs.push_str(&format!("{}", act_id));
-            } else {
-                rs.push_str("no");
-            }
+            rs.push_str(&format!("{}", stpx.act_id));
         }
         rs.push(']');
         rs
@@ -334,17 +330,15 @@ impl SomePlan {
 
     /// Return a String representation of SomePlan.
     /// Initial region to goal region.
-    fn formatted_str(&self) -> String {
-        if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
-            return format!("P[{}]", self.dom_id);
+    pub fn formatted_str(&self) -> String {
+        if self.is_empty() || (self.len() == 1 && self[0].act_id == 0) {
+            //return format!("P[{}]", self.dom_id);
+            return String::new();
         }
         let mut str = format!("P[{}, {}", self.dom_id, self.initial_region());
         for stpx in self.iter() {
-            if let Some(act_id) = stpx.act_id {
-                str.push_str(&format!("-{}->{}", act_id, stpx.result));
-            } else {
-                str.push_str(&format!("-no->{}", stpx.result));
-            }
+            str.push_str(&format!("-{}->{}", stpx.act_id, stpx.result));
+
             if let AltRuleHint::AltRule { .. } = stpx.alt_rule {
                 str.push('*')
             };
@@ -356,16 +350,13 @@ impl SomePlan {
     /// Return a String representation of SomePlan,
     /// Goal region from initial region.
     pub fn formatted_str_from(&self) -> String {
-        if self.is_empty() {
-            return String::from("P[]");
+        if self.is_empty() || (self.len() == 1 && self[0].act_id == 0) {
+            return String::new();
         }
         let mut str = format!("P[{}", self.initial_region());
         for stpx in self.iter() {
-            if let Some(act_id) = stpx.act_id {
-                str.push_str(&format!("<-{}-{}", act_id, stpx.result));
-            } else {
-                str.push_str(&format!("<-no-{}", stpx.result));
-            }
+            str.push_str(&format!("<-{}-{}", stpx.act_id, stpx.result));
+
             if let AltRuleHint::AltRule { .. } = stpx.alt_rule {
                 str.push('*')
             };
@@ -428,7 +419,7 @@ impl SomePlan {
     pub fn number_steps_to_run(&self) -> usize {
         let mut numr = 0;
         for stepx in self.iter() {
-            if stepx.act_id.is_some() {
+            if stepx.act_id > 0 {
                 numr += 1;
             }
         }
@@ -492,13 +483,8 @@ impl Index<usize> for SomePlan {
 /// Implement the trait StrLen for SomePlan.
 impl StrLen for SomePlan {
     fn strlen(&self) -> usize {
-        if self.is_empty() || (self.len() == 1 && self[0].act_id.is_none()) {
-            // P[] + dom_id.
-            if self.dom_id < 10 {
-                return 4;
-            } else {
-                return 5;
-            }
+        if self.is_empty() || (self.len() == 1 && self[0].act_id == 0) {
+            return 0;
         }
         let mut reg_len = self.initial_region().strlen();
 
@@ -610,8 +596,6 @@ impl FromStr for SomePlan {
                         return Err(format!("SomePlan::from_str: {errstr}"));
                     }
                 }
-            } else if tokenx == "no" {
-                actions.push(None);
             } else {
                 match tokenx.parse::<usize>() {
                     Ok(act_id) => actions.push(Some(act_id)),
@@ -622,6 +606,9 @@ impl FromStr for SomePlan {
             // Check if enough data to form a step.
             if regions.len() == 2 && actions.len() == 1 {
                 let stepx = if let Some(act_id) = actions[0] {
+                    if act_id == 0 && regions[0] != regions[1] {
+                        return Err("SomePlan::from_str: zero action change?".to_string());
+                    }
                     SomeStep::new(
                         act_id,
                         SomeRule::new_region_to_region_min(&regions[0], &regions[1]),
@@ -661,7 +648,7 @@ mod tests {
         println!("str {tmp_pln} len {str_len} calculated len {calc_len}");
         assert!(str_len == calc_len);
 
-        let tmp_pln = SomePlan::from_str("P[10, r0000-0->r1111-0->r0011]")?;
+        let tmp_pln = SomePlan::from_str("P[10, r0000-1->r1111-1->r0011]")?;
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -670,7 +657,7 @@ mod tests {
         println!("str {tmp_pln} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_pln = SomePlan::from_str("P[10, r0000-no->r0000]")?; // -> P[10]
+        let tmp_pln = SomePlan::from_str("P[10, r0000-0->r0000]")?; // -> P[10]
         println!("tmp_pln {tmp_pln}");
 
         let strrep = format!("{tmp_pln}");
@@ -685,7 +672,7 @@ mod tests {
     #[test]
     fn restrict_initial_region() -> Result<(), String> {
         let pln1 = SomePlan::from_str(
-            "P[1, rX_1001-2->rX_1101-0->rX_1100-1->rX_1110-3->r1_1110-4->r1_0110]",
+            "P[1, rX_1001-3->rX_1101-1->rX_1100-2->rX_1110-4->r1_1110-5->r1_0110]",
         )?;
         println!("pln1 {}", pln1);
 
@@ -698,7 +685,7 @@ mod tests {
 
     #[test]
     fn restrict_result_region() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-3->rX_1101-1->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(plan2) = pln1.restrict_result_region(&SomeRegion::from_str("r1_1100")?) {
@@ -710,7 +697,7 @@ mod tests {
 
     #[test]
     fn result_from_initial_region() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-3->rX_1101-1->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(initial) = pln1.result_from_initial_region(&SomeRegion::from_str("r1_1001")?) {
@@ -723,7 +710,7 @@ mod tests {
 
     #[test]
     fn result_from_initial_state() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[1, rX_1001-2->rX_1101-0->rX_1100]")?;
+        let pln1 = SomePlan::from_str("P[1, rX_1001-3->rX_1101-1->rX_1100]")?;
         println!("pln1 {}", pln1);
 
         if let Some(initial) = pln1.result_from_initial_state(&SomeState::from_str("s1_1001")?) {
@@ -741,12 +728,12 @@ mod tests {
 
         assert!(!pln1.causes_change());
 
-        let pln2 = SomePlan::from_str("P[0, rX_1001-no->rX_1001]")?;
+        let pln2 = SomePlan::from_str("P[0, rX_1001-1->rX_1001]")?;
         println!("pln2 {}", pln2);
 
         assert!(!pln2.causes_change());
 
-        let pln3 = SomePlan::from_str("P[0, rX_1001-2->rX_1101-0->rX_1000]")?;
+        let pln3 = SomePlan::from_str("P[0, rX_1001-3->rX_1101-2->rX_1000]")?;
         println!("pln3 {}", pln3);
 
         assert!(pln3.causes_change());
@@ -757,7 +744,7 @@ mod tests {
     // restrict_initial_region and restrict_result_region functions.
     #[test]
     fn link() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[0, r0x0x-0->r0x1x-1->r1x1x]")?;
+        let pln1 = SomePlan::from_str("P[0, r0x0x-1->r0x1x-1->r1x1x]")?;
         println!("pln1 {}", pln1);
 
         let pln2 = SomePlan::from_str("P[0, r111x-2->r101x-3->r000x]")?;
@@ -768,15 +755,7 @@ mod tests {
         };
         println!("pln3 {}", pln3);
 
-        assert!(format!("{pln3}") == "P[0, r010X-0->r011X-1->r111X-2->r101X-3->r000X]");
-
-        Ok(())
-    }
-
-    #[test]
-    fn nop() -> Result<(), String> {
-        let pln1 = SomePlan::from_str("P[0, r0X0X-no->r0X0X]")?;
-        println!("pln1 {pln1}");
+        assert!(format!("{pln3}") == "P[0, r010X-1->r011X-1->r111X-2->r101X-3->r000X]");
 
         Ok(())
     }
@@ -788,10 +767,10 @@ mod tests {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
         };
-        println!("plan1 {plan1}");
-        assert!(format!("{plan1}") == plan1_str);
+        println!("plan1: {plan1}");
+        assert!(format!("{plan1}") == "");
 
-        let plan2_str = "P[1, r01X-0->r101-1->r011]";
+        let plan2_str = "P[1, r01X-1->r101-1->r011]";
         let plan2 = match SomePlan::from_str(plan2_str) {
             Ok(planx) => planx,
             Err(errstr) => return Err(errstr),
