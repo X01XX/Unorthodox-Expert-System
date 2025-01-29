@@ -1113,13 +1113,6 @@ impl SomeDomain {
         self.actions[act_id].cleanup(needs);
     }
 
-    /// Set cleanup trigger for an action.
-    pub fn set_cleanup(&mut self, act_id: usize, trigger: usize) {
-        assert!(act_id < self.actions.len());
-
-        self.actions[act_id].set_cleanup(trigger);
-    }
-
     /// Find an action that matches a given ID, return a reference.
     pub fn find_action(&self, act_id: usize) -> Option<&SomeAction> {
         if act_id >= self.actions.len() {

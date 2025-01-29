@@ -108,6 +108,8 @@ pub enum SomeNeed {
         rules: Option<RuleStore>,
         pnc: bool,
     },
+    /// Housekeeping, remove a group.
+    RemoveGroup { group_region: SomeRegion },
 }
 
 impl SomeNeed {
@@ -115,6 +117,7 @@ impl SomeNeed {
     pub fn name(&self) -> &str {
         match self {
             Self::AddGroup { .. } => "AddGroup",
+            Self::RemoveGroup { .. } => "RemoveGroup",
             Self::ConfirmGroup { .. } => "ConfirmGroup",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
@@ -231,6 +234,11 @@ impl SomeNeed {
                 } else {
                     format!("N(Create group from {group_region} No rules pnc {pnc})")
                 }
+            }
+            Self::RemoveGroup {
+                group_region,
+            } => {
+                format!("N(Remove group from {group_region})")
             }
             Self::ConfirmGroup {
                 dom_id,

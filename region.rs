@@ -484,17 +484,6 @@ impl SomeRegion {
         // states2 is already at the minimum.
         states2
     }
-
-    /// Return the symmetrical overlapping region for two adjacent regions.
-    pub fn symmetrical_overlapping_region(&self, other: &SomeRegion) -> Self {
-        debug_assert!(self.is_adjacent(other));
-
-        let msk = self.diff_edge_mask(other);
-
-        self.set_to_x(&msk)
-            .intersection(&other.set_to_x(&msk))
-            .expect("SNH")
-    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.

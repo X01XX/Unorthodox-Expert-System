@@ -73,8 +73,8 @@ pub struct SomeAction {
     aggregate_changes: Option<SomeChange>,
     /// An indicator that the changes possible were recently updated.
     pub agg_chgs_updated: bool,
-    /// Number of new squares added before a cleanup check is run.
-    cleanup_trigger: usize,
+    /// Regions recently marked as limited.
+    limited: RegionStore,
 }
 
 /// Implement the PartialEq trait, since two SomeAction instances.
@@ -106,7 +106,7 @@ impl SomeAction {
             remainder_check_regions: RegionStore::new(vec![]),
             aggregate_changes: None,
             agg_chgs_updated: false,
-            cleanup_trigger: CLEANUP_TRIGGER,
+            limited: RegionStore::new(vec![]),
         }
     }
 
@@ -464,12 +464,54 @@ impl SomeAction {
 
         let mut ret = NeedStore::new(vec![]);
 
+        // Check if any groups became limited.
+        // If so, check intersecting groups with no anchor, for deletion.
+        if self.limited.is_not_empty() {
+            //println!("Recently limited groups: {}", self.limited);
+
+            // Find non-equal intersecting groups, with no anchor.
+            let mut grps_to_check = RegionStore::new(vec![]);
+            for grpx in self.groups.iter() {
+                if grpx.anchor.is_some() {
+                    continue;
+                }
+                for grp_l in self.limited.iter() {
+                    if grpx.region.intersects(grp_l) {
+                        if grps_to_check.contains(&grpx.region) {
+                        } else {
+                            grps_to_check.push(grpx.region.clone());
+                        }
+                    }
+                }
+            }
+            //println!("grps_to_check: {grps_to_check}");
+            // Subtract limited groups from non-anchor groups, delete if nothing left.
+            let mut grps_to_remove = RegionStore::new(vec![]);
+            for grpx in grps_to_check.iter() {
+                let mut left = RegionStore::new(vec![grpx.clone()]);
+                for grp_a in self.groups.iter() {
+                    if grp_a.limited && left.any_intersection_of(&grp_a.region) {
+                        left = left.subtract_region(&grp_a.region);
+                    }
+                }
+                //println!("group to check: {grpx}, whats left: {left}");
+                if left.is_empty() {
+                    grps_to_remove.push_nosubs(grpx.clone());
+                }
+            }
+            for grpx in grps_to_remove.iter() {
+                println!("Group {grpx} completely overlapped by limited groups");
+                self.remove_group(grpx);
+            }
+            self.limited = RegionStore::new(vec![]);
+        }
+
         let mut get_new_needs = true;
         while get_new_needs {
+            get_new_needs = false;
+
             // Get some needs.
             ret = self.get_needs2(cur_state, max_reg);
-
-            get_new_needs = false;
 
             // Check for first need satisfied by a square in memory.
             for ndx in ret.iter() {
@@ -497,7 +539,7 @@ impl SomeAction {
 
         // Check for cleanup.
         // For testing, set cleanup_trigger high to suppress this.
-        if self.cleanup_number_new_squares >= self.cleanup_trigger {
+        if self.cleanup_number_new_squares >= CLEANUP_TRIGGER {
             self.cleanup(&ret);
         }
 
@@ -581,7 +623,7 @@ impl SomeAction {
             try_again = false;
             count += 1;
             if count > 20 {
-                return nds;
+                panic!("Housekeeping infinite loop?");
             }
 
             nds = NeedStore::new(vec![]);
@@ -597,37 +639,6 @@ impl SomeAction {
                 nds.append(ndx);
             }
 
-            // Edit out subset/eq group adds.
-            let mut new_grp_regs = RegionStore::new(vec![]);
-            for ndx in nds.iter() {
-                match ndx {
-                    SomeNeed::AddGroup { group_region, .. } => {
-                        new_grp_regs.push_nosubs(group_region.clone())
-                    }
-                    _ => continue,
-                };
-            } // next ndx
-
-            let mut remvec = vec![];
-            for (inx, ndx) in nds.iter().enumerate() {
-                match ndx {
-                    SomeNeed::AddGroup { group_region, .. } => {
-                        if self.groups.any_superset_of(group_region)
-                            || !new_grp_regs.contains(group_region)
-                        {
-                            remvec.push(inx);
-                        }
-                    }
-                    _ => continue,
-                };
-            } // next ndx
-
-            // Remove unneeded AddGroups, highest index first.
-            remvec.reverse();
-            for inx in remvec {
-                nds.remove(inx);
-            }
-
             // Process housekeeping needs.
             for ndx in nds.iter_mut() {
                 if let SomeNeed::AddGroup {
@@ -641,6 +652,10 @@ impl SomeAction {
                         rules.clone(),
                         *pnc,
                     ));
+                    try_again = true;
+                }
+                if let SomeNeed::RemoveGroup { group_region } = ndx {
+                    self.remove_group(group_region);
                     try_again = true;
                 }
             } // next ndx
@@ -756,7 +771,6 @@ impl SomeAction {
             }
 
             // Don't delete squares in groups.
-            // let mut in_groups = false;
             for grpx in self.groups.iter() {
                 if grpx.is_superset_of(keyx) {
                     for stax in grpx.region.states.iter() {
@@ -932,11 +946,12 @@ impl SomeAction {
                 if max_reg.is_superset_of(anchor) {
                     if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
-                        if *anchor_mask != max_mask && grpx.set_limited_off() {
+                        if *anchor_mask != max_mask {
                             println!(
-                                "Dom {} Act {} Group {} set limited off",
-                                self.dom_id, self.id, grpx.region
+                                "Dom {} Act {} Group {} set limited off mask {}",
+                                self.dom_id, self.id, grpx.region, anchor_mask
                             );
+                            grpx.set_limited_off();
                         }
                     }
                 }
@@ -1009,8 +1024,6 @@ impl SomeAction {
         debug_assert_eq!(grp_reg.num_bits(), self.num_bits);
         debug_assert_eq!(edges.num_bits(), self.num_bits);
 
-        let num_edges = edges.num_one_bits();
-
         println!(
             "Dom {} Act {} Group {} set limited on, adj mask {}",
             self.dom_id, self.id, grp_reg, edges
@@ -1019,24 +1032,7 @@ impl SomeAction {
         let grpx = self.groups.find_mut(grp_reg).expect("SNH");
 
         grpx.set_limited(edges);
-
-        for grpy in self.groups.iter_mut() {
-            if grpy.limited {
-            } else {
-                continue;
-            }
-            if grpy.region == *grp_reg {
-                continue;
-            }
-            if let Some(edgesy) = &grpy.anchor_mask {
-                if edgesy.num_one_bits() < num_edges && grpy.set_limited_off() {
-                    println!(
-                        "Dom {} Act {} Group {} set limited off",
-                        self.dom_id, self.id, grpy.region
-                    );
-                }
-            }
-        } // next grpy
+        self.limited.push(grpx.region.clone());
     }
 
     /// Return a rate for a possible anchor for a group.
@@ -2596,12 +2592,6 @@ impl SomeAction {
         } else {
             false
         }
-    }
-
-    // Set the cleanup trigger value.
-    pub fn set_cleanup(&mut self, trigger: usize) {
-        assert!(trigger > 0);
-        self.cleanup_trigger = trigger;
     }
 } // end impl SomeAction
 

@@ -305,13 +305,6 @@ impl DomainStore {
         self.items[dom_id].take_action_arbitrary(act_id, astate);
     }
 
-    /// Set the cleanup limit for a domain-action.
-    pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
-        debug_assert!(dom_id < self.len());
-
-        self.items[dom_id].set_cleanup(act_id, trigger);
-    }
-
     /// Calc aggregate changes, for SessionData initialization.
     pub fn calc_aggregate_changes(&mut self) {
         for itemx in self.items.iter_mut() {

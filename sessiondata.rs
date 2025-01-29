@@ -1631,11 +1631,6 @@ impl SessionData {
         self.domains.take_action_arbitrary(dom_id, act_id, astate);
     }
 
-    /// Set the cleanup limit for a domain-action.
-    pub fn set_domain_cleanup(&mut self, dom_id: usize, act_id: usize, trigger: usize) {
-        self.domains.set_domain_cleanup(dom_id, act_id, trigger);
-    }
-
     /// Calculate aggregate changes, for SessionData initialization.
     pub fn calc_aggregate_changes(&mut self) {
         self.domains.calc_aggregate_changes();

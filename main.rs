@@ -1870,7 +1870,6 @@ fn store_data(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::needstore::NeedStore;
     use crate::regionscorr::RegionsCorr;
     use crate::selectregions::SelectRegions;
     use crate::statescorr::StatesCorr;
@@ -2003,7 +2002,7 @@ mod tests {
     /// Test the cleanup of unneeded groups.
     /// First use of running a full session from a test function.
     #[test]
-    fn cleanup() -> Result<(), String> {
+    fn symmetric_adjacent_overlap_cleanup() -> Result<(), String> {
         // Create SessionData.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
@@ -2015,8 +2014,7 @@ mod tests {
         ]",
         )?;
 
-        sdx.set_domain_cleanup(0, 4, 500); // Effectively, turn off clean_up for domain 0, action 4.
-
+        // Known to produce 00XX and 11XX, deleted after limiting the final four groups.
         do_session(&mut sdx);
 
         sdx.print();
@@ -2025,7 +2023,7 @@ mod tests {
         assert!(sdx.find_domain(0).expect("SNH").actions[2].groups.len() == 1);
         assert!(sdx.find_domain(0).expect("SNH").actions[3].groups.len() == 1);
         assert!(sdx.find_domain(0).expect("SNH").actions[4].groups.len() == 1);
-        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 6);
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 4);
 
         // Check action 5 primary groups.
         if let Some(grpx) = sdx.find_domain(0).expect("SNH").actions[5]
@@ -2061,43 +2059,6 @@ mod tests {
             return Err("Group r0X1X not found?".to_string());
         }
 
-        // Check unneeded groups.
-        let subs = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .subsets_of(&SomeRegion::from_str("r00XX")?);
-        println!("subsets of r00XX {subs}");
-        assert!(subs.len() == 1);
-        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .find(&subs[0])
-            .expect("SNH");
-        assert!(!grpx.limited);
-
-        let subs = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .subsets_of(&SomeRegion::from_str("r11XX")?);
-        println!("subsets of r11XX {subs}");
-        assert!(subs.len() == 1);
-        let grpx = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .find(&subs[0])
-            .expect("SNH");
-        assert!(!grpx.limited);
-
-        // Do cleanup to delete unneeded groups.
-        sdx.cleanup(0, 5, &NeedStore::new(vec![]));
-
-        sdx.print();
-        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 4);
-        let subs = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .subsets_of(&SomeRegion::from_str("r11XX")?);
-        assert!(subs.is_empty());
-
-        let subs = sdx.find_domain(0).expect("SNH").actions[5]
-            .groups
-            .subsets_of(&SomeRegion::from_str("r00XX")?);
-        assert!(subs.is_empty());
         //assert!(1 == 2);
         Ok(())
     }
