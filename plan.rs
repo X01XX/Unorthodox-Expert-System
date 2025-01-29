@@ -611,7 +611,7 @@ impl FromStr for SomePlan {
                     SomeStep::new(
                         act_id,
                         SomeRule::new_region_to_region_min(&regions[0], &regions[1]),
-                        AltRuleHint::NoAlt {},
+                        None,
                     )
                 } else {
                     assert!(regions[0] == regions[1]);

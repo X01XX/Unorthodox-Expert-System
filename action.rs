@@ -26,7 +26,7 @@ use crate::square::{Compatibility, SomeSquare};
 use crate::squarestore::{PickError, SquareStore};
 use crate::state::SomeState;
 use crate::statestore::StateStore;
-use crate::step::{AltRuleHint, SomeStep};
+use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::target::ATarget;
 use crate::tools::{self, AccessStates};
@@ -1865,7 +1865,7 @@ impl SomeAction {
             if let Some(rulx) = &rules2[0] {
                 if wanted_changes.intersection(rulx).is_not_low() {
                     if let Some(rulx) = rulx.restrict_for_changes(wanted_changes) {
-                        stps.push(SomeStep::new(self.id, rulx, AltRuleHint::NoAlt {}));
+                        stps.push(SomeStep::new(self.id, rulx, None));
                     }
                 }
             }
@@ -1910,7 +1910,7 @@ impl SomeAction {
                 } else {
                     let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
                     if wanted_changes.intersection(&rul_sqr).is_not_low() {
-                        stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+                        stps.push(SomeStep::new(self.id, rul_sqr, None));
                     }
                 }
             }
@@ -1920,7 +1920,7 @@ impl SomeAction {
                 } else {
                     let rul_sqr = rulx.restrict_initial_region(&sqrx.state);
                     if wanted_changes.intersection(&rul_sqr).is_not_low() {
-                        stps.push(SomeStep::new(self.id, rul_sqr, AltRuleHint::NoAlt {}));
+                        stps.push(SomeStep::new(self.id, rul_sqr, None));
                     }
                 }
             }
@@ -1933,13 +1933,7 @@ impl SomeAction {
                 let ruly = rulx.restrict_initial_region(regx);
                 if wanted_changes.intersection(&ruly).is_not_low() {
                     if let Some(rulz) = ruly.restrict_for_changes(wanted_changes) {
-                        stps.push(SomeStep::new(
-                            self.id,
-                            rulz,
-                            AltRuleHint::AltRule {
-                                rule: rules[1].clone(),
-                            },
-                        ));
+                        stps.push(SomeStep::new(self.id, rulz, Some(&rules[1])));
                     }
                 }
             }
@@ -1948,13 +1942,7 @@ impl SomeAction {
                 let ruly = rulx.restrict_initial_region(regx);
                 if wanted_changes.intersection(&ruly).is_not_low() {
                     if let Some(rulz) = ruly.restrict_for_changes(wanted_changes) {
-                        stps.push(SomeStep::new(
-                            self.id,
-                            rulz,
-                            AltRuleHint::AltRule {
-                                rule: rules[0].clone(),
-                            },
-                        ));
+                        stps.push(SomeStep::new(self.id, rulz, Some(&rules[0])));
                     }
                 }
             }

@@ -2098,7 +2098,7 @@ mod tests {
             .groups
             .subsets_of(&SomeRegion::from_str("r00XX")?);
         assert!(subs.is_empty());
-
+        //assert!(1 == 2);
         Ok(())
     }
 

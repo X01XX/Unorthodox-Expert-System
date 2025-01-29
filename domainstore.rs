@@ -1,3 +1,6 @@
+//! A store for domain instances.
+//! For the to-rc and step-rc UI commands, entry of RegionsCorr strings is more forgiving of
+//! ommisions, and region order, if all domains use a different number of bits.
 use crate::change::SomeChange;
 use crate::domain::SomeDomain;
 use crate::need::SomeNeed;

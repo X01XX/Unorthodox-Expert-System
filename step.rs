@@ -52,50 +52,56 @@ impl Eq for SomeStep {}
 
 impl SomeStep {
     /// Return a new Step struct instance.
-    pub fn new(act_id: usize, rule: SomeRule, alt_rule: AltRuleHint) -> Self {
+    pub fn new(act_id: usize, rule: SomeRule, alt_rule: Option<&SomeRule>) -> Self {
         //println!("SomeStep::new: rule {rule}");
         //println!("SomeStep::new: alt_rule {alt_rule}");
         debug_assert!(rule.is_valid_union());
         debug_assert!(rule.is_valid_intersection());
 
         let initial = rule.initial_region();
-
-        debug_assert!(match &alt_rule {
-            AltRuleHint::NoAlt {} => true,
-            AltRuleHint::AltNoChange {} => true,
-            AltRuleHint::AltRule { rule: arule } => {
-                arule.num_bits() == arule.num_bits()
-                    && arule.initial_region().is_superset_of(&initial)
-                    && *arule != rule
-                    && arule.is_valid_union()
-                    && arule.is_valid_intersection()
-            }
-        });
-
-        // Massage alt_rule, as needed.
-        let alt_rule2 = match &alt_rule {
-            AltRuleHint::NoAlt {} => AltRuleHint::NoAlt {},
-            AltRuleHint::AltNoChange {} => AltRuleHint::AltNoChange {},
-            AltRuleHint::AltRule { rule: arule } => {
-                let tmp_rule = arule.restrict_initial_region(&initial);
-                if tmp_rule == rule {
-                    AltRuleHint::NoAlt {}
-                } else if tmp_rule.causes_predictable_change() {
-                    AltRuleHint::AltRule { rule: tmp_rule }
-                } else {
-                    AltRuleHint::AltNoChange {}
-                }
-            }
-        };
-
         let result = rule.result_region();
 
-        Self {
-            act_id,
-            initial,
-            result,
-            rule,
-            alt_rule: alt_rule2,
+        // Check if an alt_rule is given.
+        if let Some(alt_rul) = alt_rule {
+            let alt_initial = alt_rul.initial_region();
+
+            debug_assert!(initial.intersects(&alt_initial));
+
+            // Restrict alt_rule, if needed.
+            let mut alt_rul2 = alt_rul.clone();
+            if alt_initial != initial {
+                alt_rul2 = alt_rul.restrict_initial_region(&initial);
+            }
+
+            debug_assert!(alt_rul2 != rule);
+
+            if alt_rul.causes_predictable_change() {
+                Self {
+                    act_id,
+                    initial,
+                    result,
+                    rule,
+                    alt_rule: AltRuleHint::AltRule {
+                        rule: alt_rul.clone(),
+                    },
+                }
+            } else {
+                Self {
+                    act_id,
+                    initial,
+                    result,
+                    rule,
+                    alt_rule: AltRuleHint::AltNoChange {},
+                }
+            }
+        } else {
+            Self {
+                act_id,
+                initial,
+                result,
+                rule,
+                alt_rule: AltRuleHint::NoAlt {},
+            }
         }
     }
 
@@ -175,7 +181,7 @@ impl SomeStep {
     /// Return a string representing a step.
     fn formatted_str(&self) -> String {
         let mut rcstr = String::with_capacity(self.strlen());
-        rcstr.push('[');
+        rcstr.push_str("STP[");
         rcstr.push_str(&self.initial.to_string());
         rcstr.push_str(&format!(" -{:02}> ", self.act_id));
 
@@ -190,10 +196,7 @@ impl SomeStep {
     pub fn mutually_exclusive(&self, other: &Self, wanted: &SomeChange) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
         debug_assert_eq!(self.num_bits(), wanted.num_bits());
-        // Groups that change more than one bit may end up being compared.
-        if self.act_id == other.act_id {
-            return false;
-        }
+
         self.rule.mutually_exclusive(&other.rule, wanted)
     }
 
@@ -201,13 +204,11 @@ impl SomeStep {
     pub fn sequence_blocks_changes(&self, other: &Self, wanted: &SomeChange) -> bool {
         debug_assert_eq!(self.num_bits(), other.num_bits());
         debug_assert_eq!(self.num_bits(), wanted.num_bits());
-        // Groups that change more than one bit may end up being compared.
-        if self.act_id == other.act_id {
-            return false;
-        }
+
         self.rule
             .sequence_blocks_all_wanted_changes(&other.rule, wanted)
     }
+
     /// Return the number of bits changed in a step.
     pub fn num_bits_changed(&self) -> usize {
         self.rule.num_bits_changed()
@@ -222,7 +223,7 @@ impl SomeStep {
 /// Implement the trait StrLen for SomeStep.
 impl StrLen for SomeStep {
     fn strlen(&self) -> usize {
-        let mut len = 2; // [...]
+        let mut len = 5; // STP[...]
         len += 6; // " -..> "
         len += 2 * self.initial.strlen();
         len += 1 + self.alt_rule.strlen();
@@ -261,27 +262,27 @@ impl FromStr for SomeStep {
         //println!("SomeStep::from_str: {str_in}");
         let str_in2 = str_in.trim();
 
-        if str_in2.len() < 2 {
+        if str_in2.len() < 5 {
             return Err("step::from_str: invalid string".to_string());
         }
 
-        if str_in2[0..1] != *"[" {
-            return Err("step::from_str: string should begin with [".to_string());
+        if str_in2[0..4] != *"STP[" {
+            return Err("step::from_str: string should begin with STP[".to_string());
         }
         if str_in2[(str_in2.len() - 1)..str_in2.len()] != *"]" {
             return Err("step::from_str: string should end with ]".to_string());
         }
 
-        let token_str = &str_in2[1..(str_in2.len() - 1)];
+        let token_str = &str_in2[4..(str_in2.len() - 1)];
 
-        println!("token_str: {token_str}");
+        //println!("token_str: {token_str}");
 
         // Split string into tokens.
         let tokens = match tools::parse_input(token_str) {
             Ok(tokenvec) => tokenvec,
             Err(errstr) => return Err(format!("step::from_str: {errstr}")),
         };
-        println!("tokens {:?}", tokens);
+        //println!("tokens {:?}", tokens);
 
         if tokens.len() != 5 {
             return Err("step::from_str: invalid string, number tokens s/b 5".to_string());
@@ -345,9 +346,21 @@ impl FromStr for SomeStep {
         let ir_rule = SomeRule::new_region_to_region_min(&initial, &result);
 
         if tokens[4].to_lowercase() == "none" {
-            Ok(Self::new(act_id, ir_rule, AltRuleHint::NoAlt {}))
+            Ok(Self {
+                act_id,
+                initial,
+                result: ir_rule.result_region(),
+                rule: ir_rule,
+                alt_rule: AltRuleHint::NoAlt {},
+            })
         } else if tokens[4].to_lowercase() == "nochange" {
-            Ok(Self::new(act_id, ir_rule, AltRuleHint::AltNoChange {}))
+            Ok(Self {
+                act_id,
+                initial,
+                result: ir_rule.result_region(),
+                rule: ir_rule,
+                alt_rule: AltRuleHint::AltNoChange {},
+            })
         } else {
             let arule = SomeRule::from_str(&tokens[4])?;
             if arule.num_bits() != initial.num_bits() {
@@ -367,11 +380,7 @@ impl FromStr for SomeStep {
                     "step::from_str: alt rule cannot be eq initial->result rule".to_string()
                 );
             }
-            Ok(Self::new(
-                act_id,
-                ir_rule,
-                AltRuleHint::AltRule { rule: arule },
-            ))
+            Ok(Self::new(act_id, ir_rule, Some(&arule)))
         }
     }
 }
@@ -384,7 +393,7 @@ mod tests {
 
     #[test]
     fn strlen() -> Result<(), String> {
-        let tmp_stp = SomeStep::from_str("[s0000 -1> s0010 Alt: None]")?;
+        let tmp_stp = SomeStep::from_str("STP[s0000 -1> s0010 Alt: None]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -392,7 +401,7 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0010 -0> s0010 Alt: NoChange]")?;
+        let tmp_stp = SomeStep::from_str("STP[s0010 -0> s0010 Alt: NoChange]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
@@ -400,14 +409,14 @@ mod tests {
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0000 -1> s0010 Alt: 00/00/01/01]")?;
+        let tmp_stp = SomeStep::from_str("STP[s0000 -1> s0010 Alt: 00/00/01/01]")?;
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();
         let calc_len = tmp_stp.strlen();
         println!("str {tmp_stp} len {len} calculated len {calc_len}");
         assert!(len == calc_len);
 
-        let tmp_stp = SomeStep::from_str("[s0000_0000 -0> s0000_0000 Alt: None]")?;
+        let tmp_stp = SomeStep::from_str("STP[s0000_0000 -0> s0000_0000 Alt: None]")?;
 
         let strrep = format!("{tmp_stp}");
         let len = strrep.len();

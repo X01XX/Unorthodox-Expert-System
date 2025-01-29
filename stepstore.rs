@@ -389,13 +389,13 @@ mod tests {
     use super::*;
     use crate::rule::SomeRule;
     use crate::sample::SomeSample;
-    use crate::step::{AltRuleHint, SomeStep};
+    use crate::step::SomeStep;
     use std::str::FromStr;
 
     #[test]
     fn strlen() -> Result<(), String> {
         let tmp_rul = SomeRule::new(&SomeSample::from_str("s0000_0000->s0000_0000")?);
-        let tmp_stp = SomeStep::new(0, tmp_rul, AltRuleHint::NoAlt {});
+        let tmp_stp = SomeStep::new(0, tmp_rul, None);
 
         let mut tmp_stpst = StepStore::new(vec![tmp_stp.clone()]);
 

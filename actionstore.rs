@@ -106,6 +106,7 @@ impl ActionStore {
         let stps: Vec<StepStore> = self
             .items
             .par_iter() // par_iter for parallel, .iter for easier reading of diagnostic messages
+            .skip(1)
             .map(|actx| actx.get_steps(wanted_changes, within))
             .collect::<Vec<StepStore>>();
 
@@ -143,7 +144,7 @@ impl ActionStore {
     pub fn calc_aggregate_changes(&mut self) {
         // Check for any action agg_chgs_updated set to true.
         let mut recalc = false;
-        for actx in &self.items {
+        for actx in self.items.iter().skip(1) {
             if !actx.agg_chgs_updated {
                 recalc = true;
                 break;
