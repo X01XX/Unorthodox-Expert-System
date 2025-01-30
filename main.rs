@@ -2000,21 +2000,23 @@ mod tests {
     }
 
     /// Test the cleanup of unneeded groups.
-    /// First use of running a full session from a test function.
     #[test]
     fn symmetric_adjacent_overlap_cleanup() -> Result<(), String> {
-        // Create SessionData.
+        // Create SessionData, 6 groups.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
             ACT[[XX/XX/XX/Xx]],
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX]]]],
+            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX], s0000, s0011, s0100, s0110, s1101, s1110, s1001, s1011]]],
         ]",
         )?;
 
-        // Known to produce 00XX and 11XX, deleted after limiting the final four groups.
+        println!("sdx {sdx}");
+        assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 6);
+        
+        // Limit groups, delete 00XX and 11XX.
         do_session(&mut sdx);
 
         sdx.print();
@@ -2059,7 +2061,6 @@ mod tests {
             return Err("Group r0X1X not found?".to_string());
         }
 
-        //assert!(1 == 2);
         Ok(())
     }
 

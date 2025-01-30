@@ -73,7 +73,7 @@ pub struct SomeAction {
     aggregate_changes: Option<SomeChange>,
     /// An indicator that the changes possible were recently updated.
     pub agg_chgs_updated: bool,
-    /// Regions recently marked as limited.
+    /// Group regions recently marked as limited.
     limited: RegionStore,
 }
 
@@ -652,10 +652,6 @@ impl SomeAction {
                         rules.clone(),
                         *pnc,
                     ));
-                    try_again = true;
-                }
-                if let SomeNeed::RemoveGroup { group_region } = ndx {
-                    self.remove_group(group_region);
                     try_again = true;
                 }
             } // next ndx
