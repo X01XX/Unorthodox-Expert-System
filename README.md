@@ -7,7 +7,7 @@ Based on an improved interpretation of the Karnaugh Map, and introspection.  Kar
 
 K-Map squares that are only in one region have a special significance, see "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
 
-Dissimilar pairs of squares, especially adjacent squares, which is related to a square that is only in one region, affect the entire structure of a K-Map, by the formula ~A + ~B.  The effects of multiple dissimilar pairs can be intersected.
+Dissimilar pairs of squares, especially adjacent squares, which is related to a square that is only in one region, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair.
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file "Screenshot at 202023-08-11 16-21-30.png" (command like "cargo run 10", for continuous running until rules found, 10 times consecutively, using random starting states).  The file ues_rpi5.png shows it running on a Raspberry Pi 5.
 
