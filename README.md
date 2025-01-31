@@ -3,11 +3,11 @@ An expert of its own state. Rules can be developed, revised, and used without hu
 
 The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. By seeking specific samples, combining pairs of similar samples to form rules that encompass spans of sparsely sampled states, and responding to unexpected samples from the use of imperfect rules.
 
-Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, encompassing a large number of bits, but there is a work-around, see the top of the file theory.html and max_kmap.jpg.
+Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, in encompassing a large number of bits, but there is a work-around. See the top of the file theory.html and max_kmap.jpg.
 
-K-Map squares that are only in one region have a special significance, see "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
+Dissimilar pairs of squares, especially adjacent squares, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair.
 
-Dissimilar pairs of squares, especially adjacent squares, which is related to a square that is only in one region, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair.
+K-Map squares that are only in one region have a special significance, they concentrate pairs of dissimilar squares. See "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
 
 A number of important processes can be run in parallel, without being slowed down by needing to change shared memory. See the file "Screenshot at 202023-08-11 16-21-30.png" (command like "cargo run 10", for continuous running until rules found, 10 times consecutively, using random starting states).  The file ues_rpi5.png shows it running on a Raspberry Pi 5.
 
