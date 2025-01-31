@@ -2015,7 +2015,7 @@ mod tests {
 
         println!("sdx {sdx}");
         assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 6);
-        
+
         // Limit groups, delete 00XX and 11XX.
         do_session(&mut sdx);
 
