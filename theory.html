@@ -963,6 +963,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
     <i>The adjacent dissimilar pairs also limit the entire K-Map, as no conceivable region can contain 5 and D, or 5 and 7.</i> 
     </p>
+    <p class="indent2">
+        (~5 + ~7) &amp; (~5 + ~D) = ~5 + (~7 &amp; ~D) = (1XXX, XX1X, X0XX, XXX0, 0X0X).
+    </p>
  <table class="indent1">
  <caption>0X0X Limited</caption>
     <tr>
