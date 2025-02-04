@@ -723,8 +723,118 @@ impl SomeAction {
             }
         }
 
+        nds.append(self.non_adjacent_incompatibility_needs());
+
         nds
     } // end get_needs
+
+    /// Return needs for non-adjacent incompatible squares.
+    fn non_adjacent_incompatibility_needs(&self) -> NeedStore {
+        // Init storage for regions of incompatible pairs.
+        let mut regions = RegionStore::new(vec![]);
+
+        let mut nds = NeedStore::new(vec![]);
+
+        // Check each possible square pair.
+        let sqrs = self.squares.all_squares();
+        if sqrs.len() < 2 {
+            return nds;
+        }
+
+        // Check each pair for compatibility, save closest pairs.
+        for inx in 0..(sqrs.len() - 1) {
+            for iny in (inx + 1)..sqrs.len() {
+                if sqrs[inx].compatible(sqrs[iny]) == Compatibility::NotCompatible {
+                    regions.push_nosups(SomeRegion::new(vec![
+                        sqrs[inx].state.clone(),
+                        sqrs[iny].state.clone(),
+                    ]));
+                }
+            }
+        }
+
+        // Check for non-adjacent pairs.
+        for regx in regions.iter() {
+            if regx.x_mask().is_not_low() {
+                let Some(sqrx) = self.squares.find(regx.first_state()) else {
+                    panic!("SNH");
+                };
+                let Some(sqry) = self.squares.find(&regx.far_state()) else {
+                    panic!("SNH");
+                };
+
+                if sqrx.pnc && sqry.pnc {
+                    let sqrs_in = self.squares.squares_in_reg(regx);
+                    if sqrs.len() == 2 {
+                        let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
+                        for regz in regs {
+                            let mut needx = SomeNeed::CloserNAI {
+                                dom_id: self.dom_id,
+                                act_id: self.id,
+                                target: ATarget::Region { region: regz },
+                                unknown_region: regx.clone(),
+                                priority: 0,
+                            };
+                            needx.add_priority_base();
+                            nds.push(needx);
+                        }
+                    } else {
+                        for sqrz in sqrs_in.iter() {
+                            if sqrz.state == sqrx.state || sqrz.state == sqry.state {
+                                continue;
+                            }
+                            if sqrz.pnc {
+                                panic!("SNH");
+                            }
+                            let mut needx = SomeNeed::CloserNAI {
+                                dom_id: self.dom_id,
+                                act_id: self.id,
+                                target: ATarget::State {
+                                    state: sqrz.state.clone(),
+                                },
+                                unknown_region: regx.clone(),
+                                priority: 0,
+                            };
+                            needx.add_priority_base();
+                            nds.push(needx);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if !sqrx.pnc {
+                    let mut needx = SomeNeed::ConfirmNAI {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target: ATarget::State {
+                            state: sqrx.state.clone(),
+                        },
+                        unknown_region: regx.clone(),
+                        priority: 0,
+                    };
+                    needx.add_priority_base();
+                    nds.push(needx);
+                }
+
+                if !sqry.pnc {
+                    let mut needx = SomeNeed::ConfirmNAI {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target: ATarget::State {
+                            state: sqry.state.clone(),
+                        },
+                        unknown_region: regx.clone(),
+                        priority: 0,
+                    };
+                    needx.add_priority_base();
+                    nds.push(needx);
+                }
+            }
+        }
+
+        nds
+    }
 
     /// Check for needs in a region not covered by current groups.
     fn remainder_check_region(&self, max_reg: &SomeRegion) -> RegionStore {

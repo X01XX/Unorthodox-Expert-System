@@ -102,6 +102,22 @@ pub enum SomeNeed {
         priority: usize,
         times_visited: usize,
     },
+    /// Confirm a non-adjacent incompatible pair.
+    ConfirmNAI {
+        dom_id: usize,
+        act_id: usize,
+        target: ATarget,
+        priority: usize,
+        unknown_region: SomeRegion,
+    },
+    /// For a non-adjacent incompatible pair, find a closer pair.
+    CloserNAI {
+        dom_id: usize,
+        act_id: usize,
+        target: ATarget,
+        priority: usize,
+        unknown_region: SomeRegion,
+    },
     /// Housekeeping, add a group.
     AddGroup {
         group_region: SomeRegion,
@@ -116,6 +132,8 @@ impl SomeNeed {
         match self {
             Self::AddGroup { .. } => "AddGroup",
             Self::ConfirmGroup { .. } => "ConfirmGroup",
+            Self::ConfirmNAI { .. } => "ConfirmNAI",
+            Self::CloserNAI { .. } => "CloserNAI",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
@@ -135,6 +153,8 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
+            Self::CloserNAI { priority, .. } => *priority += 725,
+            Self::ConfirmNAI { priority, .. } => *priority += 750,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
             Self::LimitGroup { priority, .. } => *priority += 500,
             Self::LimitGroupAdj { priority, .. } => *priority += 600,
@@ -156,6 +176,8 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority,
             Self::ExitSelectRegions { priority, .. } => *priority,
+            Self::ConfirmNAI { priority, .. } => *priority,
+            Self::CloserNAI { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
@@ -188,6 +210,8 @@ impl SomeNeed {
     pub fn act_id(&self) -> usize {
         match self {
             Self::ConfirmGroup { act_id, .. } => *act_id,
+            Self::ConfirmNAI { act_id, .. } => *act_id,
+            Self::CloserNAI { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
@@ -207,6 +231,8 @@ impl SomeNeed {
     pub fn dom_id(&self) -> Option<usize> {
         match self {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
+            Self::ConfirmNAI { dom_id, .. } => Some(*dom_id),
+            Self::CloserNAI { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
             Self::LimitGroup { dom_id, .. } => Some(*dom_id),
             Self::LimitGroupAdj { dom_id, .. } => Some(*dom_id),
@@ -242,6 +268,35 @@ impl SomeNeed {
             } => {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm group {grp_reg})")
+            }
+            Self::ConfirmNAI {
+                dom_id,
+                act_id,
+                target,
+                unknown_region,
+                priority,
+                ..
+            } => {
+                format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm NAI covering {unknown_region})")
+            }
+            Self::CloserNAI {
+                dom_id,
+                act_id,
+                target,
+                unknown_region,
+                priority,
+                ..
+            } => {
+                match target {
+                    ATarget::State { state } =>
+                    format!(
+                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer NAI within {unknown_region})"),
+                    ATarget::Region { region } =>
+                    format!(
+                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer NAI within {unknown_region})"),
+                    _ => panic!("SNH")
+                }
             }
             Self::ContradictoryIntersection {
                 dom_id,
@@ -372,6 +427,8 @@ impl SomeNeed {
     pub fn target(&self) -> &ATarget {
         match self {
             Self::ConfirmGroup { target, .. } => target,
+            Self::ConfirmNAI { target, .. } => target,
+            Self::CloserNAI { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,
             Self::LimitGroup { target, .. } => target,
             Self::LimitGroupAdj { target, .. } => target,

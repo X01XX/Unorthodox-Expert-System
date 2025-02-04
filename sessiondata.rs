@@ -336,26 +336,26 @@ impl SessionData {
 
         let mut can_do = Vec::<InxPlan>::new();
 
-        let cur_states = self.all_current_states();
+        //        let cur_states = self.all_current_states();
 
         // Check for needs that can be satisfied with the current state.
-        for (inx, ndx) in self.needs.iter().enumerate() {
-            if ndx.satisfied_by(&cur_states) {
-                //println!("need {ndx} At Target");
-                can_do.push(InxPlan {
-                    inx,
-                    plans: NeedPlan::AtTarget {},
-                    rate: 0,
-                    desired_num_bits_changed: 0,
-                    process_num_bits_changed: 0,
-                });
-            }
-        }
+        //        for (inx, ndx) in self.needs.iter().enumerate() {
+        //            if ndx.satisfied_by(&cur_states) {
+        //                //println!("need {ndx} At Target");
+        //                can_do.push(InxPlan {
+        //                    inx,
+        //                    plans: NeedPlan::AtTarget {},
+        //                    rate: 0,
+        //                    desired_num_bits_changed: 0,
+        //                    process_num_bits_changed: 0,
+        //                });
+        //            }
+        //        }
 
-        if !can_do.is_empty() {
-            self.can_do = can_do;
-            return;
-        }
+        //        if !can_do.is_empty() {
+        //            self.can_do = can_do;
+        //            return;
+        //        }
 
         let mut cur_pri = self.needs[0].priority();
         let mut count = 0;

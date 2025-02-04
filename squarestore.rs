@@ -87,6 +87,11 @@ impl SquareStore {
             .collect()
     }
 
+    /// Return a vector or all squares.
+    pub fn all_squares(&self) -> Vec<&SomeSquare> {
+        self.ahash.values().collect()
+    }
+
     /// Return a list of memory squares in a given region.
     pub fn memory_squares_in_reg(&self, aregion: &SomeRegion) -> Vec<&SomeSquare> {
         debug_assert!(aregion.num_bits() == self.num_bits);
