@@ -151,10 +151,10 @@ impl SomeNeed {
     pub fn add_priority_base(&mut self) {
         match self {
             // By ascending priority number.
+            Self::CloserNAI { priority, .. } => *priority += 100,
+            Self::ConfirmNAI { priority, .. } => *priority += 125,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
-            Self::CloserNAI { priority, .. } => *priority += 725,
-            Self::ConfirmNAI { priority, .. } => *priority += 750,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
             Self::LimitGroup { priority, .. } => *priority += 500,
             Self::LimitGroupAdj { priority, .. } => *priority += 600,
@@ -291,10 +291,10 @@ impl SomeNeed {
                 match target {
                     ATarget::State { state } =>
                     format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer NAI within {unknown_region})"),
+                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer incompatible pair within {unknown_region})"),
                     ATarget::Region { region } =>
                     format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer NAI within {unknown_region})"),
+                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer Nincompatible pair within {unknown_region})"),
                     _ => panic!("SNH")
                 }
             }
