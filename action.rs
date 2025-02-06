@@ -762,9 +762,11 @@ impl SomeAction {
                 let Some(sqry) = self.squares.find(&regx.far_state()) else {
                     panic!("SNH");
                 };
+                let pri = regx.x_mask().num_one_bits(); // Make smaller regions the priority.
 
                 if sqrx.pnc && sqry.pnc {
                     let sqrs_in = self.squares.squares_in_reg(regx);
+
                     if sqrs.len() == 2 {
                         let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
                         for regz in regs {
@@ -773,7 +775,7 @@ impl SomeAction {
                                 act_id: self.id,
                                 target: ATarget::Region { region: regz },
                                 unknown_region: regx.clone(),
-                                priority: 0,
+                                priority: pri,
                             };
                             needx.add_priority_base();
                             nds.push(needx);
@@ -793,7 +795,7 @@ impl SomeAction {
                                     state: sqrz.state.clone(),
                                 },
                                 unknown_region: regx.clone(),
-                                priority: 0,
+                                priority: pri,
                             };
                             needx.add_priority_base();
                             nds.push(needx);
@@ -811,7 +813,7 @@ impl SomeAction {
                             state: sqrx.state.clone(),
                         },
                         unknown_region: regx.clone(),
-                        priority: 0,
+                        priority: pri,
                     };
                     needx.add_priority_base();
                     nds.push(needx);
@@ -825,7 +827,7 @@ impl SomeAction {
                             state: sqry.state.clone(),
                         },
                         unknown_region: regx.clone(),
-                        priority: 0,
+                        priority: pri,
                     };
                     needx.add_priority_base();
                     nds.push(needx);

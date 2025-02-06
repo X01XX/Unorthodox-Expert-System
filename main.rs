@@ -2060,7 +2060,6 @@ mod tests {
         } else {
             return Err("Group r0X1X not found?".to_string());
         }
-
         Ok(())
     }
 

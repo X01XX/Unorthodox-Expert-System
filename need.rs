@@ -152,7 +152,7 @@ impl SomeNeed {
         match self {
             // By ascending priority number.
             Self::CloserNAI { priority, .. } => *priority += 100,
-            Self::ConfirmNAI { priority, .. } => *priority += 125,
+            Self::ConfirmNAI { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
