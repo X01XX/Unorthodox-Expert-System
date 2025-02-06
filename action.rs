@@ -29,7 +29,7 @@ use crate::statestore::StateStore;
 use crate::step::SomeStep;
 use crate::stepstore::StepStore;
 use crate::target::ATarget;
-use crate::tools::{self, AccessStates};
+use crate::tools::{self, AccessStates, StrLen};
 
 use rand::Rng;
 use rayon::prelude::*;
@@ -2487,7 +2487,7 @@ impl SomeAction {
         self.do_something.len()
     }
 
-    /// Return a String representation of a SomeAction state.
+    /// Return a String representation of a SomeAction instance.
     fn formatted_state(&self) -> String {
         let mut rc_str = String::from("ACT(ID: ");
 
@@ -2503,7 +2503,30 @@ impl SomeAction {
         }
 
         let mut fil = "\n       Grps: ";
+
+        // Get max group str length.
+        let mut max_len = 0;
         for grpx in self.groups.iter() {
+            if let Some(ruls) = &grpx.rules {
+                if ruls.strlen() > max_len {
+                    max_len = ruls.strlen();
+                }
+            }
+        }
+
+        // Get group string, max string len, of all groups.
+        let mut max_len2 = 0;
+        let mut grps = Vec::<String>::with_capacity(self.groups.len());
+        for grpx in self.groups.iter() {
+            let tmp_str = grpx.formatted_str_adjusted(max_len);
+            let tmp_len = tmp_str.len();
+            if tmp_len > max_len2 {
+                max_len2 = tmp_len;
+            }
+            grps.push(tmp_str);
+        }
+
+        for (grpx, grpx_str) in self.groups.iter().zip(grps.iter()) {
             let stas_in = self.squares.stas_in_reg(&grpx.region);
 
             let cnt: usize = stas_in
@@ -2511,10 +2534,18 @@ impl SomeAction {
                 .map(|stax| usize::from(self.groups.num_groups_in(stax) == 1))
                 .sum();
 
+            rc_str.push_str(&format!("{}{}", fil, grpx_str));
+
+            let grp_len = grpx_str.len();
+            let fil2 = if grp_len < max_len2 {
+                " ".repeat(max_len2 - grp_len)
+            } else {
+                String::new()
+            };
+
             rc_str.push_str(&format!(
-                "{}{} num Sqrs: {} Sqrs in: {} in1: {})",
-                fil,
-                grpx,
+                "{} num Sqrs: {} Sqrs in: {} in1: {})",
+                fil2,
                 grpx.region.len(),
                 stas_in.len(),
                 cnt,
