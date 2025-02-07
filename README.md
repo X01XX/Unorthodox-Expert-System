@@ -5,7 +5,7 @@ The goal is a better and better prediction of the result of sampling (taking a p
 
 Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, in encompassing a large number of bits, but there is a work-around. See the top of the file theory.html and max_kmap.jpg.
 
-Dissimilar pairs of squares, especially adjacent squares, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair, where the region formed by the new pair is in a possible region predicted by previously known pairs.
+Dissimilar pairs of squares, especially adjacent squares, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair, where the region formed by the new pair is a subset of a possible region predicted by previously known pairs.
 
 K-Map squares that are only in one region have a special significance, they concentrate pairs of dissimilar squares. Small regions, with a square only in one region, have more edges (non-X positions), so more disimilar-adjacent pairs limit the region, are more effective than larger regions in defining the entire K-Map structure. See "Limiting an Optimistic Union" and "Confirming an unused region" in theory.html.
 
