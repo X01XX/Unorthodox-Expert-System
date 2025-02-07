@@ -8,7 +8,7 @@
 
 /// The unsigned integer type used in a vector of bits, for all domains.
 /// When this changes, all bits::tests, using more than one integer, should still succeed.
-type Bitint = u8;
+pub type Bitint = u8;
 
 use crate::tools::StrLen;
 use rand::Rng;

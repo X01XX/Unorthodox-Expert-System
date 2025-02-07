@@ -73,7 +73,9 @@ pub enum SomeNeed {
     LimitGroupAdj {
         dom_id: usize,
         act_id: usize,
+
         target: ATarget,
+
         priority: usize,
         for_group: SomeRegion,
         anchor: SomeState,
@@ -294,7 +296,7 @@ impl SomeNeed {
                         "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer incompatible pair within {unknown_region})"),
                     ATarget::Region { region } =>
                     format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer Nincompatible pair within {unknown_region})"),
+                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer incompatible pair within {unknown_region})"),
                     _ => panic!("SNH")
                 }
             }

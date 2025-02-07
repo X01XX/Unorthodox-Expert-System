@@ -3,7 +3,7 @@
 //! Uses one, or more, states to represent a region.
 //!
 
-use crate::bits::{vec_same_num_bits, BitsRef, NumBits, SomeBits};
+use crate::bits::{vec_same_num_bits, Bitint, BitsRef, NumBits, SomeBits};
 use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
 use crate::state::SomeState;
@@ -483,6 +483,12 @@ impl SomeRegion {
         }
         // states2 is already at the minimum.
         states2
+    }
+
+    /// Return a region with all X bit positions.
+    pub fn max_region(num_bits: usize) -> SomeRegion {
+        let low = SomeState::new(SomeBits::new(num_bits as Bitint));
+        SomeRegion::new(vec![low.new_high(), low])
     }
 } // end impl SomeRegion
 

@@ -114,7 +114,7 @@ impl NeedStore {
         //println!("NeedStore::contains_similar_need: name {name} target {target}");
         for nedx in self.iter() {
             if nedx.name() != name {
-                return false;
+                continue;
             }
             if match (nedx.target(), target) {
                 (ATarget::State { state: state1 }, ATarget::State { state: state2 }) => {
@@ -133,6 +133,17 @@ impl NeedStore {
                 ) => sel1.regions == sel2.regions,
                 _ => false,
             } {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return true if a need with a given type is in a NeedStore.
+    pub fn contains_need_type(&self, name: &str) -> bool {
+        //println!("NeedStore::contains_need_type: name {name}");
+        for nedx in self.iter() {
+            if nedx.name() == name {
                 return true;
             }
         }
