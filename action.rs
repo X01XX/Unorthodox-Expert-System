@@ -758,7 +758,7 @@ impl SomeAction {
         let mut non_adjacent_pairs = RegionStore::new(vec![]);
 
         for regx in incompat_regions {
-            if regx.first_state().is_adjacent(&regx.far_state()) {
+            if regx.first_state().is_adjacent(regx.last_state()) {
                 adjacent_pairs.push(regx);
             } else {
                 non_adjacent_pairs.push(regx);
@@ -788,7 +788,7 @@ impl SomeAction {
                 nds.push(needx);
             }
 
-            let Some(sqry) = self.squares.find(&regx.far_state()) else {
+            let Some(sqry) = self.squares.find(regx.last_state()) else {
                 panic!("SNH");
             };
             if sqry.pnc {
@@ -806,7 +806,7 @@ impl SomeAction {
                 nds.push(needx);
             }
         }
-        if nds.is_not_empty() {
+        if nds.is_not_empty() || non_adjacent_pairs.is_empty() {
             return nds;
         }
 
@@ -815,12 +815,41 @@ impl SomeAction {
         let mut max_regions = RegionStore::new(vec![max_reg.clone()]);
         for regx in adjacent_pairs.iter() {
             let regs1 = max_reg.subtract(regx.first_state());
-            let regs2 = max_reg.subtract(&regx.far_state());
+            let regs2 = max_reg.subtract(regx.last_state());
             max_regions = max_regions.intersection(&regs1.union(&regs2));
         }
         //println!("max_regions: {max_regions}");
 
-        // Check for non-adjacent pairs.
+        // Filter non-adjacent pairs, favoring states that are already in an adjacent pair.
+
+        // Collect dissimilar adjacent squares.
+        let mut adj_states = StateStore::new(vec![]);
+        for reg_adj in adjacent_pairs.iter() {
+            let stax = reg_adj.first_state();
+            if adj_states.contains(stax) {
+            } else {
+                adj_states.push(stax.clone());
+            }
+            let stay = reg_adj.last_state();
+            if adj_states.contains(stay) {
+            } else {
+                adj_states.push(stay.clone());
+            }
+        }
+
+        // Check non-adjacent pairs for states in an adjacent pair.
+        let mut priority_pairs = RegionStore::new(vec![]);
+        for regx in non_adjacent_pairs.iter() {
+            if adj_states.contains(regx.first_state()) || adj_states.contains(regx.last_state()) {
+                priority_pairs.push(regx.clone());
+            }
+        }
+        if priority_pairs.is_not_empty() {
+            //println!("priority pairs: {priority_pairs}");
+            non_adjacent_pairs = priority_pairs;
+        }
+
+        // Check for non-adjacent pairs needs.
         for regx in non_adjacent_pairs.iter() {
             //println!("Processing non-adjacent Incompatible pair: {regx}");
             if max_regions.any_superset_of(regx) {
@@ -828,7 +857,7 @@ impl SomeAction {
                     panic!("SNH");
                 };
                 //println!("sqrx {} pnc {}", sqrx.state, sqrx.pnc);
-                let Some(sqry) = self.squares.find(&regx.far_state()) else {
+                let Some(sqry) = self.squares.find(regx.last_state()) else {
                     panic!("SNH");
                 };
                 //println!("sqry {} pnc {}", sqry.state, sqry.pnc);
@@ -960,7 +989,7 @@ impl SomeAction {
                             continue 'next_sqr;
                         }
                     }
-                    if grpx.region.states.len() > 2 && grpx.region.far_state() == *keyx {
+                    if grpx.region.states.len() > 2 && grpx.region.last_state() == keyx {
                         continue 'next_sqr;
                     }
 

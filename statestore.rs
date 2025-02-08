@@ -78,6 +78,11 @@ impl StateStore {
         }
     }
 
+    /// Return a reference to the first state.
+    pub fn last(&self) -> Option<&SomeState> {
+        self.items.last()
+    }
+
     /// Return a vector of references.
     pub fn vec_refs(&self) -> Vec<&SomeState> {
         vec_refs(&self.items[..])

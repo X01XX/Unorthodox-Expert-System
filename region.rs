@@ -91,6 +91,15 @@ impl SomeRegion {
         }
     }
 
+    /// Return the last state in a region.
+    pub fn last_state(&self) -> &SomeState {
+        if let Some(stax) = self.states.last() {
+            stax
+        } else {
+            panic!("SNH")
+        }
+    }
+
     /// Return a String representation of a Region.
     /// The case of an X bit position gives information about the first state, and far state, of the region.
     /// X = (1, 0).
