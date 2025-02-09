@@ -120,6 +120,15 @@ pub enum SomeNeed {
         priority: usize,
         unknown_region: SomeRegion,
     },
+    /// Get sample of a state to fill a region, where a square in only one region has been identified.
+    FillRegion {
+        dom_id: usize,
+        act_id: usize,
+        target: ATarget,
+        priority: usize,
+
+        fill_reg: SomeRegion,
+    },
     /// Housekeeping, add a group.
     AddGroup {
         group_region: SomeRegion,
@@ -136,6 +145,7 @@ impl SomeNeed {
             Self::ConfirmGroup { .. } => "ConfirmGroup",
             Self::ConfirmNAI { .. } => "ConfirmNAI",
             Self::CloserNAI { .. } => "CloserNAI",
+            Self::FillRegion { .. } => "FillRegion",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
@@ -154,6 +164,7 @@ impl SomeNeed {
         match self {
             // By ascending priority number.
             Self::CloserNAI { priority, .. } => *priority += 100,
+            Self::FillRegion { priority, .. } => *priority += 125,
             Self::ConfirmNAI { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
@@ -180,6 +191,7 @@ impl SomeNeed {
             Self::ExitSelectRegions { priority, .. } => *priority,
             Self::ConfirmNAI { priority, .. } => *priority,
             Self::CloserNAI { priority, .. } => *priority,
+            Self::FillRegion { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
@@ -214,6 +226,7 @@ impl SomeNeed {
             Self::ConfirmGroup { act_id, .. } => *act_id,
             Self::ConfirmNAI { act_id, .. } => *act_id,
             Self::CloserNAI { act_id, .. } => *act_id,
+            Self::FillRegion { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
@@ -235,6 +248,7 @@ impl SomeNeed {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
             Self::ConfirmNAI { dom_id, .. } => Some(*dom_id),
             Self::CloserNAI { dom_id, .. } => Some(*dom_id),
+            Self::FillRegion { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
             Self::LimitGroup { dom_id, .. } => Some(*dom_id),
             Self::LimitGroupAdj { dom_id, .. } => Some(*dom_id),
@@ -299,6 +313,17 @@ impl SomeNeed {
                         "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer incompatible pair within {unknown_region})"),
                     _ => panic!("SNH")
                 }
+            }
+             Self::FillRegion {
+                dom_id,
+                act_id,
+                target,
+                fill_reg,
+                priority,
+                ..
+            } => {
+                format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample of state {target} to fill region {fill_reg})")
             }
             Self::ContradictoryIntersection {
                 dom_id,
@@ -431,6 +456,7 @@ impl SomeNeed {
             Self::ConfirmGroup { target, .. } => target,
             Self::ConfirmNAI { target, .. } => target,
             Self::CloserNAI { target, .. } => target,
+            Self::FillRegion { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,
             Self::LimitGroup { target, .. } => target,
             Self::LimitGroupAdj { target, .. } => target,

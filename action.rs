@@ -846,9 +846,16 @@ impl SomeAction {
                 let ag_reg = stas_in.as_region();
                 if ag_reg != sups[0] {
                     // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
-                    // TODO need to fill the region.
-                    // let target = sups[0].far_from(stax);
-                    // nds.push(...);
+                    let targ_sta = sups[0].far_from(stax);
+                    let mut needx = SomeNeed::FillRegion {
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        target: ATarget::State { state: targ_sta },
+                        fill_reg: sups[0].clone(),
+                        priority: 0,
+                    };
+                    needx.add_priority_base();
+                    nds.push(needx);
                 }
             }
         }
