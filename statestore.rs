@@ -2,6 +2,7 @@
 
 use crate::bits::NumBits;
 use crate::mask::SomeMask;
+use crate::region::SomeRegion;
 use crate::state::SomeState;
 use crate::tools::{self, vec_refs, vec_string, AvecRef};
 
@@ -97,6 +98,13 @@ impl StateStore {
             ret = ret.bitwise_or(&stax.bitwise_xor(&self[0]));
         }
         ret
+    }
+
+    /// Return a region containing all squares in a non-empty StateStore.
+    pub fn as_region(&self) -> SomeRegion {
+        debug_assert!(self.is_not_empty());
+
+        SomeRegion::new(self.items.clone())
     }
 } // end impl StateStore
 

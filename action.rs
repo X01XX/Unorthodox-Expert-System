@@ -723,13 +723,13 @@ impl SomeAction {
             }
         }
 
-        nds.append(self.non_adjacent_incompatibility_needs());
+        nds.append(self.non_adjacent_incompatibility_needs(max_reg));
 
         nds
     } // end get_needs
 
     /// Return needs for non-adjacent incompatible squares.
-    fn non_adjacent_incompatibility_needs(&self) -> NeedStore {
+    fn non_adjacent_incompatibility_needs(&self, max_reg: &SomeRegion) -> NeedStore {
         let mut nds = NeedStore::new(vec![]);
 
         // Check each possible square pair.
@@ -811,7 +811,7 @@ impl SomeAction {
         }
 
         // Calc possible regions.
-        let max_reg = SomeRegion::max_region(self.num_bits);
+        //let max_reg = SomeRegion::max_region(self.num_bits);
         let mut max_regions = RegionStore::new(vec![max_reg.clone()]);
         for regx in adjacent_pairs.iter() {
             let regs1 = max_reg.subtract(regx.first_state());
@@ -823,29 +823,45 @@ impl SomeAction {
         // Filter non-adjacent pairs, favoring states that are already in an adjacent pair.
 
         // Collect dissimilar adjacent squares.
-        let mut adj_states = StateStore::new(vec![]);
+        let mut adj_states = Vec::<&SomeState>::new();
         for reg_adj in adjacent_pairs.iter() {
             let stax = reg_adj.first_state();
-            if adj_states.contains(stax) {
+            if adj_states.contains(&stax) {
             } else {
-                adj_states.push(stax.clone());
+                adj_states.push(stax);
             }
             let stay = reg_adj.last_state();
-            if adj_states.contains(stay) {
+            if adj_states.contains(&stay) {
             } else {
-                adj_states.push(stay.clone());
+                adj_states.push(stay);
+            }
+        }
+
+        // For a square in an adjacent pair, if it is in only one region,
+        // check if there are samples to fill the region.
+        for stax in adj_states.iter() {
+            let sups = max_regions.supersets_of(*stax);
+            if sups.len() == 1 {
+                let stas_in = self.squares.stas_in_reg(&sups[0]);
+                let ag_reg = stas_in.as_region();
+                if ag_reg != sups[0] {
+                    // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
+                    // TODO need to fill the region.
+                    // let target = sups[0].far_from(stax);
+                    // nds.push(...);
+                }
             }
         }
 
         // Check non-adjacent pairs for states in an adjacent pair.
         let mut priority_pairs = RegionStore::new(vec![]);
         for regx in non_adjacent_pairs.iter() {
-            if adj_states.contains(regx.first_state()) || adj_states.contains(regx.last_state()) {
+            if adj_states.contains(&regx.first_state()) || adj_states.contains(&regx.last_state()) {
                 priority_pairs.push(regx.clone());
             }
         }
         if priority_pairs.is_not_empty() {
-            //println!("priority pairs: {priority_pairs}");
+            println!("priority pairs: {priority_pairs}");
             non_adjacent_pairs = priority_pairs;
         }
 
