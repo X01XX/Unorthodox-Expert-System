@@ -10,7 +10,6 @@
 //! For making a plan (series of actions) to change the domain current state to a different, desired, value.
 //!
 
-use crate::actioninterface::ActionInterface;
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -20,6 +19,7 @@ use crate::needstore::NeedStore;
 use crate::pn::Pn;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
+use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
 use crate::square::{Compatibility, SomeSquare};
@@ -61,8 +61,6 @@ pub struct SomeAction {
     pub groups: GroupStore,
     /// A store of squares sampled for an action.
     pub squares: SquareStore,
-    /// Connection to a process that takes the current state, and returns a, possibly changed, state.
-    do_something: ActionInterface,
     /// Number of new squares since last cleanup.
     cleanup_number_new_squares: usize,
     /// When the actions groups change check for any missed regions.
@@ -75,6 +73,8 @@ pub struct SomeAction {
     pub agg_chgs_updated: bool,
     /// Group regions recently marked as limited.
     limited: RegionStore,
+    /// Initial rules given to generate samples.
+    base_rules: Vec<RuleStore>,
 }
 
 /// Implement the PartialEq trait, since two SomeAction instances.
@@ -93,6 +93,34 @@ impl SomeAction {
     /// Return a new SomeAction struct.
     pub fn new(rules: Vec<RuleStore>) -> Self {
         assert!(!rules.is_empty());
+
+        // Check no empty rulestores.
+        for rulsx in rules.iter() {
+            assert!(rulsx.is_not_empty());
+        }
+        // Check that rules within each rulestore have the same initial region.
+        for rulsx in rules.iter().skip(1) {
+            for rulx in rulsx.iter() {
+                assert!(rulx.initial_region() == rulsx[0].initial_region());
+            }
+        }
+        // Check intersections, if any, for validity.
+        for inx in 0..(rules.len() - 1) {
+            for iny in (inx + 1)..rules.len() {
+                if rules[inx]
+                    .initial_region()
+                    .intersects(&rules[iny].initial_region())
+                {
+                    if rules[inx].len() != rules[iny].len() {
+                        panic!("Rulestores of different lengths intersect");
+                    }
+                    if rules[inx].len() < 3 {
+                        assert!(rules[inx].intersection(&rules[iny]).is_some());
+                    }
+                }
+            }
+        }
+
         let num_bits = rules[0].num_bits().expect("SNH");
         SomeAction {
             id: 0,
@@ -100,13 +128,13 @@ impl SomeAction {
             num_bits: rules[0].num_bits().expect("SNH"),
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new(), num_bits),
-            do_something: ActionInterface::new(rules),
             cleanup_number_new_squares: 0,
             check_remainder: false,
             remainder_check_regions: RegionStore::new(vec![]),
             aggregate_changes: None,
             agg_chgs_updated: false,
             limited: RegionStore::new(vec![]),
+            base_rules: rules,
         }
     }
 
@@ -2481,11 +2509,7 @@ impl SomeAction {
         //println!("action::take_action_arbitrary: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
 
-        let astate = self
-            .do_something
-            .take_action(cur_state, self.dom_id, self.id);
-
-        let asample = SomeSample::new(cur_state.clone(), astate);
+        let asample = self.get_sample(cur_state);
 
         self.eval_sample_arbitrary(&asample);
 
@@ -2499,11 +2523,7 @@ impl SomeAction {
         //println!("action::take_action_step: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
 
-        let astate = self
-            .do_something
-            .take_action(cur_state, self.dom_id, self.id);
-
-        let asample = SomeSample::new(cur_state.clone(), astate);
+        let asample = self.get_sample(cur_state);
 
         self.eval_sample(&asample);
 
@@ -2609,7 +2629,7 @@ impl SomeAction {
 
     /// Return the number of groups defined in the action.
     pub fn number_groups_defined(&self) -> usize {
-        self.do_something.len()
+        self.base_rules.len()
     }
 
     /// Return a String representation of a SomeAction instance.
@@ -2687,7 +2707,7 @@ impl SomeAction {
     pub fn formatted_def(&self) -> String {
         let mut rc_str = String::from("ACT[");
         let mut first = true;
-        for rulstrx in self.do_something.rules.iter() {
+        for rulstrx in self.base_rules.iter() {
             if first {
                 first = false;
             } else {
@@ -2903,6 +2923,76 @@ impl SomeAction {
             }
             println!(" ");
         }
+    }
+
+    /// Return a sample for a taking an action on a given state.
+    fn get_sample(&self, initial_state: &SomeState) -> SomeSample {
+        let asample = self.get_sample2(initial_state);
+        println!(
+            "\nDom {} {} -{}-> {} [{}]",
+            self.dom_id,
+            asample.initial,
+            self.id,
+            asample.result,
+            SomeRule::new(&SomeSample::new(
+                asample.initial.clone(),
+                asample.result.clone()
+            ))
+        );
+        asample
+    }
+    fn get_sample2(&self, initial_state: &SomeState) -> SomeSample {
+        for rulsx in self.base_rules.iter() {
+            if rulsx.initial_region().is_superset_of(initial_state) {
+                if rulsx.len() == 1 {
+                    return SomeSample::new(
+                        initial_state.clone(),
+                        rulsx[0].result_from_initial_state(initial_state),
+                    );
+                }
+
+                // Get ref to existing square, if any.
+                if let Some(sqrx) = self.squares.find(initial_state) {
+                    let recent_result = sqrx.most_recent_result();
+                    // Get rule number to get the most recent result.
+                    for (inx, rulx) in rulsx.iter().enumerate() {
+                        if rulx.result_from_initial_state(initial_state) == *recent_result {
+                            // Assume left-to-right-wrap-around use-order in multiple rules.
+                            let iny = (inx + 1) % rulsx.len();
+                            return SomeSample::new(
+                                initial_state.clone(),
+                                rulsx[iny].result_from_initial_state(initial_state),
+                            );
+                        }
+                    }
+                    panic!("No rule found?");
+                } else if let Some(sqrx) = self.squares.memory_find(initial_state) {
+                    let recent_result = sqrx.most_recent_result();
+                    // Get rule number to get the most recent result.
+                    for (inx, rulx) in rulsx.iter().enumerate() {
+                        if rulx.result_from_initial_state(initial_state) == *recent_result {
+                            // Assume left-to-right-wrap-around use-order in multiple rules.
+                            let iny = (inx + 1) % rulsx.len();
+                            return SomeSample::new(
+                                initial_state.clone(),
+                                rulsx[iny].result_from_initial_state(initial_state),
+                            );
+                        }
+                    }
+                    panic!("No rule found?");
+                } else {
+                    // Choose a rule randomly.  If the last result for a state was not saved in a square, or the square was deleted,
+                    // its the same as if the state was never sampled.
+                    return SomeSample::new(
+                        initial_state.clone(),
+                        rulsx[rand::thread_rng().gen_range(0..rulsx.len())]
+                            .result_from_initial_state(initial_state),
+                    );
+                };
+            }
+        }
+        // If no rule found, assume no change.
+        SomeSample::new(initial_state.clone(), initial_state.clone())
     }
 } // end impl SomeAction
 

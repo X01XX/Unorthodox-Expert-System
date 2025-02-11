@@ -126,6 +126,14 @@ impl SquareStore {
         self.ahash.get(key)
     }
 
+    /// Return an Option reference for a memory square given a state,
+    /// or None if not found.
+    pub fn memory_find(&self, key: &SomeState) -> Option<&SomeSquare> {
+        debug_assert!(key.num_bits() == self.num_bits);
+
+        self.memory.iter().find(|sqrx| sqrx.state == *key)
+    }
+
     /// Return true if there is a square with a given state in memory.
     pub fn memory_contains(&self, key: &SomeState) -> bool {
         debug_assert_eq!(key.num_bits(), self.num_bits);

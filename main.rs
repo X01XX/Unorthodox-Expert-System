@@ -35,7 +35,6 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 mod action;
-mod actioninterface;
 mod actionstore;
 mod altrulehint;
 mod bits;
