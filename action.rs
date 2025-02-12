@@ -919,20 +919,55 @@ impl SomeAction {
                     //println!("sqrs_in: {}", tools::vec_ref_string(&sqrs_in));
 
                     if sqrs_in.len() == 2 {
-                        let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
-                        //println!("regs left = {regs}");
-                        for regz in regs {
-                            let mut needx = SomeNeed::CloserNAI {
-                                dom_id: self.dom_id,
-                                act_id: self.id,
-                                target: ATarget::Region { region: regz },
-                                unknown_region: regx.clone(),
-                                priority: pri,
-                            };
-                            needx.add_priority_base();
-                            nds.push(needx);
+                        let dif_msk = sqrx.state.diff_edge_mask(&sqry.state);
+                        let dif_num = dif_msk.num_one_bits();
+                        if dif_num > 3 {
+                            // Look for states equidistant from the two squares.
+
+                            // Get a store of single-bit masks.
+                            let msk_bits = dif_msk.split();
+                            // Form a vector of single-bit mask refs.
+                            let mut msk_refs = Vec::<&SomeMask>::with_capacity(msk_bits.len());
+                            for mskx in msk_bits.iter() {
+                                msk_refs.push(mskx);
+                            }
+                            let options = tools::anyxofn(dif_num / 2, &msk_refs);
+                            for optx in options.iter() {
+                                // make a singl emask from multiple single-bit masks.
+                                let mut msk_tmp = optx[0].clone();
+                                for msky in optx.iter().skip(1) {
+                                    msk_tmp = msk_tmp.bitwise_or(*msky);
+                                }
+                                let mut needx = SomeNeed::CloserNAI {
+                                    dom_id: self.dom_id,
+                                    act_id: self.id,
+                                    target: ATarget::State {
+                                        state: sqrx.state.bitwise_xor(&msk_tmp).as_state(),
+                                    },
+                                    unknown_region: regx.clone(),
+                                    priority: pri,
+                                };
+                                needx.add_priority_base();
+                                nds.push(needx);
+                            }
+                        } else {
+                            // Look for any square inbetween.
+                            let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
+                            //println!("regs left = {regs}");
+                            for regz in regs {
+                                let mut needx = SomeNeed::CloserNAI {
+                                    dom_id: self.dom_id,
+                                    act_id: self.id,
+                                    target: ATarget::Region { region: regz },
+                                    unknown_region: regx.clone(),
+                                    priority: pri,
+                                };
+                                needx.add_priority_base();
+                                nds.push(needx);
+                            }
                         }
                     } else {
+                        // Look for squares inbetween that have already been partially sampled.
                         for sqrz in sqrs_in.iter() {
                             if sqrz.state == sqrx.state || sqrz.state == sqry.state {
                                 continue;
@@ -3442,6 +3477,66 @@ mod tests {
         assert!(!nds.contains_need_type("CloserNAI"));
 
         //assert!(1 ==2);
+        Ok(())
+    }
+
+    #[test]
+    fn non_adjacent_incompatibility_needs2() -> Result<(), String> {
+        let mut act0 = SomeAction::from_str(
+            "ACT[[XX/XX/00/XX], [XX/XX/11/XX, XX/XX/10/xx, Xx/XX/11/XX], s0000/3, s1111/3]",
+        )?;
+
+        println!("act0 {}", act0.formatted_def());
+
+        let nds = act0.get_needs(
+            &SomeState::from_str("s1111")?,
+            &SomeRegion::from_str("rXXXX")?,
+        );
+        println!("needs: {nds}");
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s0011")?
+            }
+        ));
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s0101")?
+            }
+        ));
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s0110")?
+            }
+        ));
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s1100")?
+            }
+        ));
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s1001")?
+            }
+        ));
+
+        assert!(nds.contains_similar_need(
+            "CloserNAI",
+            &ATarget::State {
+                state: SomeState::from_str("s1010")?
+            }
+        ));
+
+        //assert!(1 == 2);
         Ok(())
     }
 }
