@@ -155,8 +155,7 @@ impl SomeDomain {
             cur_state,
         };
 
-        // Build and add the first action, which does nothing.
-
+        // Build, populate and add the first action, which does nothing.
         let mut act0 = SomeAction::new(vec![RuleStore::new(vec![rule0])]);
         act0.take_action_arbitrary(&low_state);
         act0.take_action_arbitrary(&low_state);

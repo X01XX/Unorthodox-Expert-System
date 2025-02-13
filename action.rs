@@ -98,6 +98,13 @@ impl SomeAction {
         for rulsx in rules.iter() {
             assert!(rulsx.is_not_empty());
         }
+        let num_bits = rules[0].num_bits().expect("SNH");
+
+        // Check num_bits of rules.
+        for rulsx in rules.iter().skip(1) {
+            assert!(rulsx.num_bits().unwrap() == num_bits);
+        }
+
         // Check that rules within each rulestore have the same initial region.
         for rulsx in rules.iter().skip(1) {
             for rulx in rulsx.iter() {
@@ -121,11 +128,10 @@ impl SomeAction {
             }
         }
 
-        let num_bits = rules[0].num_bits().expect("SNH");
         SomeAction {
-            id: 0,
-            dom_id: 0,
-            num_bits: rules[0].num_bits().expect("SNH"),
+            id: 0,     // Caller changes, if needed.
+            dom_id: 0, // Caller changes, if needed.
+            num_bits,
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new(), num_bits),
             cleanup_number_new_squares: 0,
@@ -803,7 +809,7 @@ impl SomeAction {
             };
             if sqrx.pnc {
             } else {
-                let mut needx = SomeNeed::ConfirmNAI {
+                let mut needx = SomeNeed::ConfirmIP {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     target: ATarget::State {
@@ -821,7 +827,7 @@ impl SomeAction {
             };
             if sqry.pnc {
             } else {
-                let mut needx = SomeNeed::ConfirmNAI {
+                let mut needx = SomeNeed::ConfirmIP {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     target: ATarget::State {
@@ -931,7 +937,7 @@ impl SomeAction {
                             for mskx in msk_bits.iter() {
                                 msk_refs.push(mskx);
                             }
-                            let options = tools::anyxofn(dif_num / 2, &msk_refs);
+                            let options = tools::anyxofn(dif_num >> 1, &msk_refs);
                             for optx in options.iter() {
                                 // make a singl emask from multiple single-bit masks.
                                 let mut msk_tmp = optx[0].clone();
@@ -992,7 +998,7 @@ impl SomeAction {
                 }
 
                 if !sqrx.pnc {
-                    let mut needx = SomeNeed::ConfirmNAI {
+                    let mut needx = SomeNeed::ConfirmIP {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         target: ATarget::State {
@@ -1006,7 +1012,7 @@ impl SomeAction {
                 }
 
                 if !sqry.pnc {
-                    let mut needx = SomeNeed::ConfirmNAI {
+                    let mut needx = SomeNeed::ConfirmIP {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         target: ATarget::State {
@@ -3358,13 +3364,13 @@ mod tests {
 
         // Needs to confirm incompatible pair should exist.
         assert!(nds.contains_similar_need(
-            "ConfirmNAI",
+            "ConfirmIP",
             &ATarget::State {
                 state: SomeState::from_str("s0100")?
             }
         ));
         assert!(nds.contains_similar_need(
-            "ConfirmNAI",
+            "ConfirmIP",
             &ATarget::State {
                 state: SomeState::from_str("s0111")?
             }
@@ -3398,7 +3404,7 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
         assert!(nds.contains_similar_need(
-            "ConfirmNAI",
+            "ConfirmIP",
             &ATarget::State {
                 state: SomeState::from_str("s0101")?
             }
@@ -3411,7 +3417,7 @@ mod tests {
         // The pair (4, 7) should not trigger any NAI needs.
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(!nds.contains_need_type("ConfirmNAI"));
+        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserNAI"));
 
         // Add square 6, the pairing of (4, 6) should now generate needs.
@@ -3420,7 +3426,7 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
         assert!(nds.contains_similar_need(
-            "ConfirmNAI",
+            "ConfirmIP",
             &ATarget::State {
                 state: SomeState::from_str("s0110")?
             }
@@ -3432,7 +3438,7 @@ mod tests {
 
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(!nds.contains_need_type("ConfirmNAI"));
+        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserNAI"));
 
         // Add square 1011.
@@ -3441,7 +3447,7 @@ mod tests {
         println!("needs: {nds}");
 
         assert!(nds.contains_similar_need(
-            "ConfirmNAI",
+            "ConfirmIP",
             &ATarget::State {
                 state: SomeState::from_str("s1011")?
             }
@@ -3473,7 +3479,7 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
 
-        assert!(!nds.contains_need_type("ConfirmNAI"));
+        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserNAI"));
 
         //assert!(1 ==2);

@@ -105,7 +105,7 @@ pub enum SomeNeed {
         times_visited: usize,
     },
     /// Confirm a non-adjacent incompatible pair.
-    ConfirmNAI {
+    ConfirmIP {
         dom_id: usize,
         act_id: usize,
         target: ATarget,
@@ -143,7 +143,7 @@ impl SomeNeed {
         match self {
             Self::AddGroup { .. } => "AddGroup",
             Self::ConfirmGroup { .. } => "ConfirmGroup",
-            Self::ConfirmNAI { .. } => "ConfirmNAI",
+            Self::ConfirmIP { .. } => "ConfirmIP",
             Self::CloserNAI { .. } => "CloserNAI",
             Self::FillRegion { .. } => "FillRegion",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
@@ -165,7 +165,7 @@ impl SomeNeed {
             // By ascending priority number.
             Self::CloserNAI { priority, .. } => *priority += 100,
             Self::FillRegion { priority, .. } => *priority += 125,
-            Self::ConfirmNAI { priority, .. } => *priority += 150,
+            Self::ConfirmIP { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
@@ -189,7 +189,7 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority,
             Self::ExitSelectRegions { priority, .. } => *priority,
-            Self::ConfirmNAI { priority, .. } => *priority,
+            Self::ConfirmIP { priority, .. } => *priority,
             Self::CloserNAI { priority, .. } => *priority,
             Self::FillRegion { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
@@ -224,7 +224,7 @@ impl SomeNeed {
     pub fn act_id(&self) -> usize {
         match self {
             Self::ConfirmGroup { act_id, .. } => *act_id,
-            Self::ConfirmNAI { act_id, .. } => *act_id,
+            Self::ConfirmIP { act_id, .. } => *act_id,
             Self::CloserNAI { act_id, .. } => *act_id,
             Self::FillRegion { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
@@ -246,7 +246,7 @@ impl SomeNeed {
     pub fn dom_id(&self) -> Option<usize> {
         match self {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
-            Self::ConfirmNAI { dom_id, .. } => Some(*dom_id),
+            Self::ConfirmIP { dom_id, .. } => Some(*dom_id),
             Self::CloserNAI { dom_id, .. } => Some(*dom_id),
             Self::FillRegion { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
@@ -285,7 +285,7 @@ impl SomeNeed {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm group {grp_reg})")
             }
-            Self::ConfirmNAI {
+            Self::ConfirmIP {
                 dom_id,
                 act_id,
                 target,
@@ -294,7 +294,7 @@ impl SomeNeed {
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm NAI covering {unknown_region})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm incompatible pair covering {unknown_region})")
             }
             Self::CloserNAI {
                 dom_id,
@@ -454,7 +454,7 @@ impl SomeNeed {
     pub fn target(&self) -> &ATarget {
         match self {
             Self::ConfirmGroup { target, .. } => target,
-            Self::ConfirmNAI { target, .. } => target,
+            Self::ConfirmIP { target, .. } => target,
             Self::CloserNAI { target, .. } => target,
             Self::FillRegion { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,
