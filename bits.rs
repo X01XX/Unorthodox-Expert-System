@@ -11,7 +11,7 @@
 pub type Bitint = u8;
 
 use crate::tools::StrLen;
-use rand::Rng;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::hash::Hash;
@@ -104,7 +104,7 @@ impl SomeBits {
         let mut ints = vec![0; num_ints as usize];
 
         for intx in ints.iter_mut() {
-            *intx = rand::thread_rng().gen_range(0..Bitint::MAX)
+            *intx = rand::rng().random_range(0..Bitint::MAX)
         }
 
         // Shift out highest bits, if needed.

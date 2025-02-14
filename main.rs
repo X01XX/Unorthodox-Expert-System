@@ -155,13 +155,15 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // Get SesionData struct from Serialized data or a string definition.
     let mut sdx = match serde_yaml::from_str(&file_contents) {
         Ok(new_sdx) => new_sdx,
-        Err(_) => match SessionData::from_str(&tools::remove_comments(&file_contents)) {
+        Err(_) => {
+            match SessionData::from_str(&tools::remove_comments(&file_contents)) {
             Ok(sdx) => sdx,
             Err(errstr) => {
                 eprintln!("main::run_with_file: {errstr}");
                 return 1;
             }
-        },
+        }
+    }
     };
     // run it
     match runs {
@@ -765,17 +767,11 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
 
     // Get from RC, validate/massage it.
     let mut from = RegionsCorr::from_str(&cmd[1])?;
-    from = match sdx.validate_rc(from) {
-        Ok(rcx) => rcx,
-        Err(errstr) => return Err(errstr),
-    };
+    from = sdx.validate_rc(from)?;
 
     // Get to RC, validate/massage it.
     let mut to = RegionsCorr::from_str(&cmd[2])?;
-    to = match sdx.validate_rc(to) {
-        Ok(rcx) => rcx,
-        Err(errstr) => return Err(errstr),
-    };
+    to = sdx.validate_rc(to)?;
 
     if !from.is_congruent(&to) {
         return Err("Regionscorr given are not congruent".to_string());
@@ -809,10 +805,7 @@ fn do_to_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String>
 
     // Get region from string, validate/massage it.
     let mut goal_regions = RegionsCorr::from_str(&cmd[1])?;
-    goal_regions = match sdx.validate_rc(goal_regions) {
-        Ok(rcx) => rcx,
-        Err(errstr) => return Err(errstr),
-    };
+    goal_regions = sdx.validate_rc(goal_regions)?;
 
     // Check if goal already satisfied.
     let cur_regs = sdx.all_current_regions();
@@ -1841,13 +1834,13 @@ fn store_data(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
         return Err(format!("Did not understand {cmd:?}"));
     }
 
-    println!("store_data: step {}", sdx.step_num);
+    println!("store_data: to {} step {}", cmd[1], sdx.step_num);
     let path_str = &cmd[1];
-    let serialized_r = serde_yaml::to_string(&sdx);
+    let serialized_r = serde_yaml::to_string(sdx);
 
     match serialized_r {
         Ok(serialized) => {
-            let path = Path::new(&path_str);
+            let path = Path::new(path_str);
             let display = path.display();
 
             // Open a file in write-only mode, returns `io::Result<File>`
@@ -1862,7 +1855,7 @@ fn store_data(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
                 },
             }
         }
-        Err(error) => Err(format!("Couldn't serialize {path_str}: {error}")),
+        Err(error) => Err(format!("Couldn't serialize: {error}")),
     } // end match serialized_r
 } // end store_data
 

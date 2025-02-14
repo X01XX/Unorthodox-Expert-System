@@ -68,15 +68,14 @@ pub struct SessionData {
     /// Domain structures.
     pub domains: DomainStore,
 
-    /// UI data.
+    // UI data.
 
     /// Domain displayed to user.
     pub current_domain: usize,
     /// The current step number of a user session.
     pub step_num: usize,
 
-    /// Select Region data.
-
+    // Select Region data.
     /// Zero, or more, select regions that may have a positive, or negative, value.
     /// They may overlap.
     pub select: SelectRegionsStore,
@@ -91,8 +90,7 @@ pub struct SessionData {
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
 
-    /// Cyclical goal, positve Select Region, data.
-
+    // Cyclical goal, positve Select Region, data.
     /// A counter to indicate the number of steps the current state is in the same select region.
     /// When no more rule-testing needs can be done.
     pub boredom: usize,
@@ -102,8 +100,7 @@ pub struct SessionData {
     /// Times visited, order corresponding to, positive select regions.
     pub times_visited: Vec<usize>,
 
-    /// Need data.
-
+    // Need data.
     /// List of current needs.
     pub needs: NeedStore,
     /// List of need indicies and plans.
@@ -588,7 +585,7 @@ impl SessionData {
             return min_len_plans[0];
         }
 
-        min_len_plans[rand::thread_rng().gen_range(0..min_len_plans.len())]
+        min_len_plans[rand::rng().random_range(0..min_len_plans.len())]
     }
 
     /// Choose a need, given a vector of needs,
@@ -625,7 +622,7 @@ impl SessionData {
             }
         }
         // Select a can_do item by index.
-        let inx = inxs[rand::thread_rng().gen_range(0..inxs.len())];
+        let inx = inxs[rand::rng().random_range(0..inxs.len())];
 
         println!(
             "\nNeed chosen: {:2} {} {}",
@@ -1091,7 +1088,7 @@ impl SessionData {
             return None;
         }
         // Choose a close non-negative SelectRegion to move to.
-        Some(targets[rand::thread_rng().gen_range(0..targets.len())])
+        Some(targets[rand::rng().random_range(0..targets.len())])
     }
 
     /// Return plans for a change from start to goal.
@@ -1173,7 +1170,7 @@ impl SessionData {
         }
 
         // Randomly choose a possible path.
-        let pathx = mid_paths.swap_remove(rand::thread_rng().gen_range(0..mid_paths.len()));
+        let pathx = mid_paths.swap_remove(rand::rng().random_range(0..mid_paths.len()));
 
         let mut cur_regs = start_regs.clone(); // Borrow checker thinks the above map is still in force?
 
@@ -1459,7 +1456,7 @@ impl SessionData {
             //for plnx in plans2.iter() {
             //    println!("    {plnx}");
             //}
-            Ok(plans2.swap_remove(rand::thread_rng().gen_range(0..plans2.len())))
+            Ok(plans2.swap_remove(rand::rng().random_range(0..plans2.len())))
         }
     }
 
@@ -1488,7 +1485,7 @@ impl SessionData {
                     Ok(mut plans) => {
                         //println!(" {} plans from make_plans", plans.len());
                         plans_per_target
-                            .push(plans.remove(rand::thread_rng().gen_range(0..plans.len())));
+                            .push(plans.remove(rand::rng().random_range(0..plans.len())));
                     }
                     Err(errvec) => {
                         return Err(errvec);

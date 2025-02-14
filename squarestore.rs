@@ -175,7 +175,7 @@ impl SquareStore {
         // Return a pnc square, if any.
         if !pnc_squares.is_empty() {
             return Some(
-                pnc_squares[rand::thread_rng().gen_range(0..pnc_squares.len())]
+                pnc_squares[rand::rng().random_range(0..pnc_squares.len())]
                     .state
                     .clone(),
             );
@@ -198,7 +198,7 @@ impl SquareStore {
         }
 
         Some(
-            max_squares[rand::thread_rng().gen_range(0..max_squares.len())]
+            max_squares[rand::rng().random_range(0..max_squares.len())]
                 .state
                 .clone(),
         )
@@ -302,7 +302,7 @@ impl SquareStore {
             }
         }
         // Choose a maximum rated square.
-        Ok(max_rated[rand::thread_rng().gen_range(0..max_rated.len())])
+        Ok(max_rated[rand::rng().random_range(0..max_rated.len())])
     }
 
     /// Add a square to memory, oldest first.

@@ -437,7 +437,7 @@ impl SomeDomain {
                     break;
                 }
             }
-            let inx = rand::thread_rng().gen_range(0..num_same_ratios);
+            let inx = rand::rng().random_range(0..num_same_ratios);
             //println!("inx {inx} of 0..{num_same_ratios}");
             let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
 
@@ -484,7 +484,7 @@ impl SomeDomain {
                 break;
             }
         }
-        let inx = rand::thread_rng().gen_range(0..num_same_ratios);
+        let inx = rand::rng().random_range(0..num_same_ratios);
 
         let stepx = steps_by_change_vov[ratios[inx].0][ratios[inx].1];
 
@@ -968,7 +968,7 @@ impl SomeDomain {
         if let Some(plany) = self.shortcuts3(planx, within) {
             let mut inx = 0;
             if plany.len() > 1 {
-                inx = rand::thread_rng().gen_range(0..plany.len());
+                inx = rand::rng().random_range(0..plany.len());
             }
             if plany[inx].len() < planx.len() {
                 return self.shortcuts2(&plany[inx], depth - 1, within);
