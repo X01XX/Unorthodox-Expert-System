@@ -501,9 +501,6 @@ impl SomeAction {
         // Check if any groups became limited.
         // If so, check intersecting groups with no anchor, for deletion.
         if self.limited.is_not_empty() {
-            if 1 == 2 {
-                self.check_structure(max_reg.clone());
-            }
             //println!("Recently limited groups: {}", self.limited);
 
             // Find non-equal intersecting groups, with no anchor.
@@ -2909,52 +2906,6 @@ impl SomeAction {
             true
         } else {
             false
-        }
-    }
-
-    /// Check the structure of groups based on limited groups.
-    /// A limited group has an anchor state that is only in one group, so squares outside
-    /// the group, adjacent to the anchor, are dissimilar.
-    /// Dissimilar pairs of squares can split up the maximum region into possible regions.
-    fn check_structure(&self, max_reg: SomeRegion) {
-        let mut group_regs = RegionStore::new(vec![max_reg.clone()]);
-        for grpx in self.groups.iter() {
-            if grpx.limited {
-                if let Some(anchor) = &grpx.anchor {
-                    let not_anchor = max_reg.subtract(anchor);
-                    if let Some(amask) = &grpx.anchor_mask {
-                        let single_bits = amask.split();
-                        for mskx in single_bits.iter() {
-                            let adj_state = anchor.bitwise_xor(mskx).as_state();
-                            let not_adj = max_reg.subtract(&adj_state);
-                            let not_or = not_anchor.union(&not_adj);
-                            group_regs = group_regs.intersection(&not_or);
-                        }
-                    }
-                }
-            }
-        }
-        println!(
-            "Dom {} Act {} Possible groups: {group_regs}",
-            self.dom_id, self.id
-        );
-        for grpx in self.groups.iter() {
-            if group_regs.contains(&grpx.region) {
-                continue;
-            }
-            print!("Not in: {}", grpx.region);
-            let mut first = true;
-            for regx in group_regs.iter() {
-                if regx.is_superset_of(&grpx.region) {
-                    if first {
-                        first = false;
-                        print!(", supersets: {regx}");
-                    } else {
-                        print!(", {regx}");
-                    }
-                }
-            }
-            println!(" ");
         }
     }
 
