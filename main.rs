@@ -155,15 +155,13 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     // Get SesionData struct from Serialized data or a string definition.
     let mut sdx = match serde_yaml::from_str(&file_contents) {
         Ok(new_sdx) => new_sdx,
-        Err(_) => {
-            match SessionData::from_str(&tools::remove_comments(&file_contents)) {
+        Err(_) => match SessionData::from_str(&tools::remove_comments(&file_contents)) {
             Ok(sdx) => sdx,
             Err(errstr) => {
                 eprintln!("main::run_with_file: {errstr}");
                 return 1;
             }
-        }
-    }
+        },
     };
     // run it
     match runs {

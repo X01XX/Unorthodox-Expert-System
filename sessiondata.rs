@@ -69,7 +69,6 @@ pub struct SessionData {
     pub domains: DomainStore,
 
     // UI data.
-
     /// Domain displayed to user.
     pub current_domain: usize,
     /// The current step number of a user session.

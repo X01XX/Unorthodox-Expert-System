@@ -754,18 +754,19 @@ impl SomeAction {
             }
         }
 
-        nds.append(self.non_adjacent_incompatibility_needs(max_reg));
+        nds.append(self.incompatibile_pair_needs(max_reg));
 
         nds
     } // end get_needs
 
-    /// Return needs for non-adjacent incompatible squares.
-    fn non_adjacent_incompatibility_needs(&self, max_reg: &SomeRegion) -> NeedStore {
+    /// Return needs for incompatible square pairs.
+    /// An inchoate perception, translated into code.
+    fn incompatibile_pair_needs(&self, max_reg: &SomeRegion) -> NeedStore {
         // Init NeedStore to return.
         let mut nds = NeedStore::new(vec![]);
 
         // Check each possible square pair.
-        let sqrs = self.squares.all_squares();
+        let sqrs: Vec<&SomeSquare> = self.squares.all_squares();
         if sqrs.len() < 2 {
             return nds;
         }
@@ -773,7 +774,7 @@ impl SomeAction {
         // Init storage for incompatible pairs, stored as twe states in a region.
         let mut incompat_regions = RegionStore::new(vec![]);
 
-        // Check each pair for incompatibility, save closest pairs.
+        // Check each pair for incompatibility, save pairs, no subsets.
         for inx in 0..(sqrs.len() - 1) {
             for iny in (inx + 1)..sqrs.len() {
                 if sqrs[inx].compatible(sqrs[iny]) == Compatibility::NotCompatible {
@@ -784,6 +785,7 @@ impl SomeAction {
                 }
             }
         }
+        // Check for none found.
         if incompat_regions.is_empty() {
             return nds;
         }
@@ -825,12 +827,12 @@ impl SomeAction {
                 }
             }
         }
+        // If any adjacent incompatible pair needs, return them.
         if nds.is_not_empty() {
             return nds;
         }
 
         // Calc possible regions.
-        //let max_reg = SomeRegion::max_region(self.num_bits);
         let mut max_regions = RegionStore::new(vec![max_reg.clone()]);
         for regx in adjacent_pairs.iter() {
             let regs1 = max_reg.subtract(regx.first_state());
@@ -841,7 +843,7 @@ impl SomeAction {
 
         // Filter non-adjacent pairs, favoring states that are already in an adjacent pair.
 
-        // Collect dissimilar adjacent squares.  Some may be in more than one region.
+        // Collect incompatible adjacent square states. Some may be in more than one region.
         let mut adj_states = Vec::<&SomeState>::new();
         for reg_adj in adjacent_pairs.iter() {
             for stax in reg_adj.iter() {
@@ -852,22 +854,25 @@ impl SomeAction {
             }
         }
 
-        // Check non-adjacent pairs for states in an adjacent pair.
+        // Check non-adjacent incompatible pairs for states in an adjacent pair.
         let mut priority_pairs = RegionStore::new(vec![]);
         for regx in non_adjacent_pairs.iter() {
             if adj_states.contains(&regx.first_state()) || adj_states.contains(&regx.last_state()) {
                 priority_pairs.push(regx.clone());
             }
         }
+        // If any priority pairs found, replace non_adjacent_pairs.
         if priority_pairs.is_not_empty() {
             //println!("priority pairs: {priority_pairs}");
             non_adjacent_pairs = priority_pairs;
         }
 
-        // Check for non-adjacent pairs needs.
+        // Check for non-adjacent pair needs.
         for regx in non_adjacent_pairs.iter() {
             //println!("Processing non-adjacent Incompatible pair: {regx}");
+            // Check if a pair is wholly within a possible region.
             if max_regions.any_superset_of(regx) {
+                // Get squares represented by the states.
                 let Some(sqrx) = self.squares.find(regx.first_state()) else {
                     panic!("SNH");
                 };
@@ -875,6 +880,7 @@ impl SomeAction {
                 let Some(sqry) = self.squares.find(regx.last_state()) else {
                     panic!("SNH");
                 };
+
                 //println!("sqry {} pnc {}", sqry.state, sqry.pnc);
                 let pri = regx.x_mask().num_one_bits(); // Make smaller regions the priority.
 
@@ -906,7 +912,7 @@ impl SomeAction {
                                 }
 
                                 // Construct need for sample of state between.
-                                let mut needx = SomeNeed::CloserNAI {
+                                let mut needx = SomeNeed::CloserIP {
                                     dom_id: self.dom_id,
                                     act_id: self.id,
                                     target: ATarget::State {
@@ -923,7 +929,7 @@ impl SomeAction {
                             let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
                             //println!("regs left = {regs}");
                             for regz in regs {
-                                let mut needx = SomeNeed::CloserNAI {
+                                let mut needx = SomeNeed::CloserIP {
                                     dom_id: self.dom_id,
                                     act_id: self.id,
                                     target: ATarget::Region { region: regz },
@@ -943,7 +949,7 @@ impl SomeAction {
                             if sqrz.pnc {
                                 panic!("SNH");
                             }
-                            let mut needx = SomeNeed::CloserNAI {
+                            let mut needx = SomeNeed::CloserIP {
                                 dom_id: self.dom_id,
                                 act_id: self.id,
                                 target: ATarget::State {
@@ -959,6 +965,7 @@ impl SomeAction {
                     continue;
                 }
 
+                // Get extra samples of squares, as needed.
                 if !sqrx.pnc {
                     let mut needx = SomeNeed::ConfirmIP {
                         dom_id: self.dom_id,
@@ -3330,13 +3337,13 @@ mod tests {
 
         // Needs to get closer incompatible pair should exist.
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::Region {
                 region: SomeRegion::from_str("r0101")?
             }
         ));
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::Region {
                 region: SomeRegion::from_str("r0110")?
             }
@@ -3361,7 +3368,7 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
         assert!(!nds.contains_need_type("ConfirmIP"));
-        assert!(!nds.contains_need_type("CloserNAI"));
+        assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 6, the pairing of (4, 6) should now generate needs.
         act0.take_action_arbitrary(&SomeState::from_str("s0110")?);
@@ -3382,7 +3389,7 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
         assert!(!nds.contains_need_type("ConfirmIP"));
-        assert!(!nds.contains_need_type("CloserNAI"));
+        assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 1011.
         act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
@@ -3403,13 +3410,13 @@ mod tests {
         println!("needs: {nds}");
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::Region {
                 region: SomeRegion::from_str("r1111")?
             }
         ));
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::Region {
                 region: SomeRegion::from_str("r0011")?
             }
@@ -3423,7 +3430,7 @@ mod tests {
         println!("needs: {nds}");
 
         assert!(!nds.contains_need_type("ConfirmIP"));
-        assert!(!nds.contains_need_type("CloserNAI"));
+        assert!(!nds.contains_need_type("CloserIP"));
 
         //assert!(1 ==2);
         Ok(())
@@ -3444,42 +3451,42 @@ mod tests {
         println!("needs: {nds}");
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s0011")?
             }
         ));
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s0101")?
             }
         ));
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s0110")?
             }
         ));
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s1100")?
             }
         ));
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s1001")?
             }
         ));
 
         assert!(nds.contains_similar_need(
-            "CloserNAI",
+            "CloserIP",
             &ATarget::State {
                 state: SomeState::from_str("s1010")?
             }
