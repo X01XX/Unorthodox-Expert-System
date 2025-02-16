@@ -754,14 +754,14 @@ impl SomeAction {
             }
         }
 
-        nds.append(self.incompatibile_pair_needs(max_reg));
+        nds.append(self.incompatible_pair_needs(max_reg));
 
         nds
     } // end get_needs
 
     /// Return needs for incompatible square pairs.
     /// An inchoate perception, translated into code.
-    fn incompatibile_pair_needs(&self, max_reg: &SomeRegion) -> NeedStore {
+    fn incompatible_pair_needs(&self, max_reg: &SomeRegion) -> NeedStore {
         // Init NeedStore to return.
         let mut nds = NeedStore::new(vec![]);
 
@@ -995,7 +995,7 @@ impl SomeAction {
                 }
             }
         }
-
+        // If any non-adjacent pair needs, return them.
         if nds.is_not_empty() {
             return nds;
         }
@@ -1005,15 +1005,27 @@ impl SomeAction {
         for stax in adj_states.iter() {
             let sups = max_regions.supersets_of(*stax);
             if sups.len() == 1 {
-                let stas_in = self.squares.stas_in_reg(&sups[0]);
-                let ag_reg = stas_in.as_region();
-                if ag_reg != sups[0] {
-                    // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
-                    let targ_sta = sups[0].far_from(stax);
+                // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
+                // Confirm region, or find new dissimilar square pair.
+                let far_sta = sups[0].far_from(stax);
+                if let Some(sqrz) = self.squares.find(&far_sta) {
+                    if sqrz.pnc {
+                    } else {
+                        let mut needx = SomeNeed::FillRegion {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State { state: far_sta },
+                            fill_reg: sups[0].clone(),
+                            priority: 0,
+                        };
+                        needx.add_priority_base();
+                        nds.push(needx);
+                    }
+                } else {
                     let mut needx = SomeNeed::FillRegion {
                         dom_id: self.dom_id,
                         act_id: self.id,
-                        target: ATarget::State { state: targ_sta },
+                        target: ATarget::State { state: far_sta },
                         fill_reg: sups[0].clone(),
                         priority: 0,
                     };
