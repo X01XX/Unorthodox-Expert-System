@@ -646,10 +646,10 @@ impl SomeAction {
             return nds;
         }
 
-        // Init storage for incompatible pairs, stored as twe states in a region.
+        // Init storage for incompatible pairs, stored as two states in a region.
         let mut incompat_regions = RegionStore::new(vec![]);
 
-        // Check each pair for incompatibility, save pairs, no subsets.
+        // Check each pair for incompatibility, save pairs, no supersets.
         for inx in 0..(sqrs.len() - 1) {
             for iny in (inx + 1)..sqrs.len() {
                 if sqrs[inx].compatible(sqrs[iny]) == Compatibility::NotCompatible {
