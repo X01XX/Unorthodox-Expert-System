@@ -63,10 +63,6 @@ pub struct SomeAction {
     pub squares: SquareStore,
     /// Number of new squares since last cleanup.
     cleanup_number_new_squares: usize,
-    /// When the actions groups change check for any missed regions.
-    check_remainder: bool,
-    /// Regions currently not covered by groups, when tere are no more needs to sample squares.
-    remainder_check_regions: RegionStore,
     /// Changes possible for all groups.
     aggregate_changes: Option<SomeChange>,
     /// An indicator that the changes possible were recently updated.
@@ -135,8 +131,6 @@ impl SomeAction {
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new(), num_bits),
             cleanup_number_new_squares: 0,
-            check_remainder: false,
-            remainder_check_regions: RegionStore::new(vec![]),
             aggregate_changes: None,
             agg_chgs_updated: false,
             limited: RegionStore::new(vec![]),
@@ -207,7 +201,6 @@ impl SomeAction {
         let pn = sqrx.pn;
 
         if regs_invalid.is_not_empty() {
-            self.check_remainder = true;
             self.process_invalid_regions(&regs_invalid);
         }
 
@@ -369,9 +362,6 @@ impl SomeAction {
 
         assert!(!keys.is_empty());
         debug_assert_eq!(keys[0].num_bits(), self.num_bits);
-
-        // Set flag to later check for regions not covered by groups.
-        self.check_remainder = true;
 
         // Collect possible groups.
         let groups: Vec<GroupStore> = keys
@@ -584,68 +574,6 @@ impl SomeAction {
             self.cleanup(&ret);
         }
 
-        if ret.is_empty() && self.groups.any_not_limited() {
-            let mut regs = RegionStore::new(vec![max_reg.clone()]);
-            for grpx in self.groups.iter() {
-                if grpx.limited {
-                    regs = regs.subtract_region(&grpx.region);
-                }
-            }
-            if regs.is_not_empty() {
-                //println!("not limited {regs}");
-
-                for regx in regs.iter() {
-                    let sqrs = self.squares.squares_in_reg(regx);
-                    if sqrs.is_empty() {
-                        // Make need target.
-                        let mut needx = SomeNeed::StateNotInLimitedGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::Region {
-                                region: regx.clone(),
-                            },
-                            priority: regx.num_edges(),
-                        };
-                        needx.add_priority_base();
-                        ret.push(needx);
-                    } else {
-                        // Make need for each non-pnc square.
-                        // Check for any pnc square.
-                        let mut any_pnc = false;
-                        for sqrx in sqrs.iter() {
-                            if sqrx.pnc {
-                                any_pnc = true;
-                                break;
-                            }
-                        }
-                        if !any_pnc {
-                            // Find max number results.
-                            let mut max_results = 0;
-                            for sqrx in sqrs.iter() {
-                                if sqrx.num_results() > max_results {
-                                    max_results = sqrx.num_results();
-                                }
-                            }
-                            // Create needs for squares with max results.
-                            for sqrx in sqrs.iter() {
-                                if sqrx.num_results() == max_results {
-                                    let mut needx = SomeNeed::StateNotInLimitedGroup {
-                                        dom_id: self.dom_id,
-                                        act_id: self.id,
-                                        target: ATarget::State {
-                                            state: sqrx.state.clone(),
-                                        },
-                                        priority: regx.num_edges(),
-                                    };
-                                    needx.add_priority_base();
-                                    ret.push(needx);
-                                }
-                            } // next sqrx
-                        }
-                    }
-                } // next regx
-            }
-        }
         ret
     }
 
@@ -700,66 +628,6 @@ impl SomeAction {
 
         // Look for needs for states not in groups
         nds.append(self.state_not_in_group_needs(cur_state));
-
-        if nds.kind_is_in("StateNotInGroup") {
-        } else {
-            if self.check_remainder {
-                self.remainder_check_regions = self.remainder_check_region(max_reg);
-                self.check_remainder = false;
-            }
-            if self.remainder_check_regions.is_not_empty() {
-                for regx in self.remainder_check_regions.iter() {
-                    let sqrs = self.squares.squares_in_reg(regx);
-                    if sqrs.is_empty() {
-                        // Make need target.
-                        let mut needx = SomeNeed::StateInRemainder {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::Region {
-                                region: regx.clone(),
-                            },
-                            priority: regx.num_edges(),
-                        };
-                        needx.add_priority_base();
-                        nds.push(needx);
-                    } else {
-                        // Make need for each non-pnc square.
-                        // Check for any pnc square.
-                        let mut any_pnc = false;
-                        for sqrx in sqrs.iter() {
-                            if sqrx.pnc {
-                                any_pnc = true;
-                                break;
-                            }
-                        }
-                        if !any_pnc {
-                            // Find max number results.
-                            let mut max_results = 0;
-                            for sqrx in sqrs.iter() {
-                                if sqrx.num_results() > max_results {
-                                    max_results = sqrx.num_results();
-                                }
-                            }
-                            // Create needs for squares with max results.
-                            for sqrx in sqrs.iter() {
-                                if sqrx.num_results() == max_results {
-                                    let mut needx = SomeNeed::StateInRemainder {
-                                        dom_id: self.dom_id,
-                                        act_id: self.id,
-                                        target: ATarget::State {
-                                            state: sqrx.state.clone(),
-                                        },
-                                        priority: regx.num_edges(),
-                                    };
-                                    needx.add_priority_base();
-                                    nds.push(needx);
-                                }
-                            } // next sqrx
-                        }
-                    }
-                } // next regx
-            }
-        }
 
         nds.append(self.incompatible_pair_needs(max_reg));
 
@@ -1045,19 +913,6 @@ impl SomeAction {
         }
 
         nds
-    }
-
-    /// Check for needs in a region not covered by current groups.
-    fn remainder_check_region(&self, max_reg: &SomeRegion) -> RegionStore {
-        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
-
-        let mut remainder_regs = RegionStore::new(vec![max_reg.clone()]);
-
-        for grpx in self.groups.iter() {
-            remainder_regs = remainder_regs.subtract_region(&grpx.region);
-        }
-
-        remainder_regs
     }
 
     /// Cleanup unneeded squares.
@@ -1740,7 +1595,7 @@ impl SomeAction {
                 if adj_sqr.pnc {
                 } else {
                     // Get another sample of adjacent square.
-                    let mut needx = SomeNeed::ConfirmGroupAdj {
+                    let mut needx = SomeNeed::LimitGroupAdj {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         anchor: anchor_sta.clone(),
@@ -1753,7 +1608,7 @@ impl SomeAction {
                 }
             } else {
                 // Get first sample of adjacent square.
-                let mut needx = SomeNeed::ConfirmGroupAdj {
+                let mut needx = SomeNeed::LimitGroupAdj {
                     dom_id: self.dom_id,
                     act_id: self.id,
                     anchor: anchor_sta.clone(),
@@ -2521,45 +2376,29 @@ impl SomeAction {
 
         let asample = self.take_action_arbitrary(cur_state);
 
-        // Additional processing for selected kinds of need
-        match ndx {
-            SomeNeed::ConfirmGroup { grp_reg, .. } => {
-                // The sample could have invalidated the group.
-                if let Some(grpx) = self.groups.find_mut(grp_reg) {
-                    if !grpx.pnc {
-                        let sqr1 = self.squares.find(grp_reg.first_state()).expect("SNH");
-                        if grp_reg.len() == 1 {
-                            if sqr1.pnc && grpx.set_pnc() {
-                                println!(
-                                    "Dom {} Act {} Group {} confirmed",
-                                    self.dom_id, self.id, grpx.region
-                                );
-                            }
-                        } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
-                            if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
-                                println!(
-                                    "Dom {} Act {} Group {} confirmed",
-                                    self.dom_id, self.id, grpx.region
-                                );
-                            }
+        // Additional processing for selected kinds of needs.
+        if let SomeNeed::ConfirmGroup { grp_reg, .. } = ndx {
+            // The sample could have invalidated the group.
+            if let Some(grpx) = self.groups.find_mut(grp_reg) {
+                if !grpx.pnc {
+                    let sqr1 = self.squares.find(grp_reg.first_state()).expect("SNH");
+                    if grp_reg.len() == 1 {
+                        if sqr1.pnc && grpx.set_pnc() {
+                            println!(
+                                "Dom {} Act {} Group {} confirmed",
+                                self.dom_id, self.id, grpx.region
+                            );
+                        }
+                    } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
+                        if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
+                            println!(
+                                "Dom {} Act {} Group {} confirmed",
+                                self.dom_id, self.id, grpx.region
+                            );
                         }
                     }
                 }
             }
-            SomeNeed::StateInRemainder { .. } => {
-                if !self.groups.any_superset_of(cur_state) {
-                    let sqr1 = self.squares.find(cur_state).expect("SNH");
-                    if sqr1.pnc {
-                        self.check_remainder = true;
-                        self.groups_push_nosubs(SomeGroup::new(
-                            SomeRegion::new(vec![cur_state.clone()]),
-                            sqr1.rules.clone(),
-                            sqr1.pnc,
-                        ));
-                    }
-                }
-            }
-            _ => {}
         }
 
         asample
@@ -2704,10 +2543,6 @@ impl SomeAction {
         rc_str += &self.squares.len().to_string();
 
         //rc_str.push_str(&format!(", agg_chgs_updated {}", self.agg_chgs_updated));
-
-        if self.remainder_check_regions.is_not_empty() {
-            rc_str.push_str(&format!(", remainder: {}", self.remainder_check_regions));
-        }
 
         let mut fil = "\n       Grps: ";
 

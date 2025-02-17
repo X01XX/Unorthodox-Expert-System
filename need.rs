@@ -24,14 +24,14 @@ impl fmt::Display for SomeNeed {
 #[derive(Debug, Serialize, Deserialize)]
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
-    /// Seek a sample in a region that other groups do not cover.
-    StateInRemainder {
-        dom_id: usize,
-        act_id: usize,
-        target: ATarget,
-        priority: usize,
-    },
-    /// Sample a state that is not in a group.
+    /// Sample a state that is not in a group, often the current state.
+    /// Used to bootstrap the formation of single-result groups.
+    /// Some single-result groups, with a tenuous grip, due to few samples, will be invalidated upon use,
+    /// but some will work.  Those groups that work will allow changing the current state to sample, and resample,
+    /// states as needed.
+    ///
+    /// This is also used to resample states that produce more that one result, to establish predictability, or unpredictability,
+    /// before creating a group.
     StateNotInGroup {
         dom_id: usize,
         act_id: usize,
@@ -79,22 +79,6 @@ pub enum SomeNeed {
         priority: usize,
         for_group: SomeRegion,
         anchor: SomeState,
-    },
-    /// Sample a internal state adjacent to a group anchor, to confirm the group.
-    ConfirmGroupAdj {
-        dom_id: usize,
-        act_id: usize,
-        target: ATarget,
-        priority: usize,
-        for_group: SomeRegion,
-        anchor: SomeState,
-    },
-    /// Seek a sample in a region that limited groups do not cover.
-    StateNotInLimitedGroup {
-        dom_id: usize,
-        act_id: usize,
-        target: ATarget,
-        priority: usize,
     },
     /// Move all current domain states out of a SelectRegion, to non-negative regions.
     ExitSelectRegions { target: ATarget, priority: usize },
@@ -149,10 +133,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
-            Self::ConfirmGroupAdj { .. } => "ConfirmGroupAdj",
-            Self::StateInRemainder { .. } => "StateInRemainder",
             Self::StateNotInGroup { .. } => "StateNotInGroup",
-            Self::StateNotInLimitedGroup { .. } => "StateNotInLimitedGroup",
             Self::ToSelectRegions { .. } => "ToSelectRegions",
             Self::ExitSelectRegions { .. } => "ExitSelectRegions",
         }
@@ -167,15 +148,12 @@ impl SomeNeed {
             Self::FindSimilarityTo { priority, .. } => *priority += 125,
             Self::ConfirmIP { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
+            Self::StateNotInGroup { priority, .. } => *priority += 250,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
             Self::ConfirmGroup { priority, .. } => *priority += 400,
             Self::LimitGroup { priority, .. } => *priority += 500,
             Self::LimitGroupAdj { priority, .. } => *priority += 600,
-            Self::ConfirmGroupAdj { priority, .. } => *priority += 700,
-            Self::StateNotInGroup { priority, .. } => *priority += 800,
             Self::ToSelectRegions { priority, .. } => *priority += 900,
-            Self::StateInRemainder { priority, .. } => *priority += 1000,
-            Self::StateNotInLimitedGroup { priority, .. } => *priority += 1100,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -195,12 +173,8 @@ impl SomeNeed {
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
-            Self::ConfirmGroupAdj { priority, .. } => *priority,
             Self::StateNotInGroup { priority, .. } => *priority,
             Self::ToSelectRegions { priority, .. } => *priority,
-            // Some needs should have a higher priority number compared to ToSelectRegions.
-            Self::StateInRemainder { priority, .. } => *priority,
-            Self::StateNotInLimitedGroup { priority, .. } => *priority,
             _ => panic!(
                 "SomeNeed::priority should not be called for the {} need.",
                 self.name()
@@ -230,10 +204,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
-            Self::ConfirmGroupAdj { act_id, .. } => *act_id,
             Self::StateNotInGroup { act_id, .. } => *act_id,
-            Self::StateInRemainder { act_id, .. } => *act_id,
-            Self::StateNotInLimitedGroup { act_id, .. } => *act_id,
             _ => panic!(
                 "SomeNeed::act_id should not be called for the {} need.",
                 self.name()
@@ -252,10 +223,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
             Self::LimitGroup { dom_id, .. } => Some(*dom_id),
             Self::LimitGroupAdj { dom_id, .. } => Some(*dom_id),
-            Self::ConfirmGroupAdj { dom_id, .. } => Some(*dom_id),
-            Self::StateInRemainder { dom_id, .. } => Some(*dom_id),
             Self::StateNotInGroup { dom_id, .. } => Some(*dom_id),
-            Self::StateNotInLimitedGroup { dom_id, .. } => Some(*dom_id),
             _ => None,
         } //end match self
     } // end dom_id
@@ -381,42 +349,6 @@ impl SomeNeed {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, adj to {anchor} to limit group {for_group})")
             }
-            Self::ConfirmGroupAdj {
-                dom_id,
-                act_id,
-                target,
-                for_group,
-                anchor,
-                priority,
-                ..
-            } => {
-                format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, adj to {anchor} to confirm group {for_group})")
-            }
-            Self::StateInRemainder {
-                dom_id,
-                act_id,
-                target,
-                priority,
-            } => {
-                match target {
-                    ATarget::Region { region } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample a State in {region} a remainder)"),
-                    ATarget::State { state } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {state} in remainder)"),
-                    _ => format!("N(Unexpected target value {target})")
-                }
-            }
-            Self::StateNotInLimitedGroup {
-                dom_id,
-                act_id,
-                target,
-                priority,
-            } => {
-                match target {
-                    ATarget::Region { region } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample a State in {region} not in a limited group)"),
-                    ATarget::State { state } => format!("N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {state} not in a limited group)"),
-                    _ => format!("N(Unexpected target value {target})")
-                }
-            }
             Self::StateNotInGroup {
                 dom_id,
                 act_id,
@@ -461,12 +393,9 @@ impl SomeNeed {
             Self::ContradictoryIntersection { target, .. } => target,
             Self::LimitGroup { target, .. } => target,
             Self::LimitGroupAdj { target, .. } => target,
-            Self::ConfirmGroupAdj { target, .. } => target,
-            Self::StateInRemainder { target, .. } => target,
             Self::StateNotInGroup { target, .. } => target,
             Self::ExitSelectRegions { target, .. } => target,
             Self::ToSelectRegions { target, .. } => target,
-            Self::StateNotInLimitedGroup { target, .. } => target,
             _ => panic!("SomeNeed::distance: Unrecognized need {}", self),
         } //end match self
     } // end target
