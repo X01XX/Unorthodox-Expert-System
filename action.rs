@@ -331,6 +331,10 @@ impl SomeAction {
 
         // Remove the groups.
         for regx in invalid_regs.iter() {
+            //println!(
+            //    "\nDom {} Act {} Group {} is invalidated, removed.",
+            //    self.dom_id, self.id, regx
+            //);
             self.remove_group(regx);
         }
 
@@ -534,7 +538,10 @@ impl SomeAction {
                 }
             }
             for grpx in grps_to_remove.iter() {
-                println!("Group {grpx} completely overlapped by limited groups");
+                println!(
+                    "\nDom {} Act {} Group {} is completely overlapped by limited groups, removed.",
+                    self.dom_id, self.id, grpx
+                );
                 self.remove_group(grpx);
             }
             self.limited = RegionStore::new(vec![]);
@@ -1011,22 +1018,24 @@ impl SomeAction {
                 if let Some(sqrz) = self.squares.find(&far_sta) {
                     if sqrz.pnc {
                     } else {
-                        let mut needx = SomeNeed::FillRegion {
+                        let mut needx = SomeNeed::FindSimilarityTo {
                             dom_id: self.dom_id,
                             act_id: self.id,
                             target: ATarget::State { state: far_sta },
-                            fill_reg: sups[0].clone(),
+                            to_state: (*stax).clone(),
+                            in_reg: sups[0].clone(),
                             priority: 0,
                         };
                         needx.add_priority_base();
                         nds.push(needx);
                     }
                 } else {
-                    let mut needx = SomeNeed::FillRegion {
+                    let mut needx = SomeNeed::FindSimilarityTo {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         target: ATarget::State { state: far_sta },
-                        fill_reg: sups[0].clone(),
+                        to_state: (*stax).clone(),
+                        in_reg: sups[0].clone(),
                         priority: 0,
                     };
                     needx.add_priority_base();
@@ -1059,6 +1068,10 @@ impl SomeAction {
             let mut del = Vec::<SomeRegion>::new();
             for grpx in self.groups.iter() {
                 if grpx.anchor.is_none() {
+                    println!(
+                        "\nDom {} Act {} Group {} is not needed, removed.",
+                        self.dom_id, self.id, grpx.region
+                    );
                     del.push(grpx.region.clone());
                 }
             }
@@ -2862,7 +2875,7 @@ impl SomeAction {
         }
 
         // Remove subset groups
-        self.groups_remove_subsets_of(&grp.region);
+        //self.groups_remove_subsets_of(&grp.region);
 
         // Add the new group
         self.add_group(grp);
@@ -2884,7 +2897,7 @@ impl SomeAction {
         // Remove the groups
         for regx in rmvec.iter() {
             println!(
-                "\nDom {} Act {} Group {} is a subset of {reg}",
+                "\nDom {} Act {} Group {} is a subset of {reg}, removed.",
                 self.dom_id, self.id, regx
             );
             self.remove_group(regx);
@@ -2908,6 +2921,9 @@ impl SomeAction {
                 self.dom_id, self.id, grpx
             );
         }
+        // Remove subset groups
+        self.groups_remove_subsets_of(&grpx.region);
+
         self.groups.push(grpx);
         self.agg_chgs_updated = false;
     }
@@ -2915,13 +2931,14 @@ impl SomeAction {
     // Remove a group.
     // This is always used, instead of self.groups.remove_group, to insure
     // that self.agg_chgs_updated is changed.
+    // Caller should print a message to the user.
     pub fn remove_group(&mut self, grp_reg: &SomeRegion) -> bool {
         if self.groups.remove_group(grp_reg) {
             self.agg_chgs_updated = false;
-            println!(
-                "\nDom {} Act {} Group {} deleted",
-                self.dom_id, self.id, grp_reg
-            );
+            //println!(
+            //    "\nDom {} Act {} Group {} deleted",
+            //    self.dom_id, self.id, grp_reg
+            //);
             true
         } else {
             false

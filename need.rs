@@ -121,13 +121,13 @@ pub enum SomeNeed {
         unknown_region: SomeRegion,
     },
     /// Get sample of a state to fill a region, where a square in only one region has been identified.
-    FillRegion {
+    FindSimilarityTo {
         dom_id: usize,
         act_id: usize,
         target: ATarget,
         priority: usize,
-
-        fill_reg: SomeRegion,
+        to_state: SomeState,
+        in_reg: SomeRegion,
     },
     /// Housekeeping, add a group.
     AddGroup {
@@ -145,7 +145,7 @@ impl SomeNeed {
             Self::ConfirmGroup { .. } => "ConfirmGroup",
             Self::ConfirmIP { .. } => "ConfirmIP",
             Self::CloserIP { .. } => "CloserIP",
-            Self::FillRegion { .. } => "FillRegion",
+            Self::FindSimilarityTo { .. } => "FindSimilarityTo",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
             Self::LimitGroupAdj { .. } => "LimitGroupAdj",
@@ -164,7 +164,7 @@ impl SomeNeed {
         match self {
             // By ascending priority number.
             Self::CloserIP { priority, .. } => *priority += 100,
-            Self::FillRegion { priority, .. } => *priority += 125,
+            Self::FindSimilarityTo { priority, .. } => *priority += 125,
             Self::ConfirmIP { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
@@ -191,7 +191,7 @@ impl SomeNeed {
             Self::ExitSelectRegions { priority, .. } => *priority,
             Self::ConfirmIP { priority, .. } => *priority,
             Self::CloserIP { priority, .. } => *priority,
-            Self::FillRegion { priority, .. } => *priority,
+            Self::FindSimilarityTo { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
             Self::LimitGroupAdj { priority, .. } => *priority,
@@ -226,7 +226,7 @@ impl SomeNeed {
             Self::ConfirmGroup { act_id, .. } => *act_id,
             Self::ConfirmIP { act_id, .. } => *act_id,
             Self::CloserIP { act_id, .. } => *act_id,
-            Self::FillRegion { act_id, .. } => *act_id,
+            Self::FindSimilarityTo { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
             Self::LimitGroupAdj { act_id, .. } => *act_id,
@@ -248,7 +248,7 @@ impl SomeNeed {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
             Self::ConfirmIP { dom_id, .. } => Some(*dom_id),
             Self::CloserIP { dom_id, .. } => Some(*dom_id),
-            Self::FillRegion { dom_id, .. } => Some(*dom_id),
+            Self::FindSimilarityTo { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
             Self::LimitGroup { dom_id, .. } => Some(*dom_id),
             Self::LimitGroupAdj { dom_id, .. } => Some(*dom_id),
@@ -314,16 +314,17 @@ impl SomeNeed {
                     _ => panic!("SNH")
                 }
             }
-             Self::FillRegion {
+             Self::FindSimilarityTo {
                 dom_id,
                 act_id,
                 target,
-                fill_reg,
+                to_state,
+                in_reg,
                 priority,
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample of state {target} to fill region {fill_reg})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample of state {target} to find similarity to {to_state} in region {in_reg})")
             }
             Self::ContradictoryIntersection {
                 dom_id,
@@ -456,7 +457,7 @@ impl SomeNeed {
             Self::ConfirmGroup { target, .. } => target,
             Self::ConfirmIP { target, .. } => target,
             Self::CloserIP { target, .. } => target,
-            Self::FillRegion { target, .. } => target,
+            Self::FindSimilarityTo { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,
             Self::LimitGroup { target, .. } => target,
             Self::LimitGroupAdj { target, .. } => target,
