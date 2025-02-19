@@ -5,7 +5,7 @@ The goal is a better and better prediction of the result of sampling (taking a p
 
 This is based on introspection, and an improved interpretation of the Karnaugh Map.
 
-For introspection, see the functions in the file action.rs, confirm_group_needs, limit_group_adj_needs, and incompatible_pair_needs.
+For introspection, see the functions in the file action.rs, limit_group_anchor_needs, confirm_group_needs, limit_group_adj_needs, and incompatible_pair_needs.
 
 Karnaugh Maps have a bug, in encompassing a large number of bits, but there is a work-around. See the top of the file theory.html and max_kmap.jpg.
 
