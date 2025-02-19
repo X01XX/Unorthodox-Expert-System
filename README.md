@@ -3,7 +3,11 @@ An expert of its own state. Rules can be developed, revised, and used without hu
 
 The goal is a better and better prediction of the result of sampling (taking a particular action) of any state. By seeking specific samples, combining pairs of similar samples to form rules that encompass spans of sparsely sampled states, and responding to unexpected samples from the use of imperfect rules.
 
-Based on an improved interpretation of the Karnaugh Map, and introspection.  Karnaugh Maps have a bug, in encompassing a large number of bits, but there is a work-around. See the top of the file theory.html and max_kmap.jpg.
+This is based on introspection, and an improved interpretation of the Karnaugh Map.
+
+For introspection, see the functions in the file action.rs, confirm_group_needs, limit_group_adj_needs, and incompatible_pair_needs.
+
+Karnaugh Maps have a bug, in encompassing a large number of bits, but there is a work-around. See the top of the file theory.html and max_kmap.jpg.
 
 Dissimilar pairs of squares, especially adjacent squares, affect the entire structure of a K-Map, by the formula ~A + ~B.  This can be interpreted as "no possible grouping of squares will include A and B". The effects of multiple dissimilar pairs can be intersected, improving the understanding of the K-Map structure with each new pair, where the region formed by the new pair is a subset of a possible region predicted by previously known pairs.
 
