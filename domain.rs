@@ -21,7 +21,6 @@ use crate::needstore::NeedStore;
 use crate::plan::SomePlan;
 use crate::planstore::PlanStore;
 use crate::region::SomeRegion;
-use crate::regionstore::RegionStore;
 use crate::rule::SomeRule;
 use crate::rulestore::RuleStore;
 use crate::sample::SomeSample;
@@ -119,6 +118,8 @@ pub struct SomeDomain {
     pub actions: ActionStore,
     /// The Current, internal, State.
     pub cur_state: SomeState,
+    /// A aggregate of all samples seen.
+    pub union_all_states: SomeRegion,
 }
 
 /// Implement the PartialEq trait, since two SomeDomain instances.
@@ -152,6 +153,7 @@ impl SomeDomain {
         let mut domx = Self {
             id: dom_id,
             actions: ActionStore::new(vec![]),
+            union_all_states: SomeRegion::new(vec![cur_state.clone()]),
             cur_state,
         };
 
@@ -192,7 +194,8 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
-        self.actions.get_needs(&self.cur_state)
+        self.actions
+            .get_needs(&self.cur_state, &self.union_all_states)
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -214,6 +217,12 @@ impl SomeDomain {
         debug_assert_eq!(ndx.dom_id().unwrap(), self.id);
 
         let asample = self.actions.take_action_need(ndx, &self.cur_state);
+
+        if self.union_all_states.is_superset_of(&asample.result) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&asample.result);
+            self.actions.check_limited(&self.union_all_states);
+        }
         self.set_cur_state(asample.result.clone());
     }
 
@@ -222,6 +231,12 @@ impl SomeDomain {
         debug_assert!(act_id < self.actions.len());
 
         let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
+
+        if self.union_all_states.is_superset_of(&asample.result) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&asample.result);
+            self.actions.check_limited(&self.union_all_states);
+        }
         self.set_cur_state(asample.result.clone());
     }
 
@@ -229,7 +244,24 @@ impl SomeDomain {
     pub fn take_action_arbitrary(&mut self, act_id: usize, astate: &SomeState) {
         debug_assert!(act_id < self.actions.len());
 
+        let previous = self.union_all_states.clone();
+
         let asample = self.actions.take_action_arbitrary(act_id, astate);
+
+        if self.union_all_states.is_superset_of(&asample.initial) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&asample.initial);
+        }
+
+        if self.union_all_states.is_superset_of(&asample.result) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&asample.result);
+        }
+
+        if self.union_all_states != previous {
+            self.actions.check_limited(&self.union_all_states);
+        }
+
         self.set_cur_state(asample.result.clone());
     }
 
@@ -830,38 +862,14 @@ impl SomeDomain {
         steps_str
     }
 
-    /// Return the current maximum region that can be reached from the current state.
-    pub fn reachable_region(&self) -> SomeRegion {
-        self.actions.reachable_region(&self.cur_state)
-    }
-
-    /// Return regions not covered by existing groups.
-    pub fn regions_not_covered(&self, act_id: usize) -> RegionStore {
-        debug_assert!(act_id < self.actions.len());
-
-        let mut ncov = RegionStore::new(vec![]);
-
-        let reachable = self.reachable_region();
-        ncov.push(reachable);
-
-        for grpx in self.actions[act_id].groups.iter() {
-            ncov = ncov.subtract_region(&grpx.region);
-        }
-        ncov
-    }
-
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
     pub fn display_action_anchor_info(&self, act_id: usize) -> Result<(), String> {
         debug_assert!(act_id < self.actions.len());
 
-        let max_region = self.reachable_region();
+        //let max_region = self.reachable_region();
         self.actions[act_id].display_anchor_info()?;
 
-        let whats_left = self.regions_not_covered(act_id);
-        println!(
-            "\nMaximum Region: {}, Regions not covered by a group: {}",
-            max_region, whats_left
-        );
+        println!("\nMaximum Region: {}", self.union_all_states);
         Ok(())
     }
 
@@ -876,18 +884,9 @@ impl SomeDomain {
         self.actions[act_id].display_group_anchor_info(aregion)
     }
 
-    /// Get aggregate changes for a domain.
-    pub fn aggregate_changes(&self) -> Option<&SomeChange> {
-        if let Some(chgs) = &self.actions.aggregate_changes {
-            Some(chgs)
-        } else {
-            None
-        }
-    }
-
     /// Calc aggregate changes, for SessionData initialization.
-    pub fn calc_aggregate_changes(&mut self) {
-        self.actions.calc_aggregate_changes();
+    pub fn calc_aggregate_changes(&self) -> Option<SomeChange> {
+        self.actions.calc_aggregate_changes()
     }
 
     /// Return the total number of groups in all the actions.
@@ -1677,28 +1676,31 @@ mod tests {
         let act1: usize = 1;
 
         // Create a domain that uses one integer for bits.
-        let mut domx = SomeDomain::from_str(
-            "DOMAIN[
-            ACT[[XX/XX/XX/XX]],
-        ]",
-        )?;
+        let mut domx = SomeDomain::new(0, SomeState::from_str("s1101")?);
+        domx.push(SomeAction::from_str("ACT[[XX/XX/Xx/XX]]")?);
+
+        println!("domx {domx}");
+        println!("union_all_states {}", domx.union_all_states);
+        //assert!(1 == 2);
 
         // Start groups.
         let sta_d = SomeState::from_str("s1101")?;
         let sta_f = SomeState::from_str("s1111")?;
 
-        domx.take_action_arbitrary(1, &sta_d);
-        domx.take_action_arbitrary(1, &sta_f);
+        domx.take_action_arbitrary(act1, &sta_d);
+        domx.take_action_arbitrary(act1, &sta_f);
+        println!("union_all_states {}", domx.union_all_states);
 
         // Confirm groups.
-        domx.take_action_arbitrary(1, &sta_d);
-        domx.take_action_arbitrary(1, &sta_f);
-        domx.take_action_arbitrary(1, &sta_d);
-        domx.take_action_arbitrary(1, &sta_f);
+        domx.take_action_arbitrary(act1, &sta_d);
+        domx.take_action_arbitrary(act1, &sta_f);
+        domx.take_action_arbitrary(act1, &sta_d);
+        domx.take_action_arbitrary(act1, &sta_f);
 
         // get_needs checks the limited flag for each group.
         let nds = domx.get_needs();
         println!("\n(1){}", domx.actions[act1]);
+        println!("union_all_states {}", domx.union_all_states);
         println!("needs {}", nds);
 
         let grpx = domx.actions[act1]
@@ -1707,49 +1709,27 @@ mod tests {
             .expect("SNH");
         assert!(grpx.limited);
 
-        // Get needs for a given max_reg.
-        let max_reg = SomeRegion::from_str("rX11X")?;
+        // Get needs for an expanded max_region.
+
+        let max_reg = SomeRegion::from_str("r11XX")?;
         let nds = domx.actions[act1].limit_groups_needs(&max_reg);
         println!("\n(1){}", domx.actions[act1]);
         if let Some(needs) = nds {
             println!("needs {}", needs);
-            assert!(needs.len() == 2);
-            assert!(needs.contains_similar_need(
-                "LimitGroupAdj",
-                &ATarget::State {
-                    state: SomeState::from_str("s1110")?
-                }
-            ));
-            assert!(needs.contains_similar_need(
-                "LimitGroupAdj",
-                &ATarget::State {
-                    state: SomeState::from_str("s0111")?
-                }
-            ));
-        } else {
-            println!("needs []");
-            panic!("SNH");
-        }
-
-        // Get needs for a another max_reg.
-        let max_reg = SomeRegion::from_str("rX10X")?;
-        let nds = domx.actions[act1].limit_groups_needs(&max_reg);
-        println!("\n(2){}", domx.actions[act1]);
-        if let Some(needs) = nds {
-            println!("needs {}", needs);
-            assert!(needs.len() == 2);
-            assert!(needs.contains_similar_need(
-                "LimitGroupAdj",
-                &ATarget::State {
-                    state: SomeState::from_str("s1100")?
-                }
-            ));
-            assert!(needs.contains_similar_need(
-                "LimitGroupAdj",
-                &ATarget::State {
-                    state: SomeState::from_str("s0101")?
-                }
-            ));
+            assert!(needs.len() == 1);
+            assert!(
+                needs.contains_similar_need(
+                    "LimitGroupAdj",
+                    &ATarget::State {
+                        state: SomeState::from_str("s1110")? // anchor is s1111
+                    }
+                ) || needs.contains_similar_need(
+                    "LimitGroupAdj",
+                    &ATarget::State {
+                        state: SomeState::from_str("s1100")? // anchor is s1101.
+                    }
+                )
+            );
         } else {
             println!("needs []");
             panic!("SNH");

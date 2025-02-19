@@ -305,13 +305,6 @@ impl DomainStore {
         self.items[dom_id].take_action_arbitrary(act_id, astate);
     }
 
-    /// Calc aggregate changes, for SessionData initialization.
-    pub fn calc_aggregate_changes(&mut self) {
-        for itemx in self.items.iter_mut() {
-            itemx.calc_aggregate_changes();
-        }
-    }
-
     /// Collect steps that contain at least one wanted change.
     pub fn get_steps_domain(
         &self,

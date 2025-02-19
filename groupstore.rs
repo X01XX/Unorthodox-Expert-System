@@ -39,7 +39,7 @@ impl GroupStore {
     }
 
     /// Calculate and return the aggregate changes of all group rules.
-    pub fn calc_aggregate_changes(&mut self) -> Option<SomeChange> {
+    pub fn calc_aggregate_changes(&self) -> Option<SomeChange> {
         let mut aggregate_changes: Option<SomeChange> = None;
 
         for grpx in &self.items {
@@ -70,21 +70,6 @@ impl GroupStore {
             }
         }
         num_grps == 1
-    }
-
-    /// Return the remainder of a group region after subtracting other group regions.
-    pub fn remainder(&self, grp_inx: usize) -> RegionStore {
-        let mut ret = RegionStore::new(vec![self.items[grp_inx].region.clone()]);
-
-        for (inx, grpx) in self.items.iter().enumerate() {
-            if inx == grp_inx {
-                continue;
-            }
-            if ret.any_intersection_of(&grpx.region) {
-                ret = ret.subtract_region(&grpx.region);
-            }
-        }
-        ret
     }
 
     /// Return the groups regions an item is in.
@@ -155,16 +140,6 @@ impl GroupStore {
             }
         }
         ret_str
-    }
-
-    /// Return true if any group is not limited.
-    pub fn any_not_limited(&self) -> bool {
-        for grpx in self.items.iter() {
-            if !grpx.limited {
-                return true;
-            }
-        }
-        false
     }
 
     /// Return regions of any group is a subset, or equal, to a region.

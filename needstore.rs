@@ -94,16 +94,6 @@ impl NeedStore {
         rc_str
     }
 
-    /// Return true if a kind of state is in the NeedStore.
-    pub fn kind_is_in(&self, name: &str) -> bool {
-        for needx in &self.items {
-            if needx.name() == name {
-                return true;
-            }
-        }
-        false
-    }
-
     /// Remove a need by index.
     pub fn remove(&mut self, inx: usize) {
         self.items.remove(inx);

@@ -835,7 +835,7 @@ impl SessionData {
 
         println!(
             "\nDom: {dom_id} Current State: {cur_state} Available changes: {}",
-            if let Some(agg_cngs) = self.domains[dom_id].aggregate_changes() {
+            if let Some(agg_cngs) = self.domains[dom_id].calc_aggregate_changes() {
                 format!("{agg_cngs}")
             } else {
                 "None".to_string()
@@ -1627,11 +1627,6 @@ impl SessionData {
         self.domains.take_action_arbitrary(dom_id, act_id, astate);
     }
 
-    /// Calculate aggregate changes, for SessionData initialization.
-    pub fn calc_aggregate_changes(&mut self) {
-        self.domains.calc_aggregate_changes();
-    }
-
     /// Collect steps that contain at least one wanted change.
     pub fn get_steps_domain(
         &self,
@@ -1745,7 +1740,6 @@ impl FromStr for SessionData {
         }
         // Finish up.
         sdx.calc_select();
-        sdx.calc_aggregate_changes();
 
         Ok(sdx)
     }

@@ -63,10 +63,6 @@ pub struct SomeAction {
     pub squares: SquareStore,
     /// Number of new squares since last cleanup.
     cleanup_number_new_squares: usize,
-    /// Changes possible for all groups.
-    aggregate_changes: Option<SomeChange>,
-    /// An indicator that the changes possible were recently updated.
-    pub agg_chgs_updated: bool,
     /// Group regions recently marked as limited.
     limited: RegionStore,
     /// Initial rules given to generate samples.
@@ -131,8 +127,6 @@ impl SomeAction {
             groups: GroupStore::new(vec![]),
             squares: SquareStore::new(HashMap::new(), num_bits),
             cleanup_number_new_squares: 0,
-            aggregate_changes: None,
-            agg_chgs_updated: false,
             limited: RegionStore::new(vec![]),
             base_rules: rules,
         }
@@ -876,7 +870,7 @@ impl SomeAction {
         }
 
         // For a square in an adjacent pair, if it is in only one region,
-        // check if there are samples to fill the region.
+        // check the far square in the region for similarity.
         for stax in adj_states.iter() {
             let sups = max_regions.supersets_of(*stax);
             if sups.len() == 1 {
@@ -949,7 +943,7 @@ impl SomeAction {
                 }
             }
 
-            // Don't delete squares in groups.
+            // Don't delete squares that define groups.
             for grpx in self.groups.iter() {
                 if grpx.is_superset_of(keyx) {
                     for stax in grpx.region.states.iter() {
@@ -980,7 +974,7 @@ impl SomeAction {
             }
 
             // Don't delete squares that are not in a group.
-            // That is, squares with Pn: > One that need more samples.
+            // That is, some squares with Pn: > One that need more samples.
             if self.groups.num_groups_in(keyx) == 0 {
                 continue;
             }
@@ -1007,7 +1001,7 @@ impl SomeAction {
 
     /// Get additional sample needs for the states that form a group.
     /// Should only affect groups with Pn::One.
-    /// Groups closer to the beginning of the group will have priority due to lower group number.
+    /// Groups closer to the beginning of the group store vector will have priority due to lower group number.
     pub fn confirm_group_needs(&mut self) -> NeedStore {
         //println!("action::confirm_group_needs: Dom {} Act {}", self.dom_id, self.id);
         let mut ret_nds = NeedStore::new(vec![]);
@@ -2432,24 +2426,10 @@ impl SomeAction {
     }
 
     /// Return a change with all changes that can be made for the action.
-    pub fn aggregate_changes(&mut self) -> Option<&SomeChange> {
+    pub fn calc_aggregate_changes(&self) -> Option<SomeChange> {
         //println!("SomeAction::aggregate_changes: Act {}", self.id);
-        if self.agg_chgs_updated {
-        } else {
-            self.aggregate_changes = self.groups.calc_aggregate_changes();
-            self.agg_chgs_updated = true;
-        }
-        if let Some(changes) = &self.aggregate_changes {
-            Some(changes)
-        } else {
-            None
-        }
-    }
 
-    /// Reset to GroupStore agg_chgs_updated flag, after the incorporation
-    /// of its aggregate changes into the parent ActionStore struct.
-    pub fn reset_agg_chgs_updated(&mut self) {
-        self.agg_chgs_updated = false;
+        self.groups.calc_aggregate_changes()
     }
 
     /// Display anchor rates, like (number adjacent anchors, number other adjacent squares only in one region, samples)
@@ -2760,7 +2740,6 @@ impl SomeAction {
         self.groups_remove_subsets_of(&grpx.region);
 
         self.groups.push(grpx);
-        self.agg_chgs_updated = false;
     }
 
     // Remove a group.
@@ -2769,7 +2748,6 @@ impl SomeAction {
     // Caller should print a message to the user.
     pub fn remove_group(&mut self, grp_reg: &SomeRegion) -> bool {
         if self.groups.remove_group(grp_reg) {
-            self.agg_chgs_updated = false;
             //println!(
             //    "\nDom {} Act {} Group {} deleted",
             //    self.dom_id, self.id, grp_reg
@@ -3027,7 +3005,7 @@ mod tests {
         println!("Act: {}", act0);
         println!("needs: {}", nds);
 
-        assert!(nds.kind_is_in("LimitGroupAdj"));
+        assert!(nds.contains_need_type("LimitGroupAdj"));
         assert!(act0.groups.len() == 1);
 
         Ok(())
@@ -3082,62 +3060,42 @@ mod tests {
     }
 
     #[test]
-    fn aggregate_changes() -> Result<(), String> {
+    fn calc_aggregate_changes() -> Result<(), String> {
         // Init action.
         let mut act0 = SomeAction::from_str("ACT[[00/00/10/00], [01/11/00/X0]]")?;
 
         // Set up square 2.
         act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
 
+        println!("act0: {act0}");
         assert!(act0.groups.len() == 1);
-        // Group is not yet pnc, so no aggregate changes.
-        assert!(act0.aggregate_changes.is_none());
 
-        // Confirm group 2.
-        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
+        assert!(act0.calc_aggregate_changes() == Some(SomeChange::from_str("../../10/..")?));
 
-        if let Some(cngs) = act0.aggregate_changes() {
-            println!("agg cncs (1) {cngs}");
-        } else {
-            println!("agg cncs (1) None");
-        }
-        assert!(act0.aggregate_changes() == Some(&SomeChange::from_str("../../10/..")?));
-
-        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
-
-        if let Some(change2) = act0.aggregate_changes() {
-            println!("change2 {change2}");
-            assert!(*change2 == SomeChange::from_str("../../10/..")?);
-        } else {
-            return Err("Test 2 failed".to_string());
-        }
-
-        // Make group 45, pnc.
+        // Make group 45.
         act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
         act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
+        println!("act0: {act0}");
         assert!(act0.groups.len() == 2);
 
-        if let Some(change3) = act0.aggregate_changes() {
+        if let Some(change3) = act0.calc_aggregate_changes() {
             println!("change3 {change3}");
-            assert!(*change3 == SomeChange::from_str("01/../10/10")?);
+            assert!(change3 == SomeChange::from_str("01/../10/10")?);
         } else {
             return Err("Test 3 failed".to_string());
         }
 
         // Make square 5 unpredictable.
         act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s1111")?);
+        act0.eval_sample_arbitrary(&SomeSample::from_str("s0101->s0111")?);
 
+        println!("act0: {act0}");
         assert!(act0.groups.len() == 3); // groups 0010, 0100, 0101 (unpredictable).
 
-        if let Some(change4) = act0.aggregate_changes() {
+        if let Some(change4) = act0.calc_aggregate_changes() {
             println!("change4 {change4}");
-            assert!(*change4 == SomeChange::from_str("01/../10/..")?);
+            assert!(change4 == SomeChange::from_str("01/../10/..")?);
         } else {
             return Err("Test 4 failed".to_string());
         }
