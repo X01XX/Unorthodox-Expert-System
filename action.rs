@@ -1151,7 +1151,7 @@ impl SomeAction {
 
                 let regx = self.groups[group_num].region.clone();
 
-                let ndsx = self.limit_group_anchor_needs(&regx, group_num, max_reg);
+                let ndsx = self.limit_group_anchor_needs(&regx, group_num);
                 if ndsx.is_not_empty() {
                     ret_nds.append(ndsx);
                     continue;
@@ -1209,24 +1209,16 @@ impl SomeAction {
     }
 
     /// Return a rate for a possible anchor for a group.
-    /// The rate will be a tuple containing:
-    ///     The number of adjacent states that are anchors of other groups,
-    ///     The number adjacent states that are in only one group,
-    ///     The number of samples taken for the anchor state and adjacent states.
-    /// To set an anchor, a square with at least one sample is required, but ..
-    /// To rate a possible anchor state, no sample of the state is requried.
-    /// When comparing tuples, Rust compares item pairs in order until there is a difference.
-    pub fn group_anchor_rate(&self, regx: &SomeRegion, stax: &SomeState) -> (usize, usize, usize) {
+    /// The number adjacent states that are in only one group,
+    pub fn group_anchor_rate(&self, regx: &SomeRegion, stax: &SomeState) -> usize {
         debug_assert_eq!(regx.num_bits(), self.num_bits);
         debug_assert_eq!(stax.num_bits(), self.num_bits);
 
         if !self.groups.in_1_group(stax) {
-            return (0, 0, 0);
+            return 0;
         }
 
-        let mut anchors = 0;
         let mut in_1_group = 0;
-        let mut sqr_samples = 0;
 
         // Get masks of edge bits to use to limit group.
         let edge_msks = regx.edge_mask().split();
@@ -1235,94 +1227,65 @@ impl SomeAction {
         for edge_bit in edge_msks.iter() {
             let sta_adj = stax.bitwise_xor(edge_bit).as_state();
 
-            let stats = self.groups.in_one_anchor(&sta_adj);
-
-            if stats == Some(true) {
-                anchors += 1;
-            } else if stats == Some(false) {
+            if self.groups.in_1_group(&sta_adj) {
                 in_1_group += 1;
-            }
-
-            if let Some(sqrx) = self.squares.find(&sta_adj) {
-                sqr_samples += sqrx.rate();
             }
         } // next edge_bit
 
-        // Get anchor samples.
-        if let Some(sqrx) = self.squares.find(stax) {
-            sqr_samples += sqrx.rate();
-        }
-
-        (anchors, in_1_group, sqr_samples)
+        in_1_group
     }
 
     /// Return the limiting anchor needs for a group.
     /// If no state in the group is in only one group, return None.
     /// If an existing anchor has the same, or better, rating than other possible states,
-    /// return None.
-    pub fn limit_group_anchor_needs(
-        &mut self,
-        regx: &SomeRegion,
-        group_num: usize,
-        max_reg: &SomeRegion,
-    ) -> NeedStore {
+    /// retain it, else replace it.
+    /// If the anchor is not pnc, return a need to get an additional sample.
+    pub fn limit_group_anchor_needs(&mut self, regx: &SomeRegion, group_num: usize) -> NeedStore {
         //println!(
         //    "action::limit_group_anchor_needs: Dom {} Act {} group {regx} max_reg {max_reg}",
         //    self.dom_id, self.id
         //);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
-        debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
-        let mut ret_nds = NeedStore::new(vec![]);
+        // Check group anchor, if any, is still in only one group.
+        let mut grp_anchor: Option<SomeState> = None;
 
-        let adj_squares = self.squares.stas_adj_reg(regx);
-
-        // For adjacent (other group) anchors,
-        // store corresponding state in group region,
-        // which has not have been sampled yet.
-        let mut stas_in: StateStore = self.squares.stas_in_reg(regx);
-
-        // Home for additional states, that have not been sampled yet, so their
-        // reference can be pushed to the stas_in vector.
-        let mut additional_stas = Vec::<SomeState>::new();
-
-        for ancx in adj_squares.iter() {
-            // Calc state in group that corresponds to an adjacent anchor.
-            let stay = ancx.bitwise_xor(&regx.diff_edge_mask(ancx)).as_state();
-
-            // Check if the state has not been sampled already.
-            if !stas_in.contains(&stay) {
-                // The state may be in the vertor already, due to being
-                // adjacent to more than one external regions' anchor.
-                if !additional_stas.contains(&stay) {
-                    additional_stas.push(stay);
+        if let Some(grpx) = self.groups.find(regx) {
+            if let Some(stax) = &grpx.anchor {
+                grp_anchor = Some(stax.clone());
+            }
+        } else {
+            panic!("SNH");
+        }
+        if let Some(stax) = &grp_anchor {
+            if !self.groups.in_1_group(stax) {
+                println!("anchor {stax} in group {regx} removed, no longer in only one group.");
+                if let Some(grpx) = self.groups.find_mut(regx) {
+                    grpx.set_anchor_off();
+                    grp_anchor = None;
                 }
             }
         }
-        // Add additional state references to stas_in vector.
-        for stax in additional_stas.iter() {
-            stas_in.push(stax.clone());
-        }
+
+        // Identify, and rate, all squares in the group region that are only in one region.
+        let mut ret_nds = NeedStore::new(vec![]);
+
+        // Get square states in the group region.
+        let stas_in: StateStore = self.squares.stas_in_reg(regx);
 
         //println!("action::limit_group_anchor_needs: stas to check {stas_in}");
 
-        //println!("shared regions {shared_regions}");
+        // For each state in the group, not in any other group,
+        // Calculate a rate, based on the number of adjacent states outside of the group,
+        // that are also only in one group.
+        let mut max_rate = 0;
 
-        // For each state, sta1, only in the group region, greg:
-        //
-        //  Calculate each state, sta_adj, adjacent to sta1, outside of greg.
-        //
-        //  Calculate a rate for each sta1 option, based on the number of adjacent states
-        //  in only one group.
-        let mut max_rate = (0, 0, 0);
-
-        // Create a StateStore composed of anchor, far, and adjacent-external states.
+        // Create a vector for states with the maximum rate.
         let mut cfmv_max = Vec::<&SomeState>::new();
 
         for stax in stas_in.iter() {
             // Potential new anchor must be in only one group.
-            if !self.groups.in_1_group(stax) || !max_reg.is_superset_of(stax) {
-                //println!("stax for anchor {stax} in group {} skipped", regx);
+            if !self.groups.in_1_group(stax) {
                 continue;
             }
 
@@ -1344,71 +1307,79 @@ impl SomeAction {
             }
         } // next stax
 
+        // Check that at least one square only in one region was found.
         if cfmv_max.is_empty() {
             //println!("group {} cfmv_max empty", regx);
-            return NeedStore::new(vec![]);
+            return ret_nds;
         }
 
-        // Check current anchor, if any
-        let grpx_anchor = self.groups.find(regx).as_ref().expect("SNH").anchor.clone();
-        if let Some(anchor) = &grpx_anchor {
-            //println!("anchor {} cfmv_max {}", anchor, cfmv_max);
-            if cfmv_max.contains(&anchor) {
-                //println!("group {} anchor {} still good, cfmv_max", grpx.region, anchor);
-                let anchor_sqr = self
-                    .squares
-                    .find(anchor)
-                    .expect("Group anchor state should refer to an existing square");
-
-                if anchor_sqr.pnc {
-                    //println!("group {} anchor {} pnc", regx, anchor);
-                    return NeedStore::new(vec![]);
+        // Check if current anchor, if any, is rated below other possibilities.
+        // If so, remove it, else check if it needs more samples.
+        if let Some(stax) = &grp_anchor {
+            if cfmv_max.contains(&stax) {
+                // Current anchor, still GE rate of any others.
+                if let Some(sqrx) = self.squares.find(stax) {
+                    if sqrx.pnc {
+                    } else {
+                        // Get additional samples.
+                        let mut needx = SomeNeed::LimitGroup {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            anchor: stax.clone(),
+                            target: ATarget::State {
+                                state: stax.clone(),
+                            },
+                            for_group: regx.clone(),
+                            priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                        };
+                        needx.add_priority_base();
+                        ret_nds.push(needx);
+                    }
+                } else {
+                    panic!("SNH");
                 }
-
-                // Get additional samples of the anchor
-                let mut needx = SomeNeed::LimitGroup {
-                    dom_id: self.dom_id,
-                    act_id: self.id,
-                    anchor: anchor.clone(),
-                    target: ATarget::State {
-                        state: anchor.clone(),
-                    },
-                    for_group: regx.clone(),
-                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
-                };
-                needx.add_priority_base();
-                ret_nds.push(needx);
-
-                //println!("Returning {ret_nds}");
-
                 return ret_nds;
+            } else {
+                println!(
+                    "anchor {stax} in group {regx} removed, rate {} below {max_rate}",
+                    self.group_anchor_rate(regx, stax)
+                );
+                if let Some(grpx) = self.groups.find_mut(regx) {
+                    grpx.set_anchor_off();
+                }
             }
         }
 
-        // Select an anchor
+        // Select an anchor, get needs.
         let mut cfm_max = cfmv_max[0];
 
         if cfmv_max.len() > 1 {
             cfm_max = cfmv_max[rand::rng().random_range(0..cfmv_max.len())];
         }
 
-        if let Some(_sqrx) = self.squares.find(cfm_max) {
-            self.groups.find_mut(regx).expect("SNH").set_anchor(cfm_max);
-            return NeedStore::new(vec![]);
+        // Set new anchor.
+        self.groups.find_mut(regx).expect("SNH").set_anchor(cfm_max);
+
+        // Check if more samples are needed.
+        if let Some(sqrx) = self.squares.find(cfm_max) {
+            if sqrx.pnc {
+            } else {
+                // Get additional samples.
+                let mut needx = SomeNeed::LimitGroup {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    anchor: cfm_max.clone(),
+                    target: ATarget::State {
+                        state: cfm_max.clone(),
+                    },
+                    for_group: regx.clone(),
+                    priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                };
+                needx.add_priority_base();
+                ret_nds.push(needx);
+            }
         } else {
-            // Potential anchor not sampled yet.
-            let mut needx = SomeNeed::LimitGroup {
-                dom_id: self.dom_id,
-                act_id: self.id,
-                anchor: cfm_max.clone(),
-                target: ATarget::State {
-                    state: cfm_max.clone(),
-                },
-                for_group: regx.clone(),
-                priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
-            };
-            needx.add_priority_base();
-            ret_nds.push(needx);
+            panic!("SNH");
         }
         ret_nds
     } // end limit_group_anchor_needs
