@@ -1107,7 +1107,7 @@ impl SomeAction {
 
         let mut ret_nds = NeedStore::new(vec![]);
 
-        // Reset limited indicator to recheck.
+        // Reset limited indicator to recheck, if maximum region changes.
         for grpx in self.groups.iter_mut() {
             if !grpx.pnc {
                 continue;
@@ -1132,55 +1132,44 @@ impl SomeAction {
         }
 
         // Get anchor needs.
-        let mut try_again = true;
-        while try_again {
-            try_again = false;
 
-            // Gather group anchor adjacent needs.
-            // Possibly decide to turn the limited flag on.
-            let mut set_on = Vec::<(SomeRegion, SomeMask)>::new();
+        // Gather group anchor adjacent needs.
+        // Possibly decide to turn the limited flag on.
+        let mut set_on = Vec::<(SomeRegion, SomeMask)>::new();
 
-            for group_num in 0..self.groups.len() {
-                if !self.groups[group_num].pnc {
+        for group_num in 0..self.groups.len() {
+            if !self.groups[group_num].pnc {
+                continue;
+            }
+
+            let regx = self.groups[group_num].region.clone();
+
+            let ndsx = self.limit_group_anchor_needs(&regx, group_num);
+            if ndsx.is_not_empty() {
+                ret_nds.append(ndsx);
+                continue;
+            }
+
+            if let Some(anchor) = self.groups[group_num].anchor.clone() {
+                if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num) {
+                    ret_nds.append(ndx);
                     continue;
-                }
-
-                if self.groups[group_num].limited {
-                    continue;
-                }
-
-                let regx = self.groups[group_num].region.clone();
-
-                let ndsx = self.limit_group_anchor_needs(&regx, group_num);
-                if ndsx.is_not_empty() {
-                    ret_nds.append(ndsx);
-                    continue;
-                }
-
-                if let Some(anchor) = self.groups[group_num].anchor.clone() {
-                    if max_reg.is_superset_of(&anchor) {
-                        if let Some(ndx) =
-                            self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num)
-                        {
-                            ret_nds.append(ndx);
-                            continue;
-                        } else {
-                            let edges = self.groups[group_num]
-                                .region
-                                .edge_mask()
-                                .bitwise_and(&max_reg.x_mask());
-                            set_on.push((regx, edges));
-                        }
+                } else if self.groups[group_num].limited {
+                    } else {
+                        let edges = self.groups[group_num]
+                            .region
+                            .edge_mask()
+                            .bitwise_and(&max_reg.x_mask());
+                        set_on.push((regx, edges));
                     }
-                }
+                
             }
+        }
 
-            // Set limited on for selected groups.
-            for (grp_reg, edges) in set_on {
-                self.set_group_limited(&grp_reg, edges);
-                try_again = true;
-            }
-        } // end try_again
+        // Set limited on for selected groups.
+        for (grp_reg, edges) in set_on {
+            self.set_group_limited(&grp_reg, edges);
+        }
 
         if ret_nds.is_not_empty() {
             return Some(ret_nds);
@@ -1247,7 +1236,7 @@ impl SomeAction {
         //);
         debug_assert_eq!(regx.num_bits(), self.num_bits);
 
-        // Check group anchor, if any, is still in only one group.
+        // Check group anchor, if any.
         let mut grp_anchor: Option<SomeState> = None;
 
         if let Some(grpx) = self.groups.find(regx) {
@@ -1256,15 +1245,6 @@ impl SomeAction {
             }
         } else {
             panic!("SNH");
-        }
-        if let Some(stax) = &grp_anchor {
-            if !self.groups.in_1_group(stax) {
-                println!("anchor {stax} in group {regx} removed, no longer in only one group.");
-                if let Some(grpx) = self.groups.find_mut(regx) {
-                    grpx.set_anchor_off();
-                    grp_anchor = None;
-                }
-            }
         }
 
         // Identify, and rate, all squares in the group region that are only in one region.
