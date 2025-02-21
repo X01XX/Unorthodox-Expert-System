@@ -67,6 +67,8 @@ pub struct SomeAction {
     limited: RegionStore,
     /// Initial rules given to generate samples.
     base_rules: Vec<RuleStore>,
+    /// Store for calculated defining regions.
+    defining_regions: RegionStore,
 }
 
 /// Implement the PartialEq trait, since two SomeAction instances.
@@ -129,6 +131,7 @@ impl SomeAction {
             cleanup_number_new_squares: 0,
             limited: RegionStore::new(vec![]),
             base_rules: rules,
+            defining_regions: RegionStore::new(vec![]),
         }
     }
 
@@ -145,6 +148,11 @@ impl SomeAction {
     /// Set the domain id field.
     pub fn set_dom_id(&mut self, dom_id: usize) {
         self.dom_id = dom_id;
+    }
+
+    /// Set the defining_regions field.
+    pub fn set_defining_regions(&mut self, defining: RegionStore) {
+        self.defining_regions = defining;
     }
 
     /// Add a new square from a sample.
@@ -588,7 +596,7 @@ impl SomeAction {
                 panic!("Housekeeping infinite loop?");
             }
 
-            nds = NeedStore::new(vec![]);
+            nds = self.incompatible_pair_needs(max_reg);
 
             // Check for additional samples for group states needs
             nds.append(self.confirm_group_needs());
@@ -622,20 +630,23 @@ impl SomeAction {
         // Look for needs for states not in groups
         nds.append(self.state_not_in_group_needs(cur_state));
 
-        nds.append(self.incompatible_pair_needs(max_reg));
+        //nds.append(self.incompatible_pair_needs(max_reg));
 
         nds
     } // end get_needs
 
     /// Return needs for incompatible square pairs.
     /// An inchoate perception, translated into code.
-    fn incompatible_pair_needs(&self, max_reg: &SomeRegion) -> NeedStore {
+    fn incompatible_pair_needs(&mut self, max_reg: &SomeRegion) -> NeedStore {
         // Init NeedStore to return.
         let mut nds = NeedStore::new(vec![]);
+
+        let defining_regions = RegionStore::new(vec![max_reg.clone()]);
 
         // Check each possible square pair.
         let sqrs: Vec<&SomeSquare> = self.squares.all_squares();
         if sqrs.len() < 2 {
+            self.set_defining_regions(defining_regions);
             return nds;
         }
 
@@ -655,6 +666,7 @@ impl SomeAction {
         }
         // Check for none found.
         if incompat_regions.is_empty() {
+            self.set_defining_regions(defining_regions);
             return nds;
         }
 
@@ -714,7 +726,7 @@ impl SomeAction {
         for regx in poss_regions.iter() {
             let mut whats_left = RegionStore::new(vec![regx.clone()]);
             for regy in poss_regions.iter() {
-                if regy == regx {
+                if std::ptr::eq(regy, regx) {
                     continue;
                 }
                 if regy.intersects(regx) {
@@ -726,6 +738,7 @@ impl SomeAction {
             }
         }
         //println!("defining_regions: {defining_regions}");
+        self.set_defining_regions(defining_regions);
 
         // Filter non-adjacent pairs, favoring states that are already in an adjacent pair.
 
@@ -741,13 +754,13 @@ impl SomeAction {
         }
 
         // Check correspondence of group anchors and adjacent dissimilar states.
-        //        if defining_regions.len() > 1 {
+        //        if self.defining_regions.len() > 1 {
         //            println!("adjacent_pairs:     {adjacent_pairs}");
         //            for regx in adjacent_pairs.iter() {
         //                println!("   pair: {regx}");
         //                let mut regs = vec![];
         //                let stax = regx.first_state();
-        //                for regx in defining_regions.iter() {
+        //                for regx in self.defining_regions.iter() {
         //                    if regx.is_superset_of(stax) {
         //                        regs.push(regx.clone());
         //                    }
@@ -756,7 +769,7 @@ impl SomeAction {
         //
         //                let mut regs = vec![];
         //                let stax = regx.last_state();
-        //                for regx in defining_regions.iter() {
+        //                for regx in self.defining_regions.iter() {
         //                    if regx.is_superset_of(stax) {
         //                        regs.push(regx.clone());
         //                    }
@@ -767,7 +780,7 @@ impl SomeAction {
         //            println!("adj_states:     {}", tools::vec_ref_string(&adj_states));
         //            for stax in adj_states.iter() {
         //                let mut regs = vec![];
-        //                for regx in defining_regions.iter() {
+        //                for regx in self.defining_regions.iter() {
         //                    if regx.is_superset_of(*stax) {
         //                        regs.push(regx.clone());
         //                    }
@@ -810,7 +823,7 @@ impl SomeAction {
         for regx in non_adjacent_pairs.iter() {
             //println!("Processing non-adjacent Incompatible pair: {regx}");
             // Check if a pair is wholly within a possible region.
-            if defining_regions.any_superset_of(regx) {
+            if self.defining_regions.any_superset_of(regx) {
                 // Get squares represented by the states.
                 let Some(sqrx) = self.squares.find(regx.first_state()) else {
                     panic!("SNH");
@@ -942,7 +955,7 @@ impl SomeAction {
         // For a square in an adjacent pair, if it is in only one region,
         // check the far square in the region for similarity.
         for stax in adj_states.iter() {
-            let sups = defining_regions.supersets_of(*stax);
+            let sups = self.defining_regions.supersets_of(*stax);
             if sups.len() == 1 {
                 // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
                 // Confirm region, or find new dissimilar square pair.
@@ -2541,6 +2554,10 @@ impl SomeAction {
 
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
+
+        if self.defining_regions.len() > 1 {
+            rc_str += &format!(", calculated defining regions: {}", self.defining_regions);
+        }
 
         //rc_str.push_str(&format!(", agg_chgs_updated {}", self.agg_chgs_updated));
 
