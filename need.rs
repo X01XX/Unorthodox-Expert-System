@@ -25,13 +25,18 @@ impl fmt::Display for SomeNeed {
 /// Enums that represent a number of different needs.
 pub enum SomeNeed {
     /// Sample a state that is not in a group, often the current state.
-    /// Used to bootstrap the formation of single-result groups.
-    /// Some single-result groups, with a tenuous grip, due to few samples, will be invalidated upon use,
-    /// but some will work.  Those groups that work will allow changing the current state to sample, and resample,
+    ///
+    /// Used to bootstrap the formation of single-result groups, defined by squares with a low number of samples.
+    ///
+    /// Some single-result low-number-samples-per-defining-state groups, will be invalidated upon use,
+    /// because further sampling would reveal a more complicated rule sructure, or the defining states may become a two-result state,
+    /// or an unpredictable state.
+    ///
+    /// Those groups that work will allow changing the current state to sample, and resample,
     /// states as needed.
     ///
-    /// This is also used to resample states that produce more that one result, to establish predictability, or unpredictability,
-    /// before creating a group.
+    /// This is also used to resample states that produce more than one result, to establish predictability, or unpredictability,
+    /// before creating a group defined by such states.
     StateNotInGroup {
         dom_id: usize,
         act_id: usize,
