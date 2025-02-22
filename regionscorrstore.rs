@@ -203,15 +203,15 @@ impl RegionsCorrStore {
             let mut ints = Self::new(vec![]);
 
             // Subtract intersections from each region.
-            for inx in 0..remaining.len() {
-                let mut left_over = Self::new(vec![remaining[inx].clone()]);
+            for rcx in remaining.iter() {
+                let mut left_over = Self::new(vec![rcx.clone()]);
 
-                for iny in 0..remaining.len() {
-                    if iny == inx {
-                        // don't subtract remaining[inx] from itself.
+                for rcy in remaining.iter() {
+                    if std::ptr::eq(rcy, rcx) {
+                        // don't subtract rcx from itself.
                         continue;
                     }
-                    if let Some(reg_int) = remaining[inx].intersection(&remaining[iny]) {
+                    if let Some(reg_int) = rcx.intersection(rcy) {
                         left_over = left_over.subtract_regionscorr(&reg_int);
                         if !ints.contains(&reg_int) {
                             ints.push(reg_int);

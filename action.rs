@@ -584,6 +584,8 @@ impl SomeAction {
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
+        let pair_nds = self.incompatible_pair_needs(max_reg);
+
         let mut nds = NeedStore::new(vec![]);
 
         // loop until no housekeeping need is returned.
@@ -595,8 +597,6 @@ impl SomeAction {
             if count > 20 {
                 panic!("Housekeeping infinite loop?");
             }
-
-            nds = self.incompatible_pair_needs(max_reg);
 
             // Check for additional samples for group states needs
             nds.append(self.confirm_group_needs());
@@ -625,12 +625,15 @@ impl SomeAction {
                     try_again = true;
                 }
             } // next ndx
+            if try_again {
+                nds = NeedStore::new(vec![]);
+            }
         } // end loop
 
         // Look for needs for states not in groups
         nds.append(self.state_not_in_group_needs(cur_state));
 
-        //nds.append(self.incompatible_pair_needs(max_reg));
+        nds.append(pair_nds);
 
         nds
     } // end get_needs
@@ -707,10 +710,6 @@ impl SomeAction {
                 }
             }
         }
-        // If any adjacent incompatible pair needs, return them.
-        if nds.is_not_empty() {
-            return nds;
-        }
 
         // Calc possible regions.
         let mut poss_regions = RegionStore::new(vec![max_reg.clone()]);
@@ -720,6 +719,25 @@ impl SomeAction {
             poss_regions = poss_regions.intersection(&regs1.union(&regs2));
         }
         //println!("poss_regions: {poss_regions}");
+
+        // Collect incompatible adjacent square states. Some may be in more than one region.
+        let mut adj_states = StateStore::new(vec![]);
+        for reg_adj in adjacent_pairs.iter() {
+            for stax in reg_adj.iter() {
+                if adj_states.contains(stax) {
+                } else {
+                    adj_states.push(stax.clone());
+                }
+            }
+        }
+
+        // Create a vector of adjacent dissimilar states that are only in one region.
+        let mut adj_states_in_1 = StateStore::new(vec![]);
+        for stax in adj_states.iter() {
+            if defining_regions.in_one_region(stax) {
+                adj_states_in_1.push(stax.clone());
+            }
+        }
 
         // Filter out regions with no part only in one region.
         let mut defining_regions = RegionStore::new(vec![]);
@@ -737,79 +755,54 @@ impl SomeAction {
                 defining_regions.push(regx.clone());
             }
         }
-        //println!("defining_regions: {defining_regions}");
-        self.set_defining_regions(defining_regions);
 
-        // Filter non-adjacent pairs, favoring states that are already in an adjacent pair.
+        // Change defining regions to have a first state, that:
+        // Is used to define a region in the adjacent_pairs RegionStore.
+        // Is only in one region.
+        // If there are more than one possible states so far,
+        // chose one that is in the greatest number of adjacent pairs.
+        let mut defining_regions2 = RegionStore::with_capacity(defining_regions.len());
+        for regx in defining_regions.iter() {
+            // Get states in the defining region.
+            let stas_in = adj_states_in_1.stas_in_reg(regx);
+            if stas_in.is_empty() {
+                defining_regions2.push(regx.clone());
+                continue;
+            }
 
-        // Collect incompatible adjacent square states. Some may be in more than one region.
-        let mut adj_states = Vec::<&SomeState>::new();
-        for reg_adj in adjacent_pairs.iter() {
-            for stax in reg_adj.iter() {
-                if adj_states.contains(&stax) {
-                } else {
-                    adj_states.push(stax);
+            // Get states in the most number of adjacent pairs.
+            let mut max_num_pairs = 1;
+            let mut in_max_pairs = Vec::<&SomeState>::new();
+
+            for stax in stas_in.iter() {
+                let count = adjacent_pairs.num_regions_in(*stax);
+                if count > max_num_pairs {
+                    max_num_pairs = count;
+                    in_max_pairs = Vec::<&SomeState>::new();
+                }
+                if count == max_num_pairs {
+                    in_max_pairs.push(stax);
                 }
             }
+            // Add regx with specfic defining states.
+            defining_regions2.push(SomeRegion::new(vec![
+                in_max_pairs[0].clone(),
+                regx.far_from(in_max_pairs[0]),
+            ]));
         }
 
-        // Check correspondence of group anchors and adjacent dissimilar states.
-        //        if self.defining_regions.len() > 1 {
-        //            println!("adjacent_pairs:     {adjacent_pairs}");
-        //            for regx in adjacent_pairs.iter() {
-        //                println!("   pair: {regx}");
-        //                let mut regs = vec![];
-        //                let stax = regx.first_state();
-        //                for regx in self.defining_regions.iter() {
-        //                    if regx.is_superset_of(stax) {
-        //                        regs.push(regx.clone());
-        //                    }
-        //                }
-        //                println!("     {stax} in {} regions", regs.len());
-        //
-        //                let mut regs = vec![];
-        //                let stax = regx.last_state();
-        //                for regx in self.defining_regions.iter() {
-        //                    if regx.is_superset_of(stax) {
-        //                        regs.push(regx.clone());
-        //                    }
-        //                }
-        //                println!("     {stax} in {} regions", regs.len());
-        //            }
-        //
-        //            println!("adj_states:     {}", tools::vec_ref_string(&adj_states));
-        //            for stax in adj_states.iter() {
-        //                let mut regs = vec![];
-        //                for regx in self.defining_regions.iter() {
-        //                    if regx.is_superset_of(*stax) {
-        //                        regs.push(regx.clone());
-        //                    }
-        //                }
-        //                if regs.len() == 1 {
-        //
-        //                    let mut grps = vec![];
-        //                    let mut grpx_ref = vec![];
-        //                    for grpx in self.groups.iter() {
-        //                        if grpx.region.is_superset_of(*stax) {
-        //                            grps.push(&grpx.region);
-        //                            grpx_ref.push(grpx);
-        //                        }
-        //                    }
-        //                    if grps.len() == 1 {
-        //                        if let Some(anchor) = &grpx_ref[0].anchor {
-        //                            println!("act {} adj state {stax} is in 1 calculated region: {}, groups: {} anchor {anchor} = {}", self.id, regs[0], tools::vec_ref_string(&grps), anchor == *stax);
-        //                        } else {
-        //                            println!("act {} adj state {stax} is in 1 calculated region: {}, groups: {}, no anchor", self.id, regs[0], tools::vec_ref_string(&grps));
-        //                        }
-        //                    }
-        //                }
-        //            }
-        //        }
+        // Save defining regions in SomeAction struct.
+        self.set_defining_regions(defining_regions2);
+
+        // If there are any adjacent incompatible pair needs, return them.
+        if nds.is_not_empty() {
+            return nds;
+        }
 
         // Check non-adjacent incompatible pairs for states in an adjacent pair.
         let mut priority_pairs = RegionStore::new(vec![]);
         for regx in non_adjacent_pairs.iter() {
-            if adj_states.contains(&regx.first_state()) || adj_states.contains(&regx.last_state()) {
+            if adj_states.contains(regx.first_state()) || adj_states.contains(regx.last_state()) {
                 priority_pairs.push(regx.clone());
             }
         }
@@ -952,40 +945,39 @@ impl SomeAction {
             return nds;
         }
 
-        // For a square in an adjacent pair, if it is in only one region,
-        // check the far square in the region for similarity.
-        for stax in adj_states.iter() {
-            let sups = self.defining_regions.supersets_of(*stax);
-            if sups.len() == 1 {
-                // println!("square {stax} in {sups} groups, ag_reg: {ag_reg}");
-                // Confirm region, or find new dissimilar square pair.
-                let far_sta = sups[0].far_from(stax);
-                if let Some(sqrz) = self.squares.find(&far_sta) {
-                    if sqrz.pnc {
-                    } else {
-                        let mut needx = SomeNeed::FindSimilarityTo {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::State { state: far_sta },
-                            to_state: (*stax).clone(),
-                            in_reg: sups[0].clone(),
-                            priority: 0,
-                        };
-                        needx.add_priority_base();
-                        nds.push(needx);
-                    }
+        // Check last square in defining regions for pnc.
+        for regx in self.defining_regions.iter() {
+            // Confirm region, or find new dissimilar square pair.
+            let far_sta = regx.last_state();
+            if let Some(sqrz) = self.squares.find(far_sta) {
+                if sqrz.pnc {
                 } else {
                     let mut needx = SomeNeed::FindSimilarityTo {
                         dom_id: self.dom_id,
                         act_id: self.id,
-                        target: ATarget::State { state: far_sta },
-                        to_state: (*stax).clone(),
-                        in_reg: sups[0].clone(),
-                        priority: 0,
+                        target: ATarget::State {
+                            state: far_sta.clone(),
+                        },
+                        to_state: regx.first_state().clone(),
+                        in_reg: regx.clone(),
+                        priority: regx.x_mask().num_one_bits(), // give priority to smallest regions.
                     };
                     needx.add_priority_base();
                     nds.push(needx);
                 }
+            } else {
+                let mut needx = SomeNeed::FindSimilarityTo {
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target: ATarget::State {
+                        state: far_sta.clone(),
+                    },
+                    to_state: regx.first_state().clone(),
+                    in_reg: regx.clone(),
+                    priority: regx.x_mask().num_one_bits(), // give priority to smallest regions.
+                };
+                needx.add_priority_base();
+                nds.push(needx);
             }
         }
 
@@ -1053,6 +1045,16 @@ impl SomeAction {
                     if keyx.is_adjacent(stay) {
                         continue 'next_sqr;
                     }
+                }
+            }
+
+            // Don't delete squares represented in defining regions.
+            for regx in self.defining_regions.iter() {
+                if keyx == regx.first_state() {
+                    continue 'next_sqr;
+                }
+                if keyx == regx.last_state() {
+                    continue 'next_sqr;
                 }
             }
 
@@ -1232,6 +1234,13 @@ impl SomeAction {
                 ret_nds.append(ndsx);
                 continue;
             }
+
+            // Quick limit logic.
+            //if self.groups[group_num].anchor.is_some() && self.defining_regions.contains(&self.groups[group_num].region) {
+            //    let msk = self.groups[group_num].edge_mask().bitwise_and(&max_reg.x_mask());
+            //    self.groups[group_num].set_limited(msk);
+            //    continue;
+            //}
 
             if let Some(anchor) = self.groups[group_num].anchor.clone() {
                 if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num) {

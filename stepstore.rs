@@ -306,19 +306,15 @@ fn do_later_changes(by_change: &[Vec<&SomeStep>], wanted: &SomeChange) -> Vec<us
     let mut inxs = Vec::<usize>::new();
 
     // Generate a vector of indices of changes that should be done later.
-    for inx in 0..by_change.len() {
-        for iny in 0..by_change.len() {
+    for (inx, stpx) in by_change.iter().enumerate() {
+        for (iny, stpy) in by_change.iter().enumerate() {
             if iny == inx {
                 continue;
             }
-            if step_vecs_sequence_blocks_changes(&by_change[inx], &by_change[iny], wanted)
-                && !inxs.contains(&inx)
-            {
+            if step_vecs_sequence_blocks_changes(stpx, stpy, wanted) && !inxs.contains(&inx) {
                 inxs.push(inx);
             }
-            if step_vecs_sequence_blocks_changes(&by_change[iny], &by_change[inx], wanted)
-                && !inxs.contains(&iny)
-            {
+            if step_vecs_sequence_blocks_changes(stpy, stpx, wanted) && !inxs.contains(&iny) {
                 inxs.push(iny);
             }
         } // next iny

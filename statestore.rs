@@ -106,6 +106,17 @@ impl StateStore {
 
         SomeRegion::new(self.items.clone())
     }
+
+    /// Return a vector of state refs that are in a given region.
+    pub fn stas_in_reg(&self, regx: &SomeRegion) -> Vec<&SomeState> {
+        let mut ret = Vec::<&SomeState>::new();
+        for stax in self.iter() {
+            if regx.is_superset_of(stax) {
+                ret.push(stax);
+            }
+        }
+        ret
+    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

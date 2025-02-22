@@ -214,6 +214,17 @@ impl RegionStore {
         ret_str
     }
 
+    /// Return ture if an arg is in exactly one region.
+    pub fn in_one_region(&self, itmx: &impl tools::AccessStates) -> bool {
+        let mut count = 0;
+        for regx in self.iter() {
+            if regx.is_superset_of(itmx) {
+                count += 1;
+            }
+        }
+        count == 1
+    }
+
     /// Subtract a RegionStore from a RegionStore
     pub fn subtract(&self, subtrahend: &Self) -> Self {
         debug_assert!(
@@ -377,15 +388,15 @@ impl RegionStore {
             let mut ints = Self::new(vec![]);
 
             // Subtract intersections from each region.
-            for inx in 0..remaining.len() {
-                let mut left_over = Self::new(vec![remaining[inx].clone()]);
+            for rscx in remaining.iter() {
+                let mut left_over = Self::new(vec![rscx.clone()]);
 
-                for iny in 0..remaining.len() {
-                    if iny == inx {
-                        // don't subtract remaining[inx] from itself.
+                for rscy in remaining.iter() {
+                    if std::ptr::eq(rscy, rscx) {
+                        // don't subtract rscx from itself.
                         continue;
                     }
-                    if let Some(reg_int) = remaining[inx].intersection(&remaining[iny]) {
+                    if let Some(reg_int) = rscx.intersection(rscy) {
                         left_over = left_over.subtract_region(&reg_int);
                         if !ints.contains(&reg_int) {
                             ints.push(reg_int);
@@ -409,6 +420,17 @@ impl RegionStore {
         while tmp_regions.is_not_empty() {
             count += tmp_regions[0].number_squares();
             tmp_regions = tmp_regions.subtract_region(&tmp_regions[0]);
+        }
+        count
+    }
+
+    /// Return the number of regions a given arg is in.
+    pub fn num_regions_in(&self, itmx: &impl tools::AccessStates) -> usize {
+        let mut count = 0;
+        for regx in self.iter() {
+            if regx.is_superset_of(itmx) {
+                count += 1;
+            }
         }
         count
     }
