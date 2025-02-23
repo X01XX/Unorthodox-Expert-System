@@ -10,6 +10,7 @@
 //! For making a plan (series of actions) to change the domain current state to a different, desired, value.
 //!
 
+use crate::bits::{Bitint, SomeBits};
 use crate::change::SomeChange;
 use crate::group::SomeGroup;
 use crate::groupstore::GroupStore;
@@ -122,6 +123,8 @@ impl SomeAction {
             }
         }
 
+        let sta0 = SomeState::new(SomeBits::new(num_bits as Bitint));
+
         SomeAction {
             id: 0,     // Caller changes, if needed.
             dom_id: 0, // Caller changes, if needed.
@@ -131,7 +134,7 @@ impl SomeAction {
             cleanup_number_new_squares: 0,
             limited: RegionStore::new(vec![]),
             base_rules: rules,
-            defining_regions: RegionStore::new(vec![]),
+            defining_regions: RegionStore::new(vec![SomeRegion::new(vec![sta0.new_high(), sta0])]),
         }
     }
 
@@ -2178,11 +2181,10 @@ impl SomeAction {
             return GroupStore::new(ret_grps);
         }
 
-        // Calc the maximum possible region.
-        let max_poss_reg = SomeRegion::new(vec![sqrx.state.new_high(), sqrx.state.new_low()]);
+        // Calc the maximum possible regions.
 
         // Init list for holding possible regions.
-        let mut poss_regs = RegionStore::new(vec![max_poss_reg.clone()]);
+        let mut poss_regs = self.defining_regions.clone();
 
         // Subtract states of incompatible squares.
 
@@ -2224,6 +2226,10 @@ impl SomeAction {
 
         // Check each possible region for subregions.
         for regx in poss_regs.iter() {
+            if regx.is_superset_of(&sqrx.state) {
+            } else {
+                continue;
+            }
             let other_sqrs_in = self.squares.squares_in_reg(regx);
 
             // Process an Unpredictable square.
@@ -2369,8 +2375,10 @@ impl SomeAction {
             } // end if other_sqrs_in.len() > 1
 
             for regz in poss_regs2.iter() {
-                if let Some(grpx) = self.validate_possible_group(sqrx, regz) {
-                    ret_grps.push(grpx);
+                if regz.is_superset_of(&sqrx.state) {
+                    if let Some(grpx) = self.validate_possible_group(sqrx, regz) {
+                        ret_grps.push(grpx);
+                    }
                 }
             }
         } // next regx
@@ -3161,7 +3169,7 @@ mod tests {
     }
 
     #[test]
-    fn non_adjacent_incompatibility_needs() -> Result<(), String> {
+    fn non_adjacent_incompatibility_needs0() -> Result<(), String> {
         let mut act0 = SomeAction::from_str(
             "ACT[[01/XX/01/XX], [00/XX/10/XX], [10/XX/00/XX], [11/XX/11/XX]]",
         )?;

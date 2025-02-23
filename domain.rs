@@ -207,6 +207,22 @@ impl SomeDomain {
         debug_assert_eq!(smpl.num_bits(), self.num_bits());
         debug_assert!(act_id < self.actions.len());
 
+        let previous = self.union_all_states.clone();
+
+        if self.union_all_states.is_superset_of(&smpl.initial) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&smpl.initial);
+        }
+
+        if self.union_all_states.is_superset_of(&smpl.result) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&smpl.result);
+        }
+
+        if self.union_all_states != previous {
+            self.actions.check_limited(&self.union_all_states);
+        }
+
         self.actions.eval_sample_arbitrary(act_id, smpl);
         self.set_cur_state(smpl.result.clone());
     }
