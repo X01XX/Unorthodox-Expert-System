@@ -575,12 +575,6 @@ impl SomeRule {
         ret
     }
 
-    /// Return unwanted changes.
-    pub fn unwanted_changes(&self) -> SomeChange {
-        let edges = self.result_region().edge_mask();
-        SomeChange::new(self.m00.bitwise_and(&edges), self.m11.bitwise_and(&edges))
-    }
-
     /// Return the intersection af a rules' changes and a given SomeChange instance.
     /// Avoids creating an intermediate change instance compared to rule.as_change().intersection(change).
     pub fn intersection_changes(&self, achange: &SomeChange) -> SomeChange {

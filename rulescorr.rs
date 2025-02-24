@@ -84,16 +84,6 @@ impl RulesCorr {
         ret
     }
 
-    /// Return a ChangesCorr for all changes not wanted.
-    pub fn unwanted_changes(&self) -> ChangesCorr {
-        let mut ret = ChangesCorr::with_capacity(self.len());
-
-        for rulx in self.iter() {
-            ret.push(rulx.unwanted_changes());
-        }
-        ret
-    }
-
     /// Return a RulesCorr' initial regions.
     pub fn initial_regions(&self) -> RegionsCorr {
         let mut ret = RegionsCorr::with_capacity(self.len());
@@ -249,10 +239,6 @@ mod tests {
         let cngs = ruc.as_changes();
         println!("cngs {cngs}");
         assert!(format!("{cngs}") == "CC[../../../01, .._../10/../..]");
-
-        let cngs = ruc.unwanted_changes();
-        println!("unwn {cngs}");
-        assert!(format!("{cngs}") == "CC[10/01/10/.., 10_01/../../01]");
 
         //assert!(1 == 2);
         Ok(())

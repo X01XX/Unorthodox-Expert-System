@@ -904,7 +904,7 @@ fn step_by_step_rc(
         let wanted_changes = rules_to_goal.as_changes();
         let cc_fil = " ".repeat(wanted_changes.strlen());
 
-        let unwanted_changes = rules_to_goal.unwanted_changes();
+        let unwanted_changes = cur_to.unwanted_changes();
 
         let mut stepscorr = Vec::<StepStore>::with_capacity(from.len());
 

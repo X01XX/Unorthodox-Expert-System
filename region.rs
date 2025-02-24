@@ -4,6 +4,7 @@
 //!
 
 use crate::bits::{vec_same_num_bits, Bitint, BitsRef, NumBits, SomeBits};
+use crate::change::SomeChange;
 use crate::mask::SomeMask;
 use crate::regionstore::RegionStore;
 use crate::state::SomeState;
@@ -499,6 +500,11 @@ impl SomeRegion {
         let low = SomeState::new(SomeBits::new(num_bits as Bitint));
         SomeRegion::new(vec![low.new_high(), low])
     }
+
+    /// Return unwanted changes.
+    pub fn unwanted_changes(&self) -> SomeChange {
+        SomeChange::new(self.edge_zeros_mask(), self.edge_ones_mask())
+    }
 } // end impl SomeRegion
 
 /// Implement the trait StrLen for SomeRegion.
@@ -649,6 +655,18 @@ mod tests {
     use super::*;
     use crate::bits::SomeBits;
     use std::str::FromStr;
+
+    #[test]
+    fn unwanted_changes() -> Result<(), String> {
+        let reg1 = SomeRegion::from_str("X10X01X")?;
+        let unw = reg1.unwanted_changes();
+        println!("reg1:             {reg1}");
+        println!("unwanted changes: {unw}");
+
+        assert!(unw == SomeChange::from_str("../10/01_../01/10/..")?);
+
+        Ok(())
+    }
 
     #[test]
     fn state_far_from() -> Result<(), String> {

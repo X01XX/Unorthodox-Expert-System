@@ -4,6 +4,7 @@
 //! domain, not necessarily the same as other regions in the vector.
 
 use crate::bits::NumBits;
+use crate::changescorr::ChangesCorr;
 use crate::maskscorr::MasksCorr;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
@@ -328,6 +329,16 @@ impl RegionsCorr {
             ret_mc.push(regx.diff_edge_mask(stay));
         }
         ret_mc
+    }
+
+    /// Return a ChangesCorr for all changes not wanted.
+    pub fn unwanted_changes(&self) -> ChangesCorr {
+        let mut ret = ChangesCorr::with_capacity(self.len());
+
+        for regx in self.iter() {
+            ret.push(regx.unwanted_changes());
+        }
+        ret
     }
 } // End impl RegionsCorr.
 
