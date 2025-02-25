@@ -642,7 +642,7 @@ impl SomeAction {
     } // end get_needs
 
     /// Return needs for incompatible square pairs.
-    /// An inchoate perception, translated into code.
+    /// Inchoate perceptions, translated into code, the goal of the project.
     fn incompatible_pair_needs(&mut self, max_reg: &SomeRegion) -> NeedStore {
         // Init NeedStore to return.
         let mut nds = NeedStore::new(vec![]);
