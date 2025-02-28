@@ -238,12 +238,17 @@ impl SessionData {
         if self.select_negative.is_empty() {
             println!("Net-Negative SR fragments: None");
         } else {
-            println!("Net-Negative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n", self.select_negative.len());
+            println!(
+                "Net-Negative SR fragments, each a subset of one or more negative SRs, no partial intersections. ({}):\n",
+                self.select_negative.len()
+            );
             for selx in self.select_negative.iter() {
                 println!("  {selx}");
             }
             println!(" ");
-            println!("  If more than one different value, more and more negative value SRs may be considered to find a plan-path.");
+            println!(
+                "  If more than one different value, more and more negative value SRs may be considered to find a plan-path."
+            );
         }
         println!(" ");
     }
@@ -983,7 +988,7 @@ impl SessionData {
         }
 
         neg_values.sort_by(|a, b| b.cmp(a)); // sort to least negative first.
-                                             //println!("neg values {neg_values:?}");
+        //println!("neg values {neg_values:?}");
 
         // Init available path fragments with non-negative fragments.
         let mut fragments = Vec::<&RegionsCorr>::new();
@@ -1105,7 +1110,9 @@ impl SessionData {
 
         // Check no plan needed.
         if goal_regs.is_superset_of(start_regs) {
-            return Err(vec![format!("sessiondata::plan_using_least_negative_select_regions2: goal_regs {goal_regs} superset of start_regs {start_regs}")]);
+            return Err(vec![format!(
+                "sessiondata::plan_using_least_negative_select_regions2: goal_regs {goal_regs} superset of start_regs {start_regs}"
+            )]);
         }
 
         // Check if start_regs and goal_regs are in the same RegionsCorr.
@@ -1141,9 +1148,10 @@ impl SessionData {
             .collect::<Vec<RegionsCorrStore>>();
 
         if mid_paths.is_empty() {
-            return
-            Err(vec![format!("plan_using_least_negative_select_regions2: mid_paths from {start_regs} to {goal_regs} within {} failed",
-             tools::vec_ref_string(select_regions))]);
+            return Err(vec![format!(
+                "plan_using_least_negative_select_regions2: mid_paths from {start_regs} to {goal_regs} within {} failed",
+                tools::vec_ref_string(select_regions)
+            )]);
         }
 
         // Find lowest length paths, if needed.
@@ -1194,20 +1202,28 @@ impl SessionData {
                     }
                 }
             } else {
-                return Err(vec![format!("sessiondata::plan_using_least_negative_select_regions2: {} does not intersect {}", pathx[inx], pathx[inx + 1])]);
+                return Err(vec![format!(
+                    "sessiondata::plan_using_least_negative_select_regions2: {} does not intersect {}",
+                    pathx[inx],
+                    pathx[inx + 1]
+                )]);
             }
         }
         if mid_plans.is_empty() {
-            return Err(vec![format!("sessiondata::plan_using_least_negative_select_regions2: plans for {pathx} mid_plans not found")]);
+            return Err(vec![format!(
+                "sessiondata::plan_using_least_negative_select_regions2: plans for {pathx} mid_plans not found"
+            )]);
         }
 
         // Add mid_plans to existing start_plan_store, if any.
         ret_planscorrstore = ret_planscorrstore.link(&mid_plans).unwrap();
 
-        assert!(ret_planscorrstore
-            .result_from_initial_regions(start_regs)
-            .expect("SNH")
-            .intersects(goal_regs));
+        assert!(
+            ret_planscorrstore
+                .result_from_initial_regions(start_regs)
+                .expect("SNH")
+                .intersects(goal_regs)
+        );
         //println!("plan_using_least_negative_select_regions2: returning (2) {ret_planscorrstore}");
         Ok(ret_planscorrstore)
     } // end plan_using_least_negative_select_regions2
@@ -2263,56 +2279,70 @@ mod tests {
         println!("select positive: {}", sdx.select_net_positive);
         assert!(sdx.select_net_positive.len() == 5);
 
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[rx100], 4]")?));
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[r0x00], 4]")?));
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[r010x], 4]")?));
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[r1001], 4]")?));
-        assert!(sdx
-            .select_net_positive
-            .contains(&SelectRegions::from_str("SR[RC[r0001], 2]")?));
+        assert!(
+            sdx.select_net_positive
+                .contains(&SelectRegions::from_str("SR[RC[rx100], 4]")?)
+        );
+        assert!(
+            sdx.select_net_positive
+                .contains(&SelectRegions::from_str("SR[RC[r0x00], 4]")?)
+        );
+        assert!(
+            sdx.select_net_positive
+                .contains(&SelectRegions::from_str("SR[RC[r010x], 4]")?)
+        );
+        assert!(
+            sdx.select_net_positive
+                .contains(&SelectRegions::from_str("SR[RC[r1001], 4]")?)
+        );
+        assert!(
+            sdx.select_net_positive
+                .contains(&SelectRegions::from_str("SR[RC[r0001], 2]")?)
+        );
 
         println!("non negative: {}", sdx.rc_non_negative);
         assert!(sdx.rc_non_negative.len() == 4);
 
-        assert!(sdx
-            .rc_non_negative
-            .contains(&RegionsCorr::from_str("RC[rx1x0]")?));
-        assert!(sdx
-            .rc_non_negative
-            .contains(&RegionsCorr::from_str("RC[r0xx0]")?));
-        assert!(sdx
-            .rc_non_negative
-            .contains(&RegionsCorr::from_str("RC[r010x]")?));
-        assert!(sdx
-            .rc_non_negative
-            .contains(&RegionsCorr::from_str("RC[r10x1]")?));
+        assert!(
+            sdx.rc_non_negative
+                .contains(&RegionsCorr::from_str("RC[rx1x0]")?)
+        );
+        assert!(
+            sdx.rc_non_negative
+                .contains(&RegionsCorr::from_str("RC[r0xx0]")?)
+        );
+        assert!(
+            sdx.rc_non_negative
+                .contains(&RegionsCorr::from_str("RC[r010x]")?)
+        );
+        assert!(
+            sdx.rc_non_negative
+                .contains(&RegionsCorr::from_str("RC[r10x1]")?)
+        );
 
         println!("select negative: {}", sdx.select_negative);
         assert!(sdx.select_negative.len() == 5);
 
-        assert!(sdx
-            .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r0011], -2]")?));
-        assert!(sdx
-            .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r1000], -1]")?));
-        assert!(sdx
-            .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r1010], -5]")?));
-        assert!(sdx
-            .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r0111], -1]")?));
-        assert!(sdx
-            .select_negative
-            .contains(&SelectRegions::from_str("SR[RC[r1111], -5]")?));
+        assert!(
+            sdx.select_negative
+                .contains(&SelectRegions::from_str("SR[RC[r0011], -2]")?)
+        );
+        assert!(
+            sdx.select_negative
+                .contains(&SelectRegions::from_str("SR[RC[r1000], -1]")?)
+        );
+        assert!(
+            sdx.select_negative
+                .contains(&SelectRegions::from_str("SR[RC[r1010], -5]")?)
+        );
+        assert!(
+            sdx.select_negative
+                .contains(&SelectRegions::from_str("SR[RC[r0111], -1]")?)
+        );
+        assert!(
+            sdx.select_negative
+                .contains(&SelectRegions::from_str("SR[RC[r1111], -5]")?)
+        );
 
         Ok(())
     }
@@ -2426,7 +2456,9 @@ mod tests {
         )?;
 
         // Set up PlansCorrStore.
-        let plnscrstr = PlansCorrStore::from_str("PCS[PC[[P[0, r0000-3->r0100], P[1, r1111-1->r1110]], 0], PC[[P[0, r0100-1->r0101], P[1, r1110-2->r1100]], 0]]")?;
+        let plnscrstr = PlansCorrStore::from_str(
+            "PCS[PC[[P[0, r0000-3->r0100], P[1, r1111-1->r1110]], 0], PC[[P[0, r0100-1->r0101], P[1, r1110-2->r1100]], 0]]",
+        )?;
         println!("plnscrstr {plnscrstr}");
 
         let before = sdx.all_current_states();
@@ -2452,7 +2484,9 @@ mod tests {
     /// Test run_planscorrstore, where start and goal are not subsets of any select regions.
     fn get_path_through_select_regions() -> Result<(), String> {
         // Init SessionData.
-        let sdx = SessionData::from_str("SD[DS[DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]]]")?;
+        let sdx = SessionData::from_str(
+            "SD[DS[DOMAIN[ACT[[XX/XX/XX/Xx]], ACT[[XX/XX/Xx/XX]], ACT[[XX/Xx/XX/XX]], ACT[[Xx/XX/XX/XX]]]]]",
+        )?;
 
         let start_regs = RegionsCorr::from_str("RC[r1X11]")?;
         let goal_regs = RegionsCorr::from_str("RC[rX000]")?;

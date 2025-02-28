@@ -823,9 +823,15 @@ mod tests {
 
     #[test]
     fn intersection() -> Result<(), String> {
-        let rul1 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1")?;
-        let rul2 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul3 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str(
+            "01/01/01/00/00/00/11/11/11/10/10/10/XX/XX/XX/XX/XX/Xx/Xx/Xx/Xx/Xx/X0/X0/X0/X0/X0/X1/X1/X1/X1/X1",
+        )?;
+        let rul2 = SomeRule::from_str(
+            "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx",
+        )?;
+        let rul3 = SomeRule::from_str(
+            "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11",
+        )?;
         let Some(rul_int) = rul1.intersection(&rul2) else {
             panic!("this should work!");
         };
@@ -838,8 +844,12 @@ mod tests {
 
     #[test]
     fn is_subset_of() -> Result<(), String> {
-        let rul1 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul2 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str(
+            "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx",
+        )?;
+        let rul2 = SomeRule::from_str(
+            "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11",
+        )?;
 
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul2.is_subset_of(&rul1));
@@ -850,8 +860,12 @@ mod tests {
 
     #[test]
     fn is_superset_of() -> Result<(), String> {
-        let rul1 = SomeRule::from_str("01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx")?;
-        let rul2 = SomeRule::from_str("01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11")?;
+        let rul1 = SomeRule::from_str(
+            "01/X1/Xx/00/xx/x0/11/x1/xx/10/Xx/x0/xx/11/00/X0/X1/Xx/10/01/X0/X1/X0/00/10/Xx/XX/X1/11/01/Xx/xx",
+        )?;
+        let rul2 = SomeRule::from_str(
+            "01/01/01/00/00/00/11/11/11/10/10/10/xx/11/00/00/11/Xx/10/01/10/01/X0/00/10/10/00/x1/11/01/01/11",
+        )?;
 
         println!("rul1: {rul1} rul2: {rul2}");
         assert!(rul1.is_superset_of(&rul2));

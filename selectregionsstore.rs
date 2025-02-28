@@ -444,8 +444,9 @@ mod tests {
         // Check fragment values.
         let srs1 = SelectRegionsStore::from_str("[SR[RC[r1X0X], -1], SR[RC[rX1X1], 2]]")?;
         // Check bad value.
-        let frags =
-            SelectRegionsStore::from_str("[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], -1], SR[RC[r01X1], 2], SR[RC[rX111], 2]]")?;
+        let frags = SelectRegionsStore::from_str(
+            "[SR[RC[r1X00], -1], SR[RC[r100X], -1], SR[RC[r1101], -1], SR[RC[r01X1], 2], SR[RC[rX111], 2]]",
+        )?;
         match check_fragments(&srs1, &frags) {
             Ok(()) => return Err("Failed Check fragments values.".to_string()),
             Err(errstr) => {

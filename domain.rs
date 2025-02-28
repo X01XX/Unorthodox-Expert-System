@@ -553,7 +553,9 @@ impl SomeDomain {
 
                 return SomePlan::new(self.id, vec![stepy]).link(&plan_to_goal);
             } else {
-                return Err(format!("domain::depth_first_search: Step {stepy} result region is not a subset of within {within}"));
+                return Err(format!(
+                    "domain::depth_first_search: Step {stepy} result region is not a subset of within {within}"
+                ));
             }
         }
 
@@ -574,7 +576,9 @@ impl SomeDomain {
 
                 return plan_to_step.link(&SomePlan::new(self.id, vec![stepy]));
             } else {
-                return Err(format!("domain::depth_first_search: Step {stepy} initial region is not a subset of within {within}"));
+                return Err(format!(
+                    "domain::depth_first_search: Step {stepy} initial region is not a subset of within {within}"
+                ));
             }
         }
 
@@ -583,7 +587,9 @@ impl SomeDomain {
         if within.is_superset_of(&stepx.initial) {
             self.asymmetric_chaining(from_reg, goal_reg, stepx, depth - 1, within)
         } else {
-            Err(format!("domain::depth_first_search: Step {stepx} initial region is not a subset of within {within}"))
+            Err(format!(
+                "domain::depth_first_search: Step {stepx} initial region is not a subset of within {within}"
+            ))
         }
     } // end depth_first_search
 
@@ -614,7 +620,9 @@ impl SomeDomain {
         let steps_str = self.get_steps(&wanted_changes, within);
         if steps_str.is_empty() {
             //println!("\n    rules covering all needed bit changes {wanted_changes} not found");
-            return Err(format!("domain::plan_steps_between: No steps found from {from_reg} to {goal_reg} within {within}"));
+            return Err(format!(
+                "domain::plan_steps_between: No steps found from {from_reg} to {goal_reg} within {within}"
+            ));
         }
 
         let steps_by_change_vov = steps_str.get_steps_by_bit_change(&wanted_changes)?;
@@ -832,10 +840,10 @@ impl SomeDomain {
                 }
             }
         } // next rslt.
-          //println!("dom {} make_plans2 returns", self.id);
-          //for plnx in plans2.iter() {
-          //    println!("    {plnx}");
-          //}
+        //println!("dom {} make_plans2 returns", self.id);
+        //for plnx in plans2.iter() {
+        //    println!("    {plnx}");
+        //}
 
         if plans2.is_empty() {
             Err(problems)
@@ -1389,20 +1397,24 @@ mod tests {
         domx.take_action_arbitrary(1, &SomeState::from_str("s0001")?);
 
         println!("\nActs: {}", &domx.actions[1]);
-        assert!(domx.actions[1]
-            .groups
-            .find(&SomeRegion::from_str("r0001")?)
-            .is_some());
+        assert!(
+            domx.actions[1]
+                .groups
+                .find(&SomeRegion::from_str("r0001")?)
+                .is_some()
+        );
 
         // Invalidate group for sample 1 by giving it GT 1 different result.
         domx.take_action_arbitrary(1, &SomeState::from_str("s0001")?);
 
         println!("\nActs: {}", domx.actions[1]);
 
-        assert!(domx.actions[1]
-            .groups
-            .find(&SomeRegion::from_str("r0001")?)
-            .is_none());
+        assert!(
+            domx.actions[1]
+                .groups
+                .find(&SomeRegion::from_str("r0001")?)
+                .is_none()
+        );
 
         // Check needs for pn > 1 and not in group, and current state not in a group.
         domx.set_cur_state(SomeState::from_str("s0000")?); // Current state could be s0001 or s0000, so set it to be sure.
@@ -1446,19 +1458,23 @@ mod tests {
         domx.take_action_arbitrary(1, &SomeState::from_str("s0001")?);
 
         println!("\nActs: {}", domx.actions[1]);
-        assert!(domx.actions[1]
-            .groups
-            .find(&SomeRegion::from_str("r0001")?)
-            .is_some());
+        assert!(
+            domx.actions[1]
+                .groups
+                .find(&SomeRegion::from_str("r0001")?)
+                .is_some()
+        );
 
         // Expand group
         domx.take_action_arbitrary(1, &SomeState::from_str("s0010")?);
 
         println!("\nActs: {}", domx.actions[1]);
-        assert!(domx.actions[1]
-            .groups
-            .find(&SomeRegion::from_str("r00XX")?)
-            .is_some());
+        assert!(
+            domx.actions[1]
+                .groups
+                .find(&SomeRegion::from_str("r00XX")?)
+                .is_some()
+        );
 
         let nds2 = domx.actions[1].confirm_group_needs();
         println!("needs {}", nds2);

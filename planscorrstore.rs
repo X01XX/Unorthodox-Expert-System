@@ -260,7 +260,9 @@ impl PlansCorrStore {
     pub fn push_link(&mut self, pcx: PlansCorr) -> Result<(), String> {
         if self.is_not_empty() {
             if !self.result_regions().intersects(&pcx.initial_regions()) {
-                return Err(format!("planscorr::push_link: plan {self} result regions do not intersect {pcx} initial regions"));
+                return Err(format!(
+                    "planscorr::push_link: plan {self} result regions do not intersect {pcx} initial regions"
+                ));
             }
             if self.any_initial_intersects(&pcx.result_regions()) {
                 return Err(format!(
@@ -301,7 +303,9 @@ impl PlansCorrStore {
     pub fn push_first_link(&mut self, pcx: PlansCorr) -> Result<(), String> {
         if self.is_not_empty() {
             if !self.items[0].initial_regions_intersect(&pcx.result_regions()) {
-                return Err(format!("planscorr::push_first_link: {self} initial regions do not intersect {pcx} result regions"));
+                return Err(format!(
+                    "planscorr::push_first_link: {self} initial regions do not intersect {pcx} result regions"
+                ));
             }
             if self.any_result_intersects(&pcx.initial_regions()) {
                 return Err(format!(
@@ -423,8 +427,7 @@ mod tests {
         println!("pcs2 {pcs2}");
         assert!(format!("{pcs2}") == pcs2_str);
 
-        let pcs3_str =
-            "PCS[PC[[P[0, r0X-1->r00], P[1, r0X1-1->r000]]], PC[[P[0, r00-1->r01], P[1, r000-1->r100]], 1]]";
+        let pcs3_str = "PCS[PC[[P[0, r0X-1->r00], P[1, r0X1-1->r000]]], PC[[P[0, r00-1->r01], P[1, r000-1->r100]], 1]]";
         let pcs3 = PlansCorrStore::from_str(&pcs3_str)?;
         println!("pcs3 {pcs3}");
         assert!(format!("{pcs3}") == pcs3_str);

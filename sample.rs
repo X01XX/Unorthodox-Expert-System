@@ -98,7 +98,9 @@ impl FromStr for SomeSample {
                 if initial_sta.num_bits() == result_sta.num_bits() {
                     return Ok(Self::new(initial_sta, result_sta));
                 } else {
-                    return Err(format!("SomeSample::from_str: Number bits of initial and result do not match in {s_str}"));
+                    return Err(format!(
+                        "SomeSample::from_str: Number bits of initial and result do not match in {s_str}"
+                    ));
                 }
             } else {
                 return Err(format!(

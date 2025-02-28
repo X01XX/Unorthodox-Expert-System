@@ -4,7 +4,7 @@ use crate::bits::NumBits;
 use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::state::SomeState;
-use crate::tools::{self, vec_refs, vec_string, AvecRef};
+use crate::tools::{self, AvecRef, vec_refs, vec_string};
 
 use serde::{Deserialize, Serialize};
 use std::ops::{Index, IndexMut};

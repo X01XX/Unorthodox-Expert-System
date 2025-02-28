@@ -256,7 +256,8 @@ impl SomeNeed {
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm group {grp_reg})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm group {grp_reg})"
+                )
             }
             Self::ConfirmIP {
                 dom_id,
@@ -267,7 +268,8 @@ impl SomeNeed {
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm incompatible pair covering {unknown_region})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm incompatible pair covering {unknown_region})"
+                )
             }
             Self::CloserIP {
                 dom_id,
@@ -276,18 +278,16 @@ impl SomeNeed {
                 unknown_region,
                 priority,
                 ..
-            } => {
-                match target {
-                    ATarget::State { state } =>
-                    format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer incompatible pair within {unknown_region})"),
-                    ATarget::Region { region } =>
-                    format!(
-                        "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer incompatible pair within {unknown_region})"),
-                    _ => panic!("SNH")
-                }
-            }
-             Self::FindSimilarityTo {
+            } => match target {
+                ATarget::State { state } => format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to find closer incompatible pair within {unknown_region})"
+                ),
+                ATarget::Region { region } => format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer incompatible pair within {unknown_region})"
+                ),
+                _ => panic!("SNH"),
+            },
+            Self::FindSimilarityTo {
                 dom_id,
                 act_id,
                 target,
@@ -297,7 +297,8 @@ impl SomeNeed {
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample of state {target} to find similarity to {to_state} in region {in_reg})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample of state {target} to find similarity to {to_state} in region {in_reg})"
+                )
             }
             Self::ContradictoryIntersection {
                 dom_id,
@@ -320,7 +321,8 @@ impl SomeNeed {
                     String::from("None")
                 };
                 format!(
-                "N(Dom {dom_id} Act {act_id} Pri {priority} Sample Region {target} intersection of {group1} {ruls1_str} and {group2} {ruls2_str})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample Region {target} intersection of {group1} {ruls1_str} and {group2} {ruls2_str})"
+                )
             }
             Self::LimitGroup {
                 dom_id,
@@ -334,10 +336,12 @@ impl SomeNeed {
                 ATarget::State { state: stax } => {
                     if stax == anchor {
                         format!(
-                            "N(Dom {dom_id} Act {act_id} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})")
+                            "N(Dom {dom_id} Act {act_id} Pri {priority} Sample anchor State {anchor}, to limit group {for_group})"
+                        )
                     } else {
                         format!(
-                            "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, far from anchor {anchor} to define group {for_group})")
+                            "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, far from anchor {anchor} to define group {for_group})"
+                        )
                     }
                 }
                 _ => panic!("Should not happen"),
@@ -352,7 +356,8 @@ impl SomeNeed {
                 ..
             } => {
                 format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, adj to {anchor} to limit group {for_group})")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target}, adj to {anchor} to limit group {for_group})"
+                )
             }
             Self::StateNotInGroup {
                 dom_id,
@@ -361,7 +366,8 @@ impl SomeNeed {
                 priority,
             } => {
                 format!(
-                "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target} not in a group)")
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Sample State {target} not in a group)"
+                )
             }
             Self::ToSelectRegions {
                 target,

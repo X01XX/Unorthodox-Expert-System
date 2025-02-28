@@ -223,7 +223,7 @@ pub fn remove_comments(str_in: &str) -> String {
     let mut last_chr = false; // True if the last character was a slash.
 
     let mut skip_to_end = false; // Set when a comment is detected, to stop adding characters to the line.
-                                 // Until end-of-line or end-of-file.
+    // Until end-of-line or end-of-file.
 
     for chr in str_in.graphemes(true) {
         if skip_to_end {
@@ -430,7 +430,10 @@ mod tests {
         );
 
         assert!(options.len() == any_one_of_result_len(&avec));
-        assert!(format!("{:?}", options) == "[[0, 1, 5], [0, 2, 5], [0, 3, 5], [0, 4, 5], [0, 1, 6], [0, 2, 6], [0, 3, 6], [0, 4, 6]]");
+        assert!(
+            format!("{:?}", options)
+                == "[[0, 1, 5], [0, 2, 5], [0, 3, 5], [0, 4, 5], [0, 1, 6], [0, 2, 6], [0, 3, 6], [0, 4, 6]]"
+        );
 
         Ok(())
     }

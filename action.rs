@@ -2665,12 +2665,12 @@ impl SomeAction {
                 if sqrx.pn > grpx.pn {
                     println!(
                         "\nDom {} Act {} square {} pn: {} invalidates\n             group {} pn: {}",
-                        self.dom_id, self.id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
+                        self.dom_id, self.id, sqrx.state, sqrx.pn, grpx.region, grpx.pn
                     );
                 } else if sqrx.pn < grpx.pn && sqrx.pnc {
                     println!(
                         "\nDom {} Act {} square {} pn: {} pnc: true invalidates\n             group {} pn: {}",
-                        self.dom_id, self.id, sqrx.state, sqrx.pn , grpx.region, grpx.pn
+                        self.dom_id, self.id, sqrx.state, sqrx.pn, grpx.region, grpx.pn
                     );
                 } else {
                     println!(
@@ -2975,7 +2975,9 @@ impl FromStr for SomeAction {
                                         actx.take_action_arbitrary(&stax);
                                     }
                                 } else {
-                                    return Err(format!("action::from_str: Did not understand count in token {tokenx}"));
+                                    return Err(format!(
+                                        "action::from_str: Did not understand count in token {tokenx}"
+                                    ));
                                 }
                             }
                             Err(errstr) => return Err(errstr.to_string()),

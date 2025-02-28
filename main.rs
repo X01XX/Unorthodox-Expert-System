@@ -153,7 +153,7 @@ fn run_with_file(file_path: &str, runs: usize) -> i32 {
     };
 
     // Get SesionData struct from Serialized data or a string definition.
-    let mut sdx = match serde_yaml::from_str(&file_contents) {
+    let mut sdx = match serde_yaml_ng::from_str(&file_contents) {
         Ok(new_sdx) => new_sdx,
         Err(_) => match SessionData::from_str(&tools::remove_comments(&file_contents)) {
             Ok(sdx) => sdx,
@@ -288,8 +288,19 @@ fn run_number_times(sdx_str: String, num_runs: usize) -> usize {
     let average_steps = steps_total / steps_vec.len();
     let duration_minutes = duration_total.as_secs() as f32 / 60.0;
 
-    println!("\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
-         num_runs, average_steps, steps_high, steps_low, duration_minutes, average_time, duration_high, duration_low, cant_do, num_groups_off);
+    println!(
+        "\nRuns {}, Average steps: {} high: {}, low: {}, Elapsed time: {:.2?} minutes, Average time elapsed: {:.2?}, high: {:.2?}, low: {:.2?} Number with unsatisfied needs {} Num groups off {}",
+        num_runs,
+        average_steps,
+        steps_high,
+        steps_low,
+        duration_minutes,
+        average_time,
+        duration_high,
+        duration_low,
+        cant_do,
+        num_groups_off
+    );
     cant_do
 }
 
@@ -885,18 +896,28 @@ fn step_by_step_rc(
             first = false;
             println!("Available commands:");
             println!("    q = quit step-rc.");
-            println!("    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining).");
+            println!(
+                "    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining)."
+            );
             println!("    so = Start over, clear forward and backward plans at the current depth.");
             println!("    n = next slice of options.");
             println!("    p = previous slice of options.");
             println!("\n    fpop = Forward plans pop step at end.");
             println!("    bpop = Backward plans pop step at beginning.");
-            println!("\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA).");
-            println!("    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;).");
+            println!(
+                "\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA)."
+            );
+            println!(
+                "    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;)."
+            );
             println!("\n    W: = Wanted change(s), going forward.");
-            println!("    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region.");
+            println!(
+                "    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region."
+            );
             println!("         Unwanted change(s) must eventually be reversed.");
-            println!("\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal.");
+            println!(
+                "\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal."
+            );
             println!("\n    no input = redisplay options.");
         }
 
@@ -1011,7 +1032,9 @@ fn step_by_step_rc(
                 "Original Forward: ({from} -> {to}) -> {rcx}, Current: from {cur_from} -> {cur_to}"
             );
         } else if let Some(rcx) = backward_asymmetric {
-            println!("Original Backward: {rcx} -> ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
+            println!(
+                "Original Backward: {rcx} -> ({from} -> {to}), Current: from {cur_from} -> {cur_to}"
+            );
         } else {
             println!("Original: ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
         }
@@ -1265,7 +1288,9 @@ fn step_by_step_rc(
                                             );
                                         }
                                         Err(errstr) => {
-                                            println!("Linking {forward_plans} to {planx} failed: {errstr}");
+                                            println!(
+                                                "Linking {forward_plans} to {planx} failed: {errstr}"
+                                            );
                                             pause_for_input("Press Enter to continue: ");
                                         }
                                     }
@@ -1338,7 +1363,9 @@ fn step_by_step_rc(
                                     }
                                 }
                                 Err(errstr) => {
-                                    println!("Linking {planx} and backward plan {backward_plans} failed: {errstr}.");
+                                    println!(
+                                        "Linking {planx} and backward plan {backward_plans} failed: {errstr}."
+                                    );
                                     pause_for_input("Press Enter to continue: ");
                                 }
                             }
@@ -1596,7 +1623,8 @@ fn do_print_squares_command(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), 
 
         if form_group {
             println!(
-                "    Min Pn: {min_pn} Max Pn: {max_pn} Rules: {rules_str} Can form group: {form_group}");
+                "    Min Pn: {min_pn} Max Pn: {max_pn} Rules: {rules_str} Can form group: {form_group}"
+            );
         } else {
             println!("    Min Pn: {min_pn} Max Pn: {max_pn} Can form group: {form_group}");
         }
@@ -1680,11 +1708,15 @@ fn do_print_group_defining_squares_command(
 /// Display usage options.
 fn usage() {
     println!("\nStartup Commands: <invoke> may be the command \"ues\" or \"cargo run\"");
-    println!("\n    <invoke>                  - Run default.kmp interactively, press Enter for each step.");
+    println!(
+        "\n    <invoke>                  - Run default.kmp interactively, press Enter for each step."
+    );
     println!(
         "\n    <invoke> 1                - Run default.kmp non-interactively, stop, in interactive mode, when no needs can be done."
     );
-    println!("\n    <invoke> <number times>   - Run default.kmp a number (> 1) times. Exit with step and duration statistics.");
+    println!(
+        "\n    <invoke> <number times>   - Run default.kmp a number (> 1) times. Exit with step and duration statistics."
+    );
     println!(
         "\n    <invoke> <file path>      - Open a file previously stored with the fsd command."
     );
@@ -1705,28 +1737,41 @@ fn usage() {
     );
     println!("\n    Press Enter (no command) - Satisfy one need that can be done, if any.");
     println!("\n    q | exit | quit          - Quit the program.");
-    println!("\n\n    aj <act num>             - For an Action in the CDD, display all groups anchor, and adJacent, info.");
-    println!("    aj <act num> <region>      For an Action in the CDD, display group anchor, and adJacent, info.");
+    println!(
+        "\n\n    aj <act num>             - For an Action in the CDD, display all groups anchor, and adJacent, info."
+    );
+    println!(
+        "    aj <act num> <region>      For an Action in the CDD, display group anchor, and adJacent, info."
+    );
     println!("\n    cs <state>               - Change State, an arbitrary change, for the CDD.");
     println!("\n    dn <need number>         - Do a particular Need from the can-do need list.");
-    println!("\n    dcs                      - Display Current State, and domain.  After a number of commands,");
-    println!("                               the current state scrolls off screen, this might be useful.");
+    println!(
+        "\n    dcs                      - Display Current State, and domain.  After a number of commands,"
+    );
+    println!(
+        "                               the current state scrolls off screen, this might be useful."
+    );
     println!("\n    fsd <path>               - File Store Data.");
     println!(
         "\n    gps <act num> <region>   - Group Print Squares that define the group region, of a given action, of the CDD."
     );
-    println!("\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list.");
+    println!(
+        "\n    ppd <need number>        - Print the Plan Details for a given need number in the can-do list."
+    );
     println!("\n    ps <act num>             - Print all Squares for an action, of the CDD.");
     println!(
         "    ps <act num> <region>      Print Squares in a given action and region, of the CDD."
     );
     println!("\n    psr                      - Print Select Regions.");
     println!("\n    run                      - Run until there are no needs that can be done.");
-    println!("\n    ss <act num>             - Sample the current State, for a given action, for the CDD.");
+    println!(
+        "\n    ss <act num>             - Sample the current State, for a given action, for the CDD."
+    );
     println!(
         "    ss <act num> <state>       Sample State for a given action and state, for the CDD."
     );
-    println!("    ss <act num> <s1> <s2>     Sample State, for a given action, state and arbitrary result, for the CDD."
+    println!(
+        "    ss <act num> <s1> <s2>     Sample State, for a given action, state and arbitrary result, for the CDD."
     );
     //    println!("\n    to <region>              - Change the current state TO within a region, by calculating and executing a plan.");
     println!(
@@ -1742,45 +1787,89 @@ fn usage() {
     //    println!(
     //        "                              giving immediate access to a fully develped set of rules."
     //    );
-    println!("\n    step_rc <RC> <RC>        - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions.");
+    println!(
+        "\n    step_rc <RC> <RC>        - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions."
+    );
     println!("\n                               Like: step_rc RC[r0101, r111] RC[r1001, r100]");
-    println!("                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100], or step_rc RC[s111] RC[s100]");
-    println!("\n                               This can be run anytime, but its probably more interesting to run with a fully developed set of rules.");
-    println!("                               The fsd command can store a full session.  Later, the program can be run with the data file as an argument,");
+    println!(
+        "                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100], or step_rc RC[s111] RC[s100]"
+    );
+    println!(
+        "\n                               This can be run anytime, but its probably more interesting to run with a fully developed set of rules."
+    );
+    println!(
+        "                               The fsd command can store a full session.  Later, the program can be run with the data file as an argument,"
+    );
     println!(
         "                               giving immediate access to a fully develped set of rules."
     );
-    println!("\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain.");
+    println!(
+        "\n    A domain number is an integer, zero or greater, where such a domain exists. CDD means the Currently Displayed Domain."
+    );
     println!("\n    An action number is an integer, zero or greater, where such an action exists.");
-    println!("\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done.");
+    println!(
+        "\n    A need number is an integer, zero or greater, in a displayed list of needs that can be done."
+    );
     println!(
         "\n    A state starts with an 's' character, followed by one, or more, binary digits."
     );
-    println!("\n    A region starts with an 'r' character, followed by one, or more, zero, one, X or x characters.");
-    println!("    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.  Two states is a goal.");
-    println!("\n    A region, or state, may contain the separator '_', which will be ignored. All bit positions must be specified.");
-    println!("\n    A state can be used instead of a region, it will be translated to a region with no X-bits.");
-    println!("\n    An RC must have at least one region. An RC can have missing, and out of order regions, when the regions use different numbers of bits.");
-    println!("\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable.");
+    println!(
+        "\n    A region starts with an 'r' character, followed by one, or more, zero, one, X or x characters."
+    );
+    println!(
+        "    A region displayed with a trailing \"+\" indicates the region is formed by more than two states.  Two states is a goal."
+    );
+    println!(
+        "\n    A region, or state, may contain the separator '_', which will be ignored. All bit positions must be specified."
+    );
+    println!(
+        "\n    A state can be used instead of a region, it will be translated to a region with no X-bits."
+    );
+    println!(
+        "\n    An RC must have at least one region. An RC can have missing, and out of order regions, when the regions use different numbers of bits."
+    );
+    println!(
+        "\n    pn stands for pattern number, the number of different samples. 1 = 1 kind of result, 2 = 2 kinds of results, in order. U = upredictable."
+    );
     println!("\n    pnc stands for pattern number confirmed, by enough extra samples.");
     println!("          The bar for this is fairly low.");
-    println!("          Additional samples can cycle the pn and pnc values through all possible combinations.");
-    println!("\n    A Select Region is an arbitrary region, across all domains, with a given value, positive or negative.");
-    println!("\n        Plans, to satisfy a need, are made to avoid negative select regions, if possible.");
-    println!("\n        Finding the current state within a negative select region, the program will attempt to exit the region.");
+    println!(
+        "          Additional samples can cycle the pn and pnc values through all possible combinations."
+    );
+    println!(
+        "\n    A Select Region is an arbitrary region, across all domains, with a given value, positive or negative."
+    );
+    println!(
+        "\n        Plans, to satisfy a need, are made to avoid negative select regions, if possible."
+    );
+    println!(
+        "\n        Finding the current state within a negative select region, the program will attempt to exit the region."
+    );
     println!("\n    A plan to satisfy a need may be shown in one of two ways.");
     println!("\n        At Target - The current state is within the need target.");
-    println!("\n        PCS[PC[P[0:1], P[1:3]], PC[P[0:3,2]]]/3/6/-1 - Changes need to be made to the current state to be within the need target.");
-    println!("\n            PCS[ ... ]/3/6/-1 - A Plan Corresponding (per domain) Store, to change 3 bits, using plans that change 6 bits, passing through -1 valued regions.");
-    println!("\n            PC[ .. ] - A Plan Corresponding (per domain). No more than one plan per domain. If more than one plan, the plans will be run in parallel.");
+    println!(
+        "\n        PCS[PC[P[0:1], P[1:3]], PC[P[0:3,2]]]/3/6/-1 - Changes need to be made to the current state to be within the need target."
+    );
+    println!(
+        "\n            PCS[ ... ]/3/6/-1 - A Plan Corresponding (per domain) Store, to change 3 bits, using plans that change 6 bits, passing through -1 valued regions."
+    );
+    println!(
+        "\n            PC[ .. ] - A Plan Corresponding (per domain). No more than one plan per domain. If more than one plan, the plans will be run in parallel."
+    );
     println!("\n            P[ .. ] - A Plan. One, or more, actions for a single domain.");
     println!("\n            0:3,2 - For domain 0, run action 3, then action 2.");
-    println!("\n        Once the current state is within the need target, most (but not all) needs require an additional action to get a sample.");
-    println!("\n    Needs that cannot be done.  Lets say the current state is s0000, there is a need for s1000, and no action that changes");
+    println!(
+        "\n        Once the current state is within the need target, most (but not all) needs require an additional action to get a sample."
+    );
+    println!(
+        "\n    Needs that cannot be done.  Lets say the current state is s0000, there is a need for s1000, and no action that changes"
+    );
     println!(
         "    the left-most bit.  Using the command \"cs s1000\" will get things moving again."
     );
-    println!("\n        If there is only one square that makes a change that no other square makes, and that square has not happened to be sampled,");
+    println!(
+        "\n        If there is only one square that makes a change that no other square makes, and that square has not happened to be sampled,"
+    );
     println!(
         "        the understanding of the logic will be deficient until the square is sampled."
     );
@@ -1788,7 +1877,9 @@ fn usage() {
         "\n    After no more needs can be done, positive select region seeking logic will be used."
     );
     println!("    Repeatedly pressing the Enter key will increase the boredom duration.");
-    println!("    If there is more than one positive select region, when the boredom value reaches the the select region value,");
+    println!(
+        "    If there is more than one positive select region, when the boredom value reaches the the select region value,"
+    );
     println!("    a different select region will be sought.");
 }
 
@@ -1834,7 +1925,7 @@ fn store_data(sdx: &SessionData, cmd: &Vec<String>) -> Result<(), String> {
 
     println!("store_data: to {} step {}", cmd[1], sdx.step_num);
     let path_str = &cmd[1];
-    let serialized_r = serde_yaml::to_string(sdx);
+    let serialized_r = serde_yaml_ng::to_string(sdx);
 
     match serialized_r {
         Ok(serialized) => {

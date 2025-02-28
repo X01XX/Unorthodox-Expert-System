@@ -218,7 +218,7 @@ impl SomePlan {
             None => {
                 return Err(format!(
                     "plan::link: self {self} restrict result to {regx} failed"
-                ))
+                ));
             }
         };
         //println!("steps1 {steps1}");
@@ -228,7 +228,7 @@ impl SomePlan {
             None => {
                 return Err(format!(
                     "plan::link: other {other} restrict initial to {regx} failed"
-                ))
+                ));
             }
         };
 

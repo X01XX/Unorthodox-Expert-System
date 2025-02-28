@@ -259,11 +259,7 @@ impl RuleStore {
         let one = self[1].union(&other[0]);
 
         if !zero.is_valid_union() {
-            if !one.is_valid_union() {
-                None
-            } else {
-                Some(1)
-            }
+            if !one.is_valid_union() { None } else { Some(1) }
         } else if !one.is_valid_union() {
             Some(0)
         } else {
@@ -277,12 +273,16 @@ impl RuleStore {
         assert!(self.len() == other.len());
         debug_assert!(self[0].num_bits() == other[0].num_bits());
 
-        assert!(!self
-            .initial_region()
-            .is_superset_of(&other.initial_region()));
-        assert!(!other
-            .initial_region()
-            .is_superset_of(&self.initial_region()));
+        assert!(
+            !self
+                .initial_region()
+                .is_superset_of(&other.initial_region())
+        );
+        assert!(
+            !other
+                .initial_region()
+                .is_superset_of(&self.initial_region())
+        );
 
         if self.len() == 1 {
             return self[0].union(&other[0]).is_valid_union();
