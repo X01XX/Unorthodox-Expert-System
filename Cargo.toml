@@ -1,6 +1,6 @@
 [package]
 name = "ues"
-version = "4.0.0"
+version = "5.0.0"
 authors = ["Bitflogger<earl.dukerschein@wisc.edu>"]
 edition = "2024"
 
