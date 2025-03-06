@@ -1478,74 +1478,64 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
    Processing the results of a plan that did not work exactly as expected.
  </p>
     <h4>Implementation</h4>
-     <p>
-        Keep an array of integers representing a single square in a K-Map, the "current state".
-        </p>
-        <p>
-        Keep a list of actions the program can execute to change the state, and store the implied logic of the changes experienced.
-        </p>
-        <p>
-        For each action:
-        </p>
 	<p>Bootstrapping.</p>
         <p class="indent1">
      If the result of the current state cannot be predicted, sample it.
      </p>
      <p class="indent1">
-        The first samples of this kind, that is only a single sample of each square, can be combined, to form regions.
+        The first samples of this kind, that is only a single sample of each state, can be combined, to form regions.
      </p>
      <p class="indent1">
-        Some new regions will be invalidated when they do not predict the result of sampling a state within them.
+        Some regions will be invalidated when they do not predict the result of sampling a state within them.
+     </p>
+         <p class="indent1">
+        Keep a list of superset, non-falsified, regions of states with compatible samples.
+        </p>
+     <p class="indent1">
+        The error rate of the regions formed will start high and trend downward.
+     </p>
+	<p>Resample states.</p>
+     <p class="indent1">
+     Resample states used to understand the logic, to determine if the are predictable.
+     </p>
+	<p>Discover the structure of the logic.</p>
+     <p class="indent1">
+     The possible region structure of the logic starts with a region encompassing all possible states.
      </p>
      <p class="indent1">
-        Other new regions will work and allow getting multiple samples of states used to form the first regions.
+     Notice two dissimilar states within a possible region.
      </p>
-     <p class="indent1">
-        The error rate of the regions formed would start high and trend downward.
+     <p class="indent2">
+     Successively test states between the dissimilar states, until two adjacent, dissimilar, states are found.
+     </p>
+     <p class="indent2">
+     Intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
      </p>
         <p>
-	Making regions of similar squares, easily leads to intersecting regions that share a defining square.
-        </p>
-     <p class="indent1">
-        Such intersecting regions should be checked for the possibility of combining them.
-        </p>
-         <p>
-        Keep a list of superset non-falsified regions of squares with compatible samples.
-        </p>
-     <p class="indent1">
-        Add new regions to the end of the list.  The regions near the beginning of the list become the oldest "survivors".
-        </p>
-     <p class="indent1">
-        A newly sampled square may invalidate some regions.
+        Test the boundaries of regions.
         </p>
         <p class="indent1">
-        A newly sampled square, and squares from invalidated regions, if they are not in a known region, can be compared to other squares to form new regions.
-        </p>
-        <p>
-        Identify and resolve contradictory intersections.
-        </p>
-     <p class="indent1">
-        Contradictory intersections can be identified by reviewing the intersections of a newly created region with existing regions.
-        </p>
-     <p class="indent1">
-        An intersection of two regions may be wholly similar, wholly dissimilar, or partially dissimilar.
-        </p>
-        <p>
-        Use squares that appear to be in only one region to limit regions.
+        Use states that appear to be in only one region to limit that region.
         </p>
         <p class="indent1">
-	Sample the squares, adjacent to the limiting square, outside of the region.
+	Sample states, adjacent to the limiting state, outside of the region.
         </p>
       <p class="indent1">
-        If an external adjacent square turns out to be similar instead of dissimilar, form a region from the two.
-        </p>
-        <p class="indent1">
-        A square used to limit a region may become overlapped by later processing, causing that square to not be useful in limiting the region.
-        </p>
-      <p class="indent1">
-        Adjacent, similar, regions may be have an overlapping part, which decreases the squares that seem to be in only one region.
+        If an external adjacent state turns out to be similar instead of dissimilar, form a region from the two.
         </p>
       <p>
+        <p>
+        Extra testing of some regions.
+        </p>
+      <p class="indent1">
+        A region of states that causes predictable change will be tested by use.
+        </p>
+      <p class="indent1">
+        For regions that make no change, or are unpredicable, extra testing is needed.
+        </p>
+        <p class="indent1">
+	Sample states, adjacent to the limiting state, inside of the region.
+        </p>
       Parallel processing.
       </p>
       <p class="indent1">
@@ -2513,7 +2503,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 02/04/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 03/06/2025</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
