@@ -1333,6 +1333,7 @@ impl SomeAction {
         // Check group anchor, if any.
         let mut grp_anchor: Option<SomeState> = None;
 
+        let grpx = self.groups.find(regx).expect("SNH");
         if let Some(grpx) = self.groups.find(regx) {
             if let Some(stax) = &grpx.anchor {
                 grp_anchor = Some(stax.clone());
@@ -1341,8 +1342,45 @@ impl SomeAction {
             panic!("SNH");
         }
 
-        // Identify, and rate, all squares in the group region that are only in one region.
+        // Init NeedStore to return.
         let mut ret_nds = NeedStore::new(vec![]);
+
+        // Check defining_regions.
+
+        // Find possible anchors.
+        let mut adj_states = StateStore::new(vec![]);
+        for regx in self.defining_regions.iter() {
+            if regx.is_superset_of(&grpx.region)
+                && grpx.region.is_superset_of(regx.first_state())
+                && self.groups.in_1_group(regx.first_state())
+                && self.squares.find(regx.first_state()).is_some()
+            {
+                adj_states.push(regx.first_state().clone());
+            }
+        }
+        // Set anchor, if needed.
+        if adj_states.is_not_empty() {
+            if let Some(anchor) = &grpx.anchor {
+                if adj_states.contains(anchor) {
+                } else {
+                    //println!("defining region anchor {} for group {}, from {}", adj_states[0], grpx.region, anchor);
+                    self.groups
+                        .find_mut(regx)
+                        .expect("SNH")
+                        .set_anchor(&adj_states[0]);
+                }
+                return ret_nds;
+            } else {
+                //println!("defining region anchor {} for group {}", adj_states[0], grpx.region);
+                self.groups
+                    .find_mut(regx)
+                    .expect("SNH")
+                    .set_anchor(&adj_states[0]);
+                return ret_nds;
+            }
+        }
+
+        // Identify, and rate, all squares in the group region that are only in one region.
 
         // Get square states in the group region.
         let stas_in: StateStore = self.squares.stas_in_reg(regx);
