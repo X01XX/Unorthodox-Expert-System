@@ -717,9 +717,17 @@ impl SomeAction {
         // Calc possible regions.
         let mut poss_regions = RegionStore::new(vec![max_reg.clone()]);
         for regx in adjacent_pairs.iter() {
+            //println!("Applying {regx} to {poss_regions}");
             let regs1 = max_reg.subtract(regx.first_state());
             let regs2 = max_reg.subtract(regx.last_state());
             poss_regions = poss_regions.intersection(&regs1.union(&regs2));
+
+            //let check_regions = RegionStore::new(vec![max_reg.clone()]);
+            //let check = check_regions.subtract(&poss_regions);
+            //if check.is_not_empty() {
+            //    println!("Check is {check}");
+            //    panic!("Done");
+            // }
         }
         //println!("poss_regions: {poss_regions}");
 
@@ -2212,42 +2220,49 @@ impl SomeAction {
         //println!("action::possible_groups_from_square: Dom {} Act {} possible_groups_from_square: {}", self.dom_id, self.id, sqrx.state);
         debug_assert_eq!(sqrx.num_bits(), self.num_bits);
 
-        let mut ret_grps = Vec::<SomeGroup>::new();
+        let mut ret_grps = GroupStore::new(vec![]);
 
         if sqrx.pn == Pn::One || sqrx.pnc {
         } else {
-            return GroupStore::new(ret_grps);
+            return ret_grps;
         }
 
-        // Calc the maximum possible regions.
-
-        // Init list for holding possible regions.
-        let mut poss_regs = self.defining_regions.clone();
-
-        // Subtract states of incompatible squares.
-
         // Get squares that are in the region.
-        let mut sqrs_in = Vec::<&SomeSquare>::new();
-        for regx in poss_regs.iter() {
-            let tmp_sqrs_in = self.squares.squares_in_reg(regx);
-            for sqry in tmp_sqrs_in.iter() {
-                if !sqrs_in.contains(sqry) {
-                    sqrs_in.push(sqry);
+        for regx in self.defining_regions.iter() {
+            if regx.is_superset_of(&sqrx.state) {
+                for grpx in self.possible_groups_from_square2(sqrx, regx) {
+                    ret_grps.push_nosubs(grpx);
                 }
             }
         }
 
+        // If no groups, create a one-state group.
+        if ret_grps.is_empty() {
+            ret_grps.push(SomeGroup::new(
+                SomeRegion::new(vec![sqrx.state.clone()]),
+                sqrx.rules.clone(),
+                sqrx.pnc,
+            ));
+        }
+        ret_grps
+    }
+    /// Find groups that can be formed by a given square, and other similar squares, in a given region.
+    fn possible_groups_from_square2(&self, sqrx: &SomeSquare, regx: &SomeRegion) -> GroupStore {
+        let mut ret_grps = GroupStore::new(vec![]);
+
+        let mut sqrs_in = self.squares.squares_in_reg(regx);
+
         // Check memory for additional squares.
-        for regx in poss_regs.iter() {
-            let tmp_sqrs_in = self.squares.memory_squares_in_reg(regx);
-            for sqry in tmp_sqrs_in.iter() {
-                if !sqrs_in.contains(sqry) {
-                    sqrs_in.push(sqry);
-                }
+        let mem_sqrs_in = self.squares.memory_squares_in_reg(regx);
+        for sqry in mem_sqrs_in {
+            if !sqrs_in.contains(&sqry) {
+                sqrs_in.push(sqry);
             }
         }
 
         // Subtract dissimilar squares.
+        let mut poss_regs = RegionStore::new(vec![regx.clone()]);
+
         for sqry in sqrs_in.iter() {
             if sqry.state == sqrx.state {
                 continue;
@@ -2412,6 +2427,7 @@ impl SomeAction {
                 }
             } // end if other_sqrs_in.len() > 1
 
+            // Generate groups, if any.
             for regz in poss_regs2.iter() {
                 if regz.is_superset_of(&sqrx.state) {
                     if let Some(grpx) = self.validate_possible_group(sqrx, regz) {
@@ -2421,15 +2437,7 @@ impl SomeAction {
             }
         } // next regx
 
-        // If no groups, create a one-state group.
-        if ret_grps.is_empty() {
-            ret_grps.push(SomeGroup::new(
-                SomeRegion::new(vec![sqrx.state.clone()]),
-                sqrx.rules.clone(),
-                sqrx.pnc,
-            ));
-        }
-        GroupStore::new(ret_grps)
+        ret_grps
     } // end possible_regions_from_square
 
     /// Validate a region that may be made from a given square, in combination with similar squares.
@@ -2610,9 +2618,9 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
-        if self.defining_regions.len() > 1 {
-            rc_str += &format!(", calculated defining regions: {}", self.defining_regions);
-        }
+        //if self.defining_regions.len() > 1 {
+        rc_str += &format!(", calculated defining regions: {}", self.defining_regions);
+        //}
 
         //rc_str.push_str(&format!(", agg_chgs_updated {}", self.agg_chgs_updated));
 

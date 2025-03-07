@@ -249,6 +249,40 @@ impl GroupStore {
 
         rc_str
     }
+
+    /// Return true if the store is empty.
+    pub fn is_empty(&self) -> bool {
+        self.items.is_empty()
+    }
+
+    /// Add a group, removing subset groups.
+    pub fn push_nosubs(&mut self, grpx: SomeGroup) -> bool {
+        debug_assert!(self.is_empty() || grpx.region.num_bits() == self[0].region.num_bits());
+
+        // Check for supersets.
+        if self.any_superset_of(&grpx) {
+            //println!("skipped adding group {}, a superset exists in {}", grpx, self);
+            return false;
+        }
+
+        // Identify subsets.
+        let mut rmvec = Vec::<usize>::new();
+
+        for (inx, grpy) in self.items.iter().enumerate() {
+            if grpy.is_subset_of(&grpx) {
+                rmvec.push(inx);
+            }
+        }
+
+        // Remove identified groups, in descending index order.
+        for inx in rmvec.iter().rev() {
+            tools::remove_unordered(&mut self.items, *inx);
+        }
+
+        self.items.push(grpx);
+
+        true
+    }
 } // end impl GroupStore
 
 impl IntoIterator for GroupStore {
