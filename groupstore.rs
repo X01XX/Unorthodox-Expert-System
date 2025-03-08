@@ -176,14 +176,6 @@ impl GroupStore {
         fnd
     }
 
-    /// Add a group to the end of the list.
-    /// So older, more likely groups are first in the list.
-    pub fn push(&mut self, grp: SomeGroup) -> bool {
-        self.items.push(grp);
-
-        true
-    }
-
     /// Check groups with a given sample.
     /// Return true if any groups are invalidated.
     pub fn any_groups_invalidated(&mut self, smpl: &SomeSample) -> bool {

@@ -118,19 +118,12 @@ pub enum SomeNeed {
         to_state: SomeState,
         in_reg: SomeRegion,
     },
-    /// Housekeeping, add a group.
-    AddGroup {
-        group_region: SomeRegion,
-        rules: Option<RuleStore>,
-        pnc: bool,
-    },
 }
 
 impl SomeNeed {
     /// Return a need name string.
     pub fn name(&self) -> &str {
         match self {
-            Self::AddGroup { .. } => "AddGroup",
             Self::ConfirmGroup { .. } => "ConfirmGroup",
             Self::ConfirmIP { .. } => "ConfirmIP",
             Self::CloserIP { .. } => "CloserIP",
@@ -159,10 +152,6 @@ impl SomeNeed {
             Self::LimitGroup { priority, .. } => *priority += 500,
             Self::LimitGroupAdj { priority, .. } => *priority += 600,
             Self::ToSelectRegions { priority, .. } => *priority += 900,
-            _ => panic!(
-                "SomeNeed::priority should not be called for the {} need.",
-                self.name()
-            ),
         } // end match ndx
     } // end caLc_priority
 
@@ -180,10 +169,6 @@ impl SomeNeed {
             Self::LimitGroupAdj { priority, .. } => *priority,
             Self::StateNotInGroup { priority, .. } => *priority,
             Self::ToSelectRegions { priority, .. } => *priority,
-            _ => panic!(
-                "SomeNeed::priority should not be called for the {} need.",
-                self.name()
-            ),
         } // end match ndx
     } // end priority
 
@@ -236,17 +221,6 @@ impl SomeNeed {
     /// Return a String representation of SomeNeed.
     fn formatted_str(&self) -> String {
         match self {
-            Self::AddGroup {
-                group_region,
-                rules,
-                pnc,
-            } => {
-                if let Some(xrules) = rules {
-                    format!("N(Create group from {group_region} {xrules} pnc {pnc})")
-                } else {
-                    format!("N(Create group from {group_region} No rules pnc {pnc})")
-                }
-            }
             Self::ConfirmGroup {
                 dom_id,
                 act_id,
@@ -407,7 +381,6 @@ impl SomeNeed {
             Self::StateNotInGroup { target, .. } => target,
             Self::ExitSelectRegions { target, .. } => target,
             Self::ToSelectRegions { target, .. } => target,
-            _ => panic!("SomeNeed::distance: Unrecognized need {}", self),
         } //end match self
     } // end target
 } // End impl SomeNeed

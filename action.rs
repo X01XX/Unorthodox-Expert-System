@@ -134,7 +134,10 @@ impl SomeAction {
             cleanup_number_new_squares: 0,
             limited: RegionStore::new(vec![]),
             base_rules: rules,
-            defining_regions: RegionStore::new(vec![SomeRegion::new(vec![sta0.new_high(), sta0])]),
+            defining_regions: RegionStore::new(vec![SomeRegion::new(vec![
+                sta0.new_high(),
+                sta0.clone(),
+            ])]),
         }
     }
 
@@ -377,8 +380,14 @@ impl SomeAction {
         // Store possible groups, some may be duplicates.
         for grpstrx in groups {
             for grpx in grpstrx {
-                if !self.groups.any_superset_of(&grpx.region) {
-                    self.groups_push_nosubs(grpx);
+                //if !self.groups.any_superset_of(&grpx.region) {
+                if self.groups.any_superset_of(&grpx.region) {
+                    //println!(
+                    //    "Dom {} Act {} skipped adding group (3) {}",
+                    //    self.dom_id, self.id, grpx.region
+                    //);
+                } else {
+                    self.add_group(grpx);
                 }
             }
         }
@@ -416,7 +425,7 @@ impl SomeAction {
     /// Return needs for states that are not in a group.
     /// The Domain current state for which there are no samples.
     /// A pn > 1 state that needs more samples.
-    pub fn state_not_in_group_needs(&self, cur_state: &SomeState) -> NeedStore {
+    pub fn state_not_in_group_needs(&mut self, cur_state: &SomeState) -> NeedStore {
         debug_assert_eq!(cur_state.num_bits(), self.num_bits);
 
         let mut nds = NeedStore::new(vec![]);
@@ -425,10 +434,11 @@ impl SomeAction {
         if !self.groups.any_superset_of(cur_state) {
             if let Some(sqrx) = self.squares.find(cur_state) {
                 if sqrx.pn == Pn::One || sqrx.pnc {
-                    panic!(
+                    println!(
                         "Problem: Dom {} Act {} square {} not in group?",
                         self.dom_id, self.id, sqrx
                     );
+                    self.create_groups_from_squares(&[sqrx.state.clone()]);
                 } else {
                     let mut needx = SomeNeed::StateNotInGroup {
                         dom_id: self.dom_id,
@@ -519,16 +529,19 @@ impl SomeAction {
             //println!("grps_to_check: {grps_to_check}");
             // Subtract limited groups from non-anchor groups, delete if nothing left.
             let mut grps_to_remove = RegionStore::new(vec![]);
-            for grpx in grps_to_check.iter() {
-                let mut left = RegionStore::new(vec![grpx.clone()]);
+            for grpx_reg in grps_to_check.iter() {
+                let mut left = RegionStore::new(vec![grpx_reg.clone()]);
                 for grp_a in self.groups.iter() {
-                    if grp_a.limited && left.any_intersection_of(&grp_a.region) {
+                    if grp_a.region != *grpx_reg
+                        && grp_a.limited
+                        && left.any_intersection_of(&grp_a.region)
+                    {
                         left = left.subtract_region(&grp_a.region);
                     }
                 }
                 //println!("group to check: {grpx}, whats left: {left}");
                 if left.is_empty() {
-                    grps_to_remove.push_nosubs(grpx.clone());
+                    grps_to_remove.push_nosubs(grpx_reg.clone());
                 }
             }
             for grpx in grps_to_remove.iter() {
@@ -588,53 +601,38 @@ impl SomeAction {
         debug_assert_eq!(max_reg.num_bits(), self.num_bits);
 
         let pair_nds = self.incompatible_pair_needs(max_reg);
+        if pair_nds.is_empty() {
+            let mut del_regs = RegionStore::new(vec![]);
+            for grpx in self.groups.iter() {
+                //if grpx.pnc && grpx.anchor.is_none() && !self.defining_regions.any_superset_of(&grpx.region)
+                if !self.defining_regions.any_superset_of(&grpx.region) {
+                    del_regs.push(grpx.region.clone());
+                }
+            }
+            if del_regs.is_not_empty() {
+                println!(
+                    "Dom {} Act {} processing invalid regs {del_regs} due to defining regions {}",
+                    self.dom_id, self.id, self.defining_regions
+                );
+                self.process_invalid_regions(&del_regs);
+            }
+        }
 
         let mut nds = NeedStore::new(vec![]);
 
-        // loop until no housekeeping need is returned.
-        let mut try_again = true;
-        let mut count = 0;
-        while try_again {
-            try_again = false;
-            count += 1;
-            if count > 20 {
-                panic!("Housekeeping infinite loop?");
-            }
-
-            // Check for additional samples for group states needs
-            nds.append(self.confirm_group_needs());
-
-            // Check any two groups for overlapping groups that form a contradictory intersection.
-            nds.append(self.group_pair_needs());
-
-            // Check for group limiting needs
-            if let Some(ndx) = self.limit_groups_needs(max_reg) {
-                nds.append(ndx);
-            }
-
-            // Process housekeeping needs.
-            for ndx in nds.iter_mut() {
-                if let SomeNeed::AddGroup {
-                    group_region,
-                    rules,
-                    pnc,
-                } = ndx
-                {
-                    self.groups_push_nosubs(SomeGroup::new(
-                        group_region.clone(),
-                        rules.clone(),
-                        *pnc,
-                    ));
-                    try_again = true;
-                }
-            } // next ndx
-            if try_again {
-                nds = NeedStore::new(vec![]);
-            }
-        } // end loop
-
-        // Look for needs for states not in groups
+        // Look for needs for states not in groups, may add a one-state group.
         nds.append(self.state_not_in_group_needs(cur_state));
+
+        // Check for additional samples for group states needs
+        nds.append(self.confirm_group_needs());
+
+        // Check any two groups for overlapping groups that form a contradictory intersection.
+        nds.append(self.group_pair_needs());
+
+        // Check for group limiting needs
+        if let Some(ndx) = self.limit_groups_needs(max_reg) {
+            nds.append(ndx);
+        }
 
         nds.append(pair_nds);
 
@@ -721,13 +719,6 @@ impl SomeAction {
             let regs1 = max_reg.subtract(regx.first_state());
             let regs2 = max_reg.subtract(regx.last_state());
             poss_regions = poss_regions.intersection(&regs1.union(&regs2));
-
-            //let check_regions = RegionStore::new(vec![max_reg.clone()]);
-            //let check = check_regions.subtract(&poss_regions);
-            //if check.is_not_empty() {
-            //    println!("Check is {check}");
-            //    panic!("Done");
-            // }
         }
         //println!("poss_regions: {poss_regions}");
 
@@ -752,6 +743,7 @@ impl SomeAction {
 
         // Filter out regions with no part only in one region.
         let mut defining_regions = RegionStore::new(vec![]);
+        let mut in_one = RegionStore::new(vec![]);
         for regx in poss_regions.iter() {
             let mut whats_left = RegionStore::new(vec![regx.clone()]);
             for regy in poss_regions.iter() {
@@ -764,6 +756,7 @@ impl SomeAction {
             }
             if whats_left.is_not_empty() {
                 defining_regions.push(regx.clone());
+                in_one.append(whats_left);
             }
         }
 
@@ -1360,7 +1353,7 @@ impl SomeAction {
         for regx in self.defining_regions.iter() {
             if regx.is_superset_of(&grpx.region)
                 && grpx.region.is_superset_of(regx.first_state())
-                && self.groups.in_1_group(regx.first_state())
+                && self.defining_regions.in_one_region(regx.first_state())
                 && self.squares.find(regx.first_state()).is_some()
             {
                 adj_states.push(regx.first_state().clone());
@@ -1377,14 +1370,14 @@ impl SomeAction {
                         .expect("SNH")
                         .set_anchor(&adj_states[0]);
                 }
-                return ret_nds;
+                //return ret_nds;
             } else {
                 //println!("defining region anchor {} for group {}", adj_states[0], grpx.region);
                 self.groups
                     .find_mut(regx)
                     .expect("SNH")
                     .set_anchor(&adj_states[0]);
-                return ret_nds;
+                //return ret_nds;
             }
         }
 
@@ -1536,9 +1529,13 @@ impl SomeAction {
             .find(anchor_sta)
             .expect("Group region anchor should refer to an existing square");
 
+        // We want anchor square and external adjacent square to be pnc.
+        if !anchor_sqr.pnc {
+            return None;
+        }
+
         // Check each adjacent external state
         let mut nds_grp = NeedStore::new(vec![]); // needs for more samples
-        let mut nds_grp_add = NeedStore::new(vec![]); // needs for added group
 
         // Get masks of edge bits to use to limit group.
         // Ignore bits that cannot be changed by any action.
@@ -1559,26 +1556,11 @@ impl SomeAction {
 
             if let Some(adj_sqr) = self.squares.find(&adj_sta) {
                 if adj_sqr.pnc {
-                    // Create new group, if an adjacent square can combine with the anchor.
-                    // Current anchor will then be in two regions,
-                    // the next run of limit_group_anchor_needs will deal with it.
                     if anchor_sqr.compatible(adj_sqr) == Compatibility::Compatible {
-                        let regz = SomeRegion::new(vec![anchor_sta.clone(), adj_sta]);
-
-                        let ruls: Option<RuleStore> = if anchor_sqr.pn == Pn::Unpredictable {
-                            None
-                        } else {
-                            anchor_sqr
-                                .rules
-                                .as_ref()
-                                .expect("SNH")
-                                .union(adj_sqr.rules.as_ref().expect("SNH"))
-                        };
-                        nds_grp_add.push(SomeNeed::AddGroup {
-                            group_region: regz,
-                            rules: ruls,
-                            pnc: anchor_sqr.pnc,
-                        });
+                        if let Some(grpx) = self.groups.find_mut(regx) {
+                            grpx.set_anchor_off();
+                        }
+                        return None;
                     }
                 } else {
                     // Get another sample of adjacent square.
@@ -1607,11 +1589,6 @@ impl SomeAction {
                 nds_grp.push(needx);
             }
         } // next inx in cfm_max
-
-        if nds_grp_add.is_not_empty() {
-            //println!("*** nds_grp_add {}", nds_grp_add);
-            return Some(nds_grp_add);
-        }
 
         if nds_grp.is_not_empty() {
             //println!("*** nds_grp {}", nds_grp);
@@ -1746,8 +1723,8 @@ impl SomeAction {
 
                 if grpx.intersects(grpy) {
                     nds.append(self.group_pair_intersection_needs(grpx, grpy, inx));
-                } else if grpx.is_adjacent(grpy) {
-                    nds.append(self.group_combine_needs(grpx, grpy));
+                    //} else if grpx.is_adjacent(grpy) {
+                    //    nds.append(self.group_combine_needs(grpx, grpy));
                 }
             } // next iny
         } // next inx
@@ -1836,39 +1813,6 @@ impl SomeAction {
         Some((SomeRegion::new(stas_in), rules))
     } // end check_region_for_group
 
-    /// Check two groups that may be combined.
-    fn group_combine_needs(&self, grpx: &SomeGroup, grpy: &SomeGroup) -> NeedStore {
-        //println!("Dom {} Act {} group_combine_needs: of group {} and {}", self.dom_id, self.id, grpx.region, grpy.region);
-        let mut nds = NeedStore::new(vec![]);
-
-        if !grpx.pnc || !grpy.pnc {
-            return nds;
-        }
-
-        if grpx.pn != grpy.pn {
-            return nds;
-        }
-
-        if grpx.limited || grpy.limited || grpx.anchor.is_some() || grpy.anchor.is_some() {
-            return nds;
-        }
-
-        let reg_combined = grpx.region.union(&grpy.region);
-
-        if let Some((regx, rules)) = self.check_region_for_group(&reg_combined, grpx.pn) {
-            if regx == reg_combined {
-                //println!("group_combine_needs: returning (2) {regx} for combination of {} and {}", grpx.region, grpy.region);
-                nds.push(SomeNeed::AddGroup {
-                    group_region: regx,
-                    rules,
-                    pnc: false,
-                });
-            }
-        }
-
-        nds
-    }
-
     /// Check two intersecting groups for
     /// a contradictatory intersection.
     fn group_pair_intersection_needs(
@@ -1878,13 +1822,14 @@ impl SomeAction {
         group_num: usize,
     ) -> NeedStore {
         //println!(
-        //  "action::groups_pair_intersection_needs: Dom {} Act {} {} {} and {} {}",
-        //  self.dom_id, self.id, &grpx.region, grpx.pn, grpy.region, grpy.pn
+        //  "action::groups_pair_intersection_needs: Dom {} Act {} {} {} and {} {} at {}",
+        //  self.dom_id, self.id, &grpx.region, grpx.pn, grpy.region, grpy.pn, grpx.region.intersection(&grpy.region).unwrap()
         //);
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
         debug_assert_eq!(grpy.num_bits(), self.num_bits);
 
         assert!(grpx.region.intersects(&grpy.region));
+        assert!(grpx.region != grpy.region);
 
         let mut nds = NeedStore::new(vec![]);
 
@@ -1933,35 +1878,36 @@ impl SomeAction {
             .unwrap()
             .restrict_initial_region(&reg_int);
 
-        // If the rules are the same, check if they should be combined.
-        if rulsx == rulsy {
-            nds.append(self.group_combine_needs(grpx, grpy));
-            return nds;
-        }
-
         // If contradictory, return needs to resolve
 
         // Check if a valid sub-region of the intersection exists
         if let Some(rulsxy) = rulsx.intersection(&rulsy) {
-            // A valid sub-union exists, seek a sample in intersection that is not in rulsxy.initial_region
+            // If a valid sub-region exists, seek a sample in intersection that is not in rulsxy.initial_region.
             let ok_reg = rulsxy.initial_region();
 
-            // To test all bits that may be a problem.
-            let far_reg = reg_int.far_from_reg(&ok_reg);
+            if ok_reg != reg_int {
+                // To test all bits that may be a problem.
+                let far_reg = reg_int.far_from_reg(&ok_reg);
 
-            //println!(
-            //    "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
-            //    grpx.region, grpy.region, reg_int, rulsxy, ok_reg, far_reg
-            //);
+                //println!(
+                //    "cont int {} and {}, intersection is {} ok rules {} ok reg {} far reg is {}",
+                //    grpx.region, grpy.region, reg_int, rulsxy, ok_reg, far_reg
+                //);
 
-            // Calc rules for far region.
-            let rulsx = rulsx.restrict_initial_region(&far_reg);
-            let rulsy = rulsy.restrict_initial_region(&far_reg);
+                // Calc rules for far region.
+                let rulsx = rulsx.restrict_initial_region(&far_reg);
+                let rulsy = rulsy.restrict_initial_region(&far_reg);
 
-            if let Some(needx) =
-                self.cont_int_region_need(&far_reg, grpx, grpy, group_num, Some(rulsx), Some(rulsy))
-            {
-                nds.push(needx);
+                if let Some(needx) = self.cont_int_region_need(
+                    &far_reg,
+                    grpx,
+                    grpy,
+                    group_num,
+                    Some(rulsx),
+                    Some(rulsy),
+                ) {
+                    nds.push(needx);
+                }
             }
         } else {
             //println!("pn2 whole intersection is bad");
@@ -2227,25 +2173,37 @@ impl SomeAction {
             return ret_grps;
         }
 
-        // Get squares that are in the region.
+        // Check regions the square is in.
+        let mut try_all = true;
         for regx in self.defining_regions.iter() {
             if regx.is_superset_of(&sqrx.state) {
                 for grpx in self.possible_groups_from_square2(sqrx, regx) {
                     ret_grps.push_nosubs(grpx);
+                    try_all = false;
                 }
+            }
+        }
+
+        // Defining regions may not cover all, more defining regions may need to be discovered.
+        if try_all {
+            let max_region = SomeRegion::new(vec![sqrx.state.new_high(), sqrx.state.new_low()]);
+            for grpx in self.possible_groups_from_square2(sqrx, &max_region) {
+                ret_grps.push_nosubs(grpx);
             }
         }
 
         // If no groups, create a one-state group.
         if ret_grps.is_empty() {
-            ret_grps.push(SomeGroup::new(
+            ret_grps.push_nosubs(SomeGroup::new(
                 SomeRegion::new(vec![sqrx.state.clone()]),
                 sqrx.rules.clone(),
                 sqrx.pnc,
             ));
         }
+
         ret_grps
     }
+
     /// Find groups that can be formed by a given square, and other similar squares, in a given region.
     fn possible_groups_from_square2(&self, sqrx: &SomeSquare, regx: &SomeRegion) -> GroupStore {
         let mut ret_grps = GroupStore::new(vec![]);
@@ -2288,7 +2246,7 @@ impl SomeAction {
             // Process an Unpredictable square.
             if sqrx.pn == Pn::Unpredictable {
                 if let Some(grpx) = self.validate_possible_group(sqrx, regx) {
-                    ret_grps.push(grpx);
+                    ret_grps.push_nosubs(grpx);
                 }
                 continue;
             }
@@ -2431,7 +2389,7 @@ impl SomeAction {
             for regz in poss_regs2.iter() {
                 if regz.is_superset_of(&sqrx.state) {
                     if let Some(grpx) = self.validate_possible_group(sqrx, regz) {
-                        ret_grps.push(grpx);
+                        ret_grps.push_nosubs(grpx);
                     }
                 }
             }
@@ -2449,7 +2407,11 @@ impl SomeAction {
 
         if let Some((regy, rules)) = self.check_region_for_group(regx, sqrx.pn) {
             if regy.is_superset_of(&sqrx.state) {
-                Some(SomeGroup::new(regy, rules, false))
+                if self.groups.any_superset_of(&regy) {
+                    None
+                } else {
+                    Some(SomeGroup::new(regy, rules, false))
+                }
             } else {
                 None
             }
@@ -2485,6 +2447,40 @@ impl SomeAction {
                                 "Dom {} Act {} Group {} confirmed",
                                 self.dom_id, self.id, grpx.region
                             );
+                        }
+                    }
+                }
+            }
+        }
+        if let SomeNeed::LimitGroupAdj {
+            target: ATarget::State { state },
+            for_group,
+            anchor,
+            ..
+        } = ndx
+        {
+            let sqr_targ = self.squares.find(state).expect("SNH");
+            if sqr_targ.pnc {
+                let sqr_anc = self.squares.find(anchor).expect("SNH");
+                if sqr_anc.pnc && sqr_anc.compatible(sqr_targ) == Compatibility::Compatible {
+                    if sqr_anc.pn == Pn::Unpredictable {
+                        self.add_group(SomeGroup::new(
+                            SomeRegion::new(vec![state.clone(), anchor.clone()]),
+                            None,
+                            true,
+                        ));
+                    } else if let Some(rules_a) = &sqr_anc.rules {
+                        if let Some(rules_t) = &sqr_targ.rules {
+                            if let Some(rules) = rules_a.union(rules_t) {
+                                self.add_group(SomeGroup::new(
+                                    SomeRegion::new(vec![state.clone(), anchor.clone()]),
+                                    Some(rules),
+                                    true,
+                                ));
+                                if let Some(grpx) = self.groups.find_mut(for_group) {
+                                    grpx.set_anchor_off();
+                                }
+                            }
                         }
                     }
                 }
@@ -2776,28 +2772,6 @@ impl SomeAction {
         regs_invalid
     }
 
-    /// Add a group to the end of the list.
-    /// So older, longer surviving, groups are first in the list.
-    pub fn groups_push_nosubs(&mut self, grp: SomeGroup) -> bool {
-        // Check for supersets, which probably is an error
-        if self.groups.any_superset_of(&grp.region) {
-            let regs = self.groups.supersets_of(&grp.region);
-            println!(
-                "Dom {} Act {} skipped adding group {}, a superset exists in {regs}",
-                self.dom_id, self.id, grp.region,
-            );
-            return false;
-        }
-
-        // Remove subset groups
-        //self.groups_remove_subsets_of(&grp.region);
-
-        // Add the new group
-        self.add_group(grp);
-
-        true
-    }
-
     /// Find and remove any groups that are a subset of a given region.
     pub fn groups_remove_subsets_of(&mut self, reg: &SomeRegion) -> bool {
         // Accumulate indices of groups that are subsets
@@ -2825,6 +2799,16 @@ impl SomeAction {
     // This is always used, instead of self.groups.push, to insure
     // that self.agg_chgs_updated is changed.
     pub fn add_group(&mut self, grpx: SomeGroup) {
+        // Check for supersets, which probably is an error
+        if self.groups.any_superset_of(&grpx.region) {
+            let regs = self.groups.supersets_of(&grpx.region);
+            println!(
+                "Dom {} Act {} skipped adding group {}, a superset exists in {regs}",
+                self.dom_id, self.id, grpx.region,
+            );
+            return;
+        }
+
         if grpx.region.states.len() > 1 {
             println!(
                 "\nDom {} Act {} Adding Group {} from {}",
@@ -2837,9 +2821,9 @@ impl SomeAction {
             );
         }
         // Remove subset groups
-        self.groups_remove_subsets_of(&grpx.region);
+        //self.groups_remove_subsets_of(&grpx.region);
 
-        self.groups.push(grpx);
+        self.groups.push_nosubs(grpx);
     }
 
     // Remove a group.
