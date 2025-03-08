@@ -514,7 +514,7 @@ impl SomeAction {
             // Find non-equal intersecting groups, with no anchor.
             let mut grps_to_check = RegionStore::new(vec![]);
             for grpx in self.groups.iter() {
-                if grpx.anchor.is_some() {
+                if grpx.get_anchor().is_some() {
                     continue;
                 }
                 for grp_l in self.limited.iter() {
@@ -995,7 +995,7 @@ impl SomeAction {
         if needs.is_empty() {
             let mut del = Vec::<SomeRegion>::new();
             for grpx in self.groups.iter() {
-                if grpx.anchor.is_none() {
+                if grpx.get_anchor().is_none() {
                     println!(
                         "\nDom {} Act {} Group {} is not needed, removed.",
                         self.dom_id, self.id, grpx.region
@@ -1034,7 +1034,7 @@ impl SomeAction {
                         continue 'next_sqr;
                     }
 
-                    if let Some(stay) = &grpx.anchor {
+                    if let Some(stay) = grpx.get_anchor() {
                         if stay == keyx {
                             continue 'next_sqr;
                         }
@@ -1045,7 +1045,7 @@ impl SomeAction {
                             continue 'next_sqr;
                         }
                     }
-                } else if let Some(stay) = &grpx.anchor {
+                } else if let Some(stay) = grpx.get_anchor() {
                     if keyx.is_adjacent(stay) {
                         continue 'next_sqr;
                     }
@@ -1178,7 +1178,7 @@ impl SomeAction {
         // Check if groups current anchors are still in only one region.
         let mut remove_anchor = Vec::<SomeRegion>::new();
         for grpx in self.groups.iter() {
-            let Some(stax) = &grpx.anchor else {
+            let Some(stax) = grpx.get_anchor() else {
                 continue;
             };
 
@@ -1204,7 +1204,7 @@ impl SomeAction {
             if !grpx.limited {
                 continue;
             }
-            if let Some(anchor) = &grpx.anchor {
+            if let Some(anchor) = grpx.get_anchor() {
                 if max_reg.is_superset_of(anchor) {
                     if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
@@ -1246,7 +1246,7 @@ impl SomeAction {
             //    continue;
             //}
 
-            if let Some(anchor) = self.groups[group_num].anchor.clone() {
+            if let Some(anchor) = self.groups[group_num].get_anchor().clone() {
                 if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num) {
                     ret_nds.append(ndx);
                     continue;
@@ -1336,7 +1336,7 @@ impl SomeAction {
 
         let grpx = self.groups.find(regx).expect("SNH");
         if let Some(grpx) = self.groups.find(regx) {
-            if let Some(stax) = &grpx.anchor {
+            if let Some(stax) = grpx.get_anchor() {
                 grp_anchor = Some(stax.clone());
             }
         } else {
@@ -1361,7 +1361,7 @@ impl SomeAction {
         }
         // Set anchor, if needed.
         if adj_states.is_not_empty() {
-            if let Some(anchor) = &grpx.anchor {
+            if let Some(anchor) = grpx.get_anchor() {
                 if adj_states.contains(anchor) {
                 } else {
                     //println!("defining region anchor {} for group {}, from {}", adj_states[0], grpx.region, anchor);
@@ -2528,7 +2528,7 @@ impl SomeAction {
     pub fn display_anchor_info(&self) -> Result<(), String> {
         //println!("action::display_anchor_info: Dom {} Act {} group anchor rates", self.dom_id, self.id);
         for grpx in self.groups.iter() {
-            if grpx.anchor.is_some() {
+            if grpx.get_anchor().is_some() {
                 self.display_group_anchor_info2(grpx)?
             }
         } // next grpx
@@ -2550,7 +2550,7 @@ impl SomeAction {
     pub fn display_group_anchor_info2(&self, grpx: &SomeGroup) -> Result<(), String> {
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
 
-        if let Some(anchor) = &grpx.anchor {
+        if let Some(anchor) = grpx.get_anchor() {
             println!("\nGroup:   {}", grpx.region);
             let sqrx = self
                 .squares
@@ -2565,7 +2565,7 @@ impl SomeAction {
                     let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
-                            if let Some(anchory) = &grpy.anchor {
+                            if let Some(anchory) = &grpy.get_anchor() {
                                 if stax == anchory {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
                                 } else {
@@ -2743,7 +2743,7 @@ impl SomeAction {
             if !grpx.limited || !grpx.region.is_adjacent(&sqrx.state) {
                 continue;
             }
-            if let Some(anchor) = &grpx.anchor {
+            if let Some(anchor) = grpx.get_anchor() {
                 if anchor.is_adjacent(&sqrx.state) {
                     if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
                         if grpx.set_limited_off() {
