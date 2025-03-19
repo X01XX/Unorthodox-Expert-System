@@ -43,7 +43,7 @@ pub struct SomeGroup {
     /// of the group region checked.
     pub limited: bool,
     /// The state, in only one (this) group, used to limit the group.
-    anchor: Option<SomeState>,
+    pub anchor: Option<SomeState>,
     /// Maskof  adjacent squares used to limit a group.
     /// This will be the region edge mask, limited by the bit changes of available rules.
     pub anchor_mask: Option<SomeMask>,
@@ -85,10 +85,6 @@ impl SomeGroup {
             anchor: None,
             anchor_mask: None,
         }
-    }
-
-    pub fn get_anchor(&self) -> &Option<SomeState> {
-        &self.anchor
     }
 
     /// Accessor set the pnc field to true.

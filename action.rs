@@ -514,7 +514,7 @@ impl SomeAction {
             // Find non-equal intersecting groups, with no anchor.
             let mut grps_to_check = RegionStore::new(vec![]);
             for grpx in self.groups.iter() {
-                if grpx.get_anchor().is_some() {
+                if grpx.anchor.is_some() {
                     continue;
                 }
                 for grp_l in self.limited.iter() {
@@ -604,7 +604,6 @@ impl SomeAction {
         if pair_nds.is_empty() {
             let mut del_regs = RegionStore::new(vec![]);
             for grpx in self.groups.iter() {
-                //if grpx.pnc && grpx.anchor.is_none() && !self.defining_regions.any_superset_of(&grpx.region)
                 if !self.defining_regions.any_superset_of(&grpx.region) {
                     del_regs.push(grpx.region.clone());
                 }
@@ -659,7 +658,13 @@ impl SomeAction {
 
         // Check each pair for incompatibility, save pairs, no supersets.
         for inx in 0..(sqrs.len() - 1) {
+            if !sqrs[inx].pnc {
+                continue;
+            }
             for iny in (inx + 1)..sqrs.len() {
+                if !sqrs[iny].pnc {
+                    continue;
+                }
                 if sqrs[inx].compatible(sqrs[iny]) == Compatibility::NotCompatible {
                     incompat_regions.push_nosups(SomeRegion::new(vec![
                         sqrs[inx].state.clone(),
@@ -687,30 +692,6 @@ impl SomeAction {
         }
         //println!("adjacent_pairs:     {adjacent_pairs}");
         //println!("non_adjacent_pairs: {non_adjacent_pairs}");
-
-        // Process adjacent incompatible pairs.
-        for regx in adjacent_pairs.iter() {
-            //println!("Processing adjacent Incompatible pair: {regx}");
-            for stax in regx.states.iter() {
-                let Some(sqrx) = self.squares.find(stax) else {
-                    panic!("SNH");
-                };
-                if sqrx.pnc {
-                } else {
-                    let mut needx = SomeNeed::ConfirmIP {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target: ATarget::State {
-                            state: sqrx.state.clone(),
-                        },
-                        unknown_region: regx.clone(),
-                        priority: 0,
-                    };
-                    needx.add_priority_base();
-                    nds.push(needx);
-                }
-            }
-        }
 
         // Calc possible regions.
         let mut poss_regions = RegionStore::new(vec![max_reg.clone()]);
@@ -913,35 +894,6 @@ impl SomeAction {
                     }
                     continue;
                 }
-
-                // Get extra samples of squares, as needed.
-                if !sqrx.pnc {
-                    let mut needx = SomeNeed::ConfirmIP {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target: ATarget::State {
-                            state: sqrx.state.clone(),
-                        },
-                        unknown_region: regx.clone(),
-                        priority: pri,
-                    };
-                    needx.add_priority_base();
-                    nds.push(needx);
-                }
-
-                if !sqry.pnc {
-                    let mut needx = SomeNeed::ConfirmIP {
-                        dom_id: self.dom_id,
-                        act_id: self.id,
-                        target: ATarget::State {
-                            state: sqry.state.clone(),
-                        },
-                        unknown_region: regx.clone(),
-                        priority: pri,
-                    };
-                    needx.add_priority_base();
-                    nds.push(needx);
-                }
             }
         }
         // If any non-adjacent pair needs, return them.
@@ -995,7 +947,7 @@ impl SomeAction {
         if needs.is_empty() {
             let mut del = Vec::<SomeRegion>::new();
             for grpx in self.groups.iter() {
-                if grpx.get_anchor().is_none() {
+                if grpx.anchor.is_none() {
                     println!(
                         "\nDom {} Act {} Group {} is not needed, removed.",
                         self.dom_id, self.id, grpx.region
@@ -1034,7 +986,7 @@ impl SomeAction {
                         continue 'next_sqr;
                     }
 
-                    if let Some(stay) = grpx.get_anchor() {
+                    if let Some(stay) = &grpx.anchor {
                         if stay == keyx {
                             continue 'next_sqr;
                         }
@@ -1045,7 +997,7 @@ impl SomeAction {
                             continue 'next_sqr;
                         }
                     }
-                } else if let Some(stay) = grpx.get_anchor() {
+                } else if let Some(stay) = &grpx.anchor {
                     if keyx.is_adjacent(stay) {
                         continue 'next_sqr;
                     }
@@ -1178,7 +1130,7 @@ impl SomeAction {
         // Check if groups current anchors are still in only one region.
         let mut remove_anchor = Vec::<SomeRegion>::new();
         for grpx in self.groups.iter() {
-            let Some(stax) = grpx.get_anchor() else {
+            let Some(stax) = &grpx.anchor else {
                 continue;
             };
 
@@ -1204,7 +1156,7 @@ impl SomeAction {
             if !grpx.limited {
                 continue;
             }
-            if let Some(anchor) = grpx.get_anchor() {
+            if let Some(anchor) = &grpx.anchor {
                 if max_reg.is_superset_of(anchor) {
                     if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
@@ -1246,7 +1198,7 @@ impl SomeAction {
             //    continue;
             //}
 
-            if let Some(anchor) = self.groups[group_num].get_anchor().clone() {
+            if let Some(anchor) = self.groups[group_num].anchor.clone() {
                 if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num) {
                     ret_nds.append(ndx);
                     continue;
@@ -1336,7 +1288,7 @@ impl SomeAction {
 
         let grpx = self.groups.find(regx).expect("SNH");
         if let Some(grpx) = self.groups.find(regx) {
-            if let Some(stax) = grpx.get_anchor() {
+            if let Some(stax) = &grpx.anchor {
                 grp_anchor = Some(stax.clone());
             }
         } else {
@@ -1361,7 +1313,7 @@ impl SomeAction {
         }
         // Set anchor, if needed.
         if adj_states.is_not_empty() {
-            if let Some(anchor) = grpx.get_anchor() {
+            if let Some(anchor) = &grpx.anchor {
                 if adj_states.contains(anchor) {
                 } else {
                     //println!("defining region anchor {} for group {}, from {}", adj_states[0], grpx.region, anchor);
@@ -2528,7 +2480,7 @@ impl SomeAction {
     pub fn display_anchor_info(&self) -> Result<(), String> {
         //println!("action::display_anchor_info: Dom {} Act {} group anchor rates", self.dom_id, self.id);
         for grpx in self.groups.iter() {
-            if grpx.get_anchor().is_some() {
+            if grpx.anchor.is_some() {
                 self.display_group_anchor_info2(grpx)?
             }
         } // next grpx
@@ -2550,7 +2502,7 @@ impl SomeAction {
     pub fn display_group_anchor_info2(&self, grpx: &SomeGroup) -> Result<(), String> {
         debug_assert_eq!(grpx.num_bits(), self.num_bits);
 
-        if let Some(anchor) = grpx.get_anchor() {
+        if let Some(anchor) = &grpx.anchor {
             println!("\nGroup:   {}", grpx.region);
             let sqrx = self
                 .squares
@@ -2565,7 +2517,7 @@ impl SomeAction {
                     let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
-                            if let Some(anchory) = &grpy.get_anchor() {
+                            if let Some(anchory) = &grpy.anchor {
                                 if stax == anchory {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
                                 } else {
@@ -2743,7 +2695,7 @@ impl SomeAction {
             if !grpx.limited || !grpx.region.is_adjacent(&sqrx.state) {
                 continue;
             }
-            if let Some(anchor) = grpx.get_anchor() {
+            if let Some(anchor) = &grpx.anchor {
                 if anchor.is_adjacent(&sqrx.state) {
                     if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
                         if grpx.set_limited_off() {
@@ -3220,20 +3172,6 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
 
-        // Needs to confirm incompatible pair should exist.
-        assert!(nds.contains_similar_need(
-            "ConfirmIP",
-            &ATarget::State {
-                state: SomeState::from_str("s0100")?
-            }
-        ));
-        assert!(nds.contains_similar_need(
-            "ConfirmIP",
-            &ATarget::State {
-                state: SomeState::from_str("s0111")?
-            }
-        ));
-
         // Get more samples of incompatible pair.
         act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
         act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
@@ -3261,12 +3199,6 @@ mod tests {
         act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(nds.contains_similar_need(
-            "ConfirmIP",
-            &ATarget::State {
-                state: SomeState::from_str("s0101")?
-            }
-        ));
 
         // Confirm 0101, so incompatible pair is 5, 7.
         act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
@@ -3275,7 +3207,6 @@ mod tests {
         // The pair (4, 7) should not trigger any NAI needs.
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 6, the pairing of (4, 6) should now generate needs.
@@ -3283,12 +3214,6 @@ mod tests {
 
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(nds.contains_similar_need(
-            "ConfirmIP",
-            &ATarget::State {
-                state: SomeState::from_str("s0110")?
-            }
-        ));
 
         // Confirm 0110.
         act0.take_action_arbitrary(&SomeState::from_str("s0110")?);
@@ -3296,20 +3221,12 @@ mod tests {
 
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 1011.
         act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
-
-        assert!(nds.contains_similar_need(
-            "ConfirmIP",
-            &ATarget::State {
-                state: SomeState::from_str("s1011")?
-            }
-        ));
 
         // Confirm 1011.
         act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
@@ -3337,7 +3254,6 @@ mod tests {
         let nds = act0.get_needs(&sta4, &max_reg);
         println!("needs: {nds}");
 
-        assert!(!nds.contains_need_type("ConfirmIP"));
         assert!(!nds.contains_need_type("CloserIP"));
 
         //assert!(1 ==2);

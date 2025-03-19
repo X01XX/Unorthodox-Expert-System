@@ -1567,12 +1567,12 @@ mod tests {
         println!("Needs: {}", nds1);
 
         let grp_reg = SomeRegion::from_str("rXX0X")?;
-        let Some(anchor_sta) = domx.actions[1]
+        let Some(anchor_sta) = &domx.actions[1]
             .groups
             .find(&grp_reg)
             .as_ref()
             .expect("SNH")
-            .get_anchor()
+            .anchor
         else {
             return Err("limit_groups_needs anchor not set".to_string());
         };

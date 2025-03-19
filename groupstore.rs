@@ -104,7 +104,7 @@ impl GroupStore {
             }
         }
         if num == 1 {
-            if let Some(anchor) = self.items[index].get_anchor() {
+            if let Some(anchor) = &self.items[index].anchor {
                 if astate == anchor {
                     return Some(true);
                 }

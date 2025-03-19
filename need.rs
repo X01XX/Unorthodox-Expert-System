@@ -93,14 +93,6 @@ pub enum SomeNeed {
         priority: usize,
         times_visited: usize,
     },
-    /// Confirm a non-adjacent incompatible pair.
-    ConfirmIP {
-        dom_id: usize,
-        act_id: usize,
-        target: ATarget,
-        priority: usize,
-        unknown_region: SomeRegion,
-    },
     /// For a non-adjacent incompatible pair, find a closer pair.
     CloserIP {
         dom_id: usize,
@@ -125,7 +117,6 @@ impl SomeNeed {
     pub fn name(&self) -> &str {
         match self {
             Self::ConfirmGroup { .. } => "ConfirmGroup",
-            Self::ConfirmIP { .. } => "ConfirmIP",
             Self::CloserIP { .. } => "CloserIP",
             Self::FindSimilarityTo { .. } => "FindSimilarityTo",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
@@ -144,7 +135,6 @@ impl SomeNeed {
             // By ascending priority number.
             Self::CloserIP { priority, .. } => *priority += 100,
             Self::FindSimilarityTo { priority, .. } => *priority += 125,
-            Self::ConfirmIP { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::StateNotInGroup { priority, .. } => *priority += 250,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
@@ -161,7 +151,6 @@ impl SomeNeed {
             // By ascending priority number.
             Self::ContradictoryIntersection { priority, .. } => *priority,
             Self::ExitSelectRegions { priority, .. } => *priority,
-            Self::ConfirmIP { priority, .. } => *priority,
             Self::CloserIP { priority, .. } => *priority,
             Self::FindSimilarityTo { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
@@ -188,7 +177,6 @@ impl SomeNeed {
     pub fn act_id(&self) -> usize {
         match self {
             Self::ConfirmGroup { act_id, .. } => *act_id,
-            Self::ConfirmIP { act_id, .. } => *act_id,
             Self::CloserIP { act_id, .. } => *act_id,
             Self::FindSimilarityTo { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
@@ -207,7 +195,6 @@ impl SomeNeed {
     pub fn dom_id(&self) -> Option<usize> {
         match self {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
-            Self::ConfirmIP { dom_id, .. } => Some(*dom_id),
             Self::CloserIP { dom_id, .. } => Some(*dom_id),
             Self::FindSimilarityTo { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
@@ -231,18 +218,6 @@ impl SomeNeed {
             } => {
                 format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm group {grp_reg})"
-                )
-            }
-            Self::ConfirmIP {
-                dom_id,
-                act_id,
-                target,
-                unknown_region,
-                priority,
-                ..
-            } => {
-                format!(
-                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {target} to confirm incompatible pair covering {unknown_region})"
                 )
             }
             Self::CloserIP {
@@ -372,7 +347,6 @@ impl SomeNeed {
     pub fn target(&self) -> &ATarget {
         match self {
             Self::ConfirmGroup { target, .. } => target,
-            Self::ConfirmIP { target, .. } => target,
             Self::CloserIP { target, .. } => target,
             Self::FindSimilarityTo { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,

@@ -2166,6 +2166,7 @@ mod tests {
         // Insure boredom is zero.
         generate_and_display_needs(&mut sdx);
         assert!(sdx.boredom == 0);
+        //println!("needs {}", sdx.needs);
         assert!(sdx.needs.len() == 1);
         assert!(sdx.needs.contains_similar_need(
             "ToSelectRegions",
@@ -2190,6 +2191,7 @@ mod tests {
 
         assert!(sdx.boredom > sdx.boredom_limit);
 
+        //assert!(1 == 2);
         Ok(())
     }
 
