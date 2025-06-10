@@ -122,7 +122,7 @@ impl SomeState {
     }
 
     /// Return a difference mask between a state and another item.
-    fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
+    pub fn diff_edge_mask(&self, other: &impl tools::AccessStates) -> SomeMask {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
         other

@@ -9,9 +9,9 @@ edition = "2024"
 debug = true
 
 [dependencies]
-rand = "0.9.0"
+rand = "0.9.1"
 rayon = "1.10.0"
-serde = { version = "1.0.217", features = ["derive"] }
+serde = { version = "1.0.219", features = ["derive"] }
 serde_yaml_ng = "0.10.0"
-readonly = "0.2.12"
+readonly = "0.2.13"
 unicode-segmentation = "1.12.0"

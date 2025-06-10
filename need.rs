@@ -101,6 +101,14 @@ pub enum SomeNeed {
         priority: usize,
         unknown_region: SomeRegion,
     },
+    /// For an incompatible pair, change square to pnc = true.
+    ConfirmIP {
+        dom_id: usize,
+        act_id: usize,
+        target: ATarget,
+        other_state: SomeState,
+        priority: usize,
+    },
     /// Get sample of a state to fill a region, where a square in only one region has been identified.
     FindSimilarityTo {
         dom_id: usize,
@@ -118,6 +126,7 @@ impl SomeNeed {
         match self {
             Self::ConfirmGroup { .. } => "ConfirmGroup",
             Self::CloserIP { .. } => "CloserIP",
+            Self::ConfirmIP { .. } => "ConfirmIP",
             Self::FindSimilarityTo { .. } => "FindSimilarityTo",
             Self::ContradictoryIntersection { .. } => "ContradictoryIntersection",
             Self::LimitGroup { .. } => "LimitGroup",
@@ -133,8 +142,9 @@ impl SomeNeed {
     pub fn add_priority_base(&mut self) {
         match self {
             // By ascending priority number.
-            Self::CloserIP { priority, .. } => *priority += 100,
-            Self::FindSimilarityTo { priority, .. } => *priority += 125,
+            Self::CloserIP { priority, .. } => *priority += 50,
+            Self::ConfirmIP { priority, .. } => *priority += 100,
+            Self::FindSimilarityTo { priority, .. } => *priority += 150,
             Self::ContradictoryIntersection { priority, .. } => *priority += 200,
             Self::StateNotInGroup { priority, .. } => *priority += 250,
             Self::ExitSelectRegions { priority, .. } => *priority += 300,
@@ -152,6 +162,7 @@ impl SomeNeed {
             Self::ContradictoryIntersection { priority, .. } => *priority,
             Self::ExitSelectRegions { priority, .. } => *priority,
             Self::CloserIP { priority, .. } => *priority,
+            Self::ConfirmIP { priority, .. } => *priority,
             Self::FindSimilarityTo { priority, .. } => *priority,
             Self::ConfirmGroup { priority, .. } => *priority,
             Self::LimitGroup { priority, .. } => *priority,
@@ -178,6 +189,7 @@ impl SomeNeed {
         match self {
             Self::ConfirmGroup { act_id, .. } => *act_id,
             Self::CloserIP { act_id, .. } => *act_id,
+            Self::ConfirmIP { act_id, .. } => *act_id,
             Self::FindSimilarityTo { act_id, .. } => *act_id,
             Self::ContradictoryIntersection { act_id, .. } => *act_id,
             Self::LimitGroup { act_id, .. } => *act_id,
@@ -196,6 +208,7 @@ impl SomeNeed {
         match self {
             Self::ConfirmGroup { dom_id, .. } => Some(*dom_id),
             Self::CloserIP { dom_id, .. } => Some(*dom_id),
+            Self::ConfirmIP { dom_id, .. } => Some(*dom_id),
             Self::FindSimilarityTo { dom_id, .. } => Some(*dom_id),
             Self::ContradictoryIntersection { dom_id, .. } => Some(*dom_id),
             Self::LimitGroup { dom_id, .. } => Some(*dom_id),
@@ -233,6 +246,19 @@ impl SomeNeed {
                 ),
                 ATarget::Region { region } => format!(
                     "N(Dom {dom_id} Act {act_id} Pri {priority} Get sample in {region} to find closer incompatible pair within {unknown_region})"
+                ),
+                _ => panic!("SNH"),
+            },
+            Self::ConfirmIP {
+                dom_id,
+                act_id,
+                target,
+                other_state,
+                priority,
+                ..
+            } => match target {
+                ATarget::State { state } => format!(
+                    "N(Dom {dom_id} Act {act_id} Pri {priority} Get additional sample of state {state} to cofirm incompatible pair with {other_state})"
                 ),
                 _ => panic!("SNH"),
             },
@@ -348,6 +374,7 @@ impl SomeNeed {
         match self {
             Self::ConfirmGroup { target, .. } => target,
             Self::CloserIP { target, .. } => target,
+            Self::ConfirmIP { target, .. } => target,
             Self::FindSimilarityTo { target, .. } => target,
             Self::ContradictoryIntersection { target, .. } => target,
             Self::LimitGroup { target, .. } => target,

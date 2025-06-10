@@ -434,6 +434,24 @@ impl RegionStore {
         }
         count
     }
+
+    /// Return a store of defininig regions.
+    /// That is, regions that have at least one state that is not in any other regions.
+    pub fn defining_regions(&self) -> Self {
+        let mut ret = Self::new(vec![]);
+        for (inx, regx) in self.items.iter().enumerate() {
+            let mut temp = Self::new(vec![regx.clone()]);
+            for (iny, regy) in self.items.iter().enumerate() {
+                if iny != inx {
+                    temp = temp.subtract_region(regy);
+                }
+            }
+            if temp.is_not_empty() {
+                ret.push(regx.clone());
+            }
+        }
+        ret
+    }
 } // end impl RegionStore.
 
 impl Index<usize> for RegionStore {

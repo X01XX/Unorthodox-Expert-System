@@ -68,7 +68,9 @@ pub struct SomeAction {
     limited: RegionStore,
     /// Initial rules given to generate samples.
     base_rules: Vec<RuleStore>,
-    /// Store for calculated defining regions.
+    /// Store for calculated structure regions.
+    structure_regions: RegionStore,
+    /// Store for defining regions.
     defining_regions: RegionStore,
 }
 
@@ -134,10 +136,11 @@ impl SomeAction {
             cleanup_number_new_squares: 0,
             limited: RegionStore::new(vec![]),
             base_rules: rules,
-            defining_regions: RegionStore::new(vec![SomeRegion::new(vec![
+            structure_regions: RegionStore::new(vec![SomeRegion::new(vec![
                 sta0.new_high(),
                 sta0.clone(),
             ])]),
+            defining_regions: RegionStore::new(vec![]),
         }
     }
 
@@ -156,9 +159,9 @@ impl SomeAction {
         self.dom_id = dom_id;
     }
 
-    /// Set the defining_regions field.
-    pub fn set_defining_regions(&mut self, defining: RegionStore) {
-        self.defining_regions = defining;
+    /// Set the structure_regions field.
+    pub fn set_structure_regions(&mut self, structure: RegionStore) {
+        self.structure_regions = structure;
     }
 
     /// Add a new square from a sample.
@@ -602,16 +605,17 @@ impl SomeAction {
 
         let pair_nds = self.incompatible_pair_needs(max_reg);
         if pair_nds.is_empty() {
+            // Delete regions that do not fit.
             let mut del_regs = RegionStore::new(vec![]);
             for grpx in self.groups.iter() {
-                if !self.defining_regions.any_superset_of(&grpx.region) {
+                if !self.structure_regions.any_superset_of(&grpx.region) {
                     del_regs.push(grpx.region.clone());
                 }
             }
             if del_regs.is_not_empty() {
                 println!(
                     "Dom {} Act {} processing invalid regs {del_regs} due to defining regions {}",
-                    self.dom_id, self.id, self.defining_regions
+                    self.dom_id, self.id, self.structure_regions
                 );
                 self.process_invalid_regions(&del_regs);
             }
@@ -644,12 +648,12 @@ impl SomeAction {
         // Init NeedStore to return.
         let mut nds = NeedStore::new(vec![]);
 
-        let defining_regions = RegionStore::new(vec![max_reg.clone()]);
+        let structure_regions = RegionStore::new(vec![max_reg.clone()]);
 
         // Check each possible square pair.
         let sqrs: Vec<&SomeSquare> = self.squares.all_squares();
         if sqrs.len() < 2 {
-            self.set_defining_regions(defining_regions);
+            self.set_structure_regions(structure_regions);
             return nds;
         }
 
@@ -675,7 +679,7 @@ impl SomeAction {
         }
         // Check for none found.
         if incompat_regions.is_empty() {
-            self.set_defining_regions(defining_regions);
+            self.set_structure_regions(structure_regions);
             return nds;
         }
 
@@ -703,238 +707,200 @@ impl SomeAction {
         }
         //println!("poss_regions: {poss_regions}");
 
-        // Collect incompatible adjacent square states. Some may be in more than one region.
-        let mut adj_states = StateStore::new(vec![]);
-        for reg_adj in adjacent_pairs.iter() {
-            for stax in reg_adj.iter() {
-                if adj_states.contains(stax) {
-                } else {
-                    adj_states.push(stax.clone());
-                }
+        // Filter non-adjacent pairs, that are only in one region of poss_regions.
+        let mut temp = RegionStore::new(vec![]);
+        for regx in non_adjacent_pairs.iter() {
+            if poss_regions.in_one_region(regx) {
+                temp.push(regx.clone());
             }
         }
+        non_adjacent_pairs = temp;
 
-        // Create a vector of adjacent dissimilar states that are only in one region.
-        let mut adj_states_in_1 = StateStore::new(vec![]);
-        for stax in adj_states.iter() {
-            if defining_regions.in_one_region(stax) {
-                adj_states_in_1.push(stax.clone());
-            }
+        // Apply non-adjacent pairs to poss_regions.
+        for regx in non_adjacent_pairs.iter() {
+            //println!("Applying {regx} to {poss_regions}");
+            let regs1 = max_reg.subtract(regx.first_state());
+            let regs2 = max_reg.subtract(regx.last_state());
+            poss_regions = poss_regions.intersection(&regs1.union(&regs2));
         }
 
-        // Filter out regions with no part only in one region.
-        let mut defining_regions = RegionStore::new(vec![]);
-        let mut in_one = RegionStore::new(vec![]);
-        for regx in poss_regions.iter() {
-            let mut whats_left = RegionStore::new(vec![regx.clone()]);
-            for regy in poss_regions.iter() {
-                if std::ptr::eq(regy, regx) {
-                    continue;
-                }
-                if regy.intersects(regx) {
-                    whats_left = whats_left.subtract_region(regy);
-                }
-            }
-            if whats_left.is_not_empty() {
-                defining_regions.push(regx.clone());
-                in_one.append(whats_left);
-            }
-        }
+        // Save defining regions to action instance.
+        self.defining_regions = poss_regions.defining_regions();
 
-        // Change defining regions to have a first state, that:
-        // Is used to define a region in the adjacent_pairs RegionStore.
-        // Is only in one region.
-        // If there are more than one possible states so far,
-        // chose one that is in the greatest number of adjacent pairs.
-        let mut defining_regions2 = RegionStore::with_capacity(defining_regions.len());
-        for regx in defining_regions.iter() {
-            // Get states in the defining region.
-            let stas_in = adj_states_in_1.stas_in_reg(regx);
-            if stas_in.is_empty() {
-                defining_regions2.push(regx.clone());
-                continue;
-            }
+        // Save structure regions in action instance.
+        self.structure_regions = poss_regions;
 
-            // Get states in the most number of adjacent pairs.
-            let mut max_num_pairs = 1;
-            let mut in_max_pairs = Vec::<&SomeState>::new();
+        // Check for adjacent pair confirm needs.
+         for regx in adjacent_pairs.iter() {
+             let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
+             if !sqrx.pnc {
+                 // Construct need for sample of state between.
+                let mut needx = SomeNeed::ConfirmIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: sqrx.state.clone(),
+                            },
+                            other_state: regx.far_state(),
+                            priority: 0,
+                        };
+                needx.add_priority_base();
+                nds.push(needx);
+             }
 
-            for stax in stas_in.iter() {
-                let count = adjacent_pairs.num_regions_in(*stax);
-                if count > max_num_pairs {
-                    max_num_pairs = count;
-                    in_max_pairs = Vec::<&SomeState>::new();
-                }
-                if count == max_num_pairs {
-                    in_max_pairs.push(stax);
-                }
-            }
-            // Add regx with specfic defining states.
-            defining_regions2.push(SomeRegion::new(vec![
-                in_max_pairs[0].clone(),
-                regx.far_from(in_max_pairs[0]),
-            ]));
-        }
+             let Some(sqrx) = self.squares.find(&regx.far_state()) else { panic!("SNH"); };
+             if !sqrx.pnc {
+                 // Construct need for sample of state between.
+                let mut needx = SomeNeed::ConfirmIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: sqrx.state.clone(),
+                            },
+                            other_state: regx.first_state().clone(),
+                            priority: 0,
+                        };
+                needx.add_priority_base();
+                nds.push(needx);
+             }
+         }
 
-        // Save defining regions in SomeAction struct.
-        self.set_defining_regions(defining_regions2);
-
-        // If there are any adjacent incompatible pair needs, return them.
+        // If there are any adjacent pair confirm needs, return them.
         if nds.is_not_empty() {
             return nds;
         }
 
-        // Check non-adjacent incompatible pairs for states in an adjacent pair.
-        let mut priority_pairs = RegionStore::new(vec![]);
-        for regx in non_adjacent_pairs.iter() {
-            if adj_states.contains(regx.first_state()) || adj_states.contains(regx.last_state()) {
-                priority_pairs.push(regx.clone());
-            }
-        }
-        // If any priority pairs found, replace non_adjacent_pairs.
-        if priority_pairs.is_not_empty() {
-            //println!("priority pairs: {priority_pairs}");
-            non_adjacent_pairs = priority_pairs;
+        // Check for non-adjacent pair confirm needs.
+         for regx in non_adjacent_pairs.iter() {
+             let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
+             if !sqrx.pnc {
+                 // Construct need for sample of state between.
+                let mut needx = SomeNeed::ConfirmIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: sqrx.state.clone(),
+                            },
+                            other_state: regx.far_state(),
+                            priority: 0,
+                        };
+                needx.add_priority_base();
+                nds.push(needx);
+             }
+
+             let Some(sqrx) = self.squares.find(&regx.far_state()) else { panic!("SNH"); };
+             if !sqrx.pnc {
+                 // Construct need for sample of state between.
+                let mut needx = SomeNeed::ConfirmIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: sqrx.state.clone(),
+                            },
+                            other_state: regx.first_state().clone(),
+                            priority: 0,
+                        };
+                needx.add_priority_base();
+                nds.push(needx);
+             }
+         }
+
+        // If there are any non-adjacent pair confirm needs, return them.
+        if nds.is_not_empty() {
+            return nds;
         }
 
-        // Check for non-adjacent pair needs.
+        // Check for non-adjacent pair between needs.
         for regx in non_adjacent_pairs.iter() {
             //println!("Processing non-adjacent Incompatible pair: {regx}");
-            // Check if a pair is wholly within a possible region.
-            if self.defining_regions.any_superset_of(regx) {
-                // Get squares represented by the states.
-                let Some(sqrx) = self.squares.find(regx.first_state()) else {
-                    panic!("SNH");
-                };
-                //println!("sqrx {} pnc {}", sqrx.state, sqrx.pnc);
-                let Some(sqry) = self.squares.find(regx.last_state()) else {
-                    panic!("SNH");
-                };
 
-                //println!("sqry {} pnc {}", sqry.state, sqry.pnc);
-                let pri = regx.x_mask().num_one_bits(); // Make smaller regions the priority.
+            // Get squares represented by the states.
+            let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
 
-                if sqrx.pnc && sqry.pnc {
-                    let sqrs_in = self.squares.squares_in_reg(regx);
-                    //println!("sqrs_in: {}", tools::vec_ref_string(&sqrs_in));
+            let Some(sqry) = self.squares.find(regx.last_state()) else {
+                panic!("SNH");
+            };
 
-                    // If no squares other than sqrx, sqry, are in the region, look for something between.
-                    if sqrs_in.len() == 2 {
-                        let dif_msk = sqrx.state.diff_edge_mask(&sqry.state);
-                        let dif_num = dif_msk.num_one_bits();
-                        if dif_num > 3 {
-                            // Look for states equidistant from the two squares.
+            let pri = regx.x_mask().num_one_bits(); // Make smaller regions the priority.
 
-                            // Get a store of single-bit masks.
-                            let msk_bits = dif_msk.split();
+            let sqrs_in = self.squares.squares_in_reg(regx);
+            //println!("sqrs_in: {}", tools::vec_ref_string(&sqrs_in));
 
-                            // Form a vector of single-bit mask refs.
-                            let mut msk_refs = Vec::<&SomeMask>::with_capacity(msk_bits.len());
-                            for mskx in msk_bits.iter() {
-                                msk_refs.push(mskx);
-                            }
-                            let options = tools::anyxofn(dif_num >> 1, &msk_refs);
-                            for optx in options.iter() {
-                                // Make a single mask from multiple single-bit masks.
-                                let mut msk_tmp = optx[0].clone();
-                                for msky in optx.iter().skip(1) {
-                                    msk_tmp = msk_tmp.bitwise_or(*msky);
-                                }
+            // If no squares other than sqrx, sqry, are in the region, look for something between.
+            if sqrs_in.len() == 2 {
+                let dif_msk = sqrx.state.diff_edge_mask(&sqry.state);
+                let dif_num = dif_msk.num_one_bits();
+                if dif_num > 3 {
+                    // Look for states equidistant from the two squares.
 
-                                // Construct need for sample of state between.
-                                let mut needx = SomeNeed::CloserIP {
-                                    dom_id: self.dom_id,
-                                    act_id: self.id,
-                                    target: ATarget::State {
-                                        state: sqrx.state.bitwise_xor(&msk_tmp).as_state(),
-                                    },
-                                    unknown_region: regx.clone(),
-                                    priority: pri,
-                                };
-                                needx.add_priority_base();
-                                nds.push(needx);
-                            }
-                        } else {
-                            // Look for any square inbetween.
-                            let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
-                            //println!("regs left = {regs}");
-                            for regz in regs {
-                                let mut needx = SomeNeed::CloserIP {
-                                    dom_id: self.dom_id,
-                                    act_id: self.id,
-                                    target: ATarget::Region { region: regz },
-                                    unknown_region: regx.clone(),
-                                    priority: pri,
-                                };
-                                needx.add_priority_base();
-                                nds.push(needx);
-                            }
-                        }
-                    } else {
-                        // Look for squares inbetween that have already been partially sampled.
-                        for sqrz in sqrs_in.iter() {
-                            if sqrz.state == sqrx.state || sqrz.state == sqry.state {
-                                continue;
-                            }
-                            if sqrz.pnc {
-                                panic!("SNH");
-                            }
-                            let mut needx = SomeNeed::CloserIP {
-                                dom_id: self.dom_id,
-                                act_id: self.id,
-                                target: ATarget::State {
-                                    state: sqrz.state.clone(),
-                                },
-                                unknown_region: regx.clone(),
-                                priority: pri,
-                            };
-                            needx.add_priority_base();
-                            nds.push(needx);
-                        }
+                    // Get a store of single-bit masks.
+                    let msk_bits = dif_msk.split();
+
+                    // Form a vector of single-bit mask refs.
+                    let mut msk_refs = Vec::<&SomeMask>::with_capacity(msk_bits.len());
+                    for mskx in msk_bits.iter() {
+                        msk_refs.push(mskx);
                     }
-                    continue;
-                }
-            }
-        }
-        // If any non-adjacent pair needs, return them.
-        if nds.is_not_empty() {
-            return nds;
-        }
+                    let options = tools::anyxofn(dif_num >> 1, &msk_refs);
+                    for optx in options.iter() {
+                        // Make a single mask from multiple single-bit masks.
+                        let mut msk_tmp = optx[0].clone();
+                        for msky in optx.iter().skip(1) {
+                            msk_tmp = msk_tmp.bitwise_or(*msky);
+                        }
 
-        // Check last square in defining regions for pnc.
-        for regx in self.defining_regions.iter() {
-            // Confirm region, or find new dissimilar square pair.
-            let far_sta = regx.last_state();
-            if let Some(sqrz) = self.squares.find(far_sta) {
-                if sqrz.pnc {
+                        // Construct need for sample of state between.
+                        let mut needx = SomeNeed::CloserIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: sqrx.state.bitwise_xor(&msk_tmp).as_state(),
+                            },
+                            unknown_region: regx.clone(),
+                            priority: pri,
+                        };
+                        needx.add_priority_base();
+                        nds.push(needx);
+                    }
                 } else {
-                    let mut needx = SomeNeed::FindSimilarityTo {
+                    // Look for any square inbetween.
+                    let regs = regx.subtract(&sqrx.state).subtract_region(&sqry.state);
+                    //println!("regs left = {regs}");
+                    for regz in regs {
+                        let mut needx = SomeNeed::CloserIP {
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::Region { region: regz },
+                            unknown_region: regx.clone(),
+                            priority: pri,
+                        };
+                        needx.add_priority_base();
+                        nds.push(needx);
+                    }
+                }
+            } else {
+                // Look for squares inbetween that have already been partially sampled.
+                for sqrz in sqrs_in.iter() {
+                    if sqrz.state == sqrx.state || sqrz.state == sqry.state {
+                        continue;
+                    }
+                    if sqrz.pnc {
+                        panic!("SNH");
+                    }
+                    let mut needx = SomeNeed::CloserIP {
                         dom_id: self.dom_id,
                         act_id: self.id,
                         target: ATarget::State {
-                            state: far_sta.clone(),
+                            state: sqrz.state.clone(),
                         },
-                        to_state: regx.first_state().clone(),
-                        in_reg: regx.clone(),
-                        priority: regx.x_mask().num_one_bits(), // give priority to smallest regions.
+                        unknown_region: regx.clone(),
+                        priority: pri,
                     };
                     needx.add_priority_base();
                     nds.push(needx);
                 }
-            } else {
-                let mut needx = SomeNeed::FindSimilarityTo {
-                    dom_id: self.dom_id,
-                    act_id: self.id,
-                    target: ATarget::State {
-                        state: far_sta.clone(),
-                    },
-                    to_state: regx.first_state().clone(),
-                    in_reg: regx.clone(),
-                    priority: regx.x_mask().num_one_bits(), // give priority to smallest regions.
-                };
-                needx.add_priority_base();
-                nds.push(needx);
             }
+            continue;
         }
 
         nds
@@ -1005,7 +971,7 @@ impl SomeAction {
             }
 
             // Don't delete squares represented in defining regions.
-            for regx in self.defining_regions.iter() {
+            for regx in self.structure_regions.iter() {
                 if keyx == regx.first_state() {
                     continue 'next_sqr;
                 }
@@ -1192,7 +1158,7 @@ impl SomeAction {
             }
 
             // Quick limit logic.
-            //if self.groups[group_num].anchor.is_some() && self.defining_regions.contains(&self.groups[group_num].region) {
+            //if self.groups[group_num].anchor.is_some() && self.structure_regions.contains(&self.groups[group_num].region) {
             //    let msk = self.groups[group_num].edge_mask().bitwise_and(&max_reg.x_mask());
             //    self.groups[group_num].set_limited(msk);
             //    continue;
@@ -1298,14 +1264,14 @@ impl SomeAction {
         // Init NeedStore to return.
         let mut ret_nds = NeedStore::new(vec![]);
 
-        // Check defining_regions.
+        // Check structure_regions.
 
         // Find possible anchors.
         let mut adj_states = StateStore::new(vec![]);
-        for regx in self.defining_regions.iter() {
+        for regx in self.structure_regions.iter() {
             if regx.is_superset_of(&grpx.region)
                 && grpx.region.is_superset_of(regx.first_state())
-                && self.defining_regions.in_one_region(regx.first_state())
+                && self.structure_regions.in_one_region(regx.first_state())
                 && self.squares.find(regx.first_state()).is_some()
             {
                 adj_states.push(regx.first_state().clone());
@@ -2127,7 +2093,7 @@ impl SomeAction {
 
         // Check regions the square is in.
         let mut try_all = true;
-        for regx in self.defining_regions.iter() {
+        for regx in self.structure_regions.iter() {
             if regx.is_superset_of(&sqrx.state) {
                 for grpx in self.possible_groups_from_square2(sqrx, regx) {
                     ret_grps.push_nosubs(grpx);
@@ -2566,11 +2532,12 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
-        //if self.defining_regions.len() > 1 {
-        rc_str += &format!(", calculated defining regions: {}", self.defining_regions);
-        //}
-
-        //rc_str.push_str(&format!(", agg_chgs_updated {}", self.agg_chgs_updated));
+        if self.structure_regions.len() > 1 {
+            rc_str += &format!(", calculated structure regions: {}", self.structure_regions);
+            if self.structure_regions.len() > 1 {
+                rc_str += &format!(", defining regions: {}", self.structure_regions.defining_regions());
+            }
+        }
 
         let mut fil = "\n       Grps: ";
 

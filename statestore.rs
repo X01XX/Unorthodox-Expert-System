@@ -183,6 +183,13 @@ impl FromStr for StateStore {
     }
 }
 
+/// Implement the trait StrLen for StateStore.
+impl tools::StrLen for StateStore {
+    fn strlen(&self) -> usize {
+        tools::strlen(&self.items)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
