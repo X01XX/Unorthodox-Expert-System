@@ -5,6 +5,7 @@ use crate::state::SomeState;
 use crate::statestore::StateStore;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
+use crate::mask::SomeMask;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -15,7 +16,8 @@ use crate::StrLen;
 
 pub struct SomeVertex {
     pub pinnacle: SomeState,
-    pub edges:    StateStore
+    pub edges:    StateStore,
+    pub edge_mask: SomeMask
 }
 
 /// Implement the fmt::Display Trait for a SomeVertex instance.
@@ -33,9 +35,14 @@ impl SomeVertex {
         for stax in edges.iter() {
             assert!(stax.is_adjacent(&pinnacle))
         }
+        // Generate edge mask.
+        let mut edge_mask = pinnacle.new_low().as_mask();
+        for stax in edges.iter() {
+            edge_mask = edge_mask.bitwise_or(&pinnacle.bitwise_xor(stax));
+        }
 
         // Return result.
-        Self { pinnacle, edges }
+        Self { pinnacle, edges, edge_mask }
     }
 
     /// Return a string used to represent a vertex.

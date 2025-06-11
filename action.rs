@@ -1113,16 +1113,16 @@ impl SomeAction {
             }
             if let Some(anchor) = &grpx.anchor {
                 if max_reg.is_superset_of(&anchor.pinnacle) {
-                    if let Some(anchor_mask) = &grpx.anchor_mask {
+                   // if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
-                        if *anchor_mask != max_mask {
+                        if anchor.edge_mask != max_mask {
                             println!(
                                 "Dom {} Act {} Group {} set limited off mask {}",
-                                self.dom_id, self.id, grpx.region, anchor_mask
+                                self.dom_id, self.id, grpx.region, anchor.edge_mask
                             );
                             grpx.set_limited_off();
                         }
-                    }
+                    //}
                 }
             }
         }
@@ -1140,7 +1140,7 @@ impl SomeAction {
 
             let regx = self.groups[group_num].region.clone();
 
-            let ndsx = self.limit_group_anchor_needs(&regx, group_num);
+            let ndsx = self.limit_group_anchor_needs(&regx, group_num, max_reg);
             if ndsx.is_not_empty() {
                 ret_nds.append(ndsx);
                 continue;
@@ -1195,7 +1195,7 @@ impl SomeAction {
 
         let grpx = self.groups.find_mut(grp_reg).expect("SNH");
 
-        grpx.set_limited(edges);
+        grpx.set_limited();
         self.limited.push(grpx.region.clone());
     }
 
@@ -1231,7 +1231,7 @@ impl SomeAction {
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// retain it, else replace it.
     /// If the anchor is not pnc, return a need to get an additional sample.
-    pub fn limit_group_anchor_needs(&mut self, regx: &SomeRegion, group_num: usize) -> NeedStore {
+    pub fn limit_group_anchor_needs(&mut self, regx: &SomeRegion, group_num: usize, max_reg: &SomeRegion) -> NeedStore {
         //println!(
         //    "action::limit_group_anchor_needs: Dom {} Act {} group {regx} max_reg {max_reg}",
         //    self.dom_id, self.id
@@ -1242,12 +1242,9 @@ impl SomeAction {
         let mut grp_anchor: Option<SomeState> = None;
 
         let grpx = self.groups.find(regx).expect("SNH");
-        if let Some(grpx) = self.groups.find(regx) {
-            if let Some(anchor) = &grpx.anchor {
-                grp_anchor = Some(anchor.pinnacle.clone());
-            }
-        } else {
-            panic!("SNH");
+
+        if let Some(anchor) = &grpx.anchor {
+            grp_anchor = Some(anchor.pinnacle.clone());
         }
 
         // Init NeedStore to return.
@@ -1255,7 +1252,7 @@ impl SomeAction {
 
         // Check structure_regions.
 
-        // Find possible anchors.
+        // Find possible anchor states.
         let mut adj_states = StateStore::new(vec![]);
         for regx in self.structure_regions.iter() {
             if regx.is_superset_of(&grpx.region)
@@ -1266,6 +1263,7 @@ impl SomeAction {
                 adj_states.push(regx.first_state().clone());
             }
         }
+
         // Set anchor, if needed.
         if adj_states.is_not_empty() {
             if let Some(anchor) = &grpx.anchor {
@@ -1275,7 +1273,7 @@ impl SomeAction {
                     self.groups
                         .find_mut(regx)
                         .expect("SNH")
-                        .set_anchor(&adj_states[0]);
+                        .set_anchor(&adj_states[0], max_reg);
                 }
                 //return ret_nds;
             } else {
@@ -1283,7 +1281,7 @@ impl SomeAction {
                 self.groups
                     .find_mut(regx)
                     .expect("SNH")
-                    .set_anchor(&adj_states[0]);
+                    .set_anchor(&adj_states[0], max_reg);
                 //return ret_nds;
             }
         }
@@ -1378,7 +1376,7 @@ impl SomeAction {
         }
 
         // Set new anchor.
-        self.groups.find_mut(regx).expect("SNH").set_anchor(cfm_max);
+        self.groups.find_mut(regx).expect("SNH").set_anchor(cfm_max, max_reg);
 
         // Check if more samples are needed.
         if let Some(sqrx) = self.squares.find(cfm_max) {
@@ -2937,17 +2935,6 @@ impl FromStr for SomeAction {
 mod tests {
     use super::*;
     use std::str::FromStr;
-
-    impl SomeAction {
-        /// Set a group anchor, given a group region and anchor state.
-        /// Used in domain tests.
-        pub fn set_group_anchor(&mut self, grp_reg: &SomeRegion, anchor: &SomeState) {
-            let Some(grpx) = self.groups.find_mut(grp_reg) else {
-                panic!("Group not found?");
-            };
-            grpx.set_anchor(anchor);
-        }
-    }
 
     #[test]
     fn two_result_group() -> Result<(), String> {

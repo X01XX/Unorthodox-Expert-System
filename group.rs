@@ -47,9 +47,6 @@ pub struct SomeGroup {
     /// The vertex, anchored on a state, in only one (this) group, used to limit the group,
     /// and define the logical structure of the action.
     pub anchor: Option<SomeVertex>,
-    /// Maskof  adjacent squares used to limit a group.
-    /// This will be the region edge mask, limited by the bit changes of available rules.
-    pub anchor_mask: Option<SomeMask>,
 }
 
 impl SomeGroup {
@@ -86,7 +83,6 @@ impl SomeGroup {
             rules: ruls,
             limited: false,
             anchor: None,
-            anchor_mask: None,
         }
     }
 
@@ -128,16 +124,11 @@ impl SomeGroup {
             }
         }
 
-        if let Some(sta1) = &self.anchor {
+        if let Some(anchor) = &self.anchor {
             if self.limited {
-                rc_str.push_str(&format!(", limited using {sta1}"));
-                if let Some(anchor_mask) = &self.anchor_mask {
-                    if anchor_mask.is_not_low() {
-                        rc_str.push_str(&format!(" adj mask {}", anchor_mask));
-                    }
-                }
+                rc_str.push_str(&format!(", limited using {anchor}"));
             } else {
-                rc_str.push_str(&format!(", limiting using {sta1}"));
+                rc_str.push_str(&format!(", limiting using {anchor}"));
             }
         }
 
@@ -175,20 +166,17 @@ impl SomeGroup {
             }
         };
 
-        if let Some(sta1) = &self.anchor {
+        if let Some(anchor) = &self.anchor {
             rc_str.push(',');
             if ruls_len < adjust {
                 rc_str.push_str(&" ".repeat(adjust - ruls_len));
             }
             if self.limited {
-                rc_str.push_str(&format!(" limited using {sta1}"));
-                if let Some(anchor_mask) = &self.anchor_mask {
-                    if anchor_mask.is_not_low() {
-                        rc_str.push_str(&format!(" adj mask {}", anchor_mask));
-                    }
+                if anchor.edge_mask.is_not_low() {
+                    rc_str.push_str(&format!(" limited using {anchor}"));
                 }
             } else {
-                rc_str.push_str(&format!(" limiting using {sta1}"));
+                rc_str.push_str(&format!(" limiting using {anchor}"));
             }
             rc_str.push(')');
         } else {
@@ -269,14 +257,12 @@ impl SomeGroup {
         self.anchor = None;
 
         self.limited = false;
-        self.anchor_mask = None;
     }
 
     /// Set limited flag to false.
     pub fn set_limited_off(&mut self) -> bool {
         if self.limited {
             self.limited = false;
-            self.anchor_mask = None;
             true
         } else {
             false
@@ -284,9 +270,8 @@ impl SomeGroup {
     }
 
     /// Set limited to true.
-    pub fn set_limited(&mut self, anchor_mask: SomeMask) {
+    pub fn set_limited(&mut self) {
         self.limited = true;
-        self.anchor_mask = Some(anchor_mask);
 
         if let Some(anchor) = &self.anchor {
             if self.region.first_state() != &anchor.pinnacle && self.region.far_state() != anchor.pinnacle {
@@ -298,11 +283,18 @@ impl SomeGroup {
     /// Set the anchor state, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: &SomeState) {
-        self.anchor = Some(SomeVertex::new(astate.clone(), StateStore::new(vec![])));
+    pub fn set_anchor(&mut self, astate: &SomeState, max_reg: &SomeRegion) {
+        // Generate needed adjacennt states.
+        let adj_masks  = self.region.edge_mask().bitwise_and(&max_reg.x_mask()).split();
+
+        let mut adj_states = StateStore::with_capacity(adj_masks.len());
+        for mskx in adj_masks.iter() {
+            adj_states.push(astate.bitwise_xor(mskx).as_state());
+        }
+
+        self.anchor = Some(SomeVertex::new(astate.clone(), adj_states));
 
         self.limited = false;
-        self.anchor_mask = None;
     }
 
     /// Check limited setting in groups due to new bit that can change.
@@ -326,7 +318,6 @@ impl SomeGroup {
 
         if !positions.is_low() {
             self.limited = false;
-            self.anchor_mask = None;
             //println!("resetting limit flag!");
         }
     }
