@@ -78,10 +78,6 @@ mod stepstore;
 mod target;
 mod tools;
 mod vertex;
-mod vertexstore;
-mod defining;
-mod definingstore;
-mod any1of;
 
 use crate::planscorr::PlansCorr;
 use crate::planscorrstore::PlansCorrStore;

@@ -29,7 +29,7 @@ impl SomeVertex {
     /// Return a new SomeVertex instance.
     pub fn new (pinnacle: SomeState, edges: StateStore) -> Self {
         // Check args
-        assert!(edges.is_not_empty());
+        //assert!(edges.is_not_empty());
         for stax in edges.iter() {
             assert!(stax.is_adjacent(&pinnacle))
         }
@@ -69,6 +69,19 @@ impl SomeVertex {
         }
 
         ret
+    }
+
+    /// Return all states used in a vertex.
+    pub fn states(&self) -> StateStore {
+        self.edges.union(&StateStore::new(vec![self.pinnacle.clone()]))
+    }
+
+    /// Return true if a state is in a vertex.
+    pub fn state_in(&self, stax: &SomeState) -> bool {
+        if self.pinnacle == *stax {
+            return true;
+        }
+        self.edges.contains(stax)
     }
 }
 

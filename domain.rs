@@ -1579,7 +1579,7 @@ mod tests {
 
         println!("anchor is {}", anchor_sta);
 
-        if *anchor_sta == SomeState::from_str("s1001")? {
+        if anchor_sta.pinnacle == SomeState::from_str("s1001")? {
             // limiting square for anchor 9 is B.
             domx.take_action_arbitrary(1, &SomeState::from_str("s1011")?);
             domx.take_action_arbitrary(1, &SomeState::from_str("s1011")?);

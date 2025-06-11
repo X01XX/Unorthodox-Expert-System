@@ -159,11 +159,6 @@ impl SomeAction {
         self.dom_id = dom_id;
     }
 
-    /// Set the structure_regions field.
-    pub fn set_structure_regions(&mut self, structure: RegionStore) {
-        self.structure_regions = structure;
-    }
-
     /// Add a new square from a sample.
     pub fn add_new_sample(&mut self, smpl: &SomeSample) -> &SomeSquare {
         //println!("Dom {} Act {} add_new_sample: {}", self.dom_id, self.id, smpl);
@@ -653,7 +648,7 @@ impl SomeAction {
         // Check each possible square pair.
         let sqrs: Vec<&SomeSquare> = self.squares.all_squares();
         if sqrs.len() < 2 {
-            self.set_structure_regions(structure_regions);
+            self.structure_regions = structure_regions;
             return nds;
         }
 
@@ -679,7 +674,7 @@ impl SomeAction {
         }
         // Check for none found.
         if incompat_regions.is_empty() {
-            self.set_structure_regions(structure_regions);
+            self.structure_regions = structure_regions;
             return nds;
         }
 
@@ -724,12 +719,6 @@ impl SomeAction {
             poss_regions = poss_regions.intersection(&regs1.union(&regs2));
         }
 
-        // Save defining regions to action instance.
-        self.defining_regions = poss_regions.defining_regions();
-
-        // Save structure regions in action instance.
-        self.structure_regions = poss_regions;
-
         // Check for adjacent pair confirm needs.
          for regx in adjacent_pairs.iter() {
              let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
@@ -741,14 +730,14 @@ impl SomeAction {
                             target: ATarget::State {
                                 state: sqrx.state.clone(),
                             },
-                            other_state: regx.far_state(),
+                            other_state: regx.last_state().clone(),
                             priority: 0,
                         };
                 needx.add_priority_base();
                 nds.push(needx);
              }
 
-             let Some(sqrx) = self.squares.find(&regx.far_state()) else { panic!("SNH"); };
+             let Some(sqrx) = self.squares.find(regx.last_state()) else { panic!("SNH"); };
              if !sqrx.pnc {
                  // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
@@ -770,6 +759,12 @@ impl SomeAction {
             return nds;
         }
 
+        // Save defining regions to action instance.
+        self.defining_regions = poss_regions.defining_regions();
+
+        // Save structure regions in action instance.
+        self.structure_regions = poss_regions;
+
         // Check for non-adjacent pair confirm needs.
          for regx in non_adjacent_pairs.iter() {
              let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
@@ -781,14 +776,14 @@ impl SomeAction {
                             target: ATarget::State {
                                 state: sqrx.state.clone(),
                             },
-                            other_state: regx.far_state(),
+                            other_state: regx.last_state().clone(),
                             priority: 0,
                         };
                 needx.add_priority_base();
                 nds.push(needx);
              }
 
-             let Some(sqrx) = self.squares.find(&regx.far_state()) else { panic!("SNH"); };
+             let Some(sqrx) = self.squares.find(regx.last_state()) else { panic!("SNH"); };
              if !sqrx.pnc {
                  // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
@@ -904,7 +899,7 @@ impl SomeAction {
         }
 
         nds
-    }
+    } // end incompatible_pair_needs
 
     /// Cleanup unneeded squares.
     pub fn cleanup(&mut self, needs: &NeedStore) {
@@ -952,19 +947,13 @@ impl SomeAction {
                         continue 'next_sqr;
                     }
 
-                    if let Some(stay) = &grpx.anchor {
-                        if stay == keyx {
-                            continue 'next_sqr;
-                        }
-                        if *keyx == grpx.region.far_from(stay) {
-                            continue 'next_sqr;
-                        }
-                        if keyx.is_adjacent(stay) {
+                    if let Some(anchor) = &grpx.anchor {
+                        if keyx == &anchor.pinnacle {
                             continue 'next_sqr;
                         }
                     }
-                } else if let Some(stay) = &grpx.anchor {
-                    if keyx.is_adjacent(stay) {
+                } else if let Some(anchor) = &grpx.anchor {
+                    if anchor.edges.contains(keyx) {
                         continue 'next_sqr;
                     }
                 }
@@ -1096,11 +1085,11 @@ impl SomeAction {
         // Check if groups current anchors are still in only one region.
         let mut remove_anchor = Vec::<SomeRegion>::new();
         for grpx in self.groups.iter() {
-            let Some(stax) = &grpx.anchor else {
+            let Some(anchor) = &grpx.anchor else {
                 continue;
             };
 
-            if !self.groups.in_1_group(stax) {
+            if !self.groups.in_1_group(&anchor.pinnacle) {
                 remove_anchor.push(grpx.region.clone());
             }
         }
@@ -1123,7 +1112,7 @@ impl SomeAction {
                 continue;
             }
             if let Some(anchor) = &grpx.anchor {
-                if max_reg.is_superset_of(anchor) {
+                if max_reg.is_superset_of(&anchor.pinnacle) {
                     if let Some(anchor_mask) = &grpx.anchor_mask {
                         let max_mask = max_reg.x_mask().bitwise_and(&grpx.region.edge_mask());
                         if *anchor_mask != max_mask {
@@ -1164,8 +1153,8 @@ impl SomeAction {
             //    continue;
             //}
 
-            if let Some(anchor) = self.groups[group_num].anchor.clone() {
-                if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor, max_reg, group_num) {
+            if let Some(anchor) = &self.groups[group_num].anchor {
+                if let Some(ndx) = self.limit_group_adj_needs(&regx, &anchor.pinnacle.clone(), max_reg, group_num) {
                     ret_nds.append(ndx);
                     continue;
                 } else if self.groups[group_num].limited {
@@ -1254,8 +1243,8 @@ impl SomeAction {
 
         let grpx = self.groups.find(regx).expect("SNH");
         if let Some(grpx) = self.groups.find(regx) {
-            if let Some(stax) = &grpx.anchor {
-                grp_anchor = Some(stax.clone());
+            if let Some(anchor) = &grpx.anchor {
+                grp_anchor = Some(anchor.pinnacle.clone());
             }
         } else {
             panic!("SNH");
@@ -1280,7 +1269,7 @@ impl SomeAction {
         // Set anchor, if needed.
         if adj_states.is_not_empty() {
             if let Some(anchor) = &grpx.anchor {
-                if adj_states.contains(anchor) {
+                if adj_states.contains(&anchor.pinnacle) {
                 } else {
                     //println!("defining region anchor {} for group {}, from {}", adj_states[0], grpx.region, anchor);
                     self.groups
@@ -2472,19 +2461,19 @@ impl SomeAction {
             println!("\nGroup:   {}", grpx.region);
             let sqrx = self
                 .squares
-                .find(anchor)
+                .find(&anchor.pinnacle)
                 .expect("Group anchor should refer to an existing square");
-            let rate = self.group_anchor_rate(&grpx.region, anchor);
+            let rate = self.group_anchor_rate(&grpx.region, &anchor.pinnacle);
             println!("anchor {sqrx} rate {:?}", rate);
             let stas_adj = self.squares.stas_adj_reg(&grpx.region);
             for stax in stas_adj.iter() {
-                if stax.is_adjacent(anchor) {
+                if stax.is_adjacent(&anchor.pinnacle) {
                     let sqrx = self.squares.find(stax).expect("SNH");
                     let grps = self.groups.groups_in(stax);
                     if grps.len() == 1 {
                         if let Some(grpy) = self.groups.find(grps[0]) {
                             if let Some(anchory) = &grpy.anchor {
-                                if stax == anchory {
+                                if stax == &anchory.pinnacle {
                                     println!("adj    {sqrx} in one group {} is anchor", grps[0]);
                                 } else {
                                     println!("adj    {sqrx} in one group {}", grps[0]);
@@ -2532,12 +2521,12 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
-        if self.structure_regions.len() > 1 {
-            rc_str += &format!(", calculated structure regions: {}", self.structure_regions);
-            if self.structure_regions.len() > 1 {
-                rc_str += &format!(", defining regions: {}", self.structure_regions.defining_regions());
-            }
-        }
+//       if self.structure_regions.len() > 1 {
+//           rc_str += &format!(", calculated structure regions: {}", self.structure_regions);
+//           if self.structure_regions.len() > 1 {
+//               rc_str += &format!(", defining regions: {}", self.structure_regions.defining_regions());
+//           }
+//       }
 
         let mut fil = "\n       Grps: ";
 
@@ -2663,7 +2652,7 @@ impl SomeAction {
                 continue;
             }
             if let Some(anchor) = &grpx.anchor {
-                if anchor.is_adjacent(&sqrx.state) {
+                if anchor.pinnacle.is_adjacent(&sqrx.state) {
                     if !sqrx.pnc || (grpx.pn == Pn::Unpredictable && sqrx.pn == Pn::Unpredictable) {
                         if grpx.set_limited_off() {
                             println!(

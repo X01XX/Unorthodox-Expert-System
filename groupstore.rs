@@ -105,7 +105,7 @@ impl GroupStore {
         }
         if num == 1 {
             if let Some(anchor) = &self.items[index].anchor {
-                if astate == anchor {
+                if astate == &anchor.pinnacle {
                     return Some(true);
                 }
             }

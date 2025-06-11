@@ -117,6 +117,26 @@ impl StateStore {
         }
         ret
     }
+
+    // Return the union of two StateStores.
+    pub fn union(&self, other: &Self) -> Self {
+        let mut ret = Self::new(vec![]);
+
+        // Add self states, no dups.
+        for stax in self.iter() {
+            if !ret.contains(stax) {
+                ret.push(stax.clone());
+            }
+        }
+        // Add other states, no dups.
+        for stax in other.iter() {
+            if !ret.contains(stax) {
+                ret.push(stax.clone());
+            }
+        }
+
+        ret
+    }
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

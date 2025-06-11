@@ -12,6 +12,8 @@ use crate::sample::SomeSample;
 use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::tools;
+use crate::vertex::SomeVertex;
+use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -42,8 +44,9 @@ pub struct SomeGroup {
     /// Set to true when a state only in the group has all adjacent states outside
     /// of the group region checked.
     pub limited: bool,
-    /// The state, in only one (this) group, used to limit the group.
-    pub anchor: Option<SomeState>,
+    /// The vertex, anchored on a state, in only one (this) group, used to limit the group,
+    /// and define the logical structure of the action.
+    pub anchor: Option<SomeVertex>,
     /// Maskof  adjacent squares used to limit a group.
     /// This will be the region edge mask, limited by the bit changes of available rules.
     pub anchor_mask: Option<SomeMask>,
@@ -285,9 +288,9 @@ impl SomeGroup {
         self.limited = true;
         self.anchor_mask = Some(anchor_mask);
 
-        if let Some(astate) = &self.anchor {
-            if self.region.first_state() != astate && self.region.far_state() != *astate {
-                self.region = SomeRegion::new(vec![astate.clone(), self.region.far_from(astate)]);
+        if let Some(anchor) = &self.anchor {
+            if self.region.first_state() != &anchor.pinnacle && self.region.far_state() != anchor.pinnacle {
+                self.region = SomeRegion::new(vec![anchor.pinnacle.clone(), self.region.far_from(&anchor.pinnacle)]);
             }
         }
     }
@@ -296,7 +299,7 @@ impl SomeGroup {
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
     pub fn set_anchor(&mut self, astate: &SomeState) {
-        self.anchor = Some(astate.clone());
+        self.anchor = Some(SomeVertex::new(astate.clone(), StateStore::new(vec![])));
 
         self.limited = false;
         self.anchor_mask = None;
@@ -309,7 +312,7 @@ impl SomeGroup {
         assert!(self.limited);
 
         let anchor = self.anchor.as_ref().expect("SNH");
-        if max_reg.is_superset_of(anchor) {
+        if max_reg.is_superset_of(&anchor.pinnacle) {
         } else {
             return;
         };
