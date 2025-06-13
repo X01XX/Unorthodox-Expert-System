@@ -29,20 +29,20 @@ impl fmt::Display for SomeVertex {
 
 impl SomeVertex {
     /// Return a new SomeVertex instance.
-    pub fn new (pinnacle: SomeState, edges: StateStore) -> Self {
+    pub fn new (pinnacle: &SomeState, edge_mask: &SomeMask) -> Self {
         // Check args
-        //assert!(edges.is_not_empty());
-        for stax in edges.iter() {
-            assert!(stax.is_adjacent(&pinnacle))
-        }
-        // Generate edge mask.
-        let mut edge_mask = pinnacle.new_low().as_mask();
-        for stax in edges.iter() {
-            edge_mask = edge_mask.bitwise_or(&pinnacle.bitwise_xor(stax));
+
+        let masks = edge_mask.split();
+
+        let mut edge_states = StateStore::with_capacity(masks.len());
+
+        // Generate edge states.
+        for mskx in masks.iter() {
+            edge_states.push(pinnacle.bitwise_xor(mskx).as_state());
         }
 
         // Return result.
-        Self { pinnacle, edges, edge_mask }
+        Self { pinnacle: pinnacle.clone(), edges: edge_states, edge_mask: edge_mask.clone() }
     }
 
     /// Return a string used to represent a vertex.
@@ -76,6 +76,11 @@ impl SomeVertex {
         }
 
         ret
+    }
+
+    /// Return true if any state is in both vertices.
+    pub fn shares_states(&self, other: &Self) -> bool {
+        self.states().intersection(&other.states()).is_not_empty()
     }
 
     /// Return all states used in a vertex.
@@ -113,13 +118,8 @@ mod tests {
     fn test_new_display_strlen() -> Result<(), String> {
         let pinnacle = SomeState::from_str("s0000")?;
 
-        // Create a two-state store.
-        let sta1 = SomeState::from_str("s0001")?;
-        let sta2 = SomeState::from_str("s0010")?;
-        let edges = StateStore::new(vec![sta1, sta2]);
-
         // Create a vertex.
-        let vtx = SomeVertex::new(pinnacle, edges);
+        let vtx = SomeVertex::new(&pinnacle, &SomeMask::from_str("m0011")?);
         assert!(format!("{}", vtx) == "(s0000 - [s0001, s0010])");
         assert!(format!("{}", vtx).len() == vtx.strlen());
 
@@ -128,15 +128,10 @@ mod tests {
 
     #[test]
     fn structure_implied() -> Result<(), String> {
-
-        // Create a two-state store.
-        let sta1 = SomeState::from_str("s0001")?;
-        let sta2 = SomeState::from_str("s0010")?;
-        let edges = StateStore::new(vec![sta1, sta2]);
-
         // Create a vertex.
         let pinnacle = SomeState::from_str("s0000")?;
-        let vtx = SomeVertex::new(pinnacle, edges);
+        let edges = SomeMask::from_str("m0011")?;
+        let vtx = SomeVertex::new(&pinnacle, &edges);
 
         // Find structue implied by vertex.
         let structure = vtx.structure_implied();
@@ -157,10 +152,8 @@ mod tests {
 
         // Create a two-state vertex.
         let pinnacle = SomeState::from_str("s0101")?;
-        let sta1 = SomeState::from_str("s0111")?;
-        let sta2 = SomeState::from_str("s1101")?;
-        let edges = StateStore::new(vec![sta1, sta2]);
-        let vtx = SomeVertex::new(pinnacle, edges);
+        let edges = SomeMask::from_str("m1010")?;
+        let vtx = SomeVertex::new(&pinnacle, &edges);
 
         let regx = vtx.defines();
         println!("regx: {}", regx);

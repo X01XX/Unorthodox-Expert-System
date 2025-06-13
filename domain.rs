@@ -194,8 +194,35 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
-        self.actions
+        let needs = self.actions
+            .get_needs(&self.cur_state, &self.union_all_states);
+
+        if needs.is_empty() {
+            // Try again, as get_needs can change a few things.
+            self.actions
             .get_needs(&self.cur_state, &self.union_all_states)
+        } else {
+            needs
+        }
+    }
+
+    /// Check, and update, union_all_states.
+    fn check_union_all_states(&mut self, smpl: &SomeSample) {
+
+        let previous = self.union_all_states.clone();
+
+        // Add  sample result state, if needed.
+        if self.union_all_states.is_superset_of(&smpl.result) {
+        } else {
+            self.union_all_states = self.union_all_states.union(&smpl.result);
+        }
+
+        // If the union_all_states is updated, that means there is at least one new X position.
+        // Limited groups, with a 0 or 1 under the new X bits, will need to
+        // be re-limited.
+        if self.union_all_states != previous {
+            self.actions.check_limited(&self.union_all_states);
+        }
     }
 
     /// Evaluate an arbitrary sample given by the user.
@@ -206,22 +233,6 @@ impl SomeDomain {
     pub fn eval_sample_arbitrary(&mut self, act_id: usize, smpl: &SomeSample) {
         debug_assert_eq!(smpl.num_bits(), self.num_bits());
         debug_assert!(act_id < self.actions.len());
-
-        let previous = self.union_all_states.clone();
-
-        if self.union_all_states.is_superset_of(&smpl.initial) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&smpl.initial);
-        }
-
-        if self.union_all_states.is_superset_of(&smpl.result) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&smpl.result);
-        }
-
-        if self.union_all_states != previous {
-            self.actions.check_limited(&self.union_all_states);
-        }
 
         self.actions.eval_sample_arbitrary(act_id, smpl);
         self.set_cur_state(smpl.result.clone());
@@ -234,11 +245,8 @@ impl SomeDomain {
 
         let asample = self.actions.take_action_need(ndx, &self.cur_state);
 
-        if self.union_all_states.is_superset_of(&asample.result) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&asample.result);
-            self.actions.check_limited(&self.union_all_states);
-        }
+        self.check_union_all_states(&asample);
+
         self.set_cur_state(asample.result.clone());
     }
 
@@ -248,11 +256,8 @@ impl SomeDomain {
 
         let asample = self.actions.take_action_arbitrary(act_id, &self.cur_state);
 
-        if self.union_all_states.is_superset_of(&asample.result) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&asample.result);
-            self.actions.check_limited(&self.union_all_states);
-        }
+        self.check_union_all_states(&asample);
+
         self.set_cur_state(asample.result.clone());
     }
 
@@ -260,23 +265,9 @@ impl SomeDomain {
     pub fn take_action_arbitrary(&mut self, act_id: usize, astate: &SomeState) {
         debug_assert!(act_id < self.actions.len());
 
-        let previous = self.union_all_states.clone();
-
         let asample = self.actions.take_action_arbitrary(act_id, astate);
 
-        if self.union_all_states.is_superset_of(&asample.initial) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&asample.initial);
-        }
-
-        if self.union_all_states.is_superset_of(&asample.result) {
-        } else {
-            self.union_all_states = self.union_all_states.union(&asample.result);
-        }
-
-        if self.union_all_states != previous {
-            self.actions.check_limited(&self.union_all_states);
-        }
+        self.check_union_all_states(&asample);
 
         self.set_cur_state(asample.result.clone());
     }
@@ -1560,9 +1551,7 @@ mod tests {
 
         let max_reg = SomeRegion::from_str("rXXXX")?;
 
-        let Some(nds1) = domx.actions[1].limit_groups_needs(&max_reg) else {
-            return Err("No needs?".to_string());
-        };
+        let nds1 = domx.actions[1].groups_limit_needs(&max_reg);
         println!("domx {}", domx.actions[1]);
         println!("Needs: {}", nds1);
 
@@ -1593,9 +1582,7 @@ mod tests {
 
         println!("domx {}", domx.actions[1]);
 
-        let Some(nds2) = domx.actions[1].limit_groups_needs(&max_reg) else {
-            return Err("limit_groups_needs returns None?".to_string());
-        };
+        let nds2 = domx.actions[1].groups_limit_needs(&max_reg);
 
         println!("domx {}", domx.actions[1]);
 
@@ -1744,28 +1731,25 @@ mod tests {
         // Get needs for an expanded max_region.
 
         let max_reg = SomeRegion::from_str("r11XX")?;
-        let nds = domx.actions[act1].limit_groups_needs(&max_reg);
+        let needs = domx.actions[act1].groups_limit_needs(&max_reg);
+
         println!("\n(1){}", domx.actions[act1]);
-        if let Some(needs) = nds {
-            println!("needs {}", needs);
-            assert!(needs.len() == 1);
-            assert!(
-                needs.contains_similar_need(
-                    "LimitGroupAdj",
-                    &ATarget::State {
-                        state: SomeState::from_str("s1110")? // anchor is s1111
-                    }
-                ) || needs.contains_similar_need(
-                    "LimitGroupAdj",
-                    &ATarget::State {
-                        state: SomeState::from_str("s1100")? // anchor is s1101.
-                    }
-                )
-            );
-        } else {
-            println!("needs []");
-            panic!("SNH");
-        }
+
+        println!("needs {}", needs);
+        assert!(needs.len() == 1);
+        assert!(
+            needs.contains_similar_need(
+                "LimitGroupAdj",
+                &ATarget::State {
+                    state: SomeState::from_str("s1110")? // anchor is s1111
+                }
+            ) || needs.contains_similar_need(
+                "LimitGroupAdj",
+                &ATarget::State {
+                    state: SomeState::from_str("s1100")? // anchor is s1101.
+                }
+            )
+        );
 
         Ok(())
     }

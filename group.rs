@@ -13,7 +13,6 @@ use crate::square::SomeSquare;
 use crate::state::SomeState;
 use crate::tools;
 use crate::vertex::SomeVertex;
-use crate::statestore::StateStore;
 
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -252,6 +251,7 @@ impl SomeGroup {
     /// Clear the anchor, it is no longer only in one group,
     /// or is superceeded by a higher rated anchor.
     pub fn set_anchor_off(&mut self) {
+        //println!("group {} set_anchor_off", self.region);
         assert!(self.anchor.is_some());
 
         self.anchor = None;
@@ -277,22 +277,16 @@ impl SomeGroup {
             if self.region.first_state() != &anchor.pinnacle && self.region.far_state() != anchor.pinnacle {
                 self.region = SomeRegion::new(vec![anchor.pinnacle.clone(), self.region.far_from(&anchor.pinnacle)]);
             }
+        } else {
+            panic!("Problem: set limited, with no anchor?");
         }
     }
 
     /// Set the anchor state, representing a square that is only in this group,
     /// all adjacent, external squares have been tested and found to be
     /// incompatible, and the square farthest from the anchor has been sampled.
-    pub fn set_anchor(&mut self, astate: &SomeState, max_reg: &SomeRegion) {
-        // Generate needed adjacennt states.
-        let adj_masks  = self.region.edge_mask().bitwise_and(&max_reg.x_mask()).split();
-
-        let mut adj_states = StateStore::with_capacity(adj_masks.len());
-        for mskx in adj_masks.iter() {
-            adj_states.push(astate.bitwise_xor(mskx).as_state());
-        }
-
-        self.anchor = Some(SomeVertex::new(astate.clone(), adj_states));
+    pub fn set_anchor(&mut self, anchor: SomeVertex) {
+        self.anchor = Some(anchor);
 
         self.limited = false;
     }
@@ -301,7 +295,9 @@ impl SomeGroup {
     /// If the group region has a non-X bit position matching a new bit position that can change,
     /// set the limited indicator to false.
     pub fn check_limited(&mut self, max_reg: &SomeRegion) {
-        assert!(self.limited);
+        if !self.limited {
+            return;
+        }
 
         let anchor = self.anchor.as_ref().expect("SNH");
         if max_reg.is_superset_of(&anchor.pinnacle) {

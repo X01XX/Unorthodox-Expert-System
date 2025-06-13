@@ -118,7 +118,7 @@ impl StateStore {
         ret
     }
 
-    // Return the union of two StateStores.
+    /// Return the union of two StateStores.
     pub fn union(&self, other: &Self) -> Self {
         let mut ret = Self::new(vec![]);
 
@@ -137,6 +137,20 @@ impl StateStore {
 
         ret
     }
+
+    /// Return the intersection of two statestores.
+    pub fn intersection(&self, other: &StateStore) -> Self {
+        let mut ret = Self::new(vec![]);
+
+        // Check each state in self.
+        for stax in self.iter() {
+            if other.contains(stax) {
+                ret.push(stax.clone());
+            }
+        }
+        ret
+    }
+
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

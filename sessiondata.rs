@@ -261,6 +261,7 @@ impl SessionData {
     pub fn get_needs(&mut self) {
         self.step_num += 1;
         let mut needs = self.domains.get_needs();
+        println!("needs: {}", needs);
 
         // Get select region needs.
         if let Some(sel_needs) = self.check_select() {
@@ -1794,7 +1795,6 @@ mod tests {
         };
 
         println!("sdx {sdx_str}");
-        println!("sdx {sdx}");
         if let Some(domx) = sdx.find_domain(0) {
             if let Some(_actx) = domx.find_action(4) {
                 return Ok(());

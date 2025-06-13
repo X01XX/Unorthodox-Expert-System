@@ -1964,12 +1964,19 @@ mod tests {
             "SD[DS[
                 DOMAIN[
                     ACT[[01/XX/00/XX],
-                        [10/XX/01/XX], s0000, s0101, s1100, s1001]],
+                        [10/XX/01/XX]]],
                 DOMAIN[
-                    ACT[[Xx_XX/XX/XX/XX], s0_0000, s1_1111]]],
+                    ACT[[Xx_XX/XX/XX/XX]]]],
                 SC[s1010, s0_1010],
                 ]",
         )?;
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s0101")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1100")?);
+        sdx.take_action_arbitrary(0, 1, &SomeState::from_str("s1001")?);
+
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s0_0000")?);
+        sdx.take_action_arbitrary(1, 1, &SomeState::from_str("s1_1111")?);
 
         sdx.print();
 
@@ -2050,9 +2057,17 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/XX/01/X1], [XX/XX/10/X0], s0001/3, s1110/3]]]
+            ACT[[XX/XX/00/X1], [XX/XX/11/X0]]]]
         ]",
         )?;
+
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0001")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0001")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0001")?);
+
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1110")?);
 
         sdx.print();
 
@@ -2091,15 +2106,24 @@ mod tests {
             ACT[[XX/XX/Xx/XX]],
             ACT[[XX/Xx/XX/XX]],
             ACT[[Xx/XX/XX/XX]],
-            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX], s0000, s0011, s0100, s0110, s1101, s1110, s1001, s1011]]],
+            ACT[[XX/11/01/Xx], [11/XX/10/Xx], [Xx/00/00/XX], [01/XX/11/XX]]]],
         ]",
         )?;
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0000")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0011")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0100")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s0110")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1101")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1110")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1001")?);
+        sdx.take_action_arbitrary(0, 5, &SomeState::from_str("s1011")?);
 
         println!("sdx {sdx}");
         assert!(sdx.find_domain(0).expect("SNH").actions[5].groups.len() == 6);
 
         // Limit groups, delete 00XX and 11XX.
         do_session(&mut sdx);
+        sdx.get_needs();
 
         sdx.print();
         assert!(sdx.find_domain(0).expect("SNH").actions[0].groups.len() == 1);

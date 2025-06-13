@@ -8,6 +8,7 @@ use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
 use crate::sample::SomeSample;
 use crate::state::SomeState;
+use crate::statestore::StateStore;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
@@ -55,6 +56,18 @@ impl GroupStore {
             }
         }
         aggregate_changes
+    }
+
+    /// Return states that are only in one group.
+    pub fn states_in_one_group(&self, states: &StateStore) -> StateStore {
+        let mut ret_states = StateStore::new(vec![]);
+
+        for stax in states.iter() {
+            if self.in_1_group(stax) {
+                ret_states.push(stax.clone());
+            }
+        }
+        ret_states
     }
 
     /// Return true if an item is in exactly one group.
