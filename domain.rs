@@ -272,6 +272,15 @@ impl SomeDomain {
         self.set_cur_state(asample.result.clone());
     }
 
+    /// Take an action with a given state, store the sample, a number of times..
+    pub fn take_action_arbitrary_repeat(&mut self, act_id: usize, astate: &SomeState, num_times: usize) {
+        debug_assert!(act_id < self.actions.len());
+
+        for _x in 0..num_times {
+            self.take_action_arbitrary(act_id, astate);
+        }
+    }
+
     /// Set the current state field.
     pub fn set_cur_state(&mut self, stax: SomeState) {
         debug_assert_eq!(stax.num_bits(), self.num_bits());
@@ -1134,6 +1143,20 @@ impl SomeDomain {
             Some(&self.actions[act_id])
         }
     }
+
+    /// Find an action that matches a given ID, return a reference.
+    pub fn find_action_mut(&mut self, act_id: usize) -> Option<&mut SomeAction> {
+        if act_id >= self.actions.len() {
+            None
+        } else {
+            Some(&mut self.actions[act_id])
+        }
+    }
+
+    /// Return the number of actions.
+    pub fn number_actions(&self) -> usize {
+        self.actions.len()
+    }
 } // end impl SomeDomain
 
 impl FromStr for SomeDomain {
@@ -1175,8 +1198,9 @@ impl FromStr for SomeDomain {
 
         // Push each action.
         for tokenx in tokens.iter() {
-            if tokenx[0..4].to_uppercase() == *"ACT[" {
+            if tokenx.len() > 3 && tokenx[0..4].to_uppercase() == *"ACT[" {
                 act_vec.push(SomeAction::from_str(tokenx)?);
+            } else if  tokenx[0..1] == *"[" { // skip for now.
             } else {
                 return Err(format!(
                     "SomeDomain::from_str: Unrecognized token, {tokenx}"
@@ -1193,6 +1217,55 @@ impl FromStr for SomeDomain {
             domx.push(actx);
         }
 
+        // Check for samples to take.
+        for tokenx in tokens.iter() {
+            if tokenx.len() > 3 && tokenx[0..4].to_uppercase() == *"ACT[" { // skip
+            } else if  tokenx[0..1] == *"[" {
+                //println!("process token: {}", tokenx);
+                // Unwrap brackets.
+                let tokeny = &tokenx[1..(tokenx.len()-1)];
+                //print!(" tokeny: {}", tokeny);
+                // Split substring into tokens.
+                let tokens2 = match tools::parse_input(tokeny) {
+                    Ok(tokenvec) => tokenvec,
+                    Err(errstr) => return Err(format!("domain::from_str: {errstr}")),
+                };
+                //print!(" action: {}", tokens2[0]);
+                // Translate action number as string to action number as usize.
+                let actx = match tokens2[0].parse::<usize>() {
+                    Ok(num) => { num }
+                    Err(errstr) => return Err(errstr.to_string()),
+                };
+                //print!(" action: {}", actx);
+
+                // Split state token by "/" separator, if any.
+                let mut statex = tokens2[1].clone();
+                let mut num_str = "1".to_string();
+                if let Some(inx) = statex.find('/') {
+                    num_str = statex[(inx + 1)..].to_string();
+                    statex = statex[0..inx].to_string();
+                }
+
+                match SomeState::from_str(&statex) {                                                                                      
+                    Ok(stax) => {
+                        //print!(" state: {}", stax);
+                        match num_str.parse::<usize>() {
+                            Ok(num) => {
+                                //print!(" num_times: {}", num);
+                                domx.take_action_arbitrary_repeat(actx, &stax, num);
+                            }
+                            Err(errstr) => return Err(errstr.to_string()),
+                        }
+                    }
+                    Err(errstr) => return Err(errstr),
+                }
+                //println!(" ");
+            } else {
+                return Err(format!(
+                    "SomeDomain::from_str: Unrecognized token, {tokenx}"
+                ));
+            }
+        }
         Ok(domx)
     }
 }
@@ -1211,7 +1284,7 @@ mod tests {
         // Create a domain that uses four bits.
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/11/01/11, 00/11/00/10], s0101/4]
+            ACT[[00/11/01/11, 00/11/00/10]], [1, s0101/4]
         ]",
         )?;
 
@@ -1269,7 +1342,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut dm0 = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[00/XX/01/XX], s0101, s0000],
+            ACT[[00/XX/01/XX]], [1, s0101], [1, s0000],
         ]",
         )?;
 
@@ -1306,10 +1379,14 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 
@@ -1336,10 +1413,14 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 
@@ -1522,7 +1603,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/00/XX/Xx], [XX/11/XX/XX], s0000, s1101, s0110],
+            ACT[[XX/00/XX/Xx], [XX/11/XX/XX]], [1, s0000], [1, s1101], [1, s0110],
         ]",
         )?;
 
@@ -1545,7 +1626,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/11/XX], [X0/X0/01/x0], s0100/3, s1001/3],
+            ACT[[XX/XX/11/XX], [X0/X0/01/x0]], [1, s0100/3], [1, s1001/3],
         ]",
         )?;
 
@@ -1608,7 +1689,7 @@ mod tests {
         // Create a domain that uses one integer for bits.
         let mut domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX], s0101/4, s1111/4],
+            ACT[[XX/XX/00/11, XX/XX/00/10], [11/XX/XX/11, 11/XX/XX/10], [00/XX/11/XX]], [1, s0101/4], [1, s1111/4],
         ]",
         )?;
 
@@ -1655,7 +1736,7 @@ mod tests {
             "DOMAIN[
             ACT[[00/XX/11/XX],
                 [XX/XX/00/11, XX/XX/01/10, XX/XX/01/11],
-                [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX], s0101/4, s1111/4],
+                [11/11/XX/XX, 11/10/XX/XX, 10/11/XX/XX]], [1, s0101/4], [1, s1111/4],
         ]",
         )?;
 
@@ -1759,10 +1840,14 @@ mod tests {
         // Create a domain that uses 4 bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 
@@ -1789,10 +1874,14 @@ mod tests {
         // Create a domain that uses 4 bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 
@@ -1825,10 +1914,14 @@ mod tests {
         // Create a domain that uses 4 bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 
@@ -1858,10 +1951,14 @@ mod tests {
         // Create a domain that uses 4 bits.
         let domx = SomeDomain::from_str(
             "DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]
         ]",
         )?;
 

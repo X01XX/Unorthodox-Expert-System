@@ -2135,11 +2135,11 @@ impl SomeAction {
 
     /// Take an action with the current state, add the sample to squarestore.
     /// Return a sample.
-    pub fn take_action_arbitrary(&mut self, cur_state: &SomeState) -> SomeSample {
-        //println!("action::take_action_arbitrary: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
-        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+    pub fn take_action_arbitrary(&mut self, arb_state: &SomeState) -> SomeSample {
+        //println!("action::take_action_arbitrary: Dom {} Act {} arb_state {arb_state}", self.dom_id, self.id);
+        debug_assert_eq!(arb_state.num_bits(), self.num_bits);
 
-        let asample = self.get_sample(cur_state);
+        let asample = self.get_sample(arb_state);
 
         self.eval_sample_arbitrary(&asample);
 
@@ -2148,17 +2148,15 @@ impl SomeAction {
 
     /// Take an action with the current state, a number of times, add the sample to squarestore.
     /// Return a sample.
-    pub fn take_action_arbitrary_repeat(&mut self, cur_state: &SomeState, num_times: usize) -> SomeSample {
-        //println!("action::take_action_arbitrary: Dom {} Act {} cur_state {cur_state}", self.dom_id, self.id);
-        debug_assert_eq!(cur_state.num_bits(), self.num_bits);
+    pub fn take_action_arbitrary_repeat(&mut self, arb_state: &SomeState, num_times: usize) -> SomeSample {
+        //println!("action::take_action_arbitrary: Dom {} Act {} arb_state {arb_state}", self.dom_id, self.id);
+        debug_assert_eq!(arb_state.num_bits(), self.num_bits);
         debug_assert!(num_times > 0);
 
-        let mut asample = self.get_sample(cur_state);
-        self.eval_sample_arbitrary(&asample);
+        let mut asample = self.take_action_arbitrary(arb_state);
 
         for _x in 1..num_times {
-            asample = self.get_sample(cur_state);
-            self.eval_sample_arbitrary(&asample);
+            asample = self.take_action_arbitrary(arb_state);
         }
         asample
     }
@@ -2633,8 +2631,6 @@ impl FromStr for SomeAction {
                     }                                                                                                                                   
                     Err(errstr) => return Err(errstr),
                 }
-            } else if tokenx[0..1].to_lowercase() == *"s" {
-                continue;
             } else {
                 return Err(format!("action::from_str: Unrecognized token, {tokenx}"));
             }
@@ -2643,50 +2639,8 @@ impl FromStr for SomeAction {
         if rs_vec.is_empty() {
             return Err("action::from_str: No RuleStore.".to_string());
         }
-        // Init the action.
-        let mut actx = SomeAction::new(rs_vec);
-
-        // Generate samples for each.
-        for tokenx in tokens.iter() {
-            //println!("rulestores for an action: {tokenx}");
-            if tokenx[0..1] == *"[" {
-                continue;
-            } else if tokenx[0..1].to_lowercase() == *"s" {
-                let mut num_str = "1".to_string();
-                let mut tokeny = tokenx.clone();
-                // Split state token by "/" separator, if any.
-                if let Some(inx) = tokenx.find('/') {
-                    num_str = tokenx[(inx + 1)..].to_string();
-                    tokeny = tokenx[0..inx].to_string();
-                }
-                //println!("tokeny {tokeny} num_str {num_str}");
-
-                match SomeState::from_str(&tokeny) {
-                    Ok(stax) => {
-                        match num_str.parse::<usize>() {
-                            Ok(num) => {
-                                //println!("num times = {num}");
-                                if num > 0 {
-                                    for _ in 0..num {
-                                        actx.take_action_arbitrary(&stax);
-                                    }
-                                } else {
-                                    return Err(format!(
-                                        "action::from_str: Did not understand count in token {tokenx}"
-                                    ));
-                                }
-                            }
-                            Err(errstr) => return Err(errstr.to_string()),
-                        }
-                    }
-                    Err(errstr) => return Err(errstr),
-                }
-            } else {
-                return Err(format!("action::from_str: Unrecognized token, {tokenx}"));
-            }
-        }
-
-        Ok(actx)
+        // Return the action.
+        Ok(SomeAction::new(rs_vec))
     }
 }
 
@@ -2695,28 +2649,24 @@ impl FromStr for SomeAction {
 mod tests {
     use super::*;
     use std::str::FromStr;
+    use crate::domain::SomeDomain;
 
     #[test]
     fn two_result_group() -> Result<(), String> {
         // Init action
         // Put in two one-result squares, s0001 and s0101, both subset of the later two-result squares.
-        let mut act0 = SomeAction::from_str(
-            "ACT[[00/XX/XX/XX, 01/XX/XX/XX], [11/XX/XX/xx]]",
+        let dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[00/XX/XX/XX, 01/XX/XX/XX], [11/XX/XX/xx]], [1, s0001], [1, s0101], [1, s0000/4], [1, s0111/4]]",
         )?;
-        act0.take_action_arbitrary(&SomeState::from_str("s0001")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
 
-        act0.take_action_arbitrary_repeat(&SomeState::from_str("s0000")?, 4);
+        println!("{dom0}");
 
-        act0.take_action_arbitrary_repeat(&SomeState::from_str("s0111")?, 4);
-
-        println!("{act0}");
-
-        assert!(act0.groups.len() == 1);
-        if let Some(_) = act0.groups.find(&SomeRegion::from_str("r0XXX")?) {
+        assert!(dom0.number_actions() == 2);
+        if let Some(_) = dom0.find_action(1).unwrap().groups.find(&SomeRegion::from_str("r0XXX")?) {
         } else {
-            return Err("Group 0XXX not found?".to_string());
+            return Err("Action 1, Group 0XXX not found?".to_string());
         }
+        //assert!(1 == 2);
         Ok(())
     }
 
@@ -2724,13 +2674,13 @@ mod tests {
     #[test]
     fn groups_formed_1() -> Result<(), String> {
         // Init action
-        let act0 = SomeAction::from_str(
-            "ACT[[XX/00/XX/X0], [11/11/XX/Xx], [00/11/XX/XX], s0111, s1011, s1101, s0001]",
+        let dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[XX/00/XX/X0], [11/11/XX/Xx], [00/11/XX/XX]], [1, s0111], [1, s1011], [1, s1101], [1, s0001]]",
         )?;
 
-        println!("{act0}");
+        println!("{dom0}");
 
-        assert!(act0.groups.len() == 4);
+        assert!(dom0.find_action(1).unwrap().groups.len() == 4);
 
         Ok(())
     }
@@ -2739,15 +2689,14 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let mut act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX, XX/XX/XX/Xx], s1111/4, s0001/4]")?;
+        let mut dom0 = SomeDomain::from_str("DOMAIN[ACT[[XX/XX/XX/XX, XX/XX/XX/Xx]], [1, s1111/4], [1, s0001/4]]")?;
 
-        let s1 = SomeState::from_str("s0001")?;
-        let max_reg = SomeRegion::from_str("rXXXX")?;
-
-        let mut nds = act0.get_needs(&s1, &max_reg);
+        let mut nds = dom0.get_needs();
         if nds.is_empty() {
-            nds = act0.get_needs(&s1, &max_reg);
+            nds = dom0.get_needs();
         }
+
+        let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
         println!("needs: {}", nds);
 
@@ -2761,8 +2710,9 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let act0 = SomeAction::from_str("ACT[[XX/XX/XX/XX], s0000, s0011, s0101]")?;
+        let dom0 = SomeDomain::from_str("DOMAIN[ACT[[XX/XX/XX/XX]], [1, s0000], [1, s0011], [1, s0101]]")?;
 
+        let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 1);
@@ -2775,10 +2725,11 @@ mod tests {
     #[test]
     fn three_sample_region2() -> Result<(), String> {
         // Init action.
-        let act0 = SomeAction::from_str(
-            "ACT[[XX/00/XX/XX], [XX/XX/XX/11], [XX/10/XX/00], s0000, s0011, s0100, s0101]",
+        let dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[XX/00/XX/XX], [XX/XX/XX/11], [XX/10/XX/00]], [1, s0000], [1, s0011], [1, s0100], [1, s0101]]",
         )?;
 
+        let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 3);
@@ -2794,8 +2745,9 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let act0 = SomeAction::from_str("ACT[[00/XX/X0/XX], [XX/XX/XX/11], s0010, s1011, s0101]")?;
+        let dom0 = SomeDomain::from_str("DOMAIN[ACT[[00/XX/X0/XX], [XX/XX/XX/11]], [1, s0010], [1, s1011], [1, s0101]]")?;
 
+        let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
 
         assert!(act0.groups.len() == 2);
@@ -2808,10 +2760,9 @@ mod tests {
     #[test]
     fn calc_aggregate_changes() -> Result<(), String> {
         // Init action.
-        let mut act0 = SomeAction::from_str("ACT[[00/00/10/00], [01/11/00/X0]]")?;
+        let mut dom0 = SomeDomain::from_str("DOMAIN[ACT[[00/00/10/00], [01/11/00/X0]], [1, s0010]]")?;
 
-        // Set up square 2.
-        act0.take_action_arbitrary(&SomeState::from_str("s0010")?);
+        let act0 = dom0.find_action_mut(1).unwrap();
 
         println!("act0: {act0}");
         assert!(act0.groups.len() == 1);
@@ -2862,31 +2813,24 @@ mod tests {
 
     #[test]
     fn non_adjacent_incompatibility_needs0() -> Result<(), String> {
-        let mut act0 = SomeAction::from_str(
-            "ACT[[01/XX/01/XX], [00/XX/10/XX], [10/XX/00/XX], [11/XX/11/XX]]",
+        let mut dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[01/XX/01/XX], [00/XX/10/XX], [10/XX/00/XX], [11/XX/11/XX]], [1, s0100], [1, s0111]]",
         )?;
 
-        println!("act0 {}", act0.formatted_def());
+        dom0.take_action_arbitrary(1, &SomeState::from_str("s0100")?);
+        dom0.take_action_arbitrary(1, &SomeState::from_str("s0111")?);
 
-        let sta4 = SomeState::from_str("s0100")?;
+        dom0.set_cur_state(SomeState::from_str("s0100")?);
+        println!("dom0 {}", dom0);
 
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-
-        println!("act0 {}", act0.formatted_state());
-
-        let max_reg = SomeRegion::max_region(act0.num_bits);
-
-        let nds = act0.get_needs(&sta4, &max_reg);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         // Get more samples of incompatible pair.
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0100")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0111")?);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0100")?, 2);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0111")?, 2);
 
-        let nds = act0.get_needs(&sta4, &max_reg);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         // Needs to get closer incompatible pair should exist.
@@ -2904,42 +2848,39 @@ mod tests {
         ));
 
         // Add needed sample.
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
-        let nds = act0.get_needs(&sta4, &max_reg);
+        dom0.take_action_arbitrary(1, &SomeState::from_str("s0101")?);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         // Confirm 0101, so incompatible pair is 5, 7.
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0101")?);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0101")?, 2);
 
         // The pair (4, 7) should not trigger any NAI needs.
-        let nds = act0.get_needs(&sta4, &max_reg);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
         assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 6, the pairing of (4, 6) should now generate needs.
-        act0.take_action_arbitrary(&SomeState::from_str("s0110")?);
+        dom0.take_action_arbitrary(1, &SomeState::from_str("s0110")?);
 
-        let nds = act0.get_needs(&sta4, &max_reg);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         // Confirm 0110.
-        act0.take_action_arbitrary(&SomeState::from_str("s0110")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0110")?);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0110")?, 2);
 
-        let nds = act0.get_needs(&sta4, &max_reg);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
         assert!(!nds.contains_need_type("CloserIP"));
 
         // Add square 1011.
-        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
-        let nds = act0.get_needs(&sta4, &max_reg);
+        dom0.take_action_arbitrary(1, &SomeState::from_str("s1011")?);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         // Confirm 1011.
-        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s1011")?);
-        let nds = act0.get_needs(&sta4, &max_reg);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s1011")?, 2);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         assert!(nds.contains_similar_need(
@@ -2956,30 +2897,24 @@ mod tests {
         ));
 
         // Give it samples of 0011.
-        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
-        act0.take_action_arbitrary(&SomeState::from_str("s0011")?);
-        let nds = act0.get_needs(&sta4, &max_reg);
+        dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0011")?, 3);
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         assert!(!nds.contains_need_type("CloserIP"));
 
-        //assert!(1 ==2);
         Ok(())
     }
 
     #[test]
     fn non_adjacent_incompatibility_needs2() -> Result<(), String> {
-        let mut act0 = SomeAction::from_str(
-            "ACT[[XX/XX/00/XX], [XX/XX/11/XX, XX/XX/10/xx, Xx/XX/11/XX], s0000/3, s1111/3]",
+        let mut dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[XX/XX/00/XX], [XX/XX/11/XX, XX/XX/10/xx, Xx/XX/11/XX]], [1, s0000/3], [1, s1111/3]]",
         )?;
 
-        println!("act0 {}", act0.formatted_def());
+        println!("dom0 {}", dom0);
 
-        let nds = act0.get_needs(
-            &SomeState::from_str("s1111")?,
-            &SomeRegion::from_str("rXXXX")?,
-        );
+        let nds = dom0.get_needs();
         println!("needs: {nds}");
 
         assert!(nds.contains_similar_need(
@@ -3024,7 +2959,6 @@ mod tests {
             }
         ));
 
-        //assert!(1 == 2);
         Ok(())
     }
 }

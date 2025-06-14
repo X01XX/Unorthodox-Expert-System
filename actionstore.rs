@@ -178,6 +178,7 @@ impl ActionStore {
     pub fn take_action_arbitrary(&mut self, act_id: usize, cur_state: &SomeState) -> SomeSample {
         self.items[act_id].take_action_arbitrary(cur_state)
     }
+
 } // end impl ActionStore
 
 impl Index<usize> for ActionStore {

@@ -462,10 +462,10 @@ mod tests {
     #[test]
     fn validate_rc() -> Result<(), String> {
         let dom_str = "DS[
-                        DOMAIN[ACT[[XX_XX/XX/XX/Xx], s0_0000, s1_1111]],
-                        DOMAIN[ACT[[XX/XX/XX/Xx], s0000, s1111]],
-                        DOMAIN[ACT[[XX/Xx/00], s000, s110]],
-                        DOMAIN[ACT[[Xx/Xx], s00, s11]]
+                        DOMAIN[ACT[[XX_XX/XX/XX/Xx]], [1, s0_0000], [1, s1_1111]],
+                        DOMAIN[ACT[[XX/XX/XX/Xx]], [1, s0000], [1, s1111]],
+                        DOMAIN[ACT[[XX/Xx/00]], [1, s000], [1, s110]],
+                        DOMAIN[ACT[[Xx/Xx]], [1, s00], [1, s11]]
                     ]";
 
         let dsx = DomainStore::from_str(&dom_str)?;

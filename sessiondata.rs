@@ -1824,10 +1824,14 @@ mod tests {
         // Init SessionData. Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]]],
             SR[RC[r01X1], -1],
             SR[RC[rX101], -2],
             SC[s0000]
@@ -1866,10 +1870,14 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]]],
             SR[RC[r0101], -1],
             SR[RC[r1001], -1],
             SC[s0000]
@@ -1902,10 +1910,14 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]]],
             SR[RC[r0x00], -1],
             SR[RC[rx100], -1],
             SR[RC[r01x1], -1],
@@ -1941,10 +1953,14 @@ mod tests {
         // Init SessionData, Domain.
         let mut sdx = SessionData::from_str(
             "SD[DS[DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]]],
             SR[RC[rxx0x], -1],
             SC[s0000]
         ]",
@@ -1997,10 +2013,14 @@ mod tests {
         let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
-            ACT[[XX/XX/XX/Xx], s0000, s1111],
-            ACT[[XX/XX/Xx/XX], s0000, s1111],
-            ACT[[XX/Xx/XX/XX], s0000, s1111],
-            ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+            ACT[[XX/XX/XX/Xx]],
+            ACT[[XX/XX/Xx/XX]],
+            ACT[[XX/Xx/XX/XX]],
+            ACT[[Xx/XX/XX/XX]],
+            [1, s0000], [1, s1111],
+            [2, s0000], [2, s1111],
+            [3, s0000], [3, s1111],
+            [4, s0000], [4, s1111]]],
             SR[RC[r1100], -1],
             SR[RC[r1011], -1],
             SC[s0000]
@@ -2028,15 +2048,23 @@ mod tests {
         let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]],
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]]],
             SR[RC[r01x1, rxxxx], -1],
             SR[RC[rx101, rxxxx], -1],
             SR[RC[rxxxx, r011x], -1],
@@ -2070,15 +2098,23 @@ mod tests {
         let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]],
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]]],
             SR[RC[r00xx, rxx11], -1],
             SR[RC[r11xx, r01xx], -1],
             SC[s0101, s0111]
@@ -2119,15 +2155,23 @@ mod tests {
         let sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]],
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]]],
             SR[RC[r000x, rxx11], -1],
             SR[RC[r11x1, r01xx], -1],
             SC[s0101, s0111]
@@ -2354,10 +2398,14 @@ mod tests {
         let mut sdx = SessionData::from_str(
             "SD[DS[
             DOMAIN[
-                ACT[[XX/XX/XX/Xx], s0000, s1111],
-                ACT[[XX/XX/Xx/XX], s0000, s1111],
-                ACT[[XX/Xx/XX/XX], s0000, s1111],
-                ACT[[Xx/XX/XX/XX], s0000, s1111]]],
+                ACT[[XX/XX/XX/Xx]],
+                ACT[[XX/XX/Xx/XX]],
+                ACT[[XX/Xx/XX/XX]],
+                ACT[[Xx/XX/XX/XX]],
+                [1, s0000], [1, s1111],
+                [2, s0000], [2, s1111],
+                [3, s0000], [3, s1111],
+                [4, s0000], [4, s1111]]],
             SR[RC[01XX], -1],
             SR[RC[10XX], -2],
             SC[s0000]
