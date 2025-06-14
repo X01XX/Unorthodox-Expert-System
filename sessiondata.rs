@@ -261,7 +261,7 @@ impl SessionData {
     pub fn get_needs(&mut self) {
         self.step_num += 1;
         let mut needs = self.domains.get_needs();
-        println!("needs: {}", needs);
+        //println!("needs: {}", needs);
 
         // Get select region needs.
         if let Some(sel_needs) = self.check_select() {
@@ -338,26 +338,27 @@ impl SessionData {
 
         let mut can_do = Vec::<InxPlan>::new();
 
-        //        let cur_states = self.all_current_states();
+        let cur_states = self.all_current_states();
 
         // Check for needs that can be satisfied with the current state.
-        //        for (inx, ndx) in self.needs.iter().enumerate() {
-        //            if ndx.satisfied_by(&cur_states) {
-        //                //println!("need {ndx} At Target");
-        //                can_do.push(InxPlan {
-        //                    inx,
-        //                    plans: NeedPlan::AtTarget {},
-        //                    rate: 0,
-        //                    desired_num_bits_changed: 0,
-        //                    process_num_bits_changed: 0,
-        //                });
-        //            }
-        //        }
+        // Its easier not to think.
+        for (inx, ndx) in self.needs.iter().enumerate() {
+            if ndx.satisfied_by(&cur_states) {
+                //println!("need {ndx} At Target");
+                can_do.push(InxPlan {
+                    inx,
+                    plans: NeedPlan::AtTarget {},
+                    rate: 0,
+                    desired_num_bits_changed: 0,
+                    process_num_bits_changed: 0,
+                });
+            }
+        }
 
-        //        if !can_do.is_empty() {
-        //            self.can_do = can_do;
-        //            return;
-        //        }
+        if !can_do.is_empty() {
+            self.can_do = can_do;
+            return;
+        }
 
         let mut cur_pri = self.needs[0].priority();
         let mut count = 0;
@@ -605,7 +606,7 @@ impl SessionData {
     pub fn choose_a_need(&self) -> usize {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
         assert!(!self.can_do.is_empty());
-
+        
         // Gather plan rates.
         let mut rts = vec![];
         for inxpln in self.can_do.iter() {
