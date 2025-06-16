@@ -63,6 +63,14 @@ pub struct InxPlan {
 
 #[readonly::make]
 #[derive(Serialize, Deserialize)]
+/// Struct for a RegionsCorrStore with a given value.
+pub struct RCSVal {
+    pub value: isize,
+    pub regions: RegionsCorrStore
+}
+
+#[readonly::make]
+#[derive(Serialize, Deserialize)]
 /// A vector of SomeDomain structs, and session state.
 pub struct SessionData {
     /// Domain structures.
@@ -88,6 +96,9 @@ pub struct SessionData {
     /// Save the maximum fragment value.
     /// Used to calculate the ToSelectRegion need priority.
     pub max_pos_value: isize,
+    /// A vector of increasingly negative-risk regionscorr, the last regionscorr being
+    /// all maximum regions.
+    possible_paths: Vec::<RCSVal>, 
 
     // Cyclical goal, positve Select Region, data.
     /// A counter to indicate the number of steps the current state is in the same select region.
@@ -126,6 +137,7 @@ impl Eq for SessionData {}
 impl SessionData {
     /// Return a new, empty, SessionData struct.
     pub fn new(domains: DomainStore) -> Self {
+
         Self {
             domains,
             current_domain: 0,
@@ -141,6 +153,7 @@ impl SessionData {
             needs: NeedStore::new(vec![]),
             can_do: vec![],
             cant_do: vec![],
+            possible_paths: vec![],
         }
     }
 
@@ -188,6 +201,48 @@ impl SessionData {
 
         // Init times visitied vector.
         self.times_visited = vec![0; self.select_net_positive.len()];
+
+        // Generate possible paths.
+
+        // Get possible LE 0 values, most-negative to 0.
+        //
+        // So the maximun domain regions path will have the least value.
+        // Subtracting negative selectregions of each successive value will yeild paths of
+        // less negative value, until subtracing all negative-valued selectregions will yield
+        // selectregions of zero value.
+        let mut le0_values: Vec::<isize> = vec![0];
+        for selx in self.select.iter() {
+            if selx.value < 0 {
+                if !le0_values.contains(&selx.value) {
+                    le0_values.push(selx.value);
+                }
+            }
+        }
+        le0_values.sort_by(|a, b| a.cmp(b));
+        //println!("LE 0 values {:?}", le0_values);
+
+        // Get vector of possible paths, in ascending value order, by virtue of the push command.
+        let mut cur_regions = RegionsCorrStore::new(vec![self.domains.maximum_regions()]);
+        let mut all_paths = Vec::<RCSVal>::new();
+
+        for valx in le0_values.iter() {
+            all_paths.push(RCSVal { value: *valx, regions: cur_regions.clone() });
+
+            for selx in self.select.iter() {
+                if selx.value < 0 && selx.value == *valx {
+                    cur_regions = cur_regions.subtract_regionscorr(&selx.regions);
+                }
+            }
+        }
+        println!(" ");
+        println!("Possible Paths: value - regions:");
+        all_paths.reverse(); // Change to descending values.
+        for rcsvx in all_paths.iter() {
+            println!("   {} {}", rcsvx.value, rcsvx.regions);
+            println!(" ");
+        }
+        // Store possible path regions.
+        self.possible_paths = all_paths;
     }
 
     /// Print info about select stores.
@@ -882,7 +937,7 @@ impl SessionData {
         &self,
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,
-        within: &[&RegionsCorr],
+        within: &RegionsCorrStore,
         cur_rate: isize,
     ) -> Result<PlansCorrStore, Vec<String>> {
         //println!(
@@ -981,93 +1036,69 @@ impl SessionData {
             return Ok(NeedPlan::AtTarget {});
         }
 
-        // Make a list of negative values in self.select_negative.
-        let mut neg_values = Vec::<isize>::new();
-        for selx in self.select_negative.iter() {
-            if !neg_values.contains(&selx.value) {
-                neg_values.push(selx.value);
-            }
-        }
-
-        neg_values.sort_by(|a, b| b.cmp(a)); // sort to least negative first.
-        //println!("neg values {neg_values:?}");
-
-        // Init available path fragments with non-negative fragments.
-        let mut fragments = Vec::<&RegionsCorr>::new();
-
-        for rcx in self.rc_non_negative.iter() {
-            fragments.push(rcx);
-        }
-
-        // Check for edge case, no SelectRegions.
-        let all_regs = self.maximum_regions();
-        if fragments.is_empty() && self.select_negative.is_empty() {
-            fragments.push(&all_regs);
-        }
-        //println!("fragments {}", tools::vec_ref_string(&fragments));
-
-        // Check need for negative fragments, at the start.
-        let mut neg_inx = 0;
+        // Get minimum possible value, at the start, due to the location of the from-regs and goal_regs..
         let min_start = self.most_negative_rate(start_regs);
         let min_goal = self.most_negative_rate(goal_regs);
-        let mut current_rate = if min_start < min_goal {
+        let min_value = if min_start < min_goal {
             min_start
         } else {
             min_goal
         };
 
-        for nvx in neg_values.iter() {
-            if *nvx < current_rate {
-                break;
-            }
-            neg_inx += 1;
-
-            for selx in self.select_negative.iter() {
-                if selx.value == *nvx {
-                    //println!("  adding neg value {nvx}");
-                    fragments.push(&selx.regions);
-                }
-            }
-        }
-
-        let maximum_regions = self.domains.maximum_regions();
-
-        loop {
-            //println!("current_rate is {current_rate}");
-            // fragments could be empty if there is a single, maximunm-region, negative select region.
-            if !fragments.is_empty() {
-                // until plan found or all negative SRs added to fragments.
-                // Use fragments to find path.
+        for rcsvx in self.possible_paths.iter() {
+            if rcsvx.value <= min_value {
                 if let Ok(planx) = self.plan_using_least_negative_select_regions_get_plan(
                     start_regs,
                     goal_regs,
-                    &fragments,
-                    current_rate,
+                    &rcsvx.regions,
+                    rcsvx.value,
                 ) {
                     //println!("sessiondata::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
                     return Ok(NeedPlan::PlanFound { plan: planx });
                 }
             }
-
-            // Add more negative regioncorrs.
-            //println!("   adding {} valued SRs", neg_values[neg_inx]);
-            if neg_inx == neg_values.len() {
-                break;
-            }
-            if neg_inx == neg_values.len() - 1 {
-                fragments = vec![&maximum_regions];
-            } else {
-                current_rate = neg_values[neg_inx];
-                for selx in self.select_negative.iter() {
-                    if selx.value == current_rate {
-                        //println!("  found {selx}");
-                        fragments.push(&selx.regions);
-                    }
-                }
-            }
-
-            neg_inx += 1;
         }
+
+
+        
+//        let maximum_regions = self.domains.maximum_regions();
+//
+//        loop {
+//            //println!("current_rate is {current_rate}");
+//            // fragments could be empty if there is a single, maximunm-region, negative select region.
+//            if !fragments.is_empty() {
+//                // until plan found or all negative SRs added to fragments.
+//                // Use fragments to find path.
+//                if let Ok(planx) = self.plan_using_least_negative_select_regions_get_plan(
+//                    start_regs,
+//                    goal_regs,
+//                    &fragments,
+//                    current_rate,
+//                ) {
+//                    //println!("sessiondata::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
+//                    return Ok(NeedPlan::PlanFound { plan: planx });
+//                }
+//            }
+//
+//            // Add more negative regioncorrs.
+//            //println!("   adding {} valued SRs", neg_values[neg_inx]);
+//            if neg_inx == neg_values.len() {
+//                break;
+//            }
+//            if neg_inx == neg_values.len() - 1 {
+//                fragments = vec![&maximum_regions];
+//            } else {
+//                current_rate = neg_values[neg_inx];
+//                for selx in self.select_negative.iter() {
+//                    if selx.value == current_rate {
+//                        //println!("  found {selx}");
+//                        fragments.push(&selx.regions);
+//                    }
+//                }
+//            }
+//
+//            neg_inx += 1;
+//        }
 
         // Return failure.
         Err(vec!["No plan found".to_string()])
@@ -1102,7 +1133,7 @@ impl SessionData {
         &self,
         start_regs: &RegionsCorr,
         goal_regs: &RegionsCorr,
-        select_regions: &[&RegionsCorr],
+        select_regions: &RegionsCorrStore,
         cur_rate: isize,
     ) -> Result<PlansCorrStore, Vec<String>> {
         debug_assert!(!select_regions.is_empty());
@@ -1152,7 +1183,7 @@ impl SessionData {
         if mid_paths.is_empty() {
             return Err(vec![format!(
                 "plan_using_least_negative_select_regions2: mid_paths from {start_regs} to {goal_regs} within {} failed",
-                tools::vec_ref_string(select_regions)
+                select_regions
             )]);
         }
 
@@ -1236,7 +1267,7 @@ impl SessionData {
         &'a self,
         start_regs: &'a RegionsCorr,
         goal_regs: &'a RegionsCorr,
-        select_regions: &'a [&RegionsCorr],
+        select_regions: &'a RegionsCorrStore,
     ) -> Option<RegionsCorrStore> {
         //println!(
         //    "get_path_through_select_regions: starting: start {start_regs} goal: {goal_regs} select {}", tools::vec_ref_string(select_regions)
@@ -1256,7 +1287,7 @@ impl SessionData {
         goal_ints.push(goal_regs.clone());
 
         // Init work vector.
-        let mut select_regions2: Vec<_> = select_regions.to_vec();
+        let mut select_regions2: Vec<_> = select_regions.items.clone();
 
         // Build out start intersection and goal intersection RCSs, until there is an intersection/adjacency between them, or
         // no more options.
@@ -1271,34 +1302,34 @@ impl SessionData {
             let mut randpick = tools::RandomPick::new(select_regions2.len());
 
             while let Some(inx) = randpick.pick() {
-                let selx = select_regions2[inx];
+                let selx = &select_regions2[inx];
 
                 // Add a new RegionsCorr intersection, to start_int or goal_ints.
 
                 // A new RegionsCorr may intersect the last RC in the start_ints RCS.
-                if start_last.intersects(selx) {
-                    start_ints.push((*selx).clone());
+                if start_last.intersects(&selx) {
+                    start_ints.push(selx.clone());
                     tools::remove_unordered(&mut select_regions2, inx);
                     int_added = true;
                     break;
-                } else if start_last.is_adjacent(selx) {
-                    let bridge = start_last.symmetrical_overlapping_regions(selx);
+                } else if start_last.is_adjacent(&selx) {
+                    let bridge = start_last.symmetrical_overlapping_regions(&selx);
                     start_ints.push(bridge);
-                    start_ints.push((*selx).clone());
+                    start_ints.push(selx.clone());
                     tools::remove_unordered(&mut select_regions2, inx);
                     int_added = true;
                     break;
                 } else {
                     // A new RegionsCorr may intersect the last RC in the goal_ints RCS.
-                    if goal_last.intersects(selx) {
-                        goal_ints.push((*selx).clone());
+                    if goal_last.intersects(&selx) {
+                        goal_ints.push(selx.clone());
                         tools::remove_unordered(&mut select_regions2, inx);
                         int_added = true;
                         break;
-                    } else if goal_last.is_adjacent(selx) {
-                        let bridge = goal_last.symmetrical_overlapping_regions(selx);
+                    } else if goal_last.is_adjacent(&selx) {
+                        let bridge = goal_last.symmetrical_overlapping_regions(&selx);
                         goal_ints.push(bridge);
-                        goal_ints.push((*selx).clone());
+                        goal_ints.push(selx.clone());
                         tools::remove_unordered(&mut select_regions2, inx);
                         int_added = true;
                         break;
@@ -2408,8 +2439,7 @@ mod tests {
                 [3, s0000], [3, s1111],
                 [4, s0000], [4, s1111]]],
             SR[RC[01XX], -1],
-            SR[RC[10XX], -2],
-            SC[s0000]
+            SR[RC[10XX], -2]
         ]",
         )?;
 
@@ -2544,7 +2574,7 @@ mod tests {
         let within2 = RegionsCorr::from_str("RC[rX1XX]")?;
 
         let path =
-            sdx.get_path_through_select_regions(&start_regs, &goal_regs, &vec![&within1, &within2]);
+            sdx.get_path_through_select_regions(&start_regs, &goal_regs, &RegionsCorrStore::new(vec![within1, within2]));
         if let Some(pathx) = path {
             print!("path: ");
             for rcx in pathx.iter() {
