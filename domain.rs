@@ -30,7 +30,7 @@ use crate::stepstore::StepStore;
 use crate::tools::{self, StrLen};
 
 use rand::Rng;
-//use rayon::prelude::*;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
@@ -382,18 +382,36 @@ impl SomeDomain {
         debug_assert!(within.is_superset_of(from_reg));
         debug_assert!(within.is_superset_of(goal_reg));
 
-        match self.make_plans2(from_reg, goal_reg, within, 10) {
-            Ok(planx) => {
-                //println!("  {} plans found 1", plans.len());
-                //println!("make_plans2 num found {} plans", plans.len());
+        // Figure the required changes.
+        let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
 
-                if let Some(shortcuts) = self.shortcuts(&planx, within) {
-                    return Ok(shortcuts);
-                }
-                //println!("  {} plans return 1", plans.len());
-                Ok(PlanStore::new(vec![planx]))
-            }
-            Err(errvec) => Err(errvec),
+        // Tune maximum depth to be a multiple of the number of bit changes required.
+        let num_depth = 3 * wanted_changes.number_changes();
+
+        // Collect possible groups.
+        let plans = (0..6)
+            .into_par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.                     
+            .filter_map(|_| { match self.make_plans2(from_reg, goal_reg, within, num_depth) {
+                                Ok(planx) => {
+                                    //println!("  {} plans found 1", plans.len());
+                                    //println!("make_plans2 num found {} plans", plans.len());
+
+                                    if let Some(shortcuts) = self.shortcuts(&planx, within) {
+                                        Some(shortcuts)
+                                    } else {
+                                        //println!("  {} plans return 1", plans.len());
+                                        Some(planx)
+                                    }
+                                }
+                                Err(_) => None,
+                                }
+                            })
+            .collect::<Vec<SomePlan>>();
+
+        if plans.is_empty() {
+            Err(vec!["No plans found".to_string()])
+        } else {
+            Ok(PlanStore::new(plans))
         }
     }
 
@@ -424,9 +442,6 @@ impl SomeDomain {
 
         // Figure the required changes.
         let wanted_changes = SomeRule::new_region_to_region_min(from_reg, goal_reg).as_change();
-
-        // Tune maximum depth to be a multiple of the number of bit changes required.
-        //let num_depth = 3 * wanted_changes.number_changes();
 
         // Get steps, check if steps include all changes needed.
         let steps_str = self.get_steps(&wanted_changes, within);
@@ -667,12 +682,18 @@ impl SomeDomain {
     }
 
     /// Return a plan shortcut, or None.
-    fn shortcuts(&self, planx: &SomePlan, within: &SomeRegion) -> Option<PlanStore> {
+    fn shortcuts(&self, planx: &SomePlan, within: &SomeRegion) -> Option<SomePlan> {
         if planx.len() < 3 {
             return None;
         }
         //println!("shortcuts: plan {planx}");
-        self.shortcuts2(planx, 5, within)
+        let plans = self.shortcuts2(planx, 5, within);
+
+        if let Some(mut plans2) = plans {
+            Some(plans2.remove(rand::rng().random_range(0..plans2.len())))
+        } else {
+            None
+        }
     }
 
     /// Try to get multiple plan shortcuts.
@@ -1511,9 +1532,7 @@ mod tests {
         let pln1 = SomePlan::from_str("P[0, r0000-2->r0100-3->r1100-2->r1000]")?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
-            assert!(shortcuts.len() == 1);
-            let shrt = &shortcuts[0];
+        if let Some(shrt) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             println!("shrt {shrt}");
             assert!(shrt.len() == 1);
             assert!(shrt[0].initial == SomeRegion::from_str("r0000")?);
@@ -1547,13 +1566,9 @@ mod tests {
         )?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shrt) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             // Check shortcuts.
-            println!("Shortcuts: {shortcuts}");
-            assert!(shortcuts.len() == 1);
-
-            let shrt = &shortcuts[0];
-            assert!(shrt.len() == 4);
+            println!("shrt: {shrt}");
 
             assert!(shrt.initial_region() == pln1.initial_region());
 
@@ -1585,12 +1600,10 @@ mod tests {
         let pln1 = SomePlan::from_str("P[0, r1011-1->r1111-2->r1110-1->r0110-23->r0111]")?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+        if let Some(shrt) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
             // Check shortcuts.
-            println!("Shortcuts: {shortcuts}");
-            assert!(shortcuts.len() == 1);
+            println!("shrt: {shrt}");
 
-            let shrt = &shortcuts[0];
             assert!(shrt.len() == 2);
             assert!(shrt.initial_region() == pln1.initial_region());
             assert!(shrt.result_region() == pln1.result_region());
@@ -1627,12 +1640,9 @@ mod tests {
         )?;
         println!("pln1: {}", pln1);
 
-        if let Some(shortcuts) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
-            // Check shortcuts.
-            println!("Shortcuts: {shortcuts}");
-            assert!(shortcuts.len() == 1);
-
-            let plnx = &shortcuts[0];
+        if let Some(plnx) = domx.shortcuts(&pln1, &SomeRegion::from_str("rXXXX")?) {
+            // Check shortcut.
+            println!("plnx: {plnx}");
 
             if plnx.len() < pln1.len() {
                 if plnx.len() == 4 {
