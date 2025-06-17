@@ -1454,7 +1454,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     </p>
     <p>
  Consider the old game of Battleship.
- You randomly hit some of your opponents squares until you hit something.
+ You randomly test some of your opponents squares until you hit something.
  Then you explore around the successful hit to outline the shape of the ship.
  Your last one or two hits are calculated and successful.
  You win the game without hitting all the squares.
@@ -1513,6 +1513,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <h5>Samples with dissimilar results</h5>
 	<p>Discover the structure of the logic.</p>
      <p class="indent1">
+     The calculated structure may be made up of a number of regions.  We care about <i>defining</i> regions, those that have at least one state that is only in that region.
+     </p>
+     <p class="indent1">
      The possible region structure of the logic starts with a region encompassing all possible states.
      </p>
      <p class="indent1">
@@ -1520,15 +1523,16 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      </p>
      <p class="indent1">
      For all two non-adjacent, dissimilar, states, with no dissimilar states between them, and within one region, calculated above,
-     note them to later seek samples between them, to result in dissimilar states that are closer together.
      </p>
-     <p class="indent1">
-     For all two non-adjacent, dissimilar, states, with no dissimilar states between them, and within one region, calculated above,
-     intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
+     <p class="indent2">
+     Note them to later seek samples between them, to result in dissimilar states that are closer together.
      </p>
-     <p class="indent1">
-     For all two non-adjacent, dissimilar, states, there may be a sampled state between them that has not been sampled enough to establish
-     dissimilarity to either of the region-forming states.
+     <p class="indent2">
+     Intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
+     </p>
+     <p class="indent2">
+     There may be a sampled state between them that has not been sampled enough to establish
+     dissimilarity to either of the two states.
      </p>
         <p>
         Vertices.
@@ -1538,6 +1542,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         </p>
         <p class="indent1">
 	The vertex will identify, and limit, each defining region in the logical structure.
+        </p>
+      <p class="indent1">
+       The vertex pinnacle can be used as one of the two states used to define the region.
         </p>
       <p class="indent1">
         When multiple vertices are possible for a group, choose one that shares the most states with adjacent region vertices, to allow maintaining
