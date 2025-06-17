@@ -1444,12 +1444,12 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p>
  There have been a few times, even before I knew anything about computers, when it seemed like I could sense what was changing in my mind when
  solving a problem.  This could be called "connecting the dots" or "changing the bits".  These
- infrequent perceptions are the inspiration for much of this web page.
+ infrequent perceptions are the inspiration for this web page.
     </p>
     <p>
  When you are trying to solve a problem, you usually do not have all possible samples.
- You make a guess, and you try to get more samples to limit your guess.
- When you try to get more samples, you usually choose them in some way, rather
+ You take more samples to improve your guess.
+ When you take more samples, you usually choose them in some way, rather
  than at random.
     </p>
     <p>
@@ -1459,31 +1459,19 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  Your last one or two hits are calculated and successful.
  You win the game without hitting all the squares.
     </p>
-   <p>
- Calculating regions from a random set of samples can be considered to be experiential aggregation, allowing you to guess.
-   </p>
- <p>
- Learning, may be defined as:
-   </p>
-   <p class="indent1">
-   Seeking samples of squares that are not already within a region.
-   </p>
-   <p class="indent1">
-   Seeking samples of squares to limit a region.
-   </p>
-   <p class="indent1">
-    Seeking a sample of a square to resolve a contradictory intersection of two regions.
- </p>
-   <p class="indent1">
-   Processing the results of a plan that did not work exactly as expected.
- </p>
     <h4>Implementation</h4>
+    <h5>Samples with similar results</h5>
 	<p>Bootstrapping.</p>
         <p class="indent1">
      If the result of the current state cannot be predicted, sample it.
      </p>
      <p class="indent1">
-        The first samples of this kind, that is only a single sample of each state, can be combined, to form regions.
+        The first samples of this kind, that is only a single sample of each state, can form regions with similar states, with no dissimilar state 
+        between them, and can be used to predict the result of sampling a state beween them.
+     </p>
+     <p class="indent1">
+        One, or more, states can form a region, but if more than two states are used, the minimum of two states should be sought,
+        to save memory.
      </p>
      <p class="indent1">
         Some regions will be invalidated when they do not predict the result of sampling a state within them.
@@ -1492,61 +1480,70 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
         Keep a list of superset, non-falsified, regions of states with compatible samples.
         </p>
      <p class="indent1">
-        The error rate of the regions formed will start high and trend downward.
+        The error rate of the regions formed will start high, but some will work, and trend downward with more samples.
+     </p>
+     <p class="indent1">
+     The failure of a region provides new data, and new regions. You only fail if you fail to learn.
      </p>
 	<p>Resample states.</p>
      <p class="indent1">
-     Resample states used to understand the logic, to determine if the are predictable.
+     Resample states used to understand the logic, to determine if they are predictable.
      </p>
+     <p>  
+        Contradictory intersections.
+        </p> 
+        <p class="indent1">
+        Some regions will intersect, predicting different results in the intersection subregion.
+        </p> 
+        <p class="indent1">
+        Seek a sample in the subregion.
+        </p> 
+        <p>
+        Extra testing of some regions.
+        </p>
+      <p class="indent1">
+        A region that predicts change will be tested by use.
+        </p>
+      <p class="indent1">
+        For regions that predict no change, or are unpredicable, extra testing is needed.
+        </p>
+        <p class="indent1">
+	Sample states, adjacent to a chosen state that is only in that region, inside of the region.
+        </p>
+    <h5>Samples with dissimilar results</h5>
 	<p>Discover the structure of the logic.</p>
      <p class="indent1">
      The possible region structure of the logic starts with a region encompassing all possible states.
      </p>
      <p class="indent1">
-     Notice two dissimilar states within a possible region.
+     For all adjacent, dissimilar, states, intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
      </p>
-     <p class="indent2">
-     Successively test states between the dissimilar states, until two adjacent, dissimilar, states are found.
+     <p class="indent1">
+     For all two non-adjacent, dissimilar, states, with no dissimilar states between them, and within one region, calculated above,
+     note them to later seek samples between them, to result in dissimilar states that are closer together.
      </p>
-     <p class="indent2">
-     Intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
+     <p class="indent1">
+     For all two non-adjacent, dissimilar, states, with no dissimilar states between them, and within one region, calculated above,
+     intersect the possible region structure of the logic with ~A + ~B, so that no region will contain both states.
+     </p>
+     <p class="indent1">
+     For all two non-adjacent, dissimilar, states, there may be a sampled state between them that has not been sampled enough to establish
+     dissimilarity to either of the region-forming states.
      </p>
         <p>
-        Test the boundaries of regions.
+        Vertices.
         </p>
         <p class="indent1">
-        Use states that appear to be in only one region to limit that region.
+        The above logic will produce vertices, with the pinnacle in only one region, and adjacent, dissimilar states, in adjacent regions.
         </p>
         <p class="indent1">
-	Sample states, adjacent to the limiting state, outside of the region.
+	The vertex will identify, and limit, each defining region in the logical structure.
         </p>
       <p class="indent1">
-        If an external adjacent state turns out to be similar instead of dissimilar, form a region from the two.
+        When multiple vertices are possible for a group, choose one that shares the most states with adjacent region vertices, to allow maintaining
+        the logical structure with a minimum number of stored samples.
         </p>
-      <p>
-        <p>
-        Extra testing of some regions.
-        </p>
-      <p class="indent1">
-        A region of states that causes predictable change will be tested by use.
-        </p>
-      <p class="indent1">
-        For regions that make no change, or are unpredicable, extra testing is needed.
-        </p>
-        <p class="indent1">
-	Sample states, adjacent to the limiting state, inside of the region.
-        </p>
-     <p>  
-        Contradictory intersections.
-        </p> 
-        <p class="indent1">
-        Some regions will intersect, predicting different results in the subregion.
-        </p> 
-        <p class="indent1">
-        Seek a sample in the subregion.
-        </p> 
-      Parallel processing.
-      </p>
+      <h5>Parallel processing</h5>
       <p class="indent1">
 	Parallel processing has always been thought to be crucial for Expert Systems.  This is hobbled when there is a need for different tasks to update a piece of shared data.  There are a number of opportunities to use unfettered parallel processing here.
       </p>
@@ -2512,7 +2509,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 03/06/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 06/17/2025</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
