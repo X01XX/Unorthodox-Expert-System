@@ -1,35 +1,35 @@
 #![allow(dead_code)]
 //! The vertex struct, a state in only one region (external dependency), with adjacent dissimilar states.
 
-use crate::state::SomeState;
-use crate::statestore::StateStore;
+use crate::mask::SomeMask;
 use crate::region::SomeRegion;
 use crate::regionstore::RegionStore;
-use crate::mask::SomeMask;
+use crate::state::SomeState;
+use crate::statestore::StateStore;
 
+use crate::StrLen;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use crate::StrLen;
 
 #[readonly::make]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 
 pub struct SomeVertex {
     pub pinnacle: SomeState,
-    pub edges:    StateStore,
-    pub edge_mask: SomeMask
+    pub edges: StateStore,
+    pub edge_mask: SomeMask,
 }
 
 /// Implement the fmt::Display Trait for a SomeVertex instance.
-impl fmt::Display for SomeVertex {                                                                                                                
+impl fmt::Display for SomeVertex {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.formatted_str())
-    }   
+    }
 }
 
 impl SomeVertex {
     /// Return a new SomeVertex instance.
-    pub fn new (pinnacle: &SomeState, edge_mask: &SomeMask) -> Self {
+    pub fn new(pinnacle: &SomeState, edge_mask: &SomeMask) -> Self {
         // Check args
 
         let masks = edge_mask.split();
@@ -42,7 +42,11 @@ impl SomeVertex {
         }
 
         // Return result.
-        Self { pinnacle: pinnacle.clone(), edges: edge_states, edge_mask: edge_mask.clone() }
+        Self {
+            pinnacle: pinnacle.clone(),
+            edges: edge_states,
+            edge_mask: edge_mask.clone(),
+        }
     }
 
     /// Return a string used to represent a vertex.
@@ -52,7 +56,6 @@ impl SomeVertex {
 
     /// Return the structure implied by a vertex.
     pub fn structure_implied(&self) -> RegionStore {
-
         let max_reg = SomeRegion::new(vec![self.pinnacle.new_high(), self.pinnacle.new_low()]);
 
         let mut and_complements_adjacent = RegionStore::new(vec![max_reg.clone()]);
@@ -60,18 +63,23 @@ impl SomeVertex {
         let complement_pin = max_reg.subtract(&self.pinnacle);
 
         for stax in self.edges.iter() {
-            and_complements_adjacent = and_complements_adjacent.intersection(&max_reg.subtract(stax));
+            and_complements_adjacent =
+                and_complements_adjacent.intersection(&max_reg.subtract(stax));
         }
         complement_pin.union(&and_complements_adjacent)
     }
 
     /// Return region a vertex defines.
     pub fn defines(&self) -> SomeRegion {
-
         let mut ret = SomeRegion::new(vec![self.pinnacle.new_high(), self.pinnacle.new_low()]);
 
         for stax in self.edges.iter() {
-            let regx = SomeRegion::new(vec![self.pinnacle.clone(), self.pinnacle.bitwise_xor(&self.pinnacle.bitwise_xor(stax).bitwise_not()).as_state()]);
+            let regx = SomeRegion::new(vec![
+                self.pinnacle.clone(),
+                self.pinnacle
+                    .bitwise_xor(&self.pinnacle.bitwise_xor(stax).bitwise_not())
+                    .as_state(),
+            ]);
             ret = ret.intersection(&regx).unwrap();
         }
 
@@ -85,7 +93,8 @@ impl SomeVertex {
 
     /// Return all states used in a vertex.
     pub fn states(&self) -> StateStore {
-        self.edges.union(&StateStore::new(vec![self.pinnacle.clone()]))
+        self.edges
+            .union(&StateStore::new(vec![self.pinnacle.clone()]))
     }
 
     /// Return true if a state is in a vertex.
@@ -147,9 +156,8 @@ mod tests {
         Ok(())
     }
 
-     #[test]
+    #[test]
     fn defines() -> Result<(), String> {
-
         // Create a two-state vertex.
         let pinnacle = SomeState::from_str("s0101")?;
         let edges = SomeMask::from_str("m1010")?;

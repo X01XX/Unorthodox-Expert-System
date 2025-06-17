@@ -14,6 +14,7 @@
 use crate::bits::SomeBits;
 use crate::bits::{BitsRef, NumBits};
 use crate::mask::SomeMask;
+use crate::region::SomeRegion;
 use crate::tools;
 
 use serde::{Deserialize, Serialize};
@@ -111,6 +112,11 @@ impl SomeState {
     /// Return a SomeMask instance from a SomeState instance.
     pub fn as_mask(&self) -> SomeMask {
         SomeMask::new(self.bts.clone())
+    }
+
+    /// Return a SomeRegion instance from a SomeState instance.
+    pub fn as_region(&self) -> SomeRegion {
+        SomeRegion::new(vec![self.clone()])
     }
 
     /// Return true if a state is between two given states, exclusive.

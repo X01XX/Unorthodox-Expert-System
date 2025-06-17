@@ -150,7 +150,6 @@ impl StateStore {
         }
         ret
     }
-
 } // end impl StateStore
 
 impl Index<usize> for StateStore {

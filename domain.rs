@@ -194,13 +194,14 @@ impl SomeDomain {
     /// Return needs gathered from all actions.
     /// Some housekeeping is done, so self is mutable.
     pub fn get_needs(&mut self) -> NeedStore {
-        let needs = self.actions
+        let needs = self
+            .actions
             .get_needs(&self.cur_state, &self.union_all_states);
 
         if needs.is_empty() {
             // Try again, as get_needs can change a few things.
             self.actions
-            .get_needs(&self.cur_state, &self.union_all_states)
+                .get_needs(&self.cur_state, &self.union_all_states)
         } else {
             needs
         }
@@ -208,7 +209,6 @@ impl SomeDomain {
 
     /// Check, and update, union_all_states.
     fn check_union_all_states(&mut self, smpl: &SomeSample) {
-
         let previous = self.union_all_states.clone();
 
         // Add  sample result state, if needed.
@@ -273,7 +273,12 @@ impl SomeDomain {
     }
 
     /// Take an action with a given state, store the sample, a number of times..
-    pub fn take_action_arbitrary_repeat(&mut self, act_id: usize, astate: &SomeState, num_times: usize) {
+    pub fn take_action_arbitrary_repeat(
+        &mut self,
+        act_id: usize,
+        astate: &SomeState,
+        num_times: usize,
+    ) {
         debug_assert!(act_id < self.actions.len());
 
         for _x in 0..num_times {
@@ -390,22 +395,23 @@ impl SomeDomain {
 
         // Collect possible groups.
         let plans = (0..6)
-            .into_par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.                     
-            .filter_map(|_| { match self.make_plans2(from_reg, goal_reg, within, num_depth) {
-                                Ok(planx) => {
-                                    //println!("  {} plans found 1", plans.len());
-                                    //println!("make_plans2 num found {} plans", plans.len());
+            .into_par_iter() // par_iter for parallel processing, iter for sequential diagnostic messages.
+            .filter_map(|_| {
+                match self.make_plans2(from_reg, goal_reg, within, num_depth) {
+                    Ok(planx) => {
+                        //println!("  {} plans found 1", plans.len());
+                        //println!("make_plans2 num found {} plans", plans.len());
 
-                                    if let Some(shortcuts) = self.shortcuts(&planx, within) {
-                                        Some(shortcuts)
-                                    } else {
-                                        //println!("  {} plans return 1", plans.len());
-                                        Some(planx)
-                                    }
-                                }
-                                Err(_) => None,
-                                }
-                            })
+                        if let Some(shortcuts) = self.shortcuts(&planx, within) {
+                            Some(shortcuts)
+                        } else {
+                            //println!("  {} plans return 1", plans.len());
+                            Some(planx)
+                        }
+                    }
+                    Err(_) => None,
+                }
+            })
             .collect::<Vec<SomePlan>>();
 
         if plans.is_empty() {
@@ -422,7 +428,7 @@ impl SomeDomain {
         from_reg: &SomeRegion,
         goal_reg: &SomeRegion,
         within: &SomeRegion,
-        depth: usize
+        depth: usize,
     ) -> Result<SomePlan, Vec<String>> {
         //println!(
         //    "\ndom {} make_plans2: from {from_reg} goal {goal_reg}",
@@ -452,6 +458,15 @@ impl SomeDomain {
         }
         //println!("steps_str {steps_str}");
 
+        // Check if all wanted changes are available.
+        if let Some(agg_change) = steps_str.aggregate_changes() {
+            if !wanted_changes.is_subset_of(&agg_change) {
+                return Err(vec![format!(
+                    "domain::make_plans2: Some needed changes are not available."
+                )]);
+            }
+        }
+
         // Accumulate steps that can change the from_reg.
         let mut from_steps = StepStore::new(vec![]);
         for stpx in steps_str.iter() {
@@ -474,7 +489,7 @@ impl SomeDomain {
         }
         if goal_steps.is_empty() {
             return Err(vec![format!(
-                "domain::make_plans2: No steps found from {from_reg}"
+                "domain::make_plans2: No steps found to {goal_reg}"
             )]);
         }
 
@@ -482,16 +497,23 @@ impl SomeDomain {
         let mut plan_options = vec![];
         for stpx in from_steps.iter() {
             if stpx.result.intersects(goal_reg) {
-                plan_options.push(SomePlan::new(self.id, vec![stpx.restrict_result_region(goal_reg)]));
+                plan_options.push(SomePlan::new(
+                    self.id,
+                    vec![stpx.restrict_result_region(goal_reg)],
+                ));
             }
         }
         for stpx in goal_steps.iter() {
             if stpx.initial.intersects(from_reg) {
-                plan_options.push(SomePlan::new(self.id, vec![stpx.restrict_initial_region(from_reg)]));
+                plan_options.push(SomePlan::new(
+                    self.id,
+                    vec![stpx.restrict_initial_region(from_reg)],
+                ));
             }
         }
         if !plan_options.is_empty() {
             let planx = plan_options.remove(rand::rng().random_range(0..plan_options.len()));
+            //println!("planxx: One step {}", planx);
             return Ok(planx);
         }
 
@@ -499,61 +521,67 @@ impl SomeDomain {
         for stp_f in from_steps.iter() {
             for stp_g in goal_steps.iter() {
                 if stp_f.result.intersects(&stp_g.initial) {
-                    match SomePlan::new(self.id, vec![stp_f.clone()]).link(&SomePlan::new(self.id, vec![stp_g.clone()])) {
+                    match SomePlan::new(self.id, vec![stp_f.clone()])
+                        .link(&SomePlan::new(self.id, vec![stp_g.clone()]))
+                    {
                         Ok(planx) => plan_options.push(planx),
-                        Err(errstr) => return Err(vec![errstr])
+                        Err(errstr) => return Err(vec![errstr]),
                     }
                 }
             }
         }
         if !plan_options.is_empty() {
             let planx = plan_options.remove(rand::rng().random_range(0..plan_options.len()));
+            //println!("planxx: Two steps {}", planx);
             return Ok(planx);
         }
 
         // Accumulate asymmetric steps.
         let mut asym_steps = vec![];
         for stpx in steps_str.iter() {
-            if !stpx.initial.intersects(from_reg) &&
-               !stpx.result.intersects(goal_reg) {
+            if !stpx.initial.intersects(from_reg) && !stpx.result.intersects(goal_reg) {
                 asym_steps.push(stpx.clone());
             }
         }
-        if asym_steps.is_empty() {
-            if 0 == rand::rng().random_range(0..2) {
-                let stepx = &from_steps[rand::rng().random_range(0..from_steps.len())];
-                if let Ok(plan_t) = self.make_plans2(&stepx.result, goal_reg, within, depth - 1) {
-                    match SomePlan::new(self.id, vec![stepx.clone()]).link(&plan_t) {
-                        Ok(plan_ret) => return Ok(plan_ret),
-                        Err(errstr) => return Err(vec![errstr])
-                    }
-                }
-            } else {
-                 let stepx = &goal_steps[rand::rng().random_range(0..goal_steps.len())];
-                if let Ok(plan_f) = self.make_plans2(from_reg, &stepx.initial, within, depth - 1) {
-                    match plan_f.link(&SomePlan::new(self.id, vec![stepx.clone()])) {
-                        Ok(plan_ret) => return Ok(plan_ret),
-                        Err(errstr) => return Err(vec![errstr])
+        if !asym_steps.is_empty() {
+            // Calc plan from_reg to step, step to goal_reg.
+            let stepx = asym_steps.remove(rand::rng().random_range(0..asym_steps.len()));
+
+            if let Ok(plan_t) = self.make_plans2(from_reg, &stepx.initial, within, depth - 1) {
+                if let Ok(plan_t2) = plan_t.link(&SomePlan::new(self.id, vec![stepx])) {
+                    if let Ok(plan_f) =
+                        self.make_plans2(plan_t2.result_region(), &goal_reg, within, depth - 1)
+                    {
+                        if let Ok(plan_ret) = plan_t2.link(&plan_f) {
+                            //println!("planxx: asymmetric step {}", plan_ret);
+                            return Ok(plan_ret);
+                        }
                     }
                 }
             }
-            return Err(vec![format!(
-                "No plan found from {from_reg} to {goal_reg}"
-            )]);
         }
 
-        // Calc plan from_reg to step, step to goal_reg.
-        let stepx = asym_steps.remove(rand::rng().random_range(0..asym_steps.len()));
-
-        if let Ok(plan_t) = self.make_plans2(from_reg, &stepx.initial, within, depth - 1) {
-            if let Ok(plan_t2) = plan_t.link(&SomePlan::new(self.id, vec![stepx.restrict_initial_region(plan_t.result_region())])) {
-
-                if let Ok(plan_f) = self.make_plans2(plan_t2.result_region(), &goal_reg, within, depth - 1) {
-
-                    if let Ok(plan_ret) = plan_t2.link(&plan_f) {
-                        //println!("planxx found {}", plan_ret);
+        // Take random forward, or backward, step.
+        if 0 == rand::rng().random_range(0..2) {
+            let stepx = &from_steps[rand::rng().random_range(0..from_steps.len())];
+            if let Ok(plan_t) = self.make_plans2(&stepx.result, goal_reg, within, depth - 1) {
+                match SomePlan::new(self.id, vec![stepx.clone()]).link(&plan_t) {
+                    Ok(plan_ret) => {
+                        //println!("planxx: From step {}", plan_ret);
                         return Ok(plan_ret);
                     }
+                    Err(errstr) => return Err(vec![errstr]),
+                }
+            }
+        } else {
+            let stepx = &goal_steps[rand::rng().random_range(0..goal_steps.len())];
+            if let Ok(plan_f) = self.make_plans2(from_reg, &stepx.initial, within, depth - 1) {
+                match plan_f.link(&SomePlan::new(self.id, vec![stepx.clone()])) {
+                    Ok(plan_ret) => {
+                        //println!("planxx: Goal step {}", plan_ret);
+                        return Ok(plan_ret);
+                    }
+                    Err(errstr) => return Err(vec![errstr]),
                 }
             }
         }
@@ -785,48 +813,49 @@ impl SomeDomain {
                     return Some(shortcuts);
                 }
             }
-            if let Ok(plany) =
-                self.make_plans2(&planx[*from_inx].initial, &planx[*to_inx].result, within, 10)
-            {
+            if let Ok(plany) = self.make_plans2(
+                &planx[*from_inx].initial,
+                &planx[*to_inx].result,
+                within,
+                10,
+            ) {
                 //println!(
                 //       "    plans found from {} to {}",
                 //    planx[*from_inx].initial, &planx[*to_inx].result
                 //);
                 //println!("    Plans found 2");
-                    //println!("    sub plan1 {}", plany);
-                    let mut new_plan = SomePlan::new(self.id, vec![]);
-                    if *from_inx > 0 {
-                        for inz in 0..*from_inx {
-                            new_plan = match new_plan
-                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
-                            {
+                //println!("    sub plan1 {}", plany);
+                let mut new_plan = SomePlan::new(self.id, vec![]);
+                if *from_inx > 0 {
+                    for inz in 0..*from_inx {
+                        new_plan =
+                            match new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()])) {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
                             }
-                        }
                     }
-                    //println!("    sub plan1 {}", plany);
-                    new_plan = match new_plan.link(&plany) {
-                        Ok(planx) => planx,
-                        Err(_errstr) => return None,
-                    };
+                }
+                //println!("    sub plan1 {}", plany);
+                new_plan = match new_plan.link(&plany) {
+                    Ok(planx) => planx,
+                    Err(_errstr) => return None,
+                };
 
-                    if *to_inx < planx.len() {
-                        for inz in (to_inx + 1)..planx.len() {
-                            new_plan = match new_plan
-                                .link(&SomePlan::new(self.id, vec![planx[inz].clone()]))
-                            {
+                if *to_inx < planx.len() {
+                    for inz in (to_inx + 1)..planx.len() {
+                        new_plan =
+                            match new_plan.link(&SomePlan::new(self.id, vec![planx[inz].clone()])) {
                                 Ok(planx) => planx,
                                 Err(_errstr) => return None,
                             }
-                        }
                     }
-                    //println!("    new_plan {new_plan}");
-                    if new_plan.len() >= planx.len() {
-                        //println!("    plan too big, continue");
-                        continue;
-                    }
-                    shortcuts.push(new_plan);
+                }
+                //println!("    new_plan {new_plan}");
+                if new_plan.len() >= planx.len() {
+                    //println!("    plan too big, continue");
+                    continue;
+                }
+                shortcuts.push(new_plan);
             } // endif
         } // next opts item
         if shortcuts.is_empty() {
@@ -913,7 +942,7 @@ impl FromStr for SomeDomain {
         for tokenx in tokens.iter() {
             if tokenx.len() > 3 && tokenx[0..4].to_uppercase() == *"ACT[" {
                 act_vec.push(SomeAction::from_str(tokenx)?);
-            } else if  tokenx[0..1] == *"[" { // skip for now.
+            } else if tokenx[0..1] == *"[" { // skip for now.
             } else {
                 return Err(format!(
                     "SomeDomain::from_str: Unrecognized token, {tokenx}"
@@ -933,10 +962,10 @@ impl FromStr for SomeDomain {
         // Check for samples to take.
         for tokenx in tokens.iter() {
             if tokenx.len() > 3 && tokenx[0..4].to_uppercase() == *"ACT[" { // skip
-            } else if  tokenx[0..1] == *"[" {
+            } else if tokenx[0..1] == *"[" {
                 //println!("process token: {}", tokenx);
                 // Unwrap brackets.
-                let tokeny = &tokenx[1..(tokenx.len()-1)];
+                let tokeny = &tokenx[1..(tokenx.len() - 1)];
                 //print!(" tokeny: {}", tokeny);
                 // Split substring into tokens.
                 let tokens2 = match tools::parse_input(tokeny) {
@@ -946,7 +975,7 @@ impl FromStr for SomeDomain {
                 //print!(" action: {}", tokens2[0]);
                 // Translate action number as string to action number as usize.
                 let actx = match tokens2[0].parse::<usize>() {
-                    Ok(num) => { num }
+                    Ok(num) => num,
                     Err(errstr) => return Err(errstr.to_string()),
                 };
                 //print!(" action: {}", actx);
@@ -959,7 +988,7 @@ impl FromStr for SomeDomain {
                     statex = statex[0..inx].to_string();
                 }
 
-                match SomeState::from_str(&statex) {                                                                                      
+                match SomeState::from_str(&statex) {
                     Ok(stax) => {
                         //print!(" state: {}", stax);
                         match num_str.parse::<usize>() {

@@ -709,49 +709,55 @@ impl SomeAction {
             }
         }
         non_adjacent_pairs = temp;
+        //println!("non_adjacent_pairs: {non_adjacent_pairs}");
 
         // Apply non-adjacent pairs to poss_regions.
+        let mut poss_regions2 = poss_regions.clone();
         for regx in non_adjacent_pairs.iter() {
             //println!("Applying {regx} to {poss_regions}");
             let regs1 = max_reg.subtract(regx.first_state());
             let regs2 = max_reg.subtract(regx.last_state());
-            poss_regions = poss_regions.intersection(&regs1.union(&regs2));
+            poss_regions2 = poss_regions2.intersection(&regs1.union(&regs2));
         }
 
         // Check for adjacent pair confirm needs.
-         for regx in adjacent_pairs.iter() {
-             let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
-             if !sqrx.pnc {
-                 // Construct need for sample of state between.
+        for regx in adjacent_pairs.iter() {
+            let Some(sqrx) = self.squares.find(regx.first_state()) else {
+                panic!("SNH");
+            };
+            if !sqrx.pnc {
+                // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::State {
-                                state: sqrx.state.clone(),
-                            },
-                            other_state: regx.last_state().clone(),
-                            priority: 0,
-                        };
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target: ATarget::State {
+                        state: sqrx.state.clone(),
+                    },
+                    other_state: regx.last_state().clone(),
+                    priority: 0,
+                };
                 needx.add_priority_base();
                 nds.push(needx);
-             }
+            }
 
-             let Some(sqrx) = self.squares.find(regx.last_state()) else { panic!("SNH"); };
-             if !sqrx.pnc {
-                 // Construct need for sample of state between.
+            let Some(sqrx) = self.squares.find(regx.last_state()) else {
+                panic!("SNH");
+            };
+            if !sqrx.pnc {
+                // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::State {
-                                state: sqrx.state.clone(),
-                            },
-                            other_state: regx.first_state().clone(),
-                            priority: 0,
-                        };
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target: ATarget::State {
+                        state: sqrx.state.clone(),
+                    },
+                    other_state: regx.first_state().clone(),
+                    priority: 0,
+                };
                 needx.add_priority_base();
                 nds.push(needx);
-             }
-         }
+            }
+        }
 
         // If there are any adjacent pair confirm needs, return them.
         if nds.is_not_empty() {
@@ -759,45 +765,52 @@ impl SomeAction {
         }
 
         // Save defining regions to action instance.
-        self.defining_regions = poss_regions.defining_regions();
+        self.defining_regions = poss_regions2.defining_regions();
 
         // Save structure regions in action instance.
-        self.structure_regions = poss_regions;
+        self.structure_regions = poss_regions2;
 
         // Check for non-adjacent pair confirm needs.
-         for regx in non_adjacent_pairs.iter() {
-             let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
-             if !sqrx.pnc {
-                 // Construct need for sample of state between.
+        for regx in non_adjacent_pairs.iter() {
+            if !poss_regions.in_one_region(regx) {
+                continue;
+            }
+            let Some(sqrx) = self.squares.find(regx.first_state()) else {
+                panic!("SNH");
+            };
+            if !sqrx.pnc {
+                // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::State {
-                                state: sqrx.state.clone(),
-                            },
-                            other_state: regx.last_state().clone(),
-                            priority: 0,
-                        };
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target: ATarget::State {
+                        state: sqrx.state.clone(),
+                    },
+                    other_state: regx.last_state().clone(),
+                    priority: 0,
+                };
                 needx.add_priority_base();
                 nds.push(needx);
-             }
+            }
 
-             let Some(sqrx) = self.squares.find(regx.last_state()) else { panic!("SNH"); };
-             if !sqrx.pnc {
-                 // Construct need for sample of state between.
+            let Some(sqrx) = self.squares.find(regx.last_state()) else {
+                panic!("SNH");
+            };
+            if !sqrx.pnc {
+                // Construct need for sample of state between.
                 let mut needx = SomeNeed::ConfirmIP {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            target: ATarget::State {
-                                state: sqrx.state.clone(),
-                            },
-                            other_state: regx.first_state().clone(),
-                            priority: 0,
-                        };
+                    dom_id: self.dom_id,
+                    act_id: self.id,
+                    target: ATarget::State {
+                        state: sqrx.state.clone(),
+                    },
+                    other_state: regx.first_state().clone(),
+                    priority: 0,
+                };
                 needx.add_priority_base();
                 nds.push(needx);
-             }
-         }
+            }
+        }
 
         // If there are any non-adjacent pair confirm needs, return them.
         if nds.is_not_empty() {
@@ -808,8 +821,14 @@ impl SomeAction {
         for regx in non_adjacent_pairs.iter() {
             //println!("Processing non-adjacent Incompatible pair: {regx}");
 
+            if !poss_regions.in_one_region(regx) {
+                continue;
+            }
+
             // Get squares represented by the states.
-            let Some(sqrx) = self.squares.find(regx.first_state()) else { panic!("SNH"); };
+            let Some(sqrx) = self.squares.find(regx.first_state()) else {
+                panic!("SNH");
+            };
 
             let Some(sqry) = self.squares.find(regx.last_state()) else {
                 panic!("SNH");
@@ -952,7 +971,7 @@ impl SomeAction {
                         }
                         if !grpx.causes_predictable_change() {
                             if keyx.is_adjacent(&anchor.pinnacle) {
-                                 continue 'next_sqr;
+                                continue 'next_sqr;
                             }
                         }
                     }
@@ -1149,7 +1168,6 @@ impl SomeAction {
 
     /// Rate an anchor state.
     pub fn rate_anchor(&self, vertx: &SomeVertex) -> usize {
-
         if self.groups.num_groups_in(&vertx.pinnacle) != 1 {
             return 0;
         }
@@ -1161,7 +1179,7 @@ impl SomeAction {
             ret += 1;
             if self.groups.num_groups_in(stax) == 1 {
                 ret += 5;
-            } 
+            }
         }
 
         // Rate vertex for sharing states with other vertices.
@@ -1205,7 +1223,12 @@ impl SomeAction {
     /// If an existing anchor has the same, or better, rating than other possible states,
     /// retain it, else replace it.
     /// If the anchor is not pnc, return a need to get an additional sample.
-    pub fn group_limit_needs(&mut self, regx: &SomeRegion, group_num: usize, max_reg: &SomeRegion) -> NeedStore {
+    pub fn group_limit_needs(
+        &mut self,
+        regx: &SomeRegion,
+        group_num: usize,
+        max_reg: &SomeRegion,
+    ) -> NeedStore {
         //println!(
         //    "action::group_limit_needs: Dom {} Act {} group {regx} max_reg {max_reg}",
         //    self.dom_id, self.id
@@ -1254,7 +1277,9 @@ impl SomeAction {
         // Check other options.
         let mut max_rate = 0;
         let mut option_vertices = Vec::<SomeVertex>::new();
-        let options = self.groups.states_in_one_group(&self.squares.stas_in_reg(regx));
+        let options = self
+            .groups
+            .states_in_one_group(&self.squares.stas_in_reg(regx));
         //println!("options: {}", options);
         for stax in options.iter() {
             let vertx = SomeVertex::new(stax, &limit_mask);
@@ -1272,30 +1297,34 @@ impl SomeAction {
         if !option_vertices.is_empty() {
             anchor = Some(option_vertices[0].clone());
             if max_rate > cur_rate {
-                self.groups.find_mut(regx).expect("SNH").set_anchor(option_vertices[0].clone());
+                self.groups
+                    .find_mut(regx)
+                    .expect("SNH")
+                    .set_anchor(option_vertices[0].clone());
             }
         }
 
         // Check for anchor needs.
         if let Some(vertx) = &anchor {
-
             // Check for pinnacle needs.
             if let Some(sqrx) = self.squares.find(&vertx.pinnacle) {
                 if !sqrx.pnc {
                     let mut needx = SomeNeed::LimitGroup {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            anchor: vertx.pinnacle.clone(),
-                            target: ATarget::State {
-                                state: vertx.pinnacle.clone(),
-                            },
-                            for_group: regx.clone(),
-                            priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
-                        };
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        anchor: vertx.pinnacle.clone(),
+                        target: ATarget::State {
+                            state: vertx.pinnacle.clone(),
+                        },
+                        for_group: regx.clone(),
+                        priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                    };
                     needx.add_priority_base();
                     ret_nds.push(needx);
                 }
-            } else { panic!("SNH"); }
+            } else {
+                panic!("SNH");
+            }
 
             // Check for edge needs.
             for stax in vertx.edges.iter() {
@@ -1316,14 +1345,14 @@ impl SomeAction {
                     }
                 } else {
                     let mut needx = SomeNeed::LimitGroupAdj {
-                            dom_id: self.dom_id,
-                            act_id: self.id,
-                            anchor: stax.clone(),
-                            target: ATarget::State {
-                                state: stax.clone(),
-                            },
-                            for_group: regx.clone(),
-                            priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                        dom_id: self.dom_id,
+                        act_id: self.id,
+                        anchor: stax.clone(),
+                        target: ATarget::State {
+                            state: stax.clone(),
+                        },
+                        for_group: regx.clone(),
+                        priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                     };
                     needx.add_priority_base();
                     ret_nds.push(needx);
@@ -1350,13 +1379,13 @@ impl SomeAction {
                         }
                     } else {
                         let mut needx = SomeNeed::ConfirmGroup {
-                                dom_id: self.dom_id,
-                                act_id: self.id,
-                                target: ATarget::State {
-                                    state: stax.clone(),
-                                },
-                                grp_reg: regx.clone(),
-                                priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
+                            dom_id: self.dom_id,
+                            act_id: self.id,
+                            target: ATarget::State {
+                                state: stax.clone(),
+                            },
+                            grp_reg: regx.clone(),
+                            priority: group_num, // Adjust priority so groups in the beginning of the group list (longest survivor) are serviced first.
                         };
                         needx.add_priority_base();
                         ret_nds.push(needx);
@@ -2148,7 +2177,11 @@ impl SomeAction {
 
     /// Take an action with the current state, a number of times, add the sample to squarestore.
     /// Return a sample.
-    pub fn take_action_arbitrary_repeat(&mut self, arb_state: &SomeState, num_times: usize) -> SomeSample {
+    pub fn take_action_arbitrary_repeat(
+        &mut self,
+        arb_state: &SomeState,
+        num_times: usize,
+    ) -> SomeSample {
         //println!("action::take_action_arbitrary: Dom {} Act {} arb_state {arb_state}", self.dom_id, self.id);
         debug_assert_eq!(arb_state.num_bits(), self.num_bits);
         debug_assert!(num_times > 0);
@@ -2272,12 +2305,12 @@ impl SomeAction {
         rc_str += ", number squares: ";
         rc_str += &self.squares.len().to_string();
 
-//       if self.structure_regions.len() > 1 {
-//           rc_str += &format!(", calculated structure regions: {}", self.structure_regions);
-//           if self.structure_regions.len() > 1 {
-//               rc_str += &format!(", defining regions: {}", self.structure_regions.defining_regions());
-//           }
-//       }
+        //       if self.structure_regions.len() > 1 {
+        //           rc_str += &format!(", calculated structure regions: {}", self.structure_regions);
+        //           if self.structure_regions.len() > 1 {
+        //               rc_str += &format!(", defining regions: {}", self.structure_regions.defining_regions());
+        //           }
+        //       }
 
         let mut fil = "\n       Grps: ";
 
@@ -2327,11 +2360,11 @@ impl SomeAction {
                 stas_in.len(),
                 cnt,
             ));
-//            if let Some(anchor) = &grpx.anchor {
-//                rc_str.push_str(&format!(" {} {}", anchor, grpx.limited));
-//            } else {
-//                rc_str.push_str(&format!(" None {}", grpx.limited));
-//            }
+            //            if let Some(anchor) = &grpx.anchor {
+            //                rc_str.push_str(&format!(" {} {}", anchor, grpx.limited));
+            //            } else {
+            //                rc_str.push_str(&format!(" None {}", grpx.limited));
+            //            }
 
             fil = ",\n             ";
         }
@@ -2628,7 +2661,7 @@ impl FromStr for SomeAction {
                             return Err("action::from_str: Empty RuleStore.".to_string());
                         }
                         rs_vec.push(rulstrx);
-                    }                                                                                                                                   
+                    }
                     Err(errstr) => return Err(errstr),
                 }
             } else {
@@ -2648,8 +2681,8 @@ impl FromStr for SomeAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::str::FromStr;
     use crate::domain::SomeDomain;
+    use std::str::FromStr;
 
     #[test]
     fn two_result_group() -> Result<(), String> {
@@ -2662,7 +2695,12 @@ mod tests {
         println!("{dom0}");
 
         assert!(dom0.number_actions() == 2);
-        if let Some(_) = dom0.find_action(1).unwrap().groups.find(&SomeRegion::from_str("r0XXX")?) {
+        if let Some(_) = dom0
+            .find_action(1)
+            .unwrap()
+            .groups
+            .find(&SomeRegion::from_str("r0XXX")?)
+        {
         } else {
             return Err("Action 1, Group 0XXX not found?".to_string());
         }
@@ -2689,7 +2727,9 @@ mod tests {
     #[test]
     fn possible_region() -> Result<(), String> {
         // Init Action.
-        let mut dom0 = SomeDomain::from_str("DOMAIN[ACT[[XX/XX/XX/XX, XX/XX/XX/Xx]], [1, s1111/4], [1, s0001/4]]")?;
+        let mut dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[XX/XX/XX/XX, XX/XX/XX/Xx]], [1, s1111/4], [1, s0001/4]]",
+        )?;
 
         let mut nds = dom0.get_needs();
         if nds.is_empty() {
@@ -2710,7 +2750,8 @@ mod tests {
     #[test]
     fn three_sample_region1() -> Result<(), String> {
         // Init action.
-        let dom0 = SomeDomain::from_str("DOMAIN[ACT[[XX/XX/XX/XX]], [1, s0000], [1, s0011], [1, s0101]]")?;
+        let dom0 =
+            SomeDomain::from_str("DOMAIN[ACT[[XX/XX/XX/XX]], [1, s0000], [1, s0011], [1, s0101]]")?;
 
         let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
@@ -2745,7 +2786,9 @@ mod tests {
     #[test]
     fn three_sample_region3() -> Result<(), String> {
         // Init action.
-        let dom0 = SomeDomain::from_str("DOMAIN[ACT[[00/XX/X0/XX], [XX/XX/XX/11]], [1, s0010], [1, s1011], [1, s0101]]")?;
+        let dom0 = SomeDomain::from_str(
+            "DOMAIN[ACT[[00/XX/X0/XX], [XX/XX/XX/11]], [1, s0010], [1, s1011], [1, s0101]]",
+        )?;
 
         let act0 = dom0.find_action(1).unwrap();
         println!("Act: {}", act0);
@@ -2760,7 +2803,8 @@ mod tests {
     #[test]
     fn calc_aggregate_changes() -> Result<(), String> {
         // Init action.
-        let mut dom0 = SomeDomain::from_str("DOMAIN[ACT[[00/00/10/00], [01/11/00/X0]], [1, s0010]]")?;
+        let mut dom0 =
+            SomeDomain::from_str("DOMAIN[ACT[[00/00/10/00], [01/11/00/X0]], [1, s0010]]")?;
 
         let act0 = dom0.find_action_mut(1).unwrap();
 
@@ -2831,6 +2875,7 @@ mod tests {
         dom0.take_action_arbitrary_repeat(1, &SomeState::from_str("s0111")?, 2);
 
         let nds = dom0.get_needs();
+        println!("dom0 {}", dom0);
         println!("needs: {nds}");
 
         // Needs to get closer incompatible pair should exist.

@@ -66,7 +66,7 @@ pub struct InxPlan {
 /// Struct for a RegionsCorrStore with a given value.
 pub struct RCSVal {
     pub value: isize,
-    pub regions: RegionsCorrStore
+    pub regions: RegionsCorrStore,
 }
 
 #[readonly::make]
@@ -98,7 +98,7 @@ pub struct SessionData {
     pub max_pos_value: isize,
     /// A vector of increasingly negative-risk regionscorr, the last regionscorr being
     /// all maximum regions.
-    possible_paths: Vec::<RCSVal>, 
+    possible_paths: Vec<RCSVal>,
 
     // Cyclical goal, positve Select Region, data.
     /// A counter to indicate the number of steps the current state is in the same select region.
@@ -137,7 +137,6 @@ impl Eq for SessionData {}
 impl SessionData {
     /// Return a new, empty, SessionData struct.
     pub fn new(domains: DomainStore) -> Self {
-
         Self {
             domains,
             current_domain: 0,
@@ -210,7 +209,7 @@ impl SessionData {
         // Subtracting negative selectregions of each successive value will yeild paths of
         // less negative value, until subtracing all negative-valued selectregions will yield
         // selectregions of zero value.
-        let mut le0_values: Vec::<isize> = vec![0];
+        let mut le0_values: Vec<isize> = vec![0];
         for selx in self.select.iter() {
             if selx.value < 0 {
                 if !le0_values.contains(&selx.value) {
@@ -226,7 +225,10 @@ impl SessionData {
         let mut all_paths = Vec::<RCSVal>::new();
 
         for valx in le0_values.iter() {
-            all_paths.push(RCSVal { value: *valx, regions: cur_regions.clone() });
+            all_paths.push(RCSVal {
+                value: *valx,
+                regions: cur_regions.clone(),
+            });
 
             for selx in self.select.iter() {
                 if selx.value < 0 && selx.value == *valx {
@@ -661,7 +663,7 @@ impl SessionData {
     pub fn choose_a_need(&self) -> usize {
         //println!("choose_a_need: number InxPlans {}", can_do.len());
         assert!(!self.can_do.is_empty());
-        
+
         // Gather plan rates.
         let mut rts = vec![];
         for inxpln in self.can_do.iter() {
@@ -1058,47 +1060,6 @@ impl SessionData {
                 }
             }
         }
-
-
-        
-//        let maximum_regions = self.domains.maximum_regions();
-//
-//        loop {
-//            //println!("current_rate is {current_rate}");
-//            // fragments could be empty if there is a single, maximunm-region, negative select region.
-//            if !fragments.is_empty() {
-//                // until plan found or all negative SRs added to fragments.
-//                // Use fragments to find path.
-//                if let Ok(planx) = self.plan_using_least_negative_select_regions_get_plan(
-//                    start_regs,
-//                    goal_regs,
-//                    &fragments,
-//                    current_rate,
-//                ) {
-//                    //println!("sessiondata::plan_using_least_negative_select_regions: returns {planx} current_rate {current_rate}");
-//                    return Ok(NeedPlan::PlanFound { plan: planx });
-//                }
-//            }
-//
-//            // Add more negative regioncorrs.
-//            //println!("   adding {} valued SRs", neg_values[neg_inx]);
-//            if neg_inx == neg_values.len() {
-//                break;
-//            }
-//            if neg_inx == neg_values.len() - 1 {
-//                fragments = vec![&maximum_regions];
-//            } else {
-//                current_rate = neg_values[neg_inx];
-//                for selx in self.select_negative.iter() {
-//                    if selx.value == current_rate {
-//                        //println!("  found {selx}");
-//                        fragments.push(&selx.regions);
-//                    }
-//                }
-//            }
-//
-//            neg_inx += 1;
-//        }
 
         // Return failure.
         Err(vec!["No plan found".to_string()])
@@ -2573,8 +2534,11 @@ mod tests {
         let within1 = RegionsCorr::from_str("RC[r0XXX]")?;
         let within2 = RegionsCorr::from_str("RC[rX1XX]")?;
 
-        let path =
-            sdx.get_path_through_select_regions(&start_regs, &goal_regs, &RegionsCorrStore::new(vec![within1, within2]));
+        let path = sdx.get_path_through_select_regions(
+            &start_regs,
+            &goal_regs,
+            &RegionsCorrStore::new(vec![within1, within2]),
+        );
         if let Some(pathx) = path {
             print!("path: ");
             for rcx in pathx.iter() {

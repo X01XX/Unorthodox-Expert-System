@@ -771,17 +771,30 @@ fn do_change_state_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), 
 
 fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), String> {
     // Check number args.
-    if cmd.len() != 3 {
-        return Err("Exactly two region arguments are needed for the step command.".to_string());
+    if cmd.len() < 2 || cmd.len() > 3 {
+        return Err(
+            "One, or two, regionscorr arguments are needed for the step command.".to_string(),
+        );
     }
 
-    // Get from RC, validate/massage it.
-    let mut from = RegionsCorr::from_str(&cmd[1])?;
-    from = sdx.validate_rc(from)?;
+    // Get from-to regionscorrs.
+    let (from, to) = if cmd.len() == 2 {
+        let from = sdx.all_current_regions();
 
-    // Get to RC, validate/massage it.
-    let mut to = RegionsCorr::from_str(&cmd[2])?;
-    to = sdx.validate_rc(to)?;
+        // Get to RC, validate/massage it.
+        let mut to = RegionsCorr::from_str(&cmd[1])?;
+        to = sdx.validate_rc(to)?;
+        (from, to)
+    } else {
+        // Get from RC, validate/massage it.
+        let mut from = RegionsCorr::from_str(&cmd[1])?;
+        from = sdx.validate_rc(from)?;
+
+        // Get to RC, validate/massage it.
+        let mut to = RegionsCorr::from_str(&cmd[2])?;
+        to = sdx.validate_rc(to)?;
+        (from, to)
+    };
 
     if !from.is_congruent(&to) {
         return Err("Regionscorr given are not congruent".to_string());
@@ -895,7 +908,7 @@ fn step_by_step_rc(
     loop {
         if first && depth == 0 {
             first = false;
-            println!("Available commands:");
+            println!("Usage step-rc:");
             println!("    q = quit step-rc.");
             println!(
                 "    r = Return to session, with a plan if its available (allows recursion, for asymmetric chaining)."
@@ -1078,28 +1091,27 @@ fn step_by_step_rc(
                     break;
                 }
                 let optx = &steps_dis[cur_opt];
-                print!("{cur_opt:3}  {optx}");
+                print!("{cur_opt:3}");
+
+                // Check if steps initial regions intersect from regions.
+                if cur_from.intersects(&optx.initial_regions())
+                    && cur_to.intersects(&optx.result_regions())
+                {
+                    print!(" DONE ");
+                } else if cur_from.intersects(&optx.initial_regions()) {
+                    print!(" FC   ");
+                } else if cur_to.intersects(&optx.result_regions()) {
+                    print!(" BC   ");
+                } else {
+                    print!(" ASYMM");
+                }
+
+                print!("  {optx}");
                 if optx.strlen() < max_len {
                     print!("{}", " ".repeat(max_len - optx.strlen()));
                 }
                 num_left -= 1;
                 cur_opt += 1;
-
-                // Check if steps initial regions intersect from regions.
-                let from_int = cur_from.intersects(&optx.initial_regions());
-                if from_int {
-                    print!(" FC");
-                } else {
-                    print!(" FA");
-                }
-
-                // Check if steps result regions intersect to regions.
-                let to_int = cur_to.intersects(&optx.result_regions());
-                if to_int {
-                    print!(" BC");
-                } else {
-                    print!(" BA");
-                }
 
                 // Calc wanted_changes.
                 let optx_changes = optx.changes();
@@ -1107,13 +1119,10 @@ fn step_by_step_rc(
                 print!(", W: {optx_wanted_changes}");
 
                 // Calc unwanted changes.
-                let optx_unwanted_changes = if from_int {
-                    optx_changes.intersection(&unwanted_changes)
-                } else {
+                let optx_unwanted_changes =
                     RulesCorr::new_region_to_region_min(&cur_from, &optx.initial_regions())
                         .combine_sequence(&optx.rules())
-                        .intersection_changes(&unwanted_changes)
-                };
+                        .intersection_changes(&unwanted_changes);
 
                 if optx_unwanted_changes.is_not_low() {
                     print!(", U: {optx_unwanted_changes}");
@@ -1164,7 +1173,7 @@ fn step_by_step_rc(
             };
             println!(" ");
             pause_for_input(&format!(
-                "Depth: {depth} Enter q, r (None), <step number> [f|b]{}, so{}: ",
+                "Depth: {depth} Enter q, r (None), <step number> {}, so {}: ",
                 pop_str, pn_opts
             ))
         };
@@ -1237,148 +1246,66 @@ fn step_by_step_rc(
             }
             _ => (),
         }
-        if cmd.len() == 2 {
-            match cmd[0].parse::<usize>() {
-                Ok(num) => {
-                    if num >= steps_dis.len() {
-                        println!("Step number is too high");
-                    } else if cmd[1] == "F" || cmd[1] == "f" {
-                        // Check for forward chaining, else forward asymmetric chaining.
-                        if steps_dis[num].initial_regions_intersect(&cur_from) {
-                            let stp_tmp = steps_dis[num].restrict_initial_regions(&cur_from);
-                            match forward_plans.push_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
-                                Ok(()) => {
-                                    ret_plans = check_for_plan_completion_rc(
-                                        from,
-                                        to,
-                                        &forward_plans,
-                                        &backward_plans,
-                                    );
-                                    cur_from = forward_plans.result_regions();
-                                }
-                                Err(errstr) => println!("forward plan push failed {errstr}"),
-                            }
-                        } else if let Some(mut planx) = step_by_step_rc(
-                            sdx,
-                            &cur_from,
-                            &steps_dis[num].initial_regions(),
-                            Some(&steps_dis[num].result_regions()),
-                            None,
-                            depth + 1,
-                        ) {
-                            println!(
-                                "Forward asymmetric plan {planx} being linked to step {}",
-                                steps_dis[num]
+        // Check for step number.
+        match cmd[0].parse::<usize>() {
+            Ok(num) => {
+                if num >= steps_dis.len() {
+                    println!("Step number is too high");
+                } else if steps_dis[num].initial_regions_intersect(&cur_from)
+                    && steps_dis[num].result_regions_intersect(&cur_to)
+                {
+                     // Do forward chaining.
+                    let stp_tmp = steps_dis[num].restrict_initial_regions(&cur_from);
+                    match forward_plans.push_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
+                        Ok(()) => {
+                            ret_plans = check_for_plan_completion_rc(
+                                from,
+                                to,
+                                &forward_plans,
+                                &backward_plans,
                             );
-                            pause_for_input("Press Enter to continue: ");
-                            match planx.push_link(PlansCorr::new_from_stepscorr(
-                                &steps_dis[num].restrict_initial_regions(&planx.result_regions()),
-                            )) {
-                                Ok(()) => {
-                                    println!("Giving plan {planx}");
-                                    pause_for_input("Press Enter to continue: ");
-                                    match forward_plans.link(&planx) {
-                                        Ok(plany) => {
-                                            forward_plans = plany;
-                                            cur_from = forward_plans.result_regions().clone();
-                                            ret_plans = check_for_plan_completion_rc(
-                                                from,
-                                                to,
-                                                &forward_plans,
-                                                &backward_plans,
-                                            );
-                                        }
-                                        Err(errstr) => {
-                                            println!(
-                                                "Linking {forward_plans} to {planx} failed: {errstr}"
-                                            );
-                                            pause_for_input("Press Enter to continue: ");
-                                        }
-                                    }
-                                }
-                                Err(errstr) => {
-                                    println!("Linking to {}:failed: {errstr}", steps_dis[num]);
-                                    pause_for_input("Press Enter to continue: ");
-                                }
-                            }
-                        } else {
-                            println!("Forward chaining to {} returned None.", steps_dis[num]);
-                            pause_for_input("Press Enter to continue: ");
+                            cur_from = forward_plans.result_regions();
                         }
-                    } else if cmd[1] == "B" || cmd[1] == "b" {
-                        // Check for backward chaining, else backward asymmetric chaining.
-                        if steps_dis[num].result_regions_intersect(&cur_to) {
-                            let stp_tmp = steps_dis[num].restrict_result_regions(&cur_to);
-                            match backward_plans
-                                .push_first_link(PlansCorr::new_from_stepscorr(&stp_tmp))
-                            {
-                                Ok(()) => {
-                                    ret_plans = check_for_plan_completion_rc(
-                                        from,
-                                        to,
-                                        &forward_plans,
-                                        &backward_plans,
-                                    );
-                                    cur_to = backward_plans.initial_regions();
-                                }
-                                Err(errstr) => println!("backward plan push_first failed {errstr}"),
-                            }
-                        } else if let Some(mut planx) = step_by_step_rc(
-                            sdx,
-                            &steps_dis[num].result_regions(),
-                            &cur_to,
-                            None,
-                            Some(&steps_dis[num].initial_regions()),
-                            depth + 1,
-                        ) {
-                            println!(
-                                "Backward asymmetric step {} being linked to plan {planx}",
-                                steps_dis[num]
+                        Err(errstr) => println!("forward plan push failed {errstr}"),
+                    }
+                } else if steps_dis[num].initial_regions_intersect(&cur_from) {
+                    // Do forward chaining.
+                    let stp_tmp = steps_dis[num].restrict_initial_regions(&cur_from);
+                    match forward_plans.push_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
+                        Ok(()) => {
+                            ret_plans = check_for_plan_completion_rc(
+                                from,
+                                to,
+                                &forward_plans,
+                                &backward_plans,
                             );
-                            pause_for_input("Press Enter to continue: ");
-
-                            match planx.push_first_link(PlansCorr::new_from_stepscorr(
-                                &steps_dis[num].restrict_result_regions(&planx.initial_regions()),
-                            )) {
-                                Ok(()) => {
-                                    println!("Giving plan {planx}");
-                                    pause_for_input("Press Enter to continue: ");
-
-                                    match planx.link(&backward_plans) {
-                                        Ok(plany) => {
-                                            backward_plans = plany;
-                                            cur_to = backward_plans.initial_regions().clone();
-                                            ret_plans = check_for_plan_completion_rc(
-                                                from,
-                                                to,
-                                                &forward_plans,
-                                                &backward_plans,
-                                            );
-                                        }
-                                        Err(errstr) => {
-                                            println!(
-                                                "link {planx} to {backward_plans} failed {errstr}."
-                                            );
-                                            pause_for_input("Press Enter to continue: ");
-                                        }
-                                    }
-                                }
-                                Err(errstr) => {
-                                    println!(
-                                        "Linking {planx} and backward plan {backward_plans} failed: {errstr}."
-                                    );
-                                    pause_for_input("Press Enter to continue: ");
-                                }
-                            }
-                        } else {
-                            println!("Backward chaining return None.");
-                            pause_for_input("Press Enter to continue: ");
+                            cur_from = forward_plans.result_regions();
                         }
-                    } // end cmd[1] == "B"
-                } // end Ok(num)
-                Err(errstr) => println!("{errstr}"),
-            } // match cmd[0].parse::<usize>()
-        } // end cmp.len() == 2
+                        Err(errstr) => println!("forward plan push failed {errstr}"),
+                    }
+                } else if steps_dis[num].result_regions_intersect(&cur_to) {
+                    // Do backward chaining
+                    let stp_tmp = steps_dis[num].restrict_result_regions(&cur_to);
+                    match backward_plans.push_first_link(PlansCorr::new_from_stepscorr(&stp_tmp)) {
+                        Ok(()) => {
+                            ret_plans = check_for_plan_completion_rc(
+                                from,
+                                to,
+                                &forward_plans,
+                                &backward_plans,
+                            );
+                            cur_to = backward_plans.initial_regions();
+                        }
+                        Err(errstr) => println!("backward plan push_first failed {errstr}"),
+                    }
+                } else {
+                    //TODO Asymmetric
+                    println!("ASYMM not coded yet");
+                }
+            } // end Ok(num)
+            _ => ()
+        } // match cmd[0].parse::<usize>()
+        // } // end cmp.len() == 2
     } // end command loop.
 }
 
@@ -1789,9 +1716,10 @@ fn usage() {
     //        "                              giving immediate access to a fully develped set of rules."
     //    );
     println!(
-        "\n    step_rc <RC> <RC>        - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions."
+        "\n    step_rc <RC> [<RC>]      - Interactively use rules to navigate, step by step, from an initial set of regions to a goal set of regions."
     );
     println!("\n                               Like: step_rc RC[r0101, r111] RC[r1001, r100]");
+    println!("\n                               Like: step_rc RC[r1001, r100] (means current state to given RC)");
     println!(
         "                               To target less than all domains: step_rc RC[rXXXX, s111] RC[rXXXX, s100], or step_rc RC[s111] RC[s100]"
     );

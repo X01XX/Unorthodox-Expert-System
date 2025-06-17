@@ -274,8 +274,13 @@ impl SomeGroup {
         self.limited = true;
 
         if let Some(anchor) = &self.anchor {
-            if self.region.first_state() != &anchor.pinnacle && self.region.far_state() != anchor.pinnacle {
-                self.region = SomeRegion::new(vec![anchor.pinnacle.clone(), self.region.far_from(&anchor.pinnacle)]);
+            if self.region.first_state() != &anchor.pinnacle
+                && self.region.far_state() != anchor.pinnacle
+            {
+                self.region = SomeRegion::new(vec![
+                    anchor.pinnacle.clone(),
+                    self.region.far_from(&anchor.pinnacle),
+                ]);
             }
         } else {
             panic!("Problem: set limited, with no anchor?");

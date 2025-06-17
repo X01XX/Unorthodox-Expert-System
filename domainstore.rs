@@ -359,7 +359,7 @@ impl DomainStore {
             if let Some(regx) = optx {
                 regs2.push(regx);
             } else {
-                regs2.push(domx.maximum_region());
+                regs2.push(domx.current_state().as_region());
             }
         }
 
@@ -487,7 +487,7 @@ mod tests {
 
         let rc4 = dsx.validate_rc(rc3)?;
         println!("rc4 {rc4}");
-        assert!(format!("{rc4}") == "RC[r0_0000, r0000, r000, rXX]");
+        assert!(format!("{rc4}") == "RC[r0_0000, r0000, r000, r00]");
 
         // Test an RC that is empty.
         let rc5 = RegionsCorr::from_str("RC[]")?;
