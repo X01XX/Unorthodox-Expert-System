@@ -702,9 +702,10 @@ impl SomeAction {
         //println!("poss_regions: {poss_regions}");
 
         // Filter non-adjacent pairs, that are only in one region of poss_regions.
+        let defining_regions = poss_regions.defining_regions();
         let mut temp = RegionStore::new(vec![]);
         for regx in non_adjacent_pairs.iter() {
-            if poss_regions.in_one_region(regx) {
+            if defining_regions.any_superset_of(regx) {
                 temp.push(regx.clone());
             }
         }
