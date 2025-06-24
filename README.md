@@ -39,9 +39,7 @@ After a number of groups are formed, the user can change the state with a comman
 
 A final, exact, understanding is NOT the goal, just as there is a lot that I do not understand, but
 I can still muddle through life. It is also NOT the goal to take every possible sample, if you had a
-64-bit state, it would not be practical to take every sample.This was a 10,000-pipe problem, at least for me.
-
-Dedicated to those who never had a chance, from someone who did.
+64-bit state, it would not be practical to take every sample.
 
 A "domain" is a state and a set of actions.  There can be more than one domain.  Each domain can use a state with an arbitrary number of bits, greater than 0. When a goal includes all domains, plans to achieve the goal will be made for each domain where its state is not within the domain goal.
 
