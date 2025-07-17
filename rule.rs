@@ -268,7 +268,7 @@ impl SomeRule {
             }
 
             if msk == 0 {
-                strrc.push_str("../"); // Will fail is_valid_intersection.
+                strrc.push_str("0?/"); // Will fail is_valid_intersection.
             } else if msk == 1 {
                 strrc.push_str("00/");
             } else if msk == 2 {
@@ -282,7 +282,7 @@ impl SomeRule {
             } else if msk == 6 {
                 strrc.push_str("X1/");
             } else if msk == 7 {
-                strrc.push_str("00,01,11?/"); // Will fail is_valid_union.
+                strrc.push_str("3?/"); // Will fail is_valid_union.
             } else if msk == 8 {
                 strrc.push_str("10/");
             } else if msk == 9 {
@@ -290,15 +290,15 @@ impl SomeRule {
             } else if msk == 10 {
                 strrc.push_str("Xx/");
             } else if msk == 11 {
-                strrc.push_str("00,01,10?/"); // Will fail is_valid_union.
+                strrc.push_str("3?/"); // Will fail is_valid_union.
             } else if msk == 12 {
                 strrc.push_str("1X/"); // Will fail is_valid_union.
             } else if msk == 13 {
-                strrc.push_str("00,11,10?/"); // Will fail is_valid_union.
+                strrc.push_str("3?/"); // Will fail is_valid_union.
             } else if msk == 14 {
-                strrc.push_str("01,11,10?/"); // Will fail is_valid_union.
+                strrc.push_str("3?/"); // Will fail is_valid_union.
             } else if msk == 15 {
-                strrc.push_str("00,01,11,10?/"); // Will fail is_valid_union.
+                strrc.push_str("4?/"); // Will fail is_valid_union.
             }
         } // next i
 
