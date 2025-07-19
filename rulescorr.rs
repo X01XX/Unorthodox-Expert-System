@@ -238,7 +238,7 @@ mod tests {
 
         let cngs = ruc.as_changes();
         println!("cngs {cngs}");
-        assert!(format!("{cngs}") == "CC[../../../01, .._../10/../..]");
+        assert!(format!("{cngs}") == "CC[0?/0?/0?/01, 0?_0?/10/0?/0?]");
 
         //assert!(1 == 2);
         Ok(())

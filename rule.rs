@@ -104,6 +104,11 @@ impl SomeRule {
     }
 
     /// Return a logical OR of two rules. The result may not pass is_valid_union.
+    /// A sub-region may be possible, with further massaging.
+    /// X1 + XX = 11 (discard 0X)
+    /// X1 + Xx = 01 (discard 1X)
+    /// X0 + XX = 00 (discard 1X)
+    /// X0 + Xx = 10 (discard 0X)
     pub fn union(&self, other: &Self) -> Self {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
@@ -116,6 +121,9 @@ impl SomeRule {
     }
 
     /// Return a logical AND of two rules.  The result may be invalid.
+    /// A valid intersection may not have the same initial region as the intersection
+    /// of the two rules initial regions.
+    /// X1 & Xx = 01, X1 & XX = 11, X0 & Xx = 10, X0 & XX = 00.
     pub fn intersection(&self, other: &Self) -> Option<Self> {
         debug_assert_eq!(self.num_bits(), other.num_bits());
 
@@ -1043,7 +1051,7 @@ mod tests {
         let rul2 = SomeRule::from_str("00/01/11/10_X1/X0/XX/Xx")?;
         let rul3 = rul1.union(&rul2);
         println!("rul3 = {rul3}");
-        assert!(format!("{rul3}") == "00/0X/XX/X0_00,01,11?/X0/XX/00,01,10?");
+        assert!(format!("{rul3}") == "00/0X/XX/X0_3?/X0/XX/3?");
 
         Ok(())
     }

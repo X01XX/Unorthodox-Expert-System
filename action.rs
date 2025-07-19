@@ -2141,7 +2141,7 @@ impl SomeAction {
             // The sample could have invalidated the group.
             if let Some(grpx) = self.groups.find_mut(grp_reg) {
                 if !grpx.pnc {
-                    let sqr1 = self.squares.find(grp_reg.first_state()).expect("SNH");
+                    let sqr1 = self.squares.find(grpx.region.first_state()).expect("SNH");
                     if grp_reg.len() == 1 {
                         if sqr1.pnc && grpx.set_pnc() {
                             println!(
@@ -2149,7 +2149,7 @@ impl SomeAction {
                                 self.dom_id, self.id, grpx.region
                             );
                         }
-                    } else if let Some(sqr2) = self.squares.find(&grp_reg.far_state()) {
+                    } else if let Some(sqr2) = self.squares.find(&grpx.region.far_state()) {
                         if sqr1.pnc && sqr2.pnc && grpx.set_pnc() {
                             println!(
                                 "Dom {} Act {} Group {} confirmed",

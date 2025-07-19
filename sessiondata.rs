@@ -99,7 +99,6 @@ pub struct SessionData {
     /// A vector of increasingly negative-risk regionscorr, the last regionscorr being
     /// all maximum regions.
     possible_paths: Vec<RCSVal>,
-
     // Cyclical goal, positve Select Region, data.
     /// A counter to indicate the number of steps the current state is in the same select region.
     /// When no more rule-testing needs can be done.

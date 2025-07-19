@@ -800,7 +800,7 @@ fn do_step_rc_command(sdx: &mut SessionData, cmd: &[String]) -> Result<(), Strin
         return Err("Regionscorr given are not congruent".to_string());
     }
 
-    if let Some(plans) = step_by_step_rc(sdx, &from, &to, None, None, 0) {
+    if let Some(plans) = step_by_step_rc(sdx, &from, &to, 0) {
         println!("found plan for {from} -> {to}: {plans}");
         if plans
             .initial_regions()
@@ -888,8 +888,6 @@ fn step_by_step_rc(
     sdx: &SessionData,
     from: &RegionsCorr,
     to: &RegionsCorr,
-    forward_asymmetric: Option<&RegionsCorr>,
-    backward_asymmetric: Option<&RegionsCorr>,
     depth: usize,
 ) -> Option<PlansCorrStore> {
     let mut ret_plans: Option<PlansCorrStore> = None;
@@ -903,6 +901,12 @@ fn step_by_step_rc(
     let mut cur_start = 0;
     let num_to_display = 10;
     let mut first = true;
+
+    let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
+    let wanted_changes = rules_to_goal.as_changes();
+    let cc_fil = " ".repeat(wanted_changes.strlen());
+
+    let unwanted_changes = cur_to.unwanted_changes();
 
     // Command loop.
     loop {
@@ -918,28 +922,30 @@ fn step_by_step_rc(
             println!("    p = previous slice of options.");
             println!("\n    fpop = Forward plans pop step at end.");
             println!("    bpop = Backward plans pop step at beginning.");
+            println!("\n    <step number> = Use a specified step.");
+            println!("\n    W: = Wanted change(s).");
             println!(
-                "\n    <step number> f = Use a step for Forward Chaining (FC), or Forward Asymmetric chaining (FA)."
-            );
-            println!(
-                "    <step number> b = Use a step for Backward Chaining (BC), or Backward Asymmetric chaining (BA, or AB? ;)."
-            );
-            println!("\n    W: = Wanted change(s), going forward.");
-            println!(
-                "    U: = Unwanted change(s), going forward. Either in the step itself, and/or traversing to the step initial region."
+                "    U: = Unwanted change(s), Either in the step itself, and/or traversing to/from the step."
             );
             println!("         Unwanted change(s) must eventually be reversed.");
             println!(
                 "\n    If there are more wanted changes than unwanted changes, the current state is getting closer to the goal."
             );
             println!("\n    no input = redisplay options.");
+        } else {
+            println!("-----------------------------------");
+            println!("Depth: {depth}");
+            println!("Original: ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
+            println!(" ");
+            println!("Forward plans:  {forward_plans}");
+
+            println!(" ");
+            println!("Backward plans: {}", backward_plans.formatted_str_from());
+
+            println!(" ");
+            println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
+            println!(" ");
         }
-
-        let rules_to_goal = RulesCorr::new_rc_to_rc(&cur_from, &cur_to);
-        let wanted_changes = rules_to_goal.as_changes();
-        let cc_fil = " ".repeat(wanted_changes.strlen());
-
-        let unwanted_changes = cur_to.unwanted_changes();
 
         let mut stepscorr = Vec::<StepStore>::with_capacity(from.len());
 
@@ -1021,46 +1027,9 @@ fn step_by_step_rc(
                 steps_dis.push(stpstox.restrict_result_regions(&cur_to));
             } else {
                 // Asymmetric chaining.
-                let stp_f = stpstox.restrict_initial_regions(
-                    &RulesCorr::new_region_to_region_min(&cur_from, &stpstox.initial_regions())
-                        .result_regions(),
-                );
-                let stp_b = stpstox.restrict_result_regions(
-                    &RulesCorr::new_region_from_region_min(&stpstox.result_regions(), &cur_to)
-                        .initial_regions(),
-                );
-
-                if stp_f == stp_b {
-                    steps_dis.push(stp_f);
-                } else {
-                    steps_dis.push(stp_f);
-                    steps_dis.push(stp_b);
-                }
+                steps_dis.push(stpstox);
             }
         }
-
-        println!("-----------------------------------");
-
-        if let Some(rcx) = forward_asymmetric {
-            println!(
-                "Original Forward: ({from} -> {to}) -> {rcx}, Current: from {cur_from} -> {cur_to}"
-            );
-        } else if let Some(rcx) = backward_asymmetric {
-            println!(
-                "Original Backward: {rcx} -> ({from} -> {to}), Current: from {cur_from} -> {cur_to}"
-            );
-        } else {
-            println!("Original: ({from} -> {to}), Current: from {cur_from} -> {cur_to}");
-        }
-        println!(" ");
-        println!("Forward plans:  {forward_plans}");
-
-        println!(" ");
-        println!("Backward plans: {}", backward_plans.formatted_str_from());
-
-        println!(" ");
-        println!("Current from: {cur_from} Current to: {cur_to} Wanted Changes: {wanted_changes}");
-        println!(" ");
 
         let n_flag =
             steps_dis.len() > num_to_display && steps_dis.len() - cur_start >= num_to_display;
@@ -1299,8 +1268,40 @@ fn step_by_step_rc(
                         Err(errstr) => println!("backward plan push_first failed {errstr}"),
                     }
                 } else {
-                    //TODO Asymmetric
-                    println!("ASYMM not coded yet");
+                    // Do asymmetric chaining.
+                    if let Some(planstr1) = step_by_step_rc(sdx, from, &steps_dis[num].initial_regions(), depth + 1) {
+                        
+                        match planstr1.link(&PlansCorrStore::new(vec![PlansCorr::new_from_stepscorr(&steps_dis[num])])) {
+
+                            Ok(planscstr2) => {
+                                if let Some(planscstr3) = step_by_step_rc(sdx, &planscstr2.result_regions(), to, depth + 1) {
+                                    
+                                    match planscstr2.link(&planscstr3) {
+                                        Ok(planscstr4) => {
+                                            match forward_plans.push_link(planscstr4.items[0].clone()) {
+                                                Ok(()) => {
+                                                    ret_plans = check_for_plan_completion_rc(
+                                                        from,
+                                                        to,
+                                                        &forward_plans,
+                                                        &backward_plans,
+                                                    );
+                                                    cur_from = forward_plans.result_regions();
+                                                }
+                                                Err(errstr) => println!("Asymmetric plan failed {errstr}"),
+                                            }
+                                        }
+                                        Err(errstr) => println!("Asymmetric plan failed {errstr}")
+                                    }
+                                } else {
+                                    println!("Asymmetric plan: {} to {} failed", planscstr2.result_regions(), to);
+                                }
+                            }
+                            Err(errstr) => println!("Asymmetric plan failed {errstr}")
+                        }
+                    } else {
+                        println!("Asymmetric plan: {} to {} failed", from, &steps_dis[num].initial_regions());
+                    }
                 }
             } // end Ok(num)
             _ => ()
