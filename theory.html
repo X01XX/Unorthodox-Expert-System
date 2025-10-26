@@ -309,15 +309,19 @@ p {
  The 2-bit axis satisfies this requirement and works, the 3-bit axis does not satisfy this requirement
  and only partially works.
   </p> 
-  <p>
-  In a pair of bit patterns that differ by two bits, one of the bit patterns need change only one of those different bits to become adjacent to the other.  
-  So the two bit patterns can be said to be two bits apart, or distant.
-  </p> 
   <h2>So K-maps seem trivial if the maximum bits on an axis is two!</h2>
   <p>
  The improved definition of the K-Map gives a computer program an easy test for determining if two squares
  are adjacent, or measuring the degree of separation, by counting the number of different bits.  The number of bits can be arbitrarily large.
   </p> 
+  <h2>Distance, Steps.</h2>
+  <p>If you have two numbers that are different by one bit, changing that bit, in either number, will make one number equal to the other.</p>
+  <p>Imagine that changing one bit in a number is a "step".</p>
+  <p>If you have two numbers that are different by any number of bits, changing one number to be equal to the other will entail
+      at least that number of steps.</p>
+  <p>The minimum number of steps to change one number into another can be thought of as a kind of computational "distance".</p>
+  <p>All the possible orders of the steps, changing one number to another, will map out a valid region on a K-Map, defined by the two numbers.</p>
+  <h2>Notes</h2>
    <p>
  The
   <a href="http://www-graphics.stanford.edu/~seander/bithacks.html#CountBitsSetKernighan">Count Bits Algorithm</a>
@@ -2516,7 +2520,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 06/22/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 10/26/2025</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
