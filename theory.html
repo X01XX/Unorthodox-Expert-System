@@ -1839,6 +1839,33 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      A needed change of 0&#129042 1 in a rule, must be followed by 1&#129042 1.
     </p>
    <p>
+    Choosing the next rule
+   </p>
+   <p class="indent1">
+    Translating from one state to another will involve a minimum of changes.  e.g. 0100 &#129042 0111 requires changing the two least significant bits.
+   </p>
+   <p class="indent1">
+   Assuming there is no single rule that can make the changes, then a seiries of rules will make the needed changes.
+   </p>
+   <p class="indent1">
+   One rule will necessarily make the first change, another the next change, until all needed changes are made.
+   </p>
+   <p class="indent1">
+   If there is a rule 0000 &#129042 0001, it contains one needed change in 0100 &#129042 0111.
+   </p>
+   <p class="indent1">
+    0100 &#129042 0000 requires one bit change, but it is not one of the needed changes for 0100 &#129042 0111.
+   </p>
+   <p class="indent1">
+    Considering the 0000 &#129042 0001 rule, 0001 &#129042 0111 includes the one remaining bit change required for 0100 &#129042 0111.
+   </p>
+   <p class="indent1">
+   So the rule 0000 &#129042 0001 requires no needed bit changes in 0100 &#129042 0000, and all following needed
+   changes in 0001 &#129042 0111.
+   </p>
+   <p class="indent1">
+   The 0000 &#129042 0001 rule is a viable first choice to make, although 0100 &#129042 0000, and 0001 &#129042 0111 have not yet been resolved.
+   </p>
     <h3>Multiple State Samples</h3>
     <p>
     If a state is sampled once, I would say it has a Pattern Number (PN) of one.
@@ -2520,7 +2547,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 10/26/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 11/06/2025</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
