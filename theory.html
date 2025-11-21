@@ -1762,9 +1762,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
      <p class="indent1">
        Region low-bits = ~(0&#129042;<b>0</b> mask + 1&#129042;<b>0</b> mask)
     </p>     
-    <p>
+    <h4>
         Forward-Chaining
-    </p>
+    </h4>
     <p class="indent1">
        For a region (rg) that intersects the initial region of a rule, restrict the rule to that intersection by filtering similar initial bits:
     </p>
@@ -1783,9 +1783,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
         Then calculate the result region of the restricted rule.
     </p>
-    <p>
+    <h4>
         Backward-Chaining
-    </p>
+    </h4>
     <p class="indent1">
          For a region (rg) that intersects the result region of a rule, restrict the rule to that intersection by filtering similar result bits:
     </p>
@@ -1804,9 +1804,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     <p class="indent1">
         Then calculate the initial region of the restricted rule.
     </p>
-   <p>
+   <h4>
     Rule Order
-    </p>
+    </h4>
     <p class="indent1">
     Two rules can imply an order of use, if the changes of one must be undone to run the other.
     e.g. 0X00&#129042; 0X01, later 1X00&#129042;.... 
@@ -1838,9 +1838,9 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     Another way to look at it is, a needed change of 1&#129042 0 in a rule, must be followed by 0&#129042 0.
      A needed change of 0&#129042 1 in a rule, must be followed by 1&#129042 1.
     </p>
-   <p>
+   <h4>
     Choosing the next rule
-   </p>
+   </h4>
    <p class="indent1">
     Translating from one state to another will involve a minimum of changes.  e.g. 0100 &#129042 0111 requires changing the two least significant bits.
    </p>
@@ -1860,16 +1860,19 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
     To use the rule, the change 0100 &#129042 0000 requires one bit change, but it is not one of the needed changes, not yet made, for 0100 &#129042 0111.
    </p>
    <p class="indent1">
-   The rule 0000 &#129042 0001 is a viable first choice to make, although the change 0100 &#129042 0000 has not yet been resolved.
+   The rule 0000 &#129042 0001 is a viable first choice to make, although the change 0100 &#129042 0000 has not yet been resolved, and will need to be reversed later.
    </p>
-   <p class="indent2">
+   <h4>
+    A reason to not choose a rule
+   </h4>
+   <p class="indent1">
    If there is a rule 0001 &#129042 0011, it contains one needed change, not yet made, in 0100 &#129042 0111, the second least significant bit.
    </p>
-   <p class="indent2">
+   <p class="indent1">
     To use the rule, the change 0100 &#129042 0001 requires two bit changes, one of which is a needed change, not yet made, for 0100 &#129042 0111, the least significant bit.
    </p>
-   <p class="indent2">
-   The change 0100 &#129042 0001 presupposes the use of a needed rule to change the least significant bit, so using the rule 0001 &#129042 0011 at this point is premature.
+   <p class="indent1">
+   The change 0100 &#129042 0001 presupposes the use of a needed rule to change the least significant bit, in 0100 &#129042 0111, so using the rule 0001 &#129042 0011 at this point is premature.
    </p>
     <h3>Multiple State Samples</h3>
     <p>
@@ -2552,7 +2555,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 11/08/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 11/20/2025</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
