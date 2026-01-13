@@ -2558,7 +2558,7 @@ I will use the term <i>square</i>, or <i>state</i>, to indicate a single bit pat
  <div id="footer">
      <p>Contact/Feedback:&nbsp;<a href="mailto:earl.dukerschein@wisc.edu">Bitflogger</a></p>
      <p>B.S. Computer Science, 1980, NIU</p>
-   <p>Web page Started: 10/20/2010, last changed: 12/02/2025</p>
+   <p>Web page Started: 10/20/2010, last changed: 01/13/2026</p>
   </div>
 <div id="addendum">
 	<a id="ADD"></a>
@@ -2747,6 +2747,9 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         <p>
         Finding adjacent, dissimilar, squares decreases the number of possible regions produced by the calculation, and increases the number of squares that are only in one region.
         </p>
+        <p>
+        A point on a "logical edge".
+        </p>
         <p class="indent1">
         For C and E within XXXX, ~C = (0XXX, X0XX, XX1X, XXX1),  ~E = (0XXX, X0XX, XX0X, XXX1).<br>
         ~C + ~E = (XX1X, XXX1, 0XXX, X0XX, XX0X), 5 regions, E only in XX1X, C only in XX0X.
@@ -2762,6 +2765,9 @@ Four non-X positions, 2<sup>4</sup> values = 16, 0-X regions.
         </p>
         <p>
         A square with two adjacent, dissimilar, squares, is better than two pairs of adjacent, dissimilar, squares that do not have a square in common. Not only are the results better, the number of squares that need to be sampled is fewer.
+        </p>
+        <p>
+        A "logical corner".
         </p>
         <p class="indent1">
         (~5 + ~7) &amp; (~5 + ~D) = ~5 + (~7 &amp; ~D) = (1XXX, XX1X, X0XX, XXX0, 0X0X), 5 regions, 7 only in XX1X, D only in 1XXX, 5 only in 0X0X.
